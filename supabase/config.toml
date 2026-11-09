@@ -1,0 +1,7 @@
+project_id = "xktihtajunjmzbltqmrz"
+
+[functions.create-user]
+verify_jwt = false
+
+[functions.hub-api]
+verify_jwt = false

@@ -1,0 +1,699 @@
+@import 'leaflet/dist/leaflet.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --base-font-size: 16px;
+
+    /* Tema Claro — Paleta Executiva Automotiva: Branco Puro, Grafite Titânio e Carmim Institucional */
+    --background: 220 18% 97%;
+    --foreground: 224 35% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 35% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 35% 12%;
+
+    --primary: 350 82% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 94%;
+    --secondary-foreground: 224 35% 12%;
+
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 10% 46%;
+
+    /* Icon color token */
+    --icon-accent: 350 82% 48%;
+
+    --accent: 350 82% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 356 75% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 68% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 48%;
+    --warning-foreground: 30 100% 8%;
+
+    --border: 220 13% 89%;
+    --input: 220 13% 89%;
+    --ring: 350 82% 48%;
+
+    --radius: 0.75rem;
+
+    /* Gráficos Executivos */
+    --chart-1: 350 82% 48%;
+    --chart-2: 224 64% 45%;
+    --chart-3: 152 68% 36%;
+    --chart-4: 38 92% 48%;
+    --chart-5: 220 10% 46%;
+
+    /* Sidebar — Grafite Noturno Profundo */
+    --sidebar-background: 224 25% 10%;
+    --sidebar-foreground: 220 15% 96%;
+    --sidebar-primary: 350 85% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 20% 16%;
+    --sidebar-accent-foreground: 220 15% 98%;
+    --sidebar-border: 224 18% 18%;
+    --sidebar-ring: 350 85% 56%;
+
+    /* Glow & Sombras Refinadas */
+    --glow-primary: 350 82% 48%;
+    --glow-hover: 350 85% 56%;
+    --glow-opacity: 0.08;
+    --gradient-top: linear-gradient(180deg, hsl(var(--primary) / 0.04) 0%, transparent 100%);
+  }
+
+  .dark {
+    /* Tema Escuro — Ônix Profundo, Grafite Titânio e Acentos Carmim Suaves */
+    --background: 224 25% 7%;
+    --foreground: 220 15% 96%;
+
+    --card: 224 22% 10%;
+    --card-foreground: 220 15% 96%;
+
+    --popover: 224 22% 10%;
+    --popover-foreground: 220 15% 96%;
+
+    --primary: 350 85% 56%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 224 18% 14%;
+    --secondary-foreground: 220 15% 96%;
+
+    --muted: 224 18% 14%;
+    --muted-foreground: 220 10% 60%;
+
+    --accent: 350 85% 56%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 356 75% 56%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 65% 48%;
+    --success-foreground: 152 70% 8%;
+
+    --warning: 38 90% 52%;
+    --warning-foreground: 38 90% 8%;
+
+    --border: 224 16% 17%;
+    --input: 224 16% 17%;
+    --ring: 350 85% 56%;
+
+    --chart-1: 350 85% 56%;
+    --chart-2: 220 65% 58%;
+    --chart-3: 152 65% 48%;
+    --chart-4: 38 90% 52%;
+    --chart-5: 220 10% 60%;
+
+    --sidebar-background: 224 28% 6%;
+    --sidebar-foreground: 220 15% 95%;
+    --sidebar-primary: 350 85% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 20% 13%;
+    --sidebar-accent-foreground: 220 15% 98%;
+    --sidebar-border: 224 18% 14%;
+    --sidebar-ring: 350 85% 58%;
+
+    --icon-accent: 350 85% 60%;
+
+    /* Glow tokens - Dark */
+    --glow-primary: 350 85% 56%;
+    --glow-hover: 350 85% 62%;
+    --glow-opacity: 0.12;
+    --gradient-top: linear-gradient(180deg, hsl(var(--primary) / 0.06) 0%, transparent 100%);
+  }
+}
+
+@layer base {
+  *, *::before, *::after {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    max-width: 100vw;
+    width: 100%;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  html {
+    font-size: var(--base-font-size);
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Figtree', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  .bg-glow-top {
+    background-image: var(--gradient-top);
+  }
+
+  .auth-shell {
+    background-image:
+      linear-gradient(145deg, hsl(var(--background)), hsl(var(--sidebar-background)) 55%, hsl(var(--background)));
+  }
+
+  .auth-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--primary) / 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.035) 1px, transparent 1px),
+      linear-gradient(130deg, transparent 20%, hsl(var(--primary) / 0.06) 50%, transparent 80%);
+    background-size: 32px 32px, 32px 32px, 100% 100%;
+  }
+
+  .auth-card {
+    box-shadow: 0 32px 64px -24px hsl(var(--background) / 0.9);
+  }
+
+  .auth-mark-glow {
+    filter: drop-shadow(0 0 18px hsl(var(--primary) / 0.2));
+  }
+
+  .accent-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+  }
+
+  .glow-subtle .hover-glow:hover,
+  .glow-moderate .hover-glow:hover {
+    box-shadow: 0 0 20px hsl(var(--glow-primary) / var(--glow-opacity));
+  }
+
+  .glow-moderate .hover-glow:hover {
+    --glow-opacity: 0.2;
+  }
+
+  .glow-none .hover-glow:hover {
+    box-shadow: none;
+  }
+
+  .btn-glow {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glow-subtle .btn-glow::before,
+  .glow-moderate .btn-glow::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, hsl(var(--glow-hover) / 0.15) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+  }
+
+  .btn-glow:hover::before {
+    opacity: 1;
+  }
+
+  .glow-none .btn-glow::before {
+    display: none;
+  }
+
+  .animations-none * {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+
+  .animations-subtle * {
+    animation-duration: 150ms !important;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.25s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.25s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.18s ease-out forwards;
+  }
+
+  .skeleton-loading {
+    @apply bg-muted/60 animate-pulse rounded;
+  }
+
+  .pixel-grid {
+    background-image: 
+      linear-gradient(to right, hsl(var(--glow-primary) / 0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--glow-primary) / 0.02) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .dark .pixel-dots {
+    background-image: radial-gradient(hsl(var(--glow-primary) / 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .icon-adaptive {
+    @apply text-foreground/80;
+  }
+
+  svg {
+    @apply text-current;
+  }
+
+  /* Na barra lateral (aside), todos os ícones e emojis vetoriais são sempre branco puro (#ffffff) */
+  aside svg,
+  aside button svg,
+  aside [role="button"] svg {
+    color: #ffffff !important;
+  }
+
+  aside button:hover svg,
+  aside [role="button"]:hover svg {
+    color: #ffffff !important;
+  }
+
+  [data-radix-dropdown-menu-content] svg,
+  [data-radix-context-menu-content] svg,
+  [data-radix-select-content] svg {
+    @apply text-foreground/80;
+  }
+
+  [role="menuitem"]:hover svg,
+  [data-radix-collection-item]:hover svg {
+    @apply text-foreground;
+  }
+
+  .badge svg,
+  [class*="Badge"] svg {
+    @apply text-current;
+  }
+
+  .card-interactive {
+    @apply transition-all duration-150;
+  }
+
+  .glow-subtle .card-interactive:hover,
+  .glow-moderate .card-interactive:hover {
+    @apply border-primary/20;
+    box-shadow: 0 4px 20px hsl(var(--glow-primary) / var(--glow-opacity));
+  }
+
+  .glow-subtle input:focus,
+  .glow-moderate input:focus {
+    box-shadow: 0 0 0 2px hsl(var(--glow-primary) / 0.12);
+  }
+
+  .toast-enter {
+    animation: slideUp 0.15s ease-out forwards;
+  }
+
+  .toast-exit {
+    animation: fadeOut 0.15s ease-out forwards;
+  }
+
+  [data-state="open"][data-radix-dialog-content] {
+    animation: scaleIn 0.16s ease-out;
+  }
+
+  [data-state="closed"][data-radix-dialog-content] {
+    animation: fadeOut 0.12s ease-out;
+  }
+
+  tbody tr {
+    @apply transition-colors duration-100;
+  }
+
+  tbody tr:hover {
+    @apply bg-muted/50;
+  }
+
+  label {
+    @apply text-foreground/90;
+  }
+
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.page-transition {
+  animation: fadeSlide 0.18s ease-out forwards;
+}
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Venda em revisão — sinalização discreta e profissional */
+@keyframes reviewDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.82); }
+}
+
+.review-dot {
+  animation: reviewDot 1.8s ease-in-out infinite;
+}
+
+.review-badge {
+  border: 1px solid hsl(var(--destructive) / 0.35);
+  background-color: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
+}
+
+.review-row {
+  box-shadow: inset 3px 0 0 0 hsl(var(--destructive) / 0.85);
+  background-color: hsl(var(--destructive) / 0.035);
+  transition: background-color 200ms ease;
+}
+
+.review-row:hover {
+  background-color: hsl(var(--destructive) / 0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-dot { animation: none; }
+}
+
+
+:focus-visible {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/30;
+}
+
+/* ---------- Login / loading visuals ---------- */
+.login-loading-grid {
+  background-image:
+    linear-gradient(to right, hsl(var(--border) / 0.5) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border) / 0.5) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at 50% 40%, black, transparent 72%);
+  -webkit-mask-image: radial-gradient(circle at 50% 40%, black, transparent 72%);
+  pointer-events: none;
+}
+
+.login-halftone {
+  position: absolute;
+  inset: auto -8% -14% -8%;
+  height: 58%;
+  background-image: radial-gradient(hsl(var(--primary) / 0.22) 1.4px, transparent 1.5px);
+  background-size: 14px 14px;
+  mask-image: linear-gradient(to top, black, transparent 82%);
+  -webkit-mask-image: linear-gradient(to top, black, transparent 82%);
+  pointer-events: none;
+}
+
+.login-bridge {
+  position: absolute;
+  top: -18%;
+  right: -12%;
+  height: 46rem;
+  width: 46rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.14), transparent 62%);
+  pointer-events: none;
+}
+
+.login-dither-canvas {
+  opacity: 0.98;
+  animation: fadeIn 0.45s ease-out both;
+}
+
+.login-dither-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.72) 28%, transparent 62%),
+    linear-gradient(90deg, hsl(var(--card)) 0%, transparent 34%, hsl(var(--card) / 0.82) 100%);
+  pointer-events: none;
+}
+
+.login-mobile-dither-fade {
+  background:
+    linear-gradient(180deg, hsl(var(--background) / 0.78), hsl(var(--background) / 0.92) 58%, hsl(var(--background))),
+    linear-gradient(90deg, hsl(var(--background)), transparent 50%, hsl(var(--background)));
+  pointer-events: none;
+}
+
+.login-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 35%, hsl(var(--background) / 0.55));
+  pointer-events: none;
+}
+
+.login-card {
+  box-shadow: 0 32px 70px -40px hsl(var(--foreground) / 0.35);
+}
+
+.login-progress-bar {
+  width: 40%;
+  animation: login-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes login-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(260%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-progress-bar { animation: none; width: 100%; }
+}
+
+/* Scrollbars Executivas Minimalistas */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* Card e Painel Executivo */
+.executive-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.7);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 6px 16px -4px rgba(0, 0, 0, 0.05);
+  border-radius: 1rem;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.executive-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 12px 24px -6px rgba(0, 0, 0, 0.08);
+}
+
+/* ==========================================================================
+   ESTILOS DE INTERFACE E BARRAS (Limpo, Nítido e Executivo)
+   ========================================================================== */
+.expo-glass-bar,
+.expo-glass-header {
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid hsl(var(--border) / 0.8);
+}
+
+.expo-glass-sidebar {
+  background: hsl(var(--sidebar-background));
+  border-right: 1px solid hsl(var(--sidebar-border));
+}
+
+.expo-glass-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+}
+
+/* Botões com acabamento refinado */
+.btn-glass {
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  transition: all 0.2s ease;
+}
+
+.btn-glass:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+/* Indicador Pulsante Conectado */
+@keyframes online-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+.status-indicator-pulse {
+  animation: online-pulse 2.5s infinite ease-in-out;
+}
+
+/* Regras de Impressão Oficial de Holerites e Demonstrativos CLT */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 6mm;
+  }
+
+  /* Desativa transições e animações no papel */
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Oculta tudo que tem classe .no-print */
+  .no-print,
+  nav,
+  header,
+  aside,
+  footer,
+  [data-radix-popper-content-wrapper] {
+    display: none !important;
+  }
+
+  /* Reseta a página */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Quando houver área imprimível na tela, esconde o restante da aplicação fora do modal */
+  body:has(.print-area) #root > *:not(:has(.print-area)) {
+    display: none !important;
+  }
+
+  /* Desativa completamente o backdrop escuro, layout fixo e scroll do modal */
+  body:has(.print-area) .fixed,
+  body:has(.print-area) .bg-black\/80,
+  body:has(.print-area) .backdrop-blur-md,
+  body:has(.print-area) .bg-card\/95 {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    display: block !important;
+  }
+
+  /* Desativa qualquer overflow oculto que possa cortar o documento */
+  body:has(.print-area) .overflow-y-auto,
+  body:has(.print-area) .overflow-hidden {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Área principal do holerite */
+  .print-area {
+    position: relative !important;
+    display: block !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 6mm 8mm !important;
+    box-sizing: border-box !important;
+    border: 1.5pt solid #0f172a !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    overflow: visible !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Garante cores e linhas nítidas para cabeçalhos e tabelas */
+  .print-area * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-area table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .print-area tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
+

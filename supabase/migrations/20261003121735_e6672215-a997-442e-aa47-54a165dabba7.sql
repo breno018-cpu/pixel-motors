@@ -1,0 +1,1 @@
+ALTER TABLE public.financing_banks ADD COLUMN IF NOT EXISTS lien_holder text;

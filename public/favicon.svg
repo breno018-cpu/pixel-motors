@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="bladeChrome" x1="20" y1="16" x2="84" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#FFFFFF" />
+      <stop offset="55%" stopColor="#CBD5E1" />
+      <stop offset="100%" stopColor="#94A3B8" />
+    </linearGradient>
+
+    <linearGradient id="bladeRacingRed" x1="45" y1="56" x2="88" y2="76" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#EF4444" />
+      <stop offset="100%" stopColor="#B91C1C" />
+    </linearGradient>
+
+    <filter id="bladeShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#000000" floodOpacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Fundo Sóbrio Ônix Automotivo Arredondado -->
+  <rect width="100" height="100" rx="22" fill="#0B0F17" />
+  
+  <g filter="url(#bladeShadow)">
+    <!-- 1. Haste aerodinâmica inclinada a 18° -->
+    <path d="M26 84 L46 16 L35 16 L15 84 Z" fill="url(#bladeChrome)" />
+
+    <!-- 2. Arco aerofólio superior -->
+    <path d="M48 16 L76 16 C85 16 89 21 86 32 L81 48 C78 58 71 62 60 62 L32 62 L36 49 L58 49 C64 49 68 47 70 41 L73 31 C74 27 72 25 67 25 L45 25 Z" fill="url(#bladeChrome)" />
+
+    <!-- 3. Lâmina racing vermelha de performance -->
+    <path d="M44 69 L78 69 L73 84 L39 84 Z" fill="url(#bladeRacingRed)" />
+
+    <!-- 4. Traço de fluxo hiperveloz -->
+    <path d="M82 69 L88 69 L84 84 L78 84 Z" fill="#DC2626" />
+  </g>
+</svg>

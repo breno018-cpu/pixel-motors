@@ -1,0 +1,10 @@
+{
+  "name": "folha-pagamento-inteligente",
+  "version": "1.0.0",
+  "description": "Sistema de Gestão e Folha de Pagamento Inteligente CLT",
+  "scripts": {
+    "backend": "cd backend && node server.js",
+    "frontend": "cd frontend && npm run dev",
+    "dev": "powershell -Command \"Start-Process npm -ArgumentList 'run backend' -NoNewWindow; cd frontend; npm run dev\""
+  }
+}

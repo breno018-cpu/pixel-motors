@@ -1,0 +1,2 @@
+ALTER TABLE public.vehicles ADD COLUMN IF NOT EXISTS manufacture_year integer;
+COMMENT ON COLUMN public.vehicles.manufacture_year IS 'Ano de fabricacao (controle interno). A coluna year representa o ano modelo usado em contratos.';

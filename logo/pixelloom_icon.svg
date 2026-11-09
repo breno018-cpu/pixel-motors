@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#0B0B0E"/>
+  <rect x="2" y="2" width="508" height="508" rx="110" stroke="white" stroke-opacity="0.08" stroke-width="4"/>
+  
+  <!-- Architectural Emblem -->
+  <g transform="translate(136, 120)">
+    <!-- Main Stem -->
+    <rect x="36" y="30" width="34" height="180" rx="17" fill="#FFFFFF"/>
+    <!-- Top Beam -->
+    <rect x="36" y="30" width="136" height="34" rx="17" fill="#FFFFFF"/>
+    <!-- Middle Crossbar -->
+    <rect x="36" y="104" width="136" height="34" rx="17" fill="#FFFFFF"/>
+    <!-- Upper Right Column closing the P loop -->
+    <rect x="138" y="30" width="34" height="108" rx="17" fill="#FFFFFF"/>
+    <!-- Signature Crimson Pixel Node -->
+    <rect x="138" y="168" width="38" height="42" rx="13.6" fill="#E31C25"/>
+  </g>
+</svg>
