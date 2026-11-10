@@ -114,6 +114,13 @@ export function BarcodeScannerDialog({
         if (capabilities && 'torch' in capabilities) {
           setTorchAvailable(true);
         }
+        if (capabilities && 'focusMode' in capabilities && Array.isArray(capabilities.focusMode)) {
+          if (capabilities.focusMode.includes('continuous')) {
+            (track as any).applyConstraints({
+              advanced: [{ focusMode: 'continuous' }]
+            }).catch(() => {});
+          }
+        }
       }
     } catch {}
   }, []);

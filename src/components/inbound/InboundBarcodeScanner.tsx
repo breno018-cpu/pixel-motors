@@ -120,7 +120,7 @@ export function InboundBarcodeScanner({
   const [popupData, setPopupData] = useState<ScannedPopupData | null>(null);
   const isCooldownRef = useRef<boolean>(false);
 
-  const checkTorchSupport = useCallback(() => {
+  const checkCameraCapabilities = useCallback(() => {
     try {
       const video = videoRef.current;
       const stream = video?.srcObject as MediaStream | null;
@@ -129,6 +129,13 @@ export function InboundBarcodeScanner({
         const capabilities = (track as any).getCapabilities();
         if (capabilities && 'torch' in capabilities) {
           setTorchAvailable(true);
+        }
+        if (capabilities && 'focusMode' in capabilities && Array.isArray(capabilities.focusMode)) {
+          if (capabilities.focusMode.includes('continuous')) {
+            (track as any).applyConstraints({
+              advanced: [{ focusMode: 'continuous' }]
+            }).catch(() => {});
+          }
         }
       }
     } catch {}
@@ -263,13 +270,13 @@ export function InboundBarcodeScanner({
 
       controlsRef.current = controls;
       setCameraActive(true);
-      setTimeout(checkTorchSupport, 500);
+      setTimeout(checkCameraCapabilities, 500);
     } catch (err: any) {
       console.warn('Câmera indisponível ou permissão negada:', err);
       setCameraError(err?.message || 'Permissão de câmera negada ou câmera ocupada.');
       setCameraActive(false);
     }
-  }, [checkTorchSupport, handleCodeScanned]);
+  }, [checkCameraCapabilities, handleCodeScanned]);
 
   useEffect(() => {
     startCamera();
@@ -283,6 +290,40 @@ export function InboundBarcodeScanner({
       setTorchAvailable(false);
     };
   }, [startCamera]);
+
+  // Loop de aceleração via Hardware BarcodeDetector (se suportado pelo navegador nativo)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('BarcodeDetector' in window)) return;
+    let animId: number;
+    let detector: any = null;
+
+    try {
+      detector = new (window as any).BarcodeDetector({
+        formats: ['qr_code', 'code_128', 'code_39', 'data_matrix', 'ean_13', 'itf']
+      });
+    } catch {
+      return;
+    }
+
+    const scanFrame = async () => {
+      const video = videoRef.current;
+      if (video && video.readyState === video.HAVE_ENOUGH_DATA && !isCooldownRef.current && !popupData) {
+        try {
+          const barcodes = await detector.detect(video);
+          if (barcodes && barcodes.length > 0) {
+            const raw = barcodes[0].rawValue;
+            if (raw && raw.trim().length > 3) {
+              handleCodeScanned(raw.trim());
+            }
+          }
+        } catch {}
+      }
+      animId = requestAnimationFrame(scanFrame);
+    };
+
+    animId = requestAnimationFrame(scanFrame);
+    return () => cancelAnimationFrame(animId);
+  }, [handleCodeScanned, popupData]);
 
   // Listener para leitor físico USB / Bluetooth (bipador de mão)
   useEffect(() => {
