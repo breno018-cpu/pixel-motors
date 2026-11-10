@@ -670,7 +670,7 @@ export default function Vehicles() {
         <TabsContent value="estoque" className="mt-0 space-y-5">
           {/* KPIs EXECUTIVOS DO PÁTIO */}
           {!isLoading && (
-            <div className={cn('grid grid-cols-2 gap-3.5', canViewMargins ? 'lg:grid-cols-5' : 'lg:grid-cols-4')}>
+            <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5', canViewMargins ? 'xl:grid-cols-5' : 'xl:grid-cols-4')}>
               <StatCard
                 label="Unidades Filtradas"
                 value={kpis.totalUnits}
