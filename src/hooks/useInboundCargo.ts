@@ -7,33 +7,22 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { recognizeFromChassis } from '@/lib/chassisRecognition';
 
-const STORAGE_KEY = 'pixel_inbound_cargo_batches_v2';
-const LEGACY_STORAGE_KEY = 'pixel_inbound_cargo_batches_v1';
+const STORAGE_KEY = 'pixel_inbound_cargo_batches_v3';
+const LEGACY_STORAGE_KEY = 'pixel_inbound_cargo_batches_v2';
 const EVENT_NAME = 'pixel_inbound_cargo_changed';
 
 function loadStoredBatches(): InboundCargoBatch[] {
   try {
+    // Limpa versões legadas de teste para que a tela inicie 100% limpa
+    try {
+      localStorage.removeItem('pixel_inbound_cargo_batches_v1');
+      localStorage.removeItem('pixel_inbound_cargo_batches_v2');
+    } catch {}
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed) ? parsed : [];
-    }
-
-    // Migração de v1 para v2: descarta lote demo '53880' automático se existir, mantendo apenas lotes reais
-    const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (legacyRaw) {
-      try {
-        const legacyParsed = JSON.parse(legacyRaw);
-        if (Array.isArray(legacyParsed)) {
-          const filtered = legacyParsed.filter(
-            (b) => b.id !== 'batch_manifest_53880_l1ma' && b.batch_code !== '53880'
-          );
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-          return filtered;
-        }
-      } catch {
-        // ignora erro de parse
-      }
     }
 
     // Por padrão o sistema inicia 100% limpo (0 chassis até o usuário importar a lista do caminhão)
@@ -101,6 +90,60 @@ export function useInboundCargo() {
       setActiveBatchId(null);
     }
   }, [activeBatchId]);
+
+  // Apaga todos os lotes de romaneio de uma vez
+  const clearAllBatches = useCallback(() => {
+    setBatches([]);
+    setActiveBatchId(null);
+    saveStoredBatches([]);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      localStorage.removeItem('pixel_inbound_cargo_batches_v1');
+      localStorage.removeItem('pixel_inbound_cargo_batches_v2');
+      localStorage.removeItem('pixel_inbound_cargo_batches_v3');
+    } catch {}
+  }, []);
+
+  // Limpa todos os chassis/itens do lote atual
+  const clearBatchItems = useCallback((batchId: string) => {
+    setBatches((prev) => {
+      const updated = prev.map((b) => {
+        if (b.id !== batchId) return b;
+        return {
+          ...b,
+          total_items: 0,
+          scanned_items: 0,
+          divergent_items: 0,
+          items: [],
+          divergence_logs: [],
+          updated_at: new Date().toISOString(),
+        };
+      });
+      saveStoredBatches(updated);
+      return updated;
+    });
+  }, []);
+
+  // Exclui um único item do romaneio
+  const deleteItemFromBatch = useCallback((batchId: string, itemId: string) => {
+    setBatches((prev) => {
+      const updated = prev.map((b) => {
+        if (b.id !== batchId) return b;
+        const newItems = b.items.filter((i) => i.id !== itemId);
+        const scanned = newItems.filter((i) => i.scanned).length;
+        return {
+          ...b,
+          total_items: newItems.length,
+          scanned_items: scanned,
+          items: newItems,
+          updated_at: new Date().toISOString(),
+        };
+      });
+      saveStoredBatches(updated);
+      return updated;
+    });
+  }, []);
 
   // Reinicia conferência do lote
   const resetBatchScans = useCallback((batchId: string) => {
@@ -351,6 +394,9 @@ export function useInboundCargo() {
     setActiveBatchId,
     createBatch,
     deleteBatch,
+    clearAllBatches,
+    clearBatchItems,
+    deleteItemFromBatch,
     resetBatchScans,
     scanBox,
     commitToStock,

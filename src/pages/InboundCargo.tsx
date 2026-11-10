@@ -42,7 +42,8 @@ interface InboundCargoProps {
 export default function InboundCargo({ embedded = false }: InboundCargoProps) {
   const { 
     batches, activeBatch, activeBatchId, setActiveBatchId, 
-    createBatch, deleteBatch, resetBatchScans, scanBox, commitToStock, loadSampleData 
+    createBatch, deleteBatch, clearAllBatches, clearBatchItems, deleteItemFromBatch,
+    resetBatchScans, scanBox, commitToStock, loadSampleData 
   } = useInboundCargo();
 
   const { data: stores = [] } = useStores();
@@ -398,9 +399,32 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
                   }
                 }}
                 className="h-9 px-2 text-xs text-muted-foreground hover:text-destructive"
-                title="Excluir romaneio"
+                title="Excluir este romaneio"
               >
                 <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Apagar Todos os Romaneios?',
+                    description: 'Tem certeza que deseja apagar todos os romaneios de caminhão cadastrados? Todos os dados da tela serão excluídos e o pátio ficará completamente zerado.',
+                    confirmText: 'Sim, Apagar Tudo',
+                    cancelText: 'Cancelar',
+                    variant: 'destructive',
+                  });
+                  if (ok) {
+                    clearAllBatches();
+                    toast({ title: 'Romaneios apagados!', description: 'Todos os manifestos foram excluídos com sucesso.' });
+                  }
+                }}
+                className="h-9 px-2.5 text-xs text-destructive hover:bg-destructive/10 border-destructive/30 gap-1.5"
+                title="Apagar todos os romaneios da tela"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Apagar Todos</span>
               </Button>
             </div>
           </div>
@@ -464,6 +488,33 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
                 className="pl-8 h-8 text-xs bg-card"
               />
             </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!activeBatch) return;
+                const ok = await confirm({
+                  title: 'Apagar Todos os Chassis do Romaneio?',
+                  description: `Tem certeza que deseja apagar todos os ${totalCount} veículos do romaneio do lote ${activeBatch.batch_code}? A tabela será completamente zerada.`,
+                  confirmText: 'Sim, Apagar Todos',
+                  cancelText: 'Cancelar',
+                  variant: 'destructive',
+                });
+                if (ok) {
+                  deleteBatch(activeBatch.id);
+                  toast({
+                    title: 'Romaneio apagado com sucesso',
+                    description: 'Todos os registros do romaneio foram removidos.',
+                  });
+                }
+              }}
+              className="h-8 px-2.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 gap-1.5"
+              title="Apagar todos os veículos deste romaneio"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Apagar Todos</span>
+            </Button>
           </div>
         }
       >
@@ -611,28 +662,52 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
                       </TableCell>
 
                       <TableCell className="text-right">
-                        {item.scanned ? (
-                          <div className="text-right leading-tight">
-                            <span className="text-[10px] text-emerald-600 font-semibold flex items-center justify-end gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Descarregada
-                            </span>
-                            {item.scanned_at && (
-                              <span className="text-[9px] font-mono text-muted-foreground">
-                                {new Date(item.scanned_at).toLocaleTimeString('pt-BR')}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {item.scanned ? (
+                            <div className="text-right leading-tight">
+                              <span className="text-[10px] text-emerald-600 font-semibold flex items-center justify-end gap-1">
+                                <CheckCircle2 className="w-3 h-3" /> Descarregada
                               </span>
-                            )}
-                          </div>
-                        ) : (
+                              {item.scanned_at && (
+                                <span className="text-[9px] font-mono text-muted-foreground">
+                                  {new Date(item.scanned_at).toLocaleTimeString('pt-BR')}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => scanBox(item.chassis)}
+                              className="h-7 px-2.5 text-[11px] font-semibold gap-1 hover:border-emerald-500 hover:text-emerald-600"
+                            >
+                              <ScanLine className="w-3 h-3" />
+                              Bipar
+                            </Button>
+                          )}
+
                           <Button
                             size="sm"
-                            variant="outline"
-                            onClick={() => scanBox(item.chassis)}
-                            className="h-7 px-2.5 text-[11px] font-semibold gap-1 hover:border-emerald-500 hover:text-emerald-600"
+                            variant="ghost"
+                            onClick={async () => {
+                              const ok = await confirm({
+                                title: 'Excluir chassi do romaneio?',
+                                description: `Deseja remover o chassi ${item.chassis} (${item.model_name || item.model_code}) deste romaneio?`,
+                                confirmText: 'Excluir',
+                                cancelText: 'Cancelar',
+                                variant: 'destructive',
+                              });
+                              if (ok && activeBatch) {
+                                deleteItemFromBatch(activeBatch.id, item.id);
+                                toast({ title: 'Chassi removido', description: `O veículo ${item.chassis} foi excluído da lista.` });
+                              }
+                            }}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            title="Excluir este chassi"
                           >
-                            <ScanLine className="w-3 h-3" />
-                            Bipar
+                            <Trash2 className="w-3 h-3" />
                           </Button>
-                        )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
