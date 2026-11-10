@@ -435,6 +435,16 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
               <InboundBarcodeScanner
                 batch={activeBatch}
                 onScan={scanBox}
+                onConfirmUnload={(itemId) => {
+                  confirmUnloadItem(activeBatch.id, itemId);
+                  toast({
+                    title: '✅ Moto Confirmada para Descida!',
+                    description: 'Caixa validada e registrada no lote da loja.',
+                  });
+                }}
+                onRecordRejection={(code) => {
+                  recordRejectedBox(activeBatch.id, code);
+                }}
                 onClose={() => setScannerOpen(false)}
               />
             </div>

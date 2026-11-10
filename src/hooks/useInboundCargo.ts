@@ -294,6 +294,77 @@ export function useInboundCargo() {
   }, [activeBatch]);
 
   /**
+   * Confirma a descida da moto para a loja após validação positiva no pop-up
+   */
+  const confirmUnloadItem = useCallback((batchId: string, itemId: string, scannedBy: string = 'Conferente de Pátio') => {
+    const now = new Date().toISOString();
+    playSuccessBeep();
+
+    setBatches((prev) => {
+      const updated = prev.map((b) => {
+        if (b.id !== batchId) return b;
+        const newItems = b.items.map((it) => {
+          if (it.id === itemId) {
+            return {
+              ...it,
+              scanned: true,
+              scanned_at: now,
+              scanned_by: scannedBy,
+            };
+          }
+          return it;
+        });
+
+        const scannedCount = newItems.filter((i) => i.scanned).length;
+        const isComplete = scannedCount === newItems.length && newItems.length > 0;
+
+        return {
+          ...b,
+          status: isComplete ? ('concluido' as const) : ('em_conferencia' as const),
+          scanned_items: scannedCount,
+          updated_at: now,
+          completed_at: isComplete ? now : b.completed_at,
+          items: newItems,
+        };
+      });
+      saveStoredBatches(updated);
+      return updated;
+    });
+  }, []);
+
+  /**
+   * Registra rejeição no manifesto de moto de outra loja identificada no pop-up
+   */
+  const recordRejectedBox = useCallback((batchId: string, rawCode: string) => {
+    const now = new Date().toISOString();
+    const clean = rawCode.trim().toUpperCase();
+    playErrorAlarm();
+
+    const newDivergence: InboundDivergenceLog = {
+      id: `div_${Date.now()}`,
+      timestamp: now,
+      scanned_value: clean,
+      reason: 'not_in_manifest',
+      message: `Chassi/QR Code ${clean} NÃO pertence a esta loja! Caixa retida no caminhão.`,
+    };
+
+    setBatches((prev) => {
+      const updated = prev.map((b) => {
+        if (b.id !== batchId) return b;
+        return {
+          ...b,
+          status: 'divergente' as const,
+          divergent_items: b.divergent_items + 1,
+          updated_at: now,
+          divergence_logs: [newDivergence, ...b.divergence_logs],
+        };
+      });
+      saveStoredBatches(updated);
+      return updated;
+    });
+  }, []);
+
+  /**
    * Efetiva a entrada de todas as motos conferidas diretamente no estoque oficial da loja
    */
   const commitToStock = useCallback(async (batchId: string, storeId: string, storeName?: string) => {
@@ -399,6 +470,8 @@ export function useInboundCargo() {
     deleteItemFromBatch,
     resetBatchScans,
     scanBox,
+    confirmUnloadItem,
+    recordRejectedBox,
     commitToStock,
     loadSampleData,
   };
