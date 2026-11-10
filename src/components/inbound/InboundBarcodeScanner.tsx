@@ -26,20 +26,57 @@ export function InboundBarcodeScanner({ batch, onScan, onClose }: InboundBarcode
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [manualInput, setManualInput] = useState<string>('');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [torchAvailable, setTorchAvailable] = useState<boolean>(false);
+  const [torchOn, setTorchOn] = useState<boolean>(false);
   
   // Última leitura
   const [lastScanResult, setLastScanResult] = useState<ScanResult | null>(null);
   const [flashFeedback, setFlashFeedback] = useState<'success' | 'error' | 'warning' | null>(null);
   const isCooldownRef = useRef<boolean>(false);
 
-  // Inicia ou reinicia o leitor de vídeo
-  const startCamera = useCallback(async () => {
-    if (!videoRef.current) return;
+  const checkTorchSupport = useCallback(() => {
+    try {
+      const video = videoRef.current;
+      const stream = video?.srcObject as MediaStream | null;
+      const track = stream?.getVideoTracks()[0];
+      if (track && typeof (track as any).getCapabilities === 'function') {
+        const capabilities = (track as any).getCapabilities();
+        if (capabilities && 'torch' in capabilities) {
+          setTorchAvailable(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const toggleTorch = useCallback(async () => {
+    try {
+      const video = videoRef.current;
+      const stream = video?.srcObject as MediaStream | null;
+      const track = stream?.getVideoTracks()[0];
+      if (!track) return;
+      const next = !torchOn;
+      await (track as any).applyConstraints({
+        advanced: [{ torch: next }]
+      });
+      setTorchOn(next);
+    } catch (e) {
+      console.warn('Erro ao alternar lanterna:', e);
+    }
+  }, [torchOn]);
+
+  // Inicia ou reinicia o leitor de vídeo com fallback resiliente
+  const startCamera = useCallback(async (retryCount = 0) => {
+    if (!videoRef.current) {
+      if (retryCount < 8) {
+        setTimeout(() => startCamera(retryCount + 1), 120);
+      }
+      return;
+    }
     setCameraError(null);
 
     try {
       if (controlsRef.current) {
-        controlsRef.current.stop();
+        try { controlsRef.current.stop(); } catch {}
         controlsRef.current = null;
       }
 
@@ -47,33 +84,45 @@ export function InboundBarcodeScanner({ batch, onScan, onClose }: InboundBarcode
         readerRef.current = new BrowserMultiFormatReader();
       }
 
-      const controls = await readerRef.current.decodeFromConstraints(
-        {
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-        },
-        videoRef.current,
-        (result, error) => {
-          if (result && !isCooldownRef.current) {
-            const text = result.getText();
-            if (text && text.trim().length > 3) {
-              handleCodeScanned(text.trim());
-            }
+      const onScanCallback = (result: any) => {
+        if (result && !isCooldownRef.current) {
+          const text = result.getText?.();
+          if (text && text.trim().length > 3) {
+            handleCodeScanned(text.trim());
           }
         }
-      );
+      };
+
+      let controls: IScannerControls;
+      try {
+        controls = await readerRef.current.decodeFromConstraints(
+          {
+            video: {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          },
+          videoRef.current,
+          onScanCallback
+        );
+      } catch {
+        controls = await readerRef.current.decodeFromConstraints(
+          { video: { facingMode: 'environment' } },
+          videoRef.current,
+          onScanCallback
+        );
+      }
 
       controlsRef.current = controls;
       setCameraActive(true);
+      setTimeout(checkTorchSupport, 500);
     } catch (err: any) {
       console.warn('Câmera indisponível ou permissão negada:', err);
       setCameraError(err?.message || 'Permissão de câmera negada ou câmera ocupada.');
       setCameraActive(false);
     }
-  }, []);
+  }, [checkTorchSupport]);
 
   useEffect(() => {
     startCamera();
@@ -83,6 +132,8 @@ export function InboundBarcodeScanner({ batch, onScan, onClose }: InboundBarcode
           controlsRef.current.stop();
         } catch {}
       }
+      setTorchOn(false);
+      setTorchAvailable(false);
     };
   }, [startCamera]);
 
@@ -167,6 +218,23 @@ export function InboundBarcodeScanner({ batch, onScan, onClose }: InboundBarcode
         </div>
 
         <div className="flex items-center gap-1.5">
+          {torchAvailable && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={toggleTorch}
+              className={cn(
+                "h-8 px-2.5 text-xs gap-1.5 transition-colors",
+                torchOn ? "bg-amber-500/20 text-amber-600 border-amber-500/50" : "text-muted-foreground"
+              )}
+              title={torchOn ? 'Desligar lanterna' : 'Ligar lanterna da câmera'}
+            >
+              <Flashlight className={cn("w-3.5 h-3.5", torchOn && "text-amber-500 animate-pulse")} />
+              <span>{torchOn ? 'Lanterna On' : 'Lanterna'}</span>
+            </Button>
+          )}
+
           {onClose && (
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />

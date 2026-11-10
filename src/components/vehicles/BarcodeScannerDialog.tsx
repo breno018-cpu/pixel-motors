@@ -3,7 +3,7 @@ import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { 
   Camera, Check, Loader2, X, AlertCircle, Pause, ScanLine, 
   Sparkles, Package, Building2, Palette, Hash, ArrowRight, 
-  AlertTriangle, CheckCircle2, ShieldCheck, RefreshCw, Volume2, VolumeX, Eye
+  AlertTriangle, CheckCircle2, ShieldCheck, RefreshCw, Volume2, VolumeX, Eye, Flashlight
 } from 'lucide-react';
 import {
   Dialog,
@@ -65,6 +65,8 @@ export function BarcodeScannerDialog({
   const [manualInput, setManualInput] = useState<string>('');
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [torchAvailable, setTorchAvailable] = useState<boolean>(false);
+  const [torchOn, setTorchOn] = useState<boolean>(false);
 
   // Dados do Chassi Detectado e Padrão Reconhecido
   const [scannedChassis, setScannedChassis] = useState<string | null>(null);
@@ -98,7 +100,39 @@ export function BarcodeScannerDialog({
       stream.getTracks().forEach((t) => t.stop());
       video!.srcObject = null;
     }
+    setTorchOn(false);
+    setTorchAvailable(false);
   }, []);
+
+  const checkTorchSupport = useCallback(() => {
+    try {
+      const video = videoRef.current;
+      const stream = video?.srcObject as MediaStream | null;
+      const track = stream?.getVideoTracks()[0];
+      if (track && typeof (track as any).getCapabilities === 'function') {
+        const capabilities = (track as any).getCapabilities();
+        if (capabilities && 'torch' in capabilities) {
+          setTorchAvailable(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const toggleTorch = useCallback(async () => {
+    try {
+      const video = videoRef.current;
+      const stream = video?.srcObject as MediaStream | null;
+      const track = stream?.getVideoTracks()[0];
+      if (!track) return;
+      const next = !torchOn;
+      await (track as any).applyConstraints({
+        advanced: [{ torch: next }]
+      });
+      setTorchOn(next);
+    } catch (e) {
+      console.warn('Erro ao alternar lanterna:', e);
+    }
+  }, [torchOn]);
 
   const resetScan = useCallback(() => {
     setScannedChassis(null);
@@ -179,15 +213,20 @@ export function BarcodeScannerDialog({
     }
   }, [onChassisScanned, onOpenChange, soundEnabled, toast]);
 
-  // Inicia a câmera
-  const startCamera = useCallback(async () => {
-    if (!videoRef.current) return;
+  // Inicia a câmera com fallback resiliente de resolução e verificação de lanterna
+  const startCamera = useCallback(async (retryCount = 0) => {
+    if (!videoRef.current) {
+      if (retryCount < 8) {
+        setTimeout(() => startCamera(retryCount + 1), 120);
+      }
+      return;
+    }
     setCameraError(null);
     setCameraStatus('initializing');
 
     try {
       if (controlsRef.current) {
-        controlsRef.current.stop();
+        try { controlsRef.current.stop(); } catch {}
         controlsRef.current = null;
       }
 
@@ -195,34 +234,47 @@ export function BarcodeScannerDialog({
         readerRef.current = new BrowserMultiFormatReader();
       }
 
-      const controls = await readerRef.current.decodeFromConstraints(
-        {
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-        },
-        videoRef.current,
-        (result) => {
-          if (result && !isCooldownRef.current) {
-            const text = result.getText();
-            if (text && text.trim().length >= 5) {
-              handleProcessCode(text.trim());
-            }
+      const onScanCallback = (result: any) => {
+        if (result && !isCooldownRef.current) {
+          const text = result.getText?.();
+          if (text && text.trim().length >= 5) {
+            handleProcessCode(text.trim());
           }
         }
-      );
+      };
+
+      let controls: IScannerControls;
+      try {
+        controls = await readerRef.current.decodeFromConstraints(
+          {
+            video: {
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          },
+          videoRef.current,
+          onScanCallback
+        );
+      } catch {
+        // Fallback para restrições padrão caso 720p ou environment falhe
+        controls = await readerRef.current.decodeFromConstraints(
+          { video: { facingMode: 'environment' } },
+          videoRef.current,
+          onScanCallback
+        );
+      }
 
       controlsRef.current = controls;
       setCameraStatus('scanning');
+      setTimeout(checkTorchSupport, 500);
     } catch (err: any) {
       console.warn('Câmera indisponível:', err);
       const isPermission = /permission|denied|not allowed/i.test(err?.message || '');
       setCameraStatus(isPermission ? 'permission-denied' : 'error');
       setCameraError(isPermission ? 'Acesso à câmera bloqueado no navegador.' : 'Câmera não encontrada ou ocupada.');
     }
-  }, [handleProcessCode]);
+  }, [handleProcessCode, checkTorchSupport]);
 
   useEffect(() => {
     if (open) {
@@ -357,16 +409,35 @@ export function BarcodeScannerDialog({
               Leitor de Código de Barras do Estoque
             </DialogTitle>
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="h-8 px-2 text-xs text-muted-foreground"
-              title={soundEnabled ? 'Silenciar bip sonoro' : 'Ativar bip sonoro'}
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
-            </Button>
+            <div className="flex items-center gap-1.5">
+              {torchAvailable && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleTorch}
+                  className={cn(
+                    "h-8 px-2.5 text-xs gap-1.5 transition-colors",
+                    torchOn ? "bg-amber-500/20 text-amber-600 border-amber-500/50" : "text-muted-foreground"
+                  )}
+                  title={torchOn ? 'Desligar lanterna' : 'Ligar lanterna da câmera'}
+                >
+                  <Flashlight className={cn("w-3.5 h-3.5", torchOn && "text-amber-500 animate-pulse")} />
+                  <span>{torchOn ? 'Lanterna On' : 'Lanterna'}</span>
+                </Button>
+              )}
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="h-8 px-2 text-xs text-muted-foreground"
+                title={soundEnabled ? 'Silenciar bip sonoro' : 'Ativar bip sonoro'}
+              >
+                {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4 text-muted-foreground" />}
+              </Button>
+            </div>
           </div>
           <DialogDescription className="text-xs">
             Bipe a etiqueta com o leitor físico ou use a câmera do celular. O sistema busca o padrão de fábrica automaticamente para acelerar o cadastro de todas as motos.
