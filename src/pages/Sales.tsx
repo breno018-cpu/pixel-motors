@@ -166,7 +166,7 @@ export default function Sales() {
   const [search, setSearch] = useState('');
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [resellerFilter, setResellerFilter] = useState<string>('all');
-  const [periodFilter, setPeriodFilter] = useState<string>('all');
+  const [periodFilter, setPeriodFilter] = useState<string>('month');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
   // Modais de Vendas
@@ -194,6 +194,22 @@ export default function Sales() {
     return () => {
       window.removeEventListener('dealflow:sheet-updated', handleUpdate);
       window.removeEventListener('dealflow:sales-updated', handleUpdate);
+    };
+  }, []);
+
+  const { currentMonthLabel, lastMonthLabel } = useMemo(() => {
+    const monthNames = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    const now = new Date();
+    const cm = now.getMonth();
+    const cy = now.getFullYear();
+    const lm = cm === 0 ? 11 : cm - 1;
+    const ly = cm === 0 ? cy - 1 : cy;
+    return {
+      currentMonthLabel: `${monthNames[cm]} / ${cy}`,
+      lastMonthLabel: `${monthNames[lm]} / ${ly}`,
     };
   }, []);
 
@@ -235,6 +251,35 @@ export default function Sales() {
       .map((r) => sheetRowToContract(r, employees));
     return [...fromContracts, ...fromSheet];
   }, [contracts, monthlySheetRows, employees]);
+
+  // Períodos e competências mensais disponíveis nas vendas
+  const availablePeriods = useMemo(() => {
+    const monthsMap = new Map<string, { key: string; label: string; count: number }>();
+    const monthNames = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+
+    allSales.forEach((s) => {
+      const dStr = s.signed_at || s.created_at;
+      if (!dStr) return;
+      const d = new Date(dStr);
+      if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+        const label = `${monthNames[m]} / ${y}`;
+        const existing = monthsMap.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          monthsMap.set(key, { key, label, count: 1 });
+        }
+      }
+    });
+
+    return Array.from(monthsMap.values()).sort((a, b) => b.key.localeCompare(a.key));
+  }, [allSales]);
 
   // Vendedores — colaboradores da loja selecionada + quem tiver vendas registradas
   const sellerOptions = useMemo(() => {
@@ -289,14 +334,21 @@ export default function Sales() {
 
       let matchesPeriod = true;
       if (periodFilter !== 'all' && (sale as any).review_status !== 'questionada') {
-        const saleDate = new Date(sale.created_at);
-        if (periodFilter === 'today') {
+        const saleDate = new Date(sale.signed_at || sale.created_at);
+        if (isNaN(saleDate.getTime())) {
+          matchesPeriod = true;
+        } else if (periodFilter === 'month') {
+          // Filtro automático do mês atual
+          matchesPeriod =
+            saleDate.getMonth() === currentMonth &&
+            saleDate.getFullYear() === currentYear;
+        } else if (periodFilter === 'today') {
           const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           matchesPeriod = saleDate >= today;
         } else if (periodFilter === '7d') {
           matchesPeriod = saleDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         } else if (periodFilter === '30d') {
-          matchesPeriod = saleDate >= new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000);
+          matchesPeriod = saleDate >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         } else if (periodFilter === 'lastmonth') {
           const lm = currentMonth === 0 ? 11 : currentMonth - 1;
           const ly = currentMonth === 0 ? currentYear - 1 : currentYear;
@@ -305,6 +357,14 @@ export default function Sales() {
           matchesPeriod = saleDate >= new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
         } else if (periodFilter === '365d') {
           matchesPeriod = saleDate.getFullYear() === currentYear;
+        } else if (periodFilter.includes('-')) {
+          // Filtro por competência específica (Ex: '2026-10', '2026-09')
+          const parts = periodFilter.split('-');
+          const targetYear = parseInt(parts[0], 10);
+          const targetMonth = parseInt(parts[1], 10);
+          matchesPeriod =
+            saleDate.getFullYear() === targetYear &&
+            saleDate.getMonth() === targetMonth - 1;
         }
       }
 
@@ -557,20 +617,50 @@ export default function Sales() {
 
           {/* Period Filter */}
           <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[140px] h-10 text-xs">
-              <Calendar className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-              <SelectValue />
+            <SelectTrigger className="w-[185px] h-10 text-xs font-medium">
+              <Calendar className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+              <SelectValue placeholder="Selecione o período" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-[340px]">
+              <SelectItem value="month">Este mês ({currentMonthLabel})</SelectItem>
+              <SelectItem value="lastmonth">Mês anterior ({lastMonthLabel})</SelectItem>
               <SelectItem value="today">Hoje</SelectItem>
               <SelectItem value="7d">Últimos 7 dias</SelectItem>
-              <SelectItem value="30d">Este mês</SelectItem>
-              <SelectItem value="lastmonth">Mês anterior</SelectItem>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
               <SelectItem value="90d">Últimos 90 dias</SelectItem>
-              <SelectItem value="365d">Este ano</SelectItem>
-              <SelectItem value="all">Todo o período</SelectItem>
+              <SelectItem value="365d">Este ano ({new Date().getFullYear()})</SelectItem>
+              <SelectItem value="all">Todo o período ({allSales.length} vendas)</SelectItem>
+              {availablePeriods.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-t my-1">
+                    Meses Específicos
+                  </div>
+                  {availablePeriods.map((p) => (
+                    <SelectItem key={p.key} value={p.key}>
+                      {p.label} ({p.count})
+                    </SelectItem>
+                  ))}
+                </>
+              )}
             </SelectContent>
           </Select>
+
+          {(search || storeFilter !== 'all' || resellerFilter !== 'all' || statusFilter !== 'all' || periodFilter !== 'month') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearch('');
+                setStoreFilter('all');
+                setResellerFilter('all');
+                setStatusFilter('all');
+                setPeriodFilter('month');
+              }}
+              className="h-10 text-xs px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              Resetar filtros
+            </Button>
+          )}
         </div>
       </FilterBar>
 
