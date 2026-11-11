@@ -741,6 +741,10 @@ app.get('/api/folha/holerite/:funcionarioId/:mes', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor de Folha de Pagamento Inteligente rodando na porta ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Servidor de Folha de Pagamento Inteligente rodando na porta ${PORT}`);
+  });
+}
+
+export default app;
