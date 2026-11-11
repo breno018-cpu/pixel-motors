@@ -485,9 +485,8 @@ export default function Vehicles() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        eyebrow="Operação & Pátio"
         title="Estoque de Veículos"
-        subtitle="Gestão de disponibilidade, tempo de pátio (aging), precificação de catálogo e ações rápidas de venda e reserva."
+        description="Gestão de disponibilidade, tempo de pátio (aging), precificação de catálogo e ações rápidas de venda e reserva."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -897,8 +896,7 @@ export default function Vehicles() {
             /* VISÃO DE TABELA GERAL DE UNIDADES */
             <PanelCard
               title="Relação Geral de Unidades"
-              subtitle={`${filteredVehicles.length} ${filteredVehicles.length === 1 ? 'veículo listado' : 'veículos listados'} com chassi, alocação e tempo de pátio`}
-              noPadding
+              description={`${filteredVehicles.length} ${filteredVehicles.length === 1 ? 'veículo listado' : 'veículos listados'} com chassi, alocação e tempo de pátio`}
             >
               <div className="overflow-x-auto">
                 <Table>

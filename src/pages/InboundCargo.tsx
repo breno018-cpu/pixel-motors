@@ -43,7 +43,7 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
   const { 
     batches, activeBatch, activeBatchId, setActiveBatchId, 
     createBatch, deleteBatch, clearAllBatches, clearBatchItems, deleteItemFromBatch,
-    resetBatchScans, scanBox, commitToStock, loadSampleData 
+    resetBatchScans, scanBox, commitToStock, loadSampleData, confirmUnloadItem, recordRejectedBox 
   } = useInboundCargo();
 
   const { data: stores = [] } = useStores();
@@ -190,7 +190,7 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
       ) : (
         <PageHeader
           title="Controle de Entrada (Caminhão & Descarga)"
-          subtitle="Conferência de romaneio de fábrica por imagem, bipagem a laser de caixas no pátio e validação de 100% das motos da loja."
+          description="Conferência de romaneio de fábrica por imagem, bipagem a laser de caixas no pátio e validação de 100% das motos da loja."
           actions={
             <div className="flex items-center gap-2 flex-wrap">
               <Button
@@ -453,41 +453,40 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
           {/* Cards de Métricas do Caminhão */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <StatCard
-              title="Total no Caminhão"
+              label="Total no Caminhão"
               value={totalCount}
-              subtitle={`Lote ${activeBatch?.batch_code || '---'}`}
+              hint={`Lote ${activeBatch?.batch_code || '---'}`}
               icon={Boxes}
-              variant="default"
+              tone="neutral"
             />
             <StatCard
-              title="Conferidas / Descarregadas"
+              label="Conferidas / Descarregadas"
               value={scannedCount}
-              subtitle={`${progressPercent}% do caminhão conferido`}
+              hint={`${progressPercent}% do caminhão conferido`}
               icon={CheckCircle2}
-              variant="success"
+              tone="success"
             />
             <StatCard
-              title="Pendentes no Caminhão"
+              label="Pendentes no Caminhão"
               value={pendingCount}
-              subtitle="Caixas ainda por descer"
+              hint="Caixas ainda por descer"
               icon={Clock}
-              variant="warning"
+              tone="warning"
             />
             <StatCard
-              title="Alertas de Rejeição"
+              label="Alertas de Rejeição"
               value={activeBatch?.divergence_logs?.length || 0}
-              subtitle="Motos que não eram desta loja"
+              hint="Motos que não eram desta loja"
               icon={ShieldAlert}
-              variant={activeBatch?.divergence_logs && activeBatch.divergence_logs.length > 0 ? 'danger' : 'default'}
+              tone={activeBatch?.divergence_logs && activeBatch.divergence_logs.length > 0 ? 'primary' : 'neutral'}
             />
           </div>
 
         {/* Lista e Tabela de Conferência */}
       <PanelCard
         title="Romaneio Detalhado do Caminhão"
-        subtitle={`Relação completa dos chassis aguardando descarga em ${activeBatch?.destination_store || 'Loja'}`}
-        noPadding
-        actions={
+        description={`Relação completa dos chassis aguardando descarga em ${activeBatch?.destination_store || 'Loja'}`}
+        aside={
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative w-48 sm:w-64">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />

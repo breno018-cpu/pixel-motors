@@ -28,7 +28,7 @@ interface TemplatePreviewData {
   clauseVariables?: Record<string, Record<string, string>>;
 }
 
-interface ContractGenerationData {
+export interface ContractGenerationData {
   template: {
     header_content: string | null;
     body_content: string;

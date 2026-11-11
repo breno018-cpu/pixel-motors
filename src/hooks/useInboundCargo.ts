@@ -382,7 +382,7 @@ export function useInboundCargo() {
     for (const item of scannedItems) {
       try {
         const pattern = await recognizeFromChassis(item.chassis);
-        const modelName = pattern?.model_name || item.model_name || 'MOTO';
+        const modelName = pattern?.model || item.model_name || 'MOTO';
         const brand = pattern?.brand || item.brand || 'SHINERAY';
         const purchasePrice = pattern?.default_purchase_price || 0;
         const salePrice = pattern?.default_sale_price || 0;

@@ -1581,9 +1581,9 @@ export function sanitizarResultadoFolha(
       cadernoAnotacoes: '',
       totalComissoes: 0,
       comissaoDSR: 0,
-      infoComissao: { motosVendidas: 0, faixaDe: 0, faixaAte: 0, valorUnitarioFaixa: 0, valorTotalSemDSR: 0 },
-      infoMontagem: { motosMontadas: 0, valorPorMontagem: 0, total: 0 },
-      infoRevisao: { revisoesExecutadas: 0, valorPorRevisao: 0, total: 0 },
+      infoComissao: { motosVendidas: 0, valorUnitarioFaixa: 0, totalComissao: 0, faixaAtingida: "" },
+      infoMontagem: { motosMontadas: 0, valorPorMontagem: 0, totalComissao: 0, descricao: "" },
+      infoRevisao: { revisoesExecutadas: 0, valorPorRevisao: 0, totalComissao: 0, descricao: "" },
       ajudaDeCusto: 0,
       reembolsoDespesas: 0,
       gastosDiversos: 0,
@@ -1602,8 +1602,8 @@ export function sanitizarResultadoFolha(
       baseIRRF: 0,
       proventos: salario > 0 ? [{ rubrica: 'Salário Base', tipo: 'FIXO', valor: salario, referencia: '30 dias' }] : [],
       descontos: [],
-      inssDetalhe: { faixa: 0, aliquotaEfetiva: 0, valor: 0, faixasDetalhadas: [] },
-      irrfDetalhe: { baseCalculo: 0, faixa: 0, aliquota: 0, deducao: 0, valor: 0, usouSimplificado: false },
+      inssDetalhe: { aliquotaEfetiva: 0, valor: 0, memoria: [] },
+      irrfDetalhe: { baseCalculo: 0, aliquota: 0, deducaoFaixa: 0, valor: 0, usouSimplificado: false },
       geradoEm: new Date().toISOString(),
     };
   }
