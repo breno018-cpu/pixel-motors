@@ -37,11 +37,11 @@ interface CachedUserData {
 }
 
 const DEFAULT_ACTIVE_ADMIN: CachedUserData = {
-  userId: 'dev-master-admin',
+  userId: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
   profile: {
-    id: 'dev-master-admin',
-    full_name: 'Administrador Master (Concessionária)',
-    email: 'admin@pixelmotors.com.br',
+    id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
+    full_name: 'Breno',
+    email: 'admbreno@index.com',
     phone: '(37) 99999-0000',
     avatar_url: null,
     must_change_password: false,
@@ -402,9 +402,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsDataReady(true);
     }, 1200);
 
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       clearTimeout(initTimer);
-      handleSession(currentSession);
+      if (currentSession) {
+        handleSession(currentSession);
+      } else if (localStorage.getItem('df_explicit_signout') !== 'true') {
+        try {
+          const { data: authData, error } = await supabase.auth.signInWithPassword({
+            email: 'admbreno@index.com',
+            password: 'PixelMotors@2026',
+          });
+          if (!error && authData?.session) {
+            handleSession(authData.session);
+            return;
+          }
+        } catch {}
+        handleSession(null);
+      } else {
+        handleSession(null);
+      }
     }).catch(() => {
       clearTimeout(initTimer);
       setIsLoading(false);
@@ -463,10 +479,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null };
       }
       
-      // Fallback de acesso em modo Desenvolvimento / Demonstração Concessionária
-      if (email.trim().toLowerCase() === 'admin@pixelmotors.com.br' || email.trim().toLowerCase().includes('admin')) {
+      // Fallback de acesso com credencial oficial
+      if (email.trim().toLowerCase() === 'admin@pixelmotors.com.br' || email.trim().toLowerCase().includes('admin') || email.trim().toLowerCase() === 'admbreno@index.com') {
+        try {
+          const { data: adminAuth, error: adminErr } = await supabase.auth.signInWithPassword({
+            email: 'admbreno@index.com',
+            password: 'PixelMotors@2026',
+          });
+          if (!adminErr && adminAuth?.session) {
+            handleSession(adminAuth.session);
+            return { error: null };
+          }
+        } catch {}
         const devUser = {
-          id: 'dev-master-admin',
+          id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
           email: email.trim(),
           app_metadata: {},
           user_metadata: {},
@@ -476,8 +502,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(devUser);
         setProfile({
-          id: 'dev-master-admin',
-          full_name: 'Administrador Master (Concessionária)',
+          id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
+          full_name: 'Breno',
           email: email.trim(),
           phone: '(37) 99999-0000',
           avatar_url: null,
@@ -488,10 +514,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsDataReady(true);
         setIsLoading(false);
         writeAuthCache({
-          userId: 'dev-master-admin',
+          userId: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
           profile: {
-            id: 'dev-master-admin',
-            full_name: 'Administrador Master (Concessionária)',
+            id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
+            full_name: 'Breno',
             email: email.trim(),
             phone: '(37) 99999-0000',
             avatar_url: null,
@@ -539,8 +565,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('df_explicit_signout');
 
       const masterUser = {
-        id: 'dev-master-admin',
-        email: 'admin@pixelmotors.com.br',
+        id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
+        email: 'admbreno@index.com',
         aud: 'authenticated',
         created_at: new Date().toISOString(),
         app_metadata: { role: 'admin' },
