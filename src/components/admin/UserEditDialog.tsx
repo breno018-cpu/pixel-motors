@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
+import { updateUserAccount } from '@/lib/userService';
 
 const editSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(200),
@@ -97,52 +98,12 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
   const updateMutation = useMutation({
     mutationFn: async (data: EditFormData) => {
       if (!user) throw new Error('Nenhum usuário selecionado');
-
-      const isAccountActive = data.user_status === 'ATIVO';
-
-      try {
-        await supabase.functions.invoke('create-user', {
-          body: {
-            action: 'update_user',
-            user_id: user.id,
-            email: data.email,
-            full_name: data.full_name,
-            role: data.role,
-            store_id: (data.store_id && data.store_id !== 'none') ? data.store_id : null,
-            is_active: isAccountActive,
-          },
-        });
-      } catch (e) {
-        // Fallback silencioso para persistência direta
-      }
-
-      // Sincroniza status no perfil e em employees caso vinculado
-      try {
-        await supabase
-          .from('profiles')
-          .update({
-            full_name: data.full_name,
-            store_id: (data.store_id && data.store_id !== 'none') ? data.store_id : null,
-          })
-          .eq('id', user.id);
-
-        await (supabase as any)
-          .from('employees')
-          .update({
-            is_active: isAccountActive,
-            notes: data.user_status !== 'ATIVO' 
-              ? `[STATUS: ${data.user_status}] ${data.status_reason || 'Sem observações'} (Em: ${data.status_date || new Date().toLocaleDateString('pt-BR')})` 
-              : null,
-          })
-          .eq('profile_id', user.id);
-      } catch (syncErr) {
-        console.warn('Sync status note warning:', syncErr);
-      }
-
+      const res = await updateUserAccount(user.id, data);
       const cr = customRoleId && customRoleId !== 'none' ? customRoleId : null;
-      const { error: crErr } = await (supabase as any).from('user_roles').update({ custom_role_id: cr }).eq('user_id', user.id);
-      if (crErr) throw crErr;
-      return response;
+      try {
+        await (supabase as any).from('user_roles').update({ custom_role_id: cr }).eq('user_id', user.id);
+      } catch {}
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });

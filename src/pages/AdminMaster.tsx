@@ -53,7 +53,7 @@ import { ChassisYearCodeManager } from '@/components/admin/ChassisYearCodeManage
 import { MarginSettingsCard } from '@/components/admin/MarginSettingsCard';
 import { FinancingBanksManager } from '@/components/admin/FinancingBanksManager';
 import { BankCredentialsManager } from '@/components/admin/BankCredentialsManager';
-import { resetUserPassword } from '@/lib/userService';
+import { resetUserPassword, toggleUserStatus } from '@/lib/userService';
 import { ActivityLogPanel } from '@/components/admin/ActivityLogPanel';
 import { StockSyncSettings } from '@/components/settings/StockSyncSettings';
 import { ApiKeysManager } from '@/components/settings/ApiKeysManager';
@@ -172,15 +172,11 @@ export default function AdminMaster() {
     },
   });
 
-  // Alternar ativação de usuário
+  // Alternar ativação de usuário (Credenciais de Acesso)
   const toggleUserActiveMutation = useMutation({
     mutationFn: async ({ userId, currentState }: { userId: string; currentState: boolean }) => {
-      if (!currentState) throw new Error('A reativação de acesso ainda não está disponível neste painel.');
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { action: 'delete_user', user_id: userId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const nextState = !currentState;
+      return await toggleUserStatus(userId, nextState);
     },
     onSuccess: (_, { currentState }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-master-users'] });

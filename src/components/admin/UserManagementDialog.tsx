@@ -32,7 +32,7 @@ import {
 import { TempPasswordDialog } from '@/components/admin/TempPasswordDialog';
 import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDialog';
 import { UserEditDialog } from '@/components/admin/UserEditDialog';
-import { createUserAccount, resetUserPassword, STORE_UUIDS } from '@/lib/userService';
+import { createUserAccount, resetUserPassword, deleteUserAccount, permanentDeleteUserAccount, STORE_UUIDS } from '@/lib/userService';
 
 const userSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(200),
@@ -207,16 +207,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      try {
-        await supabase.functions.invoke('create-user', {
-          body: { action: 'delete_user', user_id: userId },
-        });
-      } catch {}
-
-      // Desativa diretamente no banco
-      await supabase.from('profiles').update({ is_active: false } as any).eq('id', userId);
-      await (supabase as any).from('employees').update({ is_active: false }).eq('profile_id', userId);
-      return { success: true };
+      return await deleteUserAccount(userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -230,17 +221,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
 
   const permanentDeleteMutation = useMutation({
     mutationFn: async (userId: string) => {
-      try {
-        await supabase.functions.invoke('create-user', {
-          body: { action: 'permanent_delete_user', user_id: userId },
-        });
-      } catch {}
-
-      // Remove dos vínculos e perfil diretamente
-      await supabase.from('user_roles').delete().eq('user_id', userId);
-      await (supabase as any).from('employees').delete().eq('profile_id', userId);
-      await supabase.from('profiles').delete().eq('id', userId);
-      return { success: true };
+      return await permanentDeleteUserAccount(userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });

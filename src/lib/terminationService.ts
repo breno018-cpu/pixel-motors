@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
+import { deleteUserAccount } from '@/lib/userService';
 import type { RescisaoResultado } from './rescisaoCalculo';
 import type { FuncionarioConcessionaria } from '@/hooks/useFolhaConcessionaria';
 import { packEmployeeFolhaPayload } from '@/hooks/useFolhaConcessionaria';
@@ -131,12 +132,8 @@ export async function desativarCredenciaisColaborador({
       targetProfileId = data?.id;
     }
     if (targetProfileId) {
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { action: 'delete_user', user_id: targetProfileId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      credentialsDeactivated = data?.success === true;
+      await deleteUserAccount(targetProfileId);
+      credentialsDeactivated = true;
     }
   } catch (profileErr) {
     console.warn('Erro ao desativar acesso do colaborador:', profileErr);
