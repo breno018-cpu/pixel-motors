@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCatalog } from "@/hooks/useCatalog";
-import { CatalogProduct } from "@/types/catalog";
+import { CatalogProduct, CatalogPromo } from "@/types/catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,9 @@ import {
   AlertTriangle,
   History,
   Activity,
+  Sparkles,
+  Bot,
+  Star,
   CheckCircle2,
 } from "lucide-react";
 import { CatalogConfigDialog } from "@/components/catalog/CatalogConfigDialog";
@@ -53,20 +56,29 @@ import { CatalogCampaignDialog } from "@/components/catalog/CatalogCampaignDialo
 import { CatalogProductDialog } from "@/components/catalog/CatalogProductDialog";
 import { CatalogImportFromStockDialog } from "@/components/catalog/CatalogImportFromStockDialog";
 import { CatalogQuickPriceDialog } from "@/components/catalog/CatalogQuickPriceDialog";
+import { CatalogHeroCarouselDialog } from "@/components/catalog/CatalogHeroCarouselDialog";
+import { CatalogPromoDialog } from "@/components/catalog/CatalogPromoDialog";
+import { CatalogChatTestDialog } from "@/components/catalog/CatalogChatTestDialog";
 
 export default function CatalogControl() {
   const {
     catalog,
+    events,
     isLoading,
     isRefetching,
     refetch,
     streamStatus,
     liveEvents,
+    chatMutation,
     toggleActive,
     updateStock,
     updatePrice,
+    updatePromo,
+    toggleFeaturedHero,
+    setHeroList,
     updateCampaign,
     updateConfig,
+    updateRates,
     upsertProduct,
     removeProduct,
     batchSync,
@@ -76,17 +88,21 @@ export default function CatalogControl() {
   // Filtros
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden" | "soldout" | "promo">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden" | "soldout" | "promo" | "hero">("all");
   const [showLiveStream, setShowLiveStream] = useState(false);
 
   // Modais
   const [configOpen, setConfigOpen] = useState(false);
   const [campaignOpen, setCampaignOpen] = useState(false);
+  const [heroDialogOpen, setHeroDialogOpen] = useState(false);
+  const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [selectedProductForEdit, setSelectedProductForEdit] = useState<CatalogProduct | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [priceDialogOpen, setPriceDialogOpen] = useState(false);
   const [selectedProductForPrice, setSelectedProductForPrice] = useState<CatalogProduct | null>(null);
+  const [promoDialogOpen, setPromoDialogOpen] = useState(false);
+  const [selectedProductForPromo, setSelectedProductForPromo] = useState<CatalogProduct | null>(null);
 
   // Dialog de Exclusão
   const [deleteProduct, setDeleteProduct] = useState<CatalogProduct | null>(null);
@@ -94,6 +110,7 @@ export default function CatalogControl() {
 
   // Produtos do catálogo
   const products = catalog?.products || [];
+  const lowStockLimit = catalog?.config?.lowStockThreshold ?? 2;
 
   // Set de IDs existentes para importar
   const existingIds = useMemo(() => new Set(products.map((p) => p.id)), [products]);
@@ -103,8 +120,9 @@ export default function CatalogControl() {
   const activeCount = products.filter((p) => p.active !== false).length;
   const soldOutCount = products.filter((p) => p.stock === 0).length;
   const promoCount = products.filter(
-    (p) => p.oldPrice && p.price && p.oldPrice > p.price
+    (p) => (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price)
   ).length;
+  const heroCount = products.filter((p) => p.featuredHero).length;
 
   // Filtragem
   const filteredProducts = useMemo(() => {
@@ -130,8 +148,10 @@ export default function CatalogControl() {
       if (statusFilter === "active" && p.active === false) return false;
       if (statusFilter === "hidden" && p.active !== false) return false;
       if (statusFilter === "soldout" && p.stock !== 0) return false;
+      if (statusFilter === "hero" && !p.featuredHero) return false;
       if (statusFilter === "promo") {
-        if (!p.oldPrice || !p.price || p.oldPrice <= p.price) return false;
+        const isPromo = (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price);
+        if (!isPromo) return false;
       }
 
       return true;
@@ -153,6 +173,11 @@ export default function CatalogControl() {
     setPriceDialogOpen(true);
   };
 
+  const handleOpenPromo = (prod: CatalogProduct) => {
+    setSelectedProductForPromo(prod);
+    setPromoDialogOpen(true);
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleteProduct) return;
     setDeleting(true);
@@ -169,6 +194,17 @@ export default function CatalogControl() {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
   };
 
+  // Combina eventos de GET /api/events e SSE
+  const allEvents = useMemo(() => {
+    const list = [...liveEvents, ...events];
+    const unique = new Map<string, any>();
+    list.forEach((e) => {
+      const key = `${e.timestamp}-${e.action}-${e.productId || ""}`;
+      if (!unique.has(key)) unique.set(key, e);
+    });
+    return Array.from(unique.values()).slice(0, 60);
+  }, [liveEvents, events]);
+
   return (
     <div className="space-y-6 pb-12">
       {/* CABEÇALHO */}
@@ -180,7 +216,7 @@ export default function CatalogControl() {
               Controle do Catálogo L1MA Motors
             </h1>
 
-            {/* Status da Conexão SSE */}
+            {/* Status da Conexão SSE (<50ms) */}
             <div className="flex items-center gap-1.5 ml-2">
               {streamStatus === "connected" ? (
                 <Badge
@@ -191,7 +227,7 @@ export default function CatalogControl() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
-                  SSE Ativo
+                  SSE Ao Vivo (&lt;50ms)
                 </Badge>
               ) : streamStatus === "connecting" ? (
                 <Badge
@@ -209,19 +245,17 @@ export default function CatalogControl() {
                 </Badge>
               )}
 
-              {catalog && (
-                <Badge variant="secondary" className="text-xs font-mono">
-                  v{catalog.version}
-                </Badge>
-              )}
+              <Badge variant="secondary" className="text-xs font-mono">
+                {totalCount} Modelos • v{catalog?.version || 1}
+              </Badge>
             </div>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Central de comando e sincronização em tempo real (produtos, estoque, preços e promoções) com o catálogo público.
+            Central de comando e sincronização em tempo real (produtos, estoque, preços, promoções e fotos) com o catálogo público.
           </p>
         </div>
 
-        {/* Botões do Topo */}
+        {/* Botões de Ações do Cabeçalho */}
         <div className="flex items-center flex-wrap gap-2">
           <Button
             variant="outline"
@@ -238,14 +272,31 @@ export default function CatalogControl() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setHeroDialogOpen(true)}
+            className="gap-1.5"
+          >
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            Carrossel Topo ({heroCount})
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setCampaignOpen(true)}
             className="gap-1.5"
           >
-            <Megaphone className="w-4 h-4 text-amber-500" />
+            <Megaphone className="w-4 h-4 text-primary" />
             Campanha
-            {catalog?.events && (
-              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setChatDialogOpen(true)}
+            className="gap-1.5"
+          >
+            <Bot className="w-4 h-4 text-blue-500" />
+            Testar IA
           </Button>
 
           <Button
@@ -254,7 +305,7 @@ export default function CatalogControl() {
             onClick={() => setImportDialogOpen(true)}
             className="gap-1.5"
           >
-            <Download className="w-4 h-4 text-primary" />
+            <Download className="w-4 h-4 text-emerald-500" />
             Importar do Estoque
           </Button>
 
@@ -265,7 +316,7 @@ export default function CatalogControl() {
             className="gap-1.5"
           >
             <Settings className="w-4 h-4" />
-            Configurações
+            Taxas & Loja
           </Button>
 
           <Button size="sm" onClick={handleNewProduct} className="gap-1.5">
@@ -275,46 +326,55 @@ export default function CatalogControl() {
         </div>
       </div>
 
-      {/* KPIS */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl border bg-card shadow-sm">
+      {/* KPIS DE RESUMO */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Total de Modelos</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Total Modelos</span>
             <Store className="w-4 h-4 text-primary" />
           </div>
           <div className="text-2xl font-bold text-foreground">{totalCount}</div>
-          <p className="text-[11px] text-muted-foreground mt-1">Sincronizados no catálogo</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Cadastrados no catálogo</p>
         </div>
 
-        <div className="p-4 rounded-xl border bg-card shadow-sm">
+        <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Ativos / Visíveis</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Ativos / Visíveis</span>
             <Eye className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-bold text-emerald-500">{activeCount}</div>
-          <p className="text-[11px] text-muted-foreground mt-1">Exibidos publicamente aos clientes</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Visíveis publicamente</p>
         </div>
 
-        <div className="p-4 rounded-xl border bg-card shadow-sm">
+        <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Esgotados</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Esgotados</span>
             <AlertTriangle className="w-4 h-4 text-destructive" />
           </div>
           <div className="text-2xl font-bold text-destructive">{soldOutCount}</div>
-          <p className="text-[11px] text-muted-foreground mt-1">Carimbo de esgotado ativo</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Botão "Avise-me"</p>
         </div>
 
-        <div className="p-4 rounded-xl border bg-card shadow-sm">
+        <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-xs font-medium uppercase tracking-wider">Em Oferta</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Em Oferta</span>
             <Tag className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-bold text-amber-500">{promoCount}</div>
-          <p className="text-[11px] text-muted-foreground mt-1">Com selo de desconto De/Por</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Com selo e desconto R$</p>
+        </div>
+
+        <div className="p-3.5 rounded-xl border bg-card shadow-2xs col-span-2 sm:col-span-1">
+          <div className="flex items-center justify-between text-muted-foreground mb-1">
+            <span className="text-[11px] font-medium uppercase tracking-wider">Carrossel Topo</span>
+            <Sparkles className="w-4 h-4 text-primary" />
+          </div>
+          <div className="text-2xl font-bold text-primary">{heroCount}</div>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Slides Hero ativos</p>
         </div>
       </div>
 
-      {/* BARRA DE BUSCA E ABAS DE CATEGORIA */}
+      {/* BARRA DE FILTROS & ABAS DE CATEGORIA */}
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Abas Categoria */}
@@ -370,6 +430,14 @@ export default function CatalogControl() {
             >
               <Tag className="w-3.5 h-3.5" /> Ofertas
             </Button>
+            <Button
+              variant={statusFilter === "hero" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("hero")}
+              className="h-8 text-xs gap-1"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Carrossel
+            </Button>
           </div>
         </div>
 
@@ -378,7 +446,7 @@ export default function CatalogControl() {
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome do modelo, marca, subcategoria ou ID único..."
+              placeholder="Buscar por nome do modelo, marca, subcategoria (Trail, Scooter, Street...) ou ID único..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -391,46 +459,49 @@ export default function CatalogControl() {
             onClick={() => setShowLiveStream(!showLiveStream)}
             className="gap-1.5 shrink-0"
           >
-            <Activity className="w-4 h-4 text-primary" />
-            {showLiveStream ? "Ocultar Eventos SSE" : "Eventos SSE"}
-            {liveEvents.length > 0 && (
+            <History className="w-4 h-4 text-primary" />
+            {showLiveStream ? "Ocultar Auditoria" : "Auditoria (60 eventos)"}
+            {allEvents.length > 0 && (
               <Badge variant="secondary" className="text-[10px] h-4 px-1">
-                {liveEvents.length}
+                {allEvents.length}
               </Badge>
             )}
           </Button>
         </div>
       </div>
 
-      {/* PAINEL DE EVENTOS SSE (DRAWER/BOX) */}
+      {/* PAINEL DE AUDITORIA & HISTÓRICO (ÚLTIMOS 60 EVENTOS) */}
       {showLiveStream && (
         <div className="p-4 rounded-xl border bg-muted/20 space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <History className="w-3.5 h-3.5 text-primary" />
-              Feed de Eventos em Tempo Real (SSE)
+              Histórico de Auditoria & Tempo Real (GET /api/events & SSE)
             </h3>
             <span className="text-[11px] text-muted-foreground font-mono">
-              Endpoint: {apiSettings.url}/api/stream
+              {allEvents.length} eventos registrados
             </span>
           </div>
 
-          <div className="max-h-48 overflow-y-auto space-y-1 text-xs font-mono">
-            {liveEvents.length === 0 ? (
+          <div className="max-h-56 overflow-y-auto space-y-1 text-xs font-mono">
+            {allEvents.length === 0 ? (
               <p className="text-muted-foreground italic py-2">
-                Nenhum evento transmitido recentemente. Todas as alterações locais ou remotas aparecerão aqui ao vivo.
+                Nenhum evento registrado ainda. Qualquer alteração de preços, estoque ou promoções aparecerá aqui.
               </p>
             ) : (
-              liveEvents.map((evt, idx) => (
-                <div key={idx} className="flex items-center justify-between p-1.5 rounded bg-background/50 border">
+              allEvents.map((evt, idx) => (
+                <div key={idx} className="flex items-center justify-between p-1.5 rounded bg-background/60 border text-[11px]">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">
+                    <Badge variant="outline" className="text-[9px] uppercase font-bold">
                       {evt.action || "sync"}
                     </Badge>
-                    <span className="text-foreground">{JSON.stringify(evt.details || evt)}</span>
+                    <span className="text-foreground">
+                      {evt.productId ? `[${evt.productId}] ` : ""}
+                      {typeof evt.details === "string" ? evt.details : JSON.stringify(evt.details || "")}
+                    </span>
                   </div>
-                  <span className="text-muted-foreground text-[10px]">
-                    {evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : "Agora"}
+                  <span className="text-muted-foreground text-[10px] whitespace-nowrap ml-2">
+                    {evt.timestamp ? new Date(evt.timestamp).toLocaleString("pt-BR") : "Agora"}
                   </span>
                 </div>
               ))
@@ -439,11 +510,11 @@ export default function CatalogControl() {
         </div>
       )}
 
-      {/* LISTAGEM DE PRODUTOS */}
+      {/* LISTAGEM DOS 79 MODELOS */}
       {isLoading ? (
         <div className="p-16 text-center text-muted-foreground">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
-          <p>Carregando dados do catálogo...</p>
+          <p>Carregando modelos do catálogo público...</p>
         </div>
       ) : filteredProducts.length === 0 ? (
         <div className="p-12 text-center border rounded-xl bg-card space-y-3">
@@ -452,7 +523,7 @@ export default function CatalogControl() {
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             {search || selectedCat !== "all" || statusFilter !== "all"
               ? "Tente ajustar os filtros ou termos da sua busca."
-              : "Seu catálogo público ainda não possui veículos cadastrados. Adicione um novo ou importe diretamente do estoque."}
+              : "Seu catálogo público ainda não possui modelos cadastrados. Crie um novo ou importe diretamente do estoque."}
           </p>
           <div className="flex justify-center gap-2 pt-2">
             <Button size="sm" onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-1.5">
@@ -466,26 +537,29 @@ export default function CatalogControl() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map((p) => {
-            const hasPromo = p.oldPrice && p.price && p.oldPrice > p.price;
+            const hasPromo = (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price);
             const isSoldOut = p.stock === 0;
+            const isLowStock = p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= lowStockLimit;
             const isUnlimited = p.stock === null || p.stock === undefined;
             const mainPhoto = p.photos && p.photos.length > 0 ? p.photos[0] : "";
 
             return (
               <div
                 key={p.id}
-                className={`rounded-xl border bg-card overflow-hidden shadow-sm transition-all hover:shadow-md flex flex-col justify-between ${
+                className={`rounded-xl border bg-card overflow-hidden shadow-2xs transition-all hover:shadow-md flex flex-col justify-between ${
                   !p.active ? "opacity-60 border-dashed" : ""
                 }`}
               >
-                {/* TOPO COM FOTO E BADGES */}
+                {/* TOPO COM FOTO, BADGES E SELOS */}
                 <div>
                   <div className="relative aspect-video w-full bg-muted/40 overflow-hidden">
                     {mainPhoto ? (
                       <img
                         src={mainPhoto}
                         alt={p.name}
-                        className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+                        className={`w-full h-full object-cover transition-transform hover:scale-105 duration-300 ${
+                          isSoldOut ? "grayscale filter contrast-125" : ""
+                        }`}
                         onError={(e) => {
                           (e.target as HTMLElement).style.display = "none";
                         }}
@@ -496,16 +570,17 @@ export default function CatalogControl() {
                       </div>
                     )}
 
-                    {/* Selo Esgotado sobre a foto */}
+                    {/* Carimbo de ESGOTADO com botão Avise-me */}
                     {isSoldOut && (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
-                        <span className="px-3 py-1 bg-destructive text-destructive-foreground font-bold text-xs uppercase tracking-wider rounded-md shadow">
-                          Esgotado
+                      <div className="absolute inset-0 bg-black/65 backdrop-blur-[1px] flex flex-col items-center justify-center gap-1.5">
+                        <span className="px-3 py-1 bg-destructive text-destructive-foreground font-black text-xs uppercase tracking-widest rounded shadow-md">
+                          ESGOTADO
                         </span>
+                        <span className="text-[10px] text-white/90">Botão WhatsApp: "Avise-me quando chegar"</span>
                       </div>
                     )}
 
-                    {/* Badges Flutuantes */}
+                    {/* Badges Flutuantes Superiores */}
                     <div className="absolute top-2 left-2 flex flex-col gap-1">
                       <Badge
                         variant="secondary"
@@ -529,14 +604,21 @@ export default function CatalogControl() {
                       )}
                     </div>
 
-                    <div className="absolute top-2 right-2 flex items-center gap-1">
-                      {hasPromo && (
-                        <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold gap-1 shadow">
-                          <Tag className="w-3 h-3" /> OFERTA
+                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                      {p.featuredHero && (
+                        <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold gap-1 shadow-xs">
+                          <Star className="w-3 h-3 fill-white" /> HERO {p.heroOrder ? `#${p.heroOrder}` : ""}
                         </Badge>
                       )}
+
+                      {hasPromo && (
+                        <Badge className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold gap-1 shadow-xs">
+                          <Tag className="w-3 h-3" /> {p.promo?.label || "OFERTA"}
+                        </Badge>
+                      )}
+
                       {p.readyDelivery && (
-                        <Badge className="bg-emerald-600 text-white text-[10px] shadow">
+                        <Badge className="bg-emerald-600 text-white text-[10px] shadow-xs">
                           Pronta Entrega
                         </Badge>
                       )}
@@ -555,38 +637,59 @@ export default function CatalogControl() {
                       </h3>
                     </div>
 
-                    {/* PREÇO */}
+                    {/* PREÇO E VALOR ANTERIOR (DE / POR) */}
                     <div className="flex items-baseline justify-between pt-1 border-t">
                       <div>
                         {p.oldPrice && (
                           <div className="text-xs line-through text-muted-foreground">
-                            {formatCurrency(p.oldPrice)}
+                            De: {formatCurrency(p.oldPrice)}
                           </div>
                         )}
-                        <div className="text-lg font-extrabold text-foreground">
+                        <div className="text-lg font-black text-foreground">
                           {formatCurrency(p.price)}
                         </div>
+                        {p.installments && (
+                          <span className="text-[10px] text-muted-foreground block">
+                            Simulador até 21x ativo
+                          </span>
+                        )}
                       </div>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleQuickPrice(p)}
-                        className="h-7 px-2 text-xs text-primary hover:text-primary gap-1"
-                        title="Alterar Preço Rápido"
-                      >
-                        <DollarSign className="w-3.5 h-3.5" />
-                        Editar Preço
-                      </Button>
+                      <div className="flex flex-col items-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleQuickPrice(p)}
+                          className="h-6 px-1.5 text-xs text-primary hover:text-primary gap-1"
+                          title="Alterar Preço"
+                        >
+                          <DollarSign className="w-3 h-3" />
+                          Preço
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenPromo(p)}
+                          className="h-6 px-1.5 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-500 gap-1"
+                          title="Configurar Promoção"
+                        >
+                          <Tag className="w-3 h-3" />
+                          Promoção
+                        </Button>
+                      </div>
                     </div>
 
-                    {/* CONTROLE DE ESTOQUE RÁPIDO */}
+                    {/* CONTROLE DE ESTOQUE REATIVO */}
                     <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-xs">
                       <span className="text-muted-foreground">Estoque:</span>
                       <div className="flex items-center gap-1.5">
                         {isSoldOut ? (
-                          <Badge variant="destructive" className="text-[10px]">
-                            Esgotado (0)
+                          <Badge variant="destructive" className="text-[10px] font-bold">
+                            ESGOTADO (0)
+                          </Badge>
+                        ) : isLowStock ? (
+                          <Badge variant="outline" className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold">
+                            Últimas {p.stock} unid.!
                           </Badge>
                         ) : isUnlimited ? (
                           <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-400">
@@ -604,7 +707,7 @@ export default function CatalogControl() {
                           size="sm"
                           onClick={() => updateStock(p.id, isSoldOut ? null : 0)}
                           className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
-                          title={isSoldOut ? "Marcar como Pronta Entrega" : "Marcar como Esgotado"}
+                          title={isSoldOut ? "Tornar Pronta Entrega" : "Marcar como Esgotado"}
                         >
                           {isSoldOut ? "Reativar" : "Esgotar"}
                         </Button>
@@ -646,6 +749,16 @@ export default function CatalogControl() {
                         <DropdownMenuItem onClick={() => handleQuickPrice(p)} className="gap-2">
                           <DollarSign className="w-4 h-4 text-emerald-500" /> Alterar Preço
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenPromo(p)} className="gap-2">
+                          <Tag className="w-4 h-4 text-amber-500" /> Configurar Promoção
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => toggleFeaturedHero(p.id, !p.featuredHero, (p.heroOrder || 1))}
+                          className="gap-2"
+                        >
+                          <Sparkles className="w-4 h-4 text-primary" />
+                          {p.featuredHero ? "Remover do Carrossel Hero" : "Destacar no Carrossel Hero"}
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => updateStock(p.id, isSoldOut ? null : 0)}
                           className="gap-2"
@@ -673,19 +786,43 @@ export default function CatalogControl() {
         </div>
       )}
 
-      {/* DIÁLOGOS */}
+      {/* DIÁLOGOS E FERRAMENTAS */}
       <CatalogConfigDialog
         open={configOpen}
         onOpenChange={setConfigOpen}
         currentConfig={catalog?.config}
         onSaveStoreConfig={updateConfig}
+        onSaveRates={updateRates}
+      />
+
+      <CatalogHeroCarouselDialog
+        open={heroDialogOpen}
+        onOpenChange={setHeroDialogOpen}
+        products={products}
+        onSaveHeroList={setHeroList}
+        onToggleHero={toggleFeaturedHero}
+      />
+
+      <CatalogPromoDialog
+        open={promoDialogOpen}
+        onOpenChange={setPromoDialogOpen}
+        product={selectedProductForPromo}
+        onSavePromo={updatePromo}
+      />
+
+      <CatalogChatTestDialog
+        open={chatDialogOpen}
+        onOpenChange={setChatDialogOpen}
+        onSendMessage={(messages) => chatMutation.mutateAsync(messages)}
       />
 
       <CatalogCampaignDialog
         open={campaignOpen}
         onOpenChange={setCampaignOpen}
         currentCampaign={
-          catalog?.events?.find((e) => e.action === "campaign")?.details || null
+          catalog?.config?.campaign ||
+          catalog?.events?.find((e) => e.action === "campaign")?.details ||
+          null
         }
         onSaveCampaign={updateCampaign}
       />

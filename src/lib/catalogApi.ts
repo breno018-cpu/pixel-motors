@@ -1,4 +1,11 @@
-import { CatalogData, CatalogSyncAction, CatalogSyncResponse, CatalogEvent } from "@/types/catalog";
+import {
+  CatalogData,
+  CatalogSyncAction,
+  CatalogSyncResponse,
+  CatalogEvent,
+  CatalogChatMessage,
+  CatalogChatResponse,
+} from "@/types/catalog";
 
 const STORAGE_URL_KEY = "dealflow_catalog_api_url";
 const STORAGE_TOKEN_KEY = "dealflow_catalog_sync_token";
@@ -30,6 +37,9 @@ export function saveCatalogApiSettings(url: string, token: string) {
   }
 }
 
+/**
+ * Consulta o catálogo completo com os 79 modelos, configurações e estado atual
+ */
 export async function fetchCatalog(): Promise<CatalogData> {
   const { url } = getCatalogApiSettings();
   const cleanUrl = url.replace(/\/+$/, "");
@@ -48,6 +58,33 @@ export async function fetchCatalog(): Promise<CatalogData> {
   return await res.json();
 }
 
+/**
+ * Consulta os últimos 60 eventos de auditoria do catálogo
+ */
+export async function fetchCatalogEvents(): Promise<CatalogEvent[]> {
+  const { url } = getCatalogApiSettings();
+  const cleanUrl = url.replace(/\/+$/, "");
+
+  try {
+    const res = await fetch(`${cleanUrl}/api/events`, {
+      method: "GET",
+      headers: { "Accept": "application/json" },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return Array.isArray(data) ? data : data.events || [];
+    }
+  } catch (err) {
+    console.warn("[catalogApi] Falha ao consultar /api/events:", err);
+  }
+
+  return [];
+}
+
+/**
+ * Envia operações de escrita, precificação, estoque, promoções, carrossel e configurações
+ */
 export async function syncCatalog(
   actions: CatalogSyncAction | CatalogSyncAction[]
 ): Promise<CatalogSyncResponse> {
@@ -73,6 +110,35 @@ export async function syncCatalog(
   return await res.json();
 }
 
+/**
+ * Interage com o assistente virtual / IA generativa do Catálogo L1MA
+ */
+export async function sendCatalogChatMessage(
+  messages: CatalogChatMessage[]
+): Promise<CatalogChatResponse> {
+  const { url, token } = getCatalogApiSettings();
+  const cleanUrl = url.replace(/\/+$/, "");
+
+  const res = await fetch(`${cleanUrl}/api/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({ messages }),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text().catch(() => "");
+    throw new Error(`Erro no chat IA (${res.status}): ${errorBody || res.statusText}`);
+  }
+
+  return await res.json();
+}
+
+/**
+ * Estabelece a conexão Server-Sent Events (SSE) em tempo real com /api/stream (<50ms)
+ */
 export function subscribeCatalogStream(
   onMessage: (data: { version: number; events: CatalogEvent[] }) => void,
   onError?: (err: any) => void
@@ -99,7 +165,7 @@ export function subscribeCatalogStream(
 
     eventSource.onerror = (err) => {
       if (isClosed) return;
-      console.warn("[Catalog SSE] Erro na conexão:", err);
+      console.warn("[Catalog SSE] Conexão oscilando ou fechada:", err);
       if (onError) onError(err);
     };
   } catch (err) {
