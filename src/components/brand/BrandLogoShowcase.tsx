@@ -76,7 +76,7 @@ export function BrandLogoShowcase() {
       const serializer = new XMLSerializer();
       const svgString = serializer.serializeToString(svgElement);
       const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-      const URLObj = window.URL || window.webkitURL || window;
+      const URLObj = window.URL;
       const blobURL = URLObj.createObjectURL(svgBlob);
 
       const image = new Image();
