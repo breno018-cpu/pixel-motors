@@ -49,7 +49,7 @@ export async function registrarUltimaFolhaRescisao({
         {
           payslip_number: payslipNumber,
           employee_id: funcionario.id,
-          store_id: funcionario.storeId || null,
+          store_id: funcionario.store_id || null,
           reference_month: mes,
           reference_year: ano,
           base_salary: resultado.salarioBase,
@@ -121,37 +121,25 @@ export async function desativarCredenciaisColaborador({
     console.warn('Erro ao atualizar employee para demitido:', empErr);
   }
 
-  // 2. Desativa credenciais no Auth / Profiles
+  // Auth access is revoked through the existing admin function, never profile fields.
   try {
-    const targetProfileId = funcionario.rawEmployee?.profile_id;
+    let targetProfileId = funcionario.rawEmployee?.profile_id;
+    if (!targetProfileId && funcionario.email?.trim()) {
+      const { data, error } = await supabase.from('profiles').select('id')
+        .eq('email', funcionario.email.trim().toLowerCase()).maybeSingle();
+      if (error) throw error;
+      targetProfileId = data?.id;
+    }
     if (targetProfileId) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: false })
-        .eq('id', targetProfileId);
-      if (!error) credentialsDeactivated = true;
-    }
-
-    // Busca secundária por CPF caso o profile_id direto não esteja preenchido
-    if (funcionario.cpf) {
-      const cleanCpf = funcionario.cpf.replace(/\D/g, '');
-      const { error: cpfErr } = await supabase
-        .from('profiles')
-        .update({ is_active: false })
-        .eq('cpf', cleanCpf);
-      if (!cpfErr) credentialsDeactivated = true;
-    }
-
-    // Busca secundária por e-mail se houver
-    if (funcionario.email && funcionario.email.trim()) {
-      const { error: mailErr } = await supabase
-        .from('profiles')
-        .update({ is_active: false })
-        .eq('email', funcionario.email.trim().toLowerCase());
-      if (!mailErr) credentialsDeactivated = true;
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { action: 'delete_user', user_id: targetProfileId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      credentialsDeactivated = data?.success === true;
     }
   } catch (profileErr) {
-    console.warn('Erro ao desativar perfil de acesso do colaborador:', profileErr);
+    console.warn('Erro ao desativar acesso do colaborador:', profileErr);
   }
 
   // 3. Registra auditoria de desligamento
@@ -168,7 +156,7 @@ export async function desativarCredenciaisColaborador({
         dataDemissao: resultado.dataDemissao,
         motivo: resultado.motivo,
         liquidoRescisao: resultado.liquidoRescisao,
-        credenciaisDesativadas: true,
+        credenciaisDesativadas: credentialsDeactivated,
       },
     });
     localStorage.setItem(auditKey, JSON.stringify(existing.slice(0, 100)));
