@@ -347,15 +347,6 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
   });
 
   const handleExportSale = async () => {
-    if (sale.status === 'pre_venda') {
-      toast({
-        title: 'Contrato não disponível para Pré-NF',
-        description: 'A Pré-Venda emite apenas o papel de solicitação de NF. O contrato de venda só pode ser emitido após o faturamento/conclusão da venda.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     try {
       const { downloadOriginalContract } = await import('@/lib/originalContractExport');
       await downloadOriginalContract(sale);

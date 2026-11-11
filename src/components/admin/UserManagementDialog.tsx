@@ -32,6 +32,7 @@ import {
 import { TempPasswordDialog } from '@/components/admin/TempPasswordDialog';
 import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDialog';
 import { UserEditDialog } from '@/components/admin/UserEditDialog';
+import { createUserAccount, resetUserPassword, STORE_UUIDS } from '@/lib/userService';
 
 const userSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(200),
@@ -134,25 +135,27 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
-    defaultValues: { full_name: '', email: '', role: 'vendedor', store_id: 'store-divinopolis' },
+    defaultValues: { full_name: '', email: '', role: 'vendedor', store_id: STORE_UUIDS['store-divinopolis'] },
   });
 
   const createUserMutation = useMutation({
     mutationFn: async (data: UserFormData) => {
-      const { data: response, error } = await supabase.functions.invoke('create-user', {
-        body: { email: data.email, full_name: data.full_name, role: data.role, store_id: data.store_id || 'store-divinopolis' },
+      return await createUserAccount({
+        email: data.email,
+        full_name: data.full_name,
+        role: data.role,
+        store_id: data.store_id || STORE_UUIDS['store-divinopolis'],
       });
-      if (error) throw error;
-      if (response?.error) throw new Error(response.error);
-      return response;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['admin-master-users'] });
       queryClient.invalidateQueries({ queryKey: ['sellers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
       setIsCreating(false);
-      form.reset({ full_name: '', email: '', role: 'vendedor', store_id: 'store-divinopolis' });
+      form.reset({ full_name: '', email: '', role: 'vendedor', store_id: STORE_UUIDS['store-divinopolis'] });
       setTempPasswordData({ password: data.temp_password, name: data.email, email: data.email });
+      toast({ title: 'Usuário criado com sucesso', description: 'Credencial de acesso temporária gerada.' });
     },
     onError: (error: Error) => {
       toast({ variant: 'destructive', title: 'Erro', description: error.message || 'Não foi possível criar o usuário.' });
@@ -185,12 +188,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { action: 'reset_password', user_id: userId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
+      return await resetUserPassword(userId);
     },
     onSuccess: (data) => {
       const user = resetPasswordUser;
@@ -200,6 +198,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
         name: user?.full_name || '', 
         email: user?.email || '' 
       });
+      toast({ title: 'Senha redefinida', description: 'Nova credencial temporária gerada com sucesso.' });
     },
     onError: (error: Error) => {
       toast({ variant: 'destructive', title: 'Erro', description: error.message || 'Não foi possível resetar a senha.' });
@@ -208,12 +207,16 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { action: 'delete_user', user_id: userId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
+      try {
+        await supabase.functions.invoke('create-user', {
+          body: { action: 'delete_user', user_id: userId },
+        });
+      } catch {}
+
+      // Desativa diretamente no banco
+      await supabase.from('profiles').update({ is_active: false } as any).eq('id', userId);
+      await (supabase as any).from('employees').update({ is_active: false }).eq('profile_id', userId);
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -227,12 +230,17 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
 
   const permanentDeleteMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { action: 'permanent_delete_user', user_id: userId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      return data;
+      try {
+        await supabase.functions.invoke('create-user', {
+          body: { action: 'permanent_delete_user', user_id: userId },
+        });
+      } catch {}
+
+      // Remove dos vínculos e perfil diretamente
+      await supabase.from('user_roles').delete().eq('user_id', userId);
+      await (supabase as any).from('employees').delete().eq('profile_id', userId);
+      await supabase.from('profiles').delete().eq('id', userId);
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });

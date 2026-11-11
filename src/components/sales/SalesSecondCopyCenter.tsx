@@ -352,32 +352,37 @@ export function SalesSecondCopyCenter({ sales }: SalesSecondCopyCenterProps) {
 
                       <TableCell className="text-right pr-4">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* 1. Documento Principal (Contrato Original para venda concluída, Papel de NF para Pré-Venda) */}
-                          {isCompleted ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={async () => {
+                          {/* 1. 2ª Via do Contrato Oficial (Disponível para todas as vendas) */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                const { downloadOriginalContract } = await import('@/lib/originalContractExport');
+                                await downloadOriginalContract(sale);
+                              } catch (e: any) {
                                 try {
-                                  const { downloadOriginalContract } = await import('@/lib/originalContractExport');
-                                  await downloadOriginalContract(sale);
-                                } catch (e: any) {
-                                  alert('Erro ao gerar contrato: ' + (e?.message || 'Falha ao processar'));
+                                  downloadContractSecondCopyPDF(dataForPdf);
+                                } catch (e2: any) {
+                                  alert('Erro ao gerar contrato: ' + (e2?.message || e?.message || 'Falha ao processar'));
                                 }
-                              }}
-                              className="h-8 px-2.5 text-xs font-bold gap-1 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/10"
-                              title="Baixar Contrato Oficial Original (PDF)"
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">Contrato</span>
-                            </Button>
-                          ) : (
+                              }
+                            }}
+                            className="h-8 px-2.5 text-xs font-bold gap-1 text-red-600 dark:text-red-400 border-red-500/30 hover:bg-red-500/10"
+                            title="Baixar 2ª Via do Contrato Oficial (PDF)"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Contrato</span>
+                          </Button>
+
+                          {/* 1.1 Papel NF (Exclusivo para Pré-Vendas) */}
+                          {!isCompleted && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleDownloadInvoicePng(sale)}
                               className="h-8 px-2.5 text-xs font-bold gap-1 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                              title="Pré-Venda: Baixar Papel de Solicitação de NF (PNG) - Contrato bloqueado até faturamento"
+                              title="Pré-Venda: Baixar Papel de Solicitação de NF (PNG)"
                             >
                               <ImageDown className="w-3.5 h-3.5" />
                               <span className="hidden sm:inline">Papel NF</span>

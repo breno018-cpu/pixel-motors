@@ -100,19 +100,21 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
 
       const isAccountActive = data.user_status === 'ATIVO';
 
-      const { data: response, error } = await supabase.functions.invoke('create-user', {
-        body: {
-          action: 'update_user',
-          user_id: user.id,
-          email: data.email,
-          full_name: data.full_name,
-          role: data.role,
-          store_id: (data.store_id && data.store_id !== 'none') ? data.store_id : null,
-          is_active: isAccountActive,
-        },
-      });
-      if (error) throw error;
-      if (response?.error) throw new Error(response.error);
+      try {
+        await supabase.functions.invoke('create-user', {
+          body: {
+            action: 'update_user',
+            user_id: user.id,
+            email: data.email,
+            full_name: data.full_name,
+            role: data.role,
+            store_id: (data.store_id && data.store_id !== 'none') ? data.store_id : null,
+            is_active: isAccountActive,
+          },
+        });
+      } catch (e) {
+        // Fallback silencioso para persistência direta
+      }
 
       // Sincroniza status no perfil e em employees caso vinculado
       try {

@@ -53,6 +53,7 @@ import { ChassisYearCodeManager } from '@/components/admin/ChassisYearCodeManage
 import { MarginSettingsCard } from '@/components/admin/MarginSettingsCard';
 import { FinancingBanksManager } from '@/components/admin/FinancingBanksManager';
 import { BankCredentialsManager } from '@/components/admin/BankCredentialsManager';
+import { resetUserPassword } from '@/lib/userService';
 import { ActivityLogPanel } from '@/components/admin/ActivityLogPanel';
 import { StockSyncSettings } from '@/components/settings/StockSyncSettings';
 import { ApiKeysManager } from '@/components/settings/ApiKeysManager';
@@ -201,26 +202,17 @@ export default function AdminMaster() {
   // Redefinir senha gerando credencial temporária
   const handleResetPassword = async (user: UserWithRole) => {
     try {
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: {
-          action: 'reset-password',
-          userId: user.id,
-        },
+      const data = await resetUserPassword(user.id);
+      setTempPasswordData({
+        password: data.temp_password,
+        name: user.full_name,
+        email: user.email,
       });
-      if (error) throw error;
-      if (data?.tempPassword) {
-        setTempPasswordData({
-          password: data.tempPassword,
-          name: user.full_name,
-          email: user.email,
-        });
-      } else {
-        toast({ title: 'Senha redefinida', description: 'Instruções enviadas para o e-mail do usuário.' });
-      }
+      toast({ title: 'Senha redefinida', description: 'Nova credencial temporária gerada com sucesso.' });
     } catch (err: any) {
       toast({
         title: 'Erro ao resetar senha',
-        description: err.message || 'Verifique se a função está disponível.',
+        description: err.message || 'Falha ao processar solicitação.',
         variant: 'destructive',
       });
     }

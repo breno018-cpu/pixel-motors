@@ -136,90 +136,20 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
   const isRepasse = (sale as any).contract_type === 'repasse';
   const defaultTemplate = isRepasse ? CLASSIC_REPASSE_TEMPLATE : CLASSIC_SALE_TEMPLATE;
 
-  if (templateData) {
-    const assets = await loadTemplateAssets(templateData);
-
-    const header_content = templateData.header_content || defaultTemplate.header_content;
-    const body_content = templateData.body_content || defaultTemplate.body_content;
-    const clauses_content = templateData.clauses_content || defaultTemplate.clauses_content;
-    const signature_content = templateData.signature_content || defaultTemplate.signature_content;
-
-    const data = {
-      template: {
-        header_content,
-        body_content,
-        clauses_content,
-        signature_content,
-        fixed_clauses: templateData.fixed_clauses || [],
-        optional_clauses: templateData.optional_clauses || [],
-        logo_data_url: assets.logo_data_url || null,
-        watermark_data_url: assets.watermark_data_url || null,
-        watermark_opacity: templateData.watermark_opacity ?? 0.10,
-        signature_data_url: assets.signature_data_url || null,
-      },
-      client: {
-        name: sale.buyer_name ? sale.buyer_name.toUpperCase() : 'COMPRADOR',
-        cpf: sale.buyer_cpf,
-        address: sale.buyer_address || ext.buyer_address || undefined,
-        phone: sale.buyer_phone || ext.buyer_phone || undefined,
-        email: sale.buyer_email || undefined,
-      },
-      vehicle: {
-        brand: vehicleBrand ? vehicleBrand.toUpperCase() : 'SHINERAY',
-        model: vehicleModel ? vehicleModel.toUpperCase() : 'MOTO',
-        year: vehicleYear,
-        color: vehicleColor,
-        chassis: vehicleChassis,
-        plate: vehiclePlate,
-      },
-      store: {
-        name: resolvedStore.storeName ? resolvedStore.storeName.toUpperCase() : 'CONCESSIONÁRIA',
-        cnpj: resolvedStore.cnpj,
-        address: resolvedStore.address,
-        city: resolvedStore.city ? `${resolvedStore.city.toUpperCase()}/${(resolvedStore.state || 'MG').toUpperCase()}` : 'MONTES CLAROS/MG',
-        phone: resolvedStore.phone,
-        email: resolvedStore.email,
-      },
-      reseller: {
-        name: resellerData?.full_name || sale.reseller?.full_name || undefined,
-        cpf: resellerData?.cpf || undefined,
-        email: resellerData?.email || undefined,
-        phone: resellerData?.phone || undefined,
-        commission: resellerData?.commission_rate ? Number(resellerData.commission_rate) : undefined,
-      },
-      vehicles: groupVehicles,
-      payment: {
-        total: groupTotal,
-        downPayment: sale.down_payment ? Number(sale.down_payment) : undefined,
-        method: sale.payment_method || 'À Vista',
-        installments: sale.installments || 1,
-        installmentValue: sale.installment_value ? Number(sale.installment_value) : undefined,
-      },
-      contractNumber: sale.contract_number,
-      pickup: normalizePickup(ext?.pickup),
-      contractDate: new Date(sale.created_at).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      }),
-    };
-
-    const doc = generateContractFromTemplate(data);
-    doc.save(`contrato_${sale.contract_number}.pdf`);
-  } else {
-    // Fallback para o layout original hardcoded de contrato
+  const fallbackDownload = () => {
     downloadContractPDF({
       contractNumber: sale.contract_number,
       pickup: normalizePickup(ext?.pickup),
       contractType: (sale as any).contract_type === 'repasse' ? 'repasse' : 'venda',
-      createdAt: sale.created_at,
+      createdAt: sale.created_at || new Date().toISOString(),
       storeName: resolvedStore.storeName,
       storeCnpj: resolvedStore.cnpj,
       storeAddress: resolvedStore.address,
       storePhone: resolvedStore.phone,
       storeEmail: resolvedStore.email,
-      buyerName: sale.buyer_name,
-      buyerCpf: sale.buyer_cpf,
+      storeCity: resolvedStore.city,
+      buyerName: sale.buyer_name || 'Comprador',
+      buyerCpf: sale.buyer_cpf || '',
       buyerPhone: sale.buyer_phone || ext.buyer_phone || undefined,
       buyerEmail: sale.buyer_email || undefined,
       buyerAddress: sale.buyer_address || ext.buyer_address || undefined,
@@ -234,11 +164,97 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
       downPayment: sale.down_payment ? Number(sale.down_payment) : undefined,
       installments: sale.installments || undefined,
       installmentValue: sale.installment_value ? Number(sale.installment_value) : undefined,
-      resellerName: sale.reseller?.full_name || undefined,
+      resellerName: sale.reseller?.full_name || resellerData?.full_name || undefined,
       operatorName,
       notes: sale.notes || undefined,
       signedAt: (sale as any).signed_at || undefined,
       status: sale.status,
     });
+  };
+
+  if (templateData) {
+    try {
+      const assets = await loadTemplateAssets(templateData);
+
+      const header_content = templateData.header_content || defaultTemplate.header_content;
+      const body_content = templateData.body_content || defaultTemplate.body_content;
+      const clauses_content = templateData.clauses_content || defaultTemplate.clauses_content;
+      const signature_content = templateData.signature_content || defaultTemplate.signature_content;
+
+      const data = {
+        template: {
+          header_content,
+          body_content,
+          clauses_content,
+          signature_content,
+          fixed_clauses: templateData.fixed_clauses || [],
+          optional_clauses: templateData.optional_clauses || [],
+          logo_data_url: assets?.logo_data_url || null,
+          watermark_data_url: assets?.watermark_data_url || null,
+          watermark_opacity: templateData.watermark_opacity ?? 0.10,
+          signature_data_url: assets?.signature_data_url || null,
+        },
+        client: {
+          name: sale.buyer_name ? sale.buyer_name.toUpperCase() : 'COMPRADOR',
+          cpf: sale.buyer_cpf || '',
+          address: sale.buyer_address || ext.buyer_address || undefined,
+          phone: sale.buyer_phone || ext.buyer_phone || undefined,
+          email: sale.buyer_email || undefined,
+        },
+        vehicle: {
+          brand: vehicleBrand ? vehicleBrand.toUpperCase() : 'SHINERAY',
+          model: vehicleModel ? vehicleModel.toUpperCase() : 'MOTO',
+          year: vehicleYear,
+          color: vehicleColor,
+          chassis: vehicleChassis,
+          plate: vehiclePlate,
+        },
+        store: {
+          name: resolvedStore.storeName ? resolvedStore.storeName.toUpperCase() : 'CONCESSIONÁRIA',
+          cnpj: resolvedStore.cnpj,
+          address: resolvedStore.address,
+          city: resolvedStore.city ? `${resolvedStore.city.toUpperCase()}/${(resolvedStore.state || 'MG').toUpperCase()}` : 'MONTES CLAROS/MG',
+          phone: resolvedStore.phone,
+          email: resolvedStore.email,
+        },
+        reseller: {
+          name: resellerData?.full_name || sale.reseller?.full_name || undefined,
+          cpf: resellerData?.cpf || undefined,
+          email: resellerData?.email || undefined,
+          phone: resellerData?.phone || undefined,
+          commission: resellerData?.commission_rate ? Number(resellerData.commission_rate) : undefined,
+        },
+        vehicles: groupVehicles,
+        payment: {
+          total: groupTotal,
+          downPayment: sale.down_payment ? Number(sale.down_payment) : undefined,
+          method: sale.payment_method || 'À Vista',
+          installments: sale.installments || 1,
+          installmentValue: sale.installment_value ? Number(sale.installment_value) : undefined,
+        },
+        contractNumber: sale.contract_number,
+        pickup: normalizePickup(ext?.pickup),
+        contractDate: sale.created_at
+          ? new Date(sale.created_at).toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+            })
+          : new Date().toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+            }),
+      };
+
+      const doc = generateContractFromTemplate(data);
+      doc.save(`contrato_${sale.contract_number}.pdf`);
+    } catch (templateError) {
+      console.warn('[originalContractExport] Erro ao renderizar template personalizado, usando layout clássico oficial:', templateError);
+      fallbackDownload();
+    }
+  } else {
+    // Fallback para o layout original hardcoded de contrato
+    fallbackDownload();
   }
 }

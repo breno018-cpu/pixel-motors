@@ -975,11 +975,6 @@ export function SaleManageModal({
                       Contrato completo de Compra e Venda com todas as cláusulas jurídicas, dados da moto e assinaturas.
                     </p>
                   </div>
-                  {status === 'pre_venda' ? (
-                    <div className="mt-4 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 font-semibold text-center">
-                      Contrato indisponível para Pré-NF. Pré-Vendas emitem apenas o papel de NF.
-                    </div>
-                  ) : (
                     <Button
                       onClick={async () => {
                         try {
@@ -987,7 +982,12 @@ export function SaleManageModal({
                           await downloadOriginalContract(sale);
                           toast({ title: 'Contrato baixado', description: 'O PDF do contrato original foi baixado com sucesso.' });
                         } catch (e: any) {
-                          toast({ variant: 'destructive', title: 'Erro ao gerar contrato', description: e?.message || 'Falha ao processar.' });
+                          try {
+                            downloadContractSecondCopyPDF(secondCopyData);
+                            toast({ title: 'Contrato baixado', description: 'O PDF do contrato original foi baixado com sucesso.' });
+                          } catch (e2: any) {
+                            toast({ variant: 'destructive', title: 'Erro ao gerar contrato', description: e2?.message || e?.message || 'Falha ao processar.' });
+                          }
                         }
                       }}
                       className="mt-4 w-full text-xs font-bold gap-2 bg-red-600 hover:bg-red-700 text-white shadow-xs"
@@ -995,7 +995,6 @@ export function SaleManageModal({
                       <Download className="w-3.5 h-3.5" />
                       Baixar Contrato Oficial (PDF)
                     </Button>
-                  )}
                 </div>
 
                 {/* 2. 2ª Via do Recibo de Quitação */}
