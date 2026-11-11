@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useToast } from '@/hooks/use-toast';
 
 export type ContractTemplateType = 'venda_carro' | 'venda_moto' | 'repasse' | 'generico' | 'reserva';
@@ -70,7 +71,7 @@ export interface CreateTemplateData {
   fixed_clauses?: string[];
   optional_clauses?: OptionalClause[];
   vehicle_types?: Array<'carro' | 'moto'>;
-  store_id?: string;
+  store_id?: string | null;
   logo_url?: string | null;
   watermark_url?: string | null;
   signature_url?: string | null;
@@ -81,6 +82,7 @@ export function useContractTemplates() {
   return useQuery({
     queryKey: ['contract-templates'],
     queryFn: async () => {
+      await ensureSupabaseSession();
       const { data, error } = await supabase
         .from('contract_templates')
         .select('*')
@@ -96,6 +98,7 @@ export function useActiveTemplates() {
   return useQuery({
     queryKey: ['contract-templates', 'active'],
     queryFn: async () => {
+      await ensureSupabaseSession();
       const { data, error } = await supabase
         .from('contract_templates')
         .select('*')

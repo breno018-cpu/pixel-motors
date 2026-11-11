@@ -48,6 +48,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCreateTemplate, useUpdateTemplate, ContractTemplate, ContractTemplateType, OptionalClause } from '@/hooks/useContractTemplates';
+import { useStores } from '@/hooks/useStores';
+import { DEFAULT_CONTRACT_WATERMARK } from '@/assets/contractWatermark';
+import { Building2, Store as StoreIcon, Sparkles } from 'lucide-react';
 import { generateTemplatePreviewPDF, fetchImageAsDataUrl } from '@/lib/templatePdf';
 import { RichTextToolbar } from './RichTextToolbar';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,6 +62,7 @@ import { cn } from '@/lib/utils';
 const templateSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   template_type: z.enum(['venda_carro', 'venda_moto', 'repasse', 'generico', 'reserva']),
+  store_id: z.string().nullable().optional(),
   is_active: z.boolean(),
   header_content: z.string().optional(),
   body_content: z.string().min(1, 'Corpo do contrato é obrigatório'),
@@ -151,6 +155,7 @@ export function TemplateEditorDialog({ open, onOpenChange, template }: TemplateE
   const [importLegacyOpen, setImportLegacyOpen] = useState(false);
   const { toast } = useToast();
   
+  const { data: stores = [] } = useStores();
   const createTemplate = useCreateTemplate();
   const updateTemplate = useUpdateTemplate();
   const isEditing = !!template;
@@ -160,6 +165,7 @@ export function TemplateEditorDialog({ open, onOpenChange, template }: TemplateE
     defaultValues: {
       name: '',
       template_type: 'venda_carro',
+      store_id: null,
       is_active: false,
       header_content: '',
       body_content: '',
@@ -173,6 +179,7 @@ export function TemplateEditorDialog({ open, onOpenChange, template }: TemplateE
       form.reset({
         name: template.name,
         template_type: template.template_type,
+        store_id: template.store_id || null,
         is_active: template.is_active,
         header_content: template.header_content || '',
         body_content: template.body_content,
@@ -194,6 +201,7 @@ export function TemplateEditorDialog({ open, onOpenChange, template }: TemplateE
       form.reset({
         name: '',
         template_type: 'generico',
+        store_id: null,
         is_active: false,
         header_content: '[center][b][size:18]CONTRATO DE COMPRA E VENDA DE VEÍCULO[/size][/b][/center]',
         body_content: '',
@@ -247,6 +255,7 @@ export function TemplateEditorDialog({ open, onOpenChange, template }: TemplateE
         await updateTemplate.mutateAsync({
           id: template.id,
           ...data,
+          store_id: data.store_id || null,
           fixed_clauses: fixedClauses,
           optional_clauses: optionalClauses,
           vehicle_types: vehicleTypes,
@@ -257,6 +266,7 @@ export function TemplateEditorDialog({ open, onOpenChange, template }: TemplateE
         await createTemplate.mutateAsync({
           name: data.name,
           template_type: data.template_type,
+          store_id: data.store_id || null,
           is_active: data.is_active,
           header_content: data.header_content,
           body_content: data.body_content,
@@ -378,6 +388,61 @@ export function TemplateEditorDialog({ open, onOpenChange, template }: TemplateE
                             <FormMessage />
                           </FormItem>
                         )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="store_id"
+                        render={({ field }) => {
+                          const selectedStore = stores.find((s) => s.id === field.value);
+                          return (
+                            <FormItem>
+                              <FormLabel className="flex items-center gap-1.5 font-medium">
+                                <StoreIcon className="w-4 h-4 text-primary" />
+                                Concessionária / Loja Vinculada
+                              </FormLabel>
+                              <Select
+                                onValueChange={(val) => field.onChange(val === 'all' ? null : val)}
+                                value={field.value || 'all'}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-10">
+                                    <SelectValue placeholder="Todas as Lojas (Geral)" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="all">
+                                    Todas as Concessionárias (Modelo Geral)
+                                  </SelectItem>
+                                  {stores.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                      {s.name} ({s.city || s.state || 'MG'})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormDescription>
+                                Se vinculado a uma loja específica, este modelo herda as cláusulas, CNPJ e marca d'água desta concessionária.
+                              </FormDescription>
+
+                              {selectedStore && (
+                                <div className="mt-2 p-3 rounded-lg border bg-muted/40 text-xs space-y-1">
+                                  <div className="font-semibold text-foreground flex items-center justify-between">
+                                    <span>{selectedStore.name}</span>
+                                    <Badge variant="outline" className="text-[10px]">Loja ativa</Badge>
+                                  </div>
+                                  <p className="text-muted-foreground">
+                                    <span className="font-medium text-foreground">CNPJ:</span> {selectedStore.cnpj || '18.456.789/0001-01'} | <span className="font-medium text-foreground">Cidade:</span> {selectedStore.city || 'MG'}
+                                  </p>
+                                  <p className="text-muted-foreground truncate">
+                                    <span className="font-medium text-foreground">Endereço:</span> {selectedStore.address || 'Não informado'}
+                                  </p>
+                                </div>
+                              )}
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
 
                       <FormField

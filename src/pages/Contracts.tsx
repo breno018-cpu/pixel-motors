@@ -45,6 +45,15 @@ import { CalendarClock } from 'lucide-react';
 import { generateTemplatePreviewPDF, loadTemplateAssets } from '@/lib/templatePdf';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useStores } from '@/hooks/useStores';
+import { Store, Globe, ImageIcon as ImageIconLucide } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { PanelCard, FilterBar } from '@/components/ui/stat-card';
 
 const TYPE_CONFIG: Record<ContractTemplateType, { 
@@ -98,7 +107,9 @@ export default function Contracts() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStore, setFilterStore] = useState<string>('all');
   
+  const { data: stores = [] } = useStores();
   const { data: templates, isLoading } = useContractTemplates();
   const updateTemplate = useUpdateTemplate();
   const duplicateTemplate = useDuplicateTemplate();
@@ -112,7 +123,10 @@ export default function Contracts() {
       (filterStatus === 'active' && template.is_active) ||
       (filterStatus === 'inactive' && !template.is_active);
     
-    return matchesSearch && matchesType && matchesStatus;
+    const matchesStore = filterStore === 'all' ||
+      (filterStore === 'global' ? !template.store_id : template.store_id === filterStore);
+
+    return matchesSearch && matchesType && matchesStatus && matchesStore;
   }) || [];
 
   const handleEdit = (template: ContractTemplate) => {
@@ -248,7 +262,23 @@ export default function Contracts() {
             className="h-10 pl-9"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={filterStore} onValueChange={setFilterStore}>
+            <SelectTrigger className="w-[210px] h-10 text-xs font-medium">
+              <Store className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+              <SelectValue placeholder="Concessionária" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as Concessionárias</SelectItem>
+              <SelectItem value="global">Modelos Gerais (Sem Loja Fixa)</SelectItem>
+              {stores.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Button variant={filterStatus === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilterStatus('all')} className="h-10">
             Todos ({totalCount})
           </Button>
@@ -312,6 +342,7 @@ export default function Contracts() {
             <TableHeader>
               <TableRow>
                 <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Modelo</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Concessionária</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Tipo</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden lg:table-cell">Versão</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden xl:table-cell whitespace-nowrap">Última edição</TableHead>

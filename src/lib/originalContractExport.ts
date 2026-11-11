@@ -23,7 +23,13 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
     operatorName = (sale.external_data as any).completed_by;
   }
 
-  // 2. Busca o template vinculado ou ativo original
+  // 2. Concessionária / Filial da venda
+  const storeTargetId = sale.store_id || sale.store?.id || (sale.vehicle as any)?.store_id;
+  const { data: storesList } = await supabase.from('stores').select('*');
+  const dbStore = (storesList || []).find((s: any) => s.id === storeTargetId);
+  const resolvedStore = getStoreFromDatabase(storeTargetId || sale.store?.name, [dbStore].filter(Boolean));
+
+  // 3. Busca o template vinculado ou específico da loja
   const { data: freshContract } = await supabase
     .from('contracts')
     .select('template_id, contract_type')
@@ -42,21 +48,61 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
     templateData = data;
   }
 
-  if (!templateData) {
-    const { data: activeTemplate } = await supabase
+  const vehItem = sale.vehicle || {};
+  const isMotoItem = (vehItem.vehicle_type || (sale as any).tipo || '').toLowerCase() === 'moto';
+  const isRepasseItem = (sale as any).contract_type === 'repasse';
+  const preferredType = isRepasseItem ? 'repasse' : (isMotoItem ? 'venda_moto' : 'venda_carro');
+
+  // Se não houver template específico vinculado, busca primeiro o template ativo DA LOJA
+  if (!templateData && storeTargetId) {
+    const { data: storeTyped } = await supabase
       .from('contract_templates')
       .select('*')
+      .eq('store_id', storeTargetId)
+      .eq('template_type', preferredType)
       .eq('is_active', true)
+      .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    templateData = activeTemplate;
+    if (storeTyped) {
+      templateData = storeTyped;
+    } else {
+      const { data: storeAny } = await supabase
+        .from('contract_templates')
+        .select('*')
+        .eq('store_id', storeTargetId)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (storeAny) templateData = storeAny;
+    }
   }
 
-  // 3. Concessionária / Filial
-  const storeTargetId = sale.store_id || sale.store?.id || (sale.vehicle as any)?.store_id;
-  const { data: storesList } = await supabase.from('stores').select('*');
-  const dbStore = (storesList || []).find((s: any) => s.id === storeTargetId);
-  const resolvedStore = getStoreFromDatabase(storeTargetId || sale.store?.name, [dbStore].filter(Boolean));
+  // Se a loja não tiver template próprio ativo, busca o template geral ativo
+  if (!templateData) {
+    const { data: globalTyped } = await supabase
+      .from('contract_templates')
+      .select('*')
+      .is('store_id', null)
+      .eq('template_type', preferredType)
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (globalTyped) {
+      templateData = globalTyped;
+    } else {
+      const { data: anyActive } = await supabase
+        .from('contract_templates')
+        .select('*')
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      templateData = anyActive;
+    }
+  }
 
   // 4. Revendedor
   let resellerData: any = null;
@@ -92,12 +138,11 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
 
   if (templateData) {
     const assets = await loadTemplateAssets(templateData);
-    const useOfficialDefault = !templateData.clauses_content?.includes('TERMO DE RESPONSABILIDADE');
 
-    const header_content = (useOfficialDefault ? defaultTemplate.header_content : templateData.header_content) || defaultTemplate.header_content;
-    const body_content = (useOfficialDefault ? defaultTemplate.body_content : templateData.body_content) || defaultTemplate.body_content;
-    const clauses_content = (useOfficialDefault ? defaultTemplate.clauses_content : templateData.clauses_content) || defaultTemplate.clauses_content;
-    const signature_content = (useOfficialDefault ? defaultTemplate.signature_content : templateData.signature_content) || defaultTemplate.signature_content;
+    const header_content = templateData.header_content || defaultTemplate.header_content;
+    const body_content = templateData.body_content || defaultTemplate.body_content;
+    const clauses_content = templateData.clauses_content || defaultTemplate.clauses_content;
+    const signature_content = templateData.signature_content || defaultTemplate.signature_content;
 
     const data = {
       template: {
@@ -105,9 +150,12 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
         body_content,
         clauses_content,
         signature_content,
-        fixed_clauses: useOfficialDefault ? [] : (templateData.fixed_clauses || []),
+        fixed_clauses: templateData.fixed_clauses || [],
         optional_clauses: templateData.optional_clauses || [],
-        ...assets,
+        logo_data_url: assets.logo_data_url || null,
+        watermark_data_url: assets.watermark_data_url || null,
+        watermark_opacity: templateData.watermark_opacity ?? 0.10,
+        signature_data_url: assets.signature_data_url || null,
       },
       client: {
         name: sale.buyer_name ? sale.buyer_name.toUpperCase() : 'COMPRADOR',
