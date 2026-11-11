@@ -13,6 +13,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -50,6 +53,16 @@ import {
   Bot,
   Star,
   CheckCircle2,
+  Building2,
+  MapPin,
+  Zap,
+  Flame,
+  ShieldCheck,
+  Layers,
+  LayoutGrid,
+  Award,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { CatalogConfigDialog } from "@/components/catalog/CatalogConfigDialog";
 import { CatalogCampaignDialog } from "@/components/catalog/CatalogCampaignDialog";
@@ -59,6 +72,58 @@ import { CatalogQuickPriceDialog } from "@/components/catalog/CatalogQuickPriceD
 import { CatalogHeroCarouselDialog } from "@/components/catalog/CatalogHeroCarouselDialog";
 import { CatalogPromoDialog } from "@/components/catalog/CatalogPromoDialog";
 import { CatalogChatTestDialog } from "@/components/catalog/CatalogChatTestDialog";
+
+// Definição dos 4 Grupos Oficiais do Catálogo L1MA Motors (idêntico ao site público)
+const OFFICIAL_GROUPS = [
+  {
+    id: "shineray",
+    name: "Concessionária Shineray",
+    shortName: "Shineray",
+    tagline: "Concessionária Autorizada Exclusiva Shineray do Brasil",
+    badge: "Autorizada Oficial",
+    borderTheme: "border-emerald-500/30",
+    bgTheme: "bg-emerald-500/5",
+    badgeTheme: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+    icon: ShieldCheck,
+    defaultSubs: ["Todas", "Street", "Trail", "Scooter", "Ciclomotor", "Custom", "Esportiva"],
+  },
+  {
+    id: "ele",
+    name: "Elétricas Multimarcas",
+    shortName: "Elétricas",
+    tagline: "Mobilidade Urbana Sustentável, Scooters e Ciclomotores Elétricos",
+    badge: "100% Elétrica",
+    borderTheme: "border-cyan-500/30",
+    bgTheme: "bg-cyan-500/5",
+    badgeTheme: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
+    icon: Zap,
+    defaultSubs: ["Todas", "Scooter", "Ciclomotor", "Patinete", "Street"],
+  },
+  {
+    id: "off",
+    name: "Off-Road & Quadriciclos",
+    shortName: "Off-Road",
+    tagline: "Quadriciclos 4x4, ATVs, UTVs e Motocross Multimarcas",
+    badge: "Fora de Estrada",
+    borderTheme: "border-amber-500/30",
+    bgTheme: "bg-amber-500/5",
+    badgeTheme: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+    icon: Flame,
+    defaultSubs: ["Todas", "Quadriciclo", "ATV", "Off-Road", "Trilha", "Pit Bike"],
+  },
+  {
+    id: "semi",
+    name: "Semi-Novos Selecionados",
+    shortName: "Semi-novos",
+    tagline: "Motos e Scooters Revisadas com Laudo Cautelar e Garantia",
+    badge: "Garantia & Procedência",
+    borderTheme: "border-purple-500/30",
+    bgTheme: "bg-purple-500/5",
+    badgeTheme: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30",
+    icon: Award,
+    defaultSubs: ["Todas", "Street", "Trail", "Scooter", "Custom"],
+  },
+];
 
 export default function CatalogControl() {
   const {
@@ -76,6 +141,7 @@ export default function CatalogControl() {
     updatePromo,
     toggleFeaturedHero,
     setHeroList,
+    updateStore,
     updateCampaign,
     updateConfig,
     updateRates,
@@ -85,9 +151,12 @@ export default function CatalogControl() {
     apiSettings,
   } = useCatalog();
 
-  // Filtros
+  // Filtros por Loja & por Grupo
+  const [selectedStore, setSelectedStore] = useState<string>("all"); // 'all' | 'store-divinopolis' | 'store-montesclaros'
+  const [selectedCat, setSelectedCat] = useState<string>("all"); // 'all' | 'shineray' | 'ele' | 'off' | 'semi'
+  const [selectedSub, setSelectedSub] = useState<string>("all"); // Subcategoria
+  const [viewGrouping, setViewGrouping] = useState<"sections" | "tabs">("sections"); // 'sections' (como no site) | 'tabs'
   const [search, setSearch] = useState("");
-  const [selectedCat, setSelectedCat] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden" | "soldout" | "promo" | "hero">("all");
   const [showLiveStream, setShowLiveStream] = useState(false);
 
@@ -115,18 +184,36 @@ export default function CatalogControl() {
   // Set de IDs existentes para importar
   const existingIds = useMemo(() => new Set(products.map((p) => p.id)), [products]);
 
-  // Contadores e KPIs
-  const totalCount = products.length;
-  const activeCount = products.filter((p) => p.active !== false).length;
-  const soldOutCount = products.filter((p) => p.stock === 0).length;
-  const promoCount = products.filter(
+  // Contadores por Concessionária / Loja
+  const countDivinopolis = useMemo(() => {
+    return products.filter((p) => !p.store_id || p.store_id === "all" || p.store_id === "store-divinopolis").length;
+  }, [products]);
+
+  const countMontesClaros = useMemo(() => {
+    return products.filter((p) => !p.store_id || p.store_id === "all" || p.store_id === "store-montesclaros").length;
+  }, [products]);
+
+  // Produtos Filtrados Inicialmente pela Concessionária Selecionada
+  const storeProducts = useMemo(() => {
+    if (selectedStore === "all") return products;
+    return products.filter((p) => {
+      const pStore = p.store_id || "all";
+      return pStore === "all" || pStore === selectedStore;
+    });
+  }, [products, selectedStore]);
+
+  // Contadores e KPIs no Escopo da Loja Selecionada
+  const totalCount = storeProducts.length;
+  const activeCount = storeProducts.filter((p) => p.active !== false).length;
+  const soldOutCount = storeProducts.filter((p) => p.stock === 0).length;
+  const promoCount = storeProducts.filter(
     (p) => (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price)
   ).length;
-  const heroCount = products.filter((p) => p.featuredHero).length;
+  const heroCount = storeProducts.filter((p) => p.featuredHero).length;
 
-  // Filtragem
+  // Filtragem Geral (Loja + Grupo + Subcategoria + Status + Busca)
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    return storeProducts.filter((p) => {
       // Busca
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -139,9 +226,16 @@ export default function CatalogControl() {
         }
       }
 
-      // Categoria
+      // Grupo / Categoria
       if (selectedCat !== "all" && p.cat !== selectedCat) {
         return false;
+      }
+
+      // Subcategoria (se filtrada)
+      if (selectedSub !== "all" && selectedSub !== "Todas") {
+        if ((p.sub || "").toLowerCase() !== selectedSub.toLowerCase()) {
+          return false;
+        }
       }
 
       // Status
@@ -156,7 +250,20 @@ export default function CatalogControl() {
 
       return true;
     });
-  }, [products, search, selectedCat, statusFilter]);
+  }, [storeProducts, search, selectedCat, selectedSub, statusFilter]);
+
+  // Lista de Subcategorias disponíveis para o grupo selecionado
+  const currentAvailableSubs = useMemo(() => {
+    if (selectedCat === "all") {
+      const set = new Set<string>();
+      storeProducts.forEach((p) => {
+        if (p.sub) set.add(p.sub.trim());
+      });
+      return ["Todas", ...Array.from(set).sort()];
+    }
+    const grp = OFFICIAL_GROUPS.find((g) => g.id === selectedCat);
+    return grp ? grp.defaultSubs : ["Todas"];
+  }, [selectedCat, storeProducts]);
 
   const handleEditProduct = (prod: CatalogProduct) => {
     setSelectedProductForEdit(prod);
@@ -205,9 +312,321 @@ export default function CatalogControl() {
     return Array.from(unique.values()).slice(0, 60);
   }, [liveEvents, events]);
 
+  // Renderizador de Card Individual de Veículo
+  const renderProductCard = (p: CatalogProduct) => {
+    const hasPromo = (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price);
+    const isSoldOut = p.stock === 0;
+    const isLowStock = p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= lowStockLimit;
+    const isUnlimited = p.stock === null || p.stock === undefined;
+    const mainPhoto = p.photos && p.photos.length > 0 ? p.photos[0] : "";
+    const storeLabel =
+      p.store_id === "store-divinopolis"
+        ? "Divinópolis"
+        : p.store_id === "store-montesclaros"
+        ? "Montes Claros"
+        : "Todas as Lojas";
+
+    return (
+      <div
+        key={p.id}
+        className={`rounded-2xl border bg-card overflow-hidden shadow-2xs transition-all hover:shadow-md flex flex-col justify-between ${
+          !p.active ? "opacity-60 border-dashed" : ""
+        }`}
+      >
+        {/* TOPO COM FOTO, BADGES E SELOS */}
+        <div>
+          <div className="relative aspect-video w-full bg-muted/40 overflow-hidden">
+            {mainPhoto ? (
+              <img
+                src={mainPhoto}
+                alt={p.name}
+                className={`w-full h-full object-cover transition-transform hover:scale-105 duration-300 ${
+                  isSoldOut ? "grayscale filter contrast-125" : ""
+                }`}
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                Sem Foto
+              </div>
+            )}
+
+            {/* Carimbo de ESGOTADO com botão Avise-me */}
+            {isSoldOut && (
+              <div className="absolute inset-0 bg-black/65 backdrop-blur-[1px] flex flex-col items-center justify-center gap-1.5">
+                <span className="px-3 py-1 bg-destructive text-destructive-foreground font-black text-xs uppercase tracking-widest rounded shadow-md">
+                  ESGOTADO
+                </span>
+                <span className="text-[10px] text-white/90">WhatsApp: "Avise-me quando chegar"</span>
+              </div>
+            )}
+
+            {/* Badges Flutuantes Superiores: Grupo & Subgrupo & Loja */}
+            <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+              <Badge
+                variant="secondary"
+                className="bg-background/90 backdrop-blur-sm text-[10px] font-bold uppercase shadow-xs"
+              >
+                {p.cat === "shineray"
+                  ? "🟢 Shineray"
+                  : p.cat === "ele"
+                  ? "⚡ Elétrica"
+                  : p.cat === "semi"
+                  ? "🔄 Semi-novo"
+                  : "🏁 Off-Road"}
+              </Badge>
+
+              {p.sub && (
+                <Badge
+                  variant="outline"
+                  className="bg-background/80 backdrop-blur-sm text-[9px] font-semibold border-border"
+                >
+                  {p.sub}
+                </Badge>
+              )}
+
+              {/* Badge da Loja / Concessionária */}
+              <Badge
+                variant="outline"
+                className={`text-[9px] font-semibold backdrop-blur-sm ${
+                  p.store_id === "store-divinopolis"
+                    ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
+                    : p.store_id === "store-montesclaros"
+                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                    : "bg-muted/80 text-foreground border-border"
+                }`}
+              >
+                <MapPin className="w-2.5 h-2.5 mr-0.5 inline" />
+                {storeLabel}
+              </Badge>
+            </div>
+
+            <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+              {p.featuredHero && (
+                <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold gap-1 shadow-xs">
+                  <Star className="w-3 h-3 fill-white" /> HERO {p.heroOrder ? `#${p.heroOrder}` : ""}
+                </Badge>
+              )}
+
+              {hasPromo && (
+                <Badge className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold gap-1 shadow-xs animate-pulse">
+                  <Tag className="w-3 h-3" /> {p.promo?.label || "OFERTA"}
+                </Badge>
+              )}
+
+              {p.readyDelivery && (
+                <Badge className="bg-emerald-600 text-white text-[10px] shadow-xs">
+                  Pronta Entrega
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* CORPO DO CARD */}
+          <div className="p-4 space-y-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">{p.brand}</span>
+                <span className="text-[10px] font-mono text-muted-foreground">{p.id}</span>
+              </div>
+              <h3 className="font-bold text-base text-foreground truncate mt-0.5" title={p.name}>
+                {p.name}
+              </h3>
+            </div>
+
+            {/* PREÇO E VALOR ANTERIOR (DE / POR) */}
+            <div className="flex items-baseline justify-between pt-1 border-t">
+              <div>
+                {p.oldPrice && (
+                  <div className="text-xs line-through text-muted-foreground">
+                    De: {formatCurrency(p.oldPrice)}
+                  </div>
+                )}
+                <div className="text-lg font-black text-foreground">
+                  {formatCurrency(p.price)}
+                </div>
+                {p.installments && (
+                  <span className="text-[10px] text-muted-foreground block">
+                    Simulador até 21x ativo
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col items-end gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleQuickPrice(p)}
+                  className="h-6 px-1.5 text-xs text-primary hover:text-primary gap-1"
+                  title="Alterar Preço"
+                >
+                  <DollarSign className="w-3 h-3" />
+                  Preço
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleOpenPromo(p)}
+                  className="h-6 px-1.5 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-500 gap-1"
+                  title="Configurar Promoção"
+                >
+                  <Tag className="w-3 h-3" />
+                  Promoção
+                </Button>
+              </div>
+            </div>
+
+            {/* CONTROLE DE ESTOQUE REATIVO */}
+            <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-xs">
+              <span className="text-muted-foreground">Estoque:</span>
+              <div className="flex items-center gap-1.5">
+                {isSoldOut ? (
+                  <Badge variant="destructive" className="text-[10px] font-bold">
+                    ESGOTADO (0)
+                  </Badge>
+                ) : isLowStock ? (
+                  <Badge variant="outline" className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold">
+                    Últimas {p.stock} unid.!
+                  </Badge>
+                ) : isUnlimited ? (
+                  <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-400">
+                    Pronta Entrega
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px] font-semibold">
+                    {p.stock} unid.
+                  </Badge>
+                )}
+
+                {/* Alterar Rápido de Estoque */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground">
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="text-xs">
+                    <DropdownMenuLabel>Ajuste Rápido de Estoque</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => updateStock(p.id, 0)}>
+                      Marcar como Esgotado (0)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateStock(p.id, 1)}>
+                      Última unidade (1)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateStock(p.id, 2)}>
+                      2 unidades
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateStock(p.id, 5)}>
+                      Estoque normal (5)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateStock(p.id, null)}>
+                      Pronta Entrega (Sem limite)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* RODAPÉ DO CARD COM AÇÕES E VISIBILIDADE */}
+        <div className="p-3 bg-muted/20 border-t flex items-center justify-between gap-2">
+          {/* Switch de Visibilidade Pública Instantânea */}
+          <div className="flex items-center gap-1.5">
+            <Switch
+              checked={p.active !== false}
+              onCheckedChange={(val) => toggleActive(p.id, val)}
+              id={`switch-${p.id}`}
+              className="scale-90"
+            />
+            <label
+              htmlFor={`switch-${p.id}`}
+              className="text-xs cursor-pointer select-none text-muted-foreground hover:text-foreground font-medium"
+            >
+              {p.active !== false ? "Visível" : "Oculto"}
+            </label>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEditProduct(p)}
+              className="h-8 text-xs gap-1"
+            >
+              <Edit className="w-3.5 h-3.5" />
+              Editar
+            </Button>
+
+            {/* Menu com Opções Avançadas */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuLabel>Ações do Veículo</DropdownMenuLabel>
+                
+                {/* Atribuição de Concessionária / Loja */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="gap-2 text-xs">
+                    <Building2 className="w-3.5 h-3.5 text-primary" />
+                    Atribuir à Loja
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="text-xs">
+                    <DropdownMenuItem onClick={() => updateStore(p.id, "all", "Todas as Lojas")}>
+                      🏢 Todas as Lojas (Rede)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateStore(p.id, "store-divinopolis", "Divinópolis")}>
+                      📍 Divinópolis (Matriz Oeste)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => updateStore(p.id, "store-montesclaros", "Montes Claros")}>
+                      📍 Montes Claros (Polo Norte)
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                <DropdownMenuItem onClick={() => handleOpenPromo(p)} className="gap-2 text-xs">
+                  <Tag className="w-3.5 h-3.5 text-amber-500" />
+                  Configurar Promoção
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => toggleFeaturedHero(p.id, !p.featuredHero, p.heroOrder || 1)}
+                  className="gap-2 text-xs"
+                >
+                  <Star className={`w-3.5 h-3.5 ${p.featuredHero ? "fill-amber-500 text-amber-500" : ""}`} />
+                  {p.featuredHero ? "Remover do Carrossel Hero" : "Destacar no Carrossel Hero"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleQuickPrice(p)} className="gap-2 text-xs">
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                  Alterar Preço
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleEditProduct(p)} className="gap-2 text-xs">
+                  <Edit className="w-3.5 h-3.5" />
+                  Editar Completo (Fotos, Specs)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setDeleteProduct(p)}
+                  className="gap-2 text-xs text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Excluir do Catálogo
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 pb-12">
-      {/* CABEÇALHO */}
+      {/* 1. CABEÇALHO EXECUTIVO */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -246,16 +665,16 @@ export default function CatalogControl() {
               )}
 
               <Badge variant="secondary" className="text-xs font-mono">
-                {totalCount} Modelos • v{catalog?.version || 1}
+                {products.length} Modelos • v{catalog?.version || 1}
               </Badge>
             </div>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Central de comando e sincronização em tempo real (produtos, estoque, preços, promoções e fotos) com o catálogo público.
+            Central de comando e sincronização em tempo real (produtos, estoque por loja, grupos comerciais, preços, promoções e mídias).
           </p>
         </div>
 
-        {/* Botões de Ações do Cabeçalho */}
+        {/* Botões de Ações Rápidas */}
         <div className="flex items-center flex-wrap gap-2">
           <Button
             variant="outline"
@@ -326,15 +745,85 @@ export default function CatalogControl() {
         </div>
       </div>
 
-      {/* KPIS DE RESUMO */}
+      {/* 2. DIVISÃO POR LOJA (SELETOR DE CONCESSIONÁRIA E MODO DE VISUALIZAÇÃO) */}
+      <div className="p-3.5 rounded-2xl border bg-card/70 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground mr-1">
+            <Building2 className="w-4 h-4 text-primary shrink-0" />
+            <span>Concessionária:</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button
+              variant={selectedStore === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedStore("all")}
+              className="h-8 text-xs gap-1.5 rounded-xl font-bold"
+            >
+              <Store className="w-3.5 h-3.5" />
+              Todas as Lojas / Rede ({products.length})
+            </Button>
+
+            <Button
+              variant={selectedStore === "store-divinopolis" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedStore("store-divinopolis")}
+              className="h-8 text-xs gap-1.5 rounded-xl font-bold"
+            >
+              <MapPin className="w-3.5 h-3.5 text-red-500" />
+              Divinópolis ({countDivinopolis})
+            </Button>
+
+            <Button
+              variant={selectedStore === "store-montesclaros" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedStore("store-montesclaros")}
+              className="h-8 text-xs gap-1.5 rounded-xl font-bold"
+            >
+              <MapPin className="w-3.5 h-3.5 text-blue-500" />
+              Montes Claros ({countMontesClaros})
+            </Button>
+          </div>
+        </div>
+
+        {/* Alternador de Modo de Visualização: Em Seções por Grupo vs Em Abas */}
+        <div className="flex items-center gap-1.5 self-end md:self-auto border-t md:border-t-0 pt-2 md:pt-0">
+          <span className="text-[11px] font-medium text-muted-foreground mr-1 hidden sm:inline">Exibição:</span>
+          <Button
+            variant={viewGrouping === "sections" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewGrouping("sections")}
+            className="h-8 text-xs gap-1.5 font-bold rounded-xl"
+            title="Exibir dividido por seções de grupos (idêntico ao site público)"
+          >
+            <LayoutGrid className="w-3.5 h-3.5 text-primary" />
+            Por Grupo (Como no Site)
+          </Button>
+
+          <Button
+            variant={viewGrouping === "tabs" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewGrouping("tabs")}
+            className="h-8 text-xs gap-1.5 font-bold rounded-xl"
+            title="Exibir em abas individuais"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Em Abas
+          </Button>
+        </div>
+      </div>
+
+      {/* 3. KPIS DE RESUMO DA LOJA SELECIONADA */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Total Modelos</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Modelos na Loja</span>
             <Store className="w-4 h-4 text-primary" />
           </div>
           <div className="text-2xl font-bold text-foreground">{totalCount}</div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Cadastrados no catálogo</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {selectedStore === "all" ? "Toda a rede L1MA" : selectedStore === "store-divinopolis" ? "Unidade Divinópolis" : "Unidade Montes Claros"}
+          </p>
         </div>
 
         <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
@@ -343,7 +832,7 @@ export default function CatalogControl() {
             <Eye className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-bold text-emerald-500">{activeCount}</div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Visíveis publicamente</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Visíveis no catálogo</p>
         </div>
 
         <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
@@ -352,7 +841,7 @@ export default function CatalogControl() {
             <AlertTriangle className="w-4 h-4 text-destructive" />
           </div>
           <div className="text-2xl font-bold text-destructive">{soldOutCount}</div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Botão "Avise-me"</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Carimbo WhatsApp ativo</p>
         </div>
 
         <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
@@ -361,40 +850,57 @@ export default function CatalogControl() {
             <Tag className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-bold text-amber-500">{promoCount}</div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Com selo e desconto R$</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Com desconto ativo</p>
         </div>
 
-        <div className="p-3.5 rounded-xl border bg-card shadow-2xs col-span-2 sm:col-span-1">
+        <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
             <span className="text-[11px] font-medium uppercase tracking-wider">Carrossel Topo</span>
-            <Sparkles className="w-4 h-4 text-primary" />
+            <Sparkles className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-bold text-primary">{heroCount}</div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Slides Hero ativos</p>
+          <div className="text-2xl font-bold text-amber-500">{heroCount}</div>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Destaques do banner</p>
         </div>
       </div>
 
-      {/* BARRA DE FILTROS & ABAS DE CATEGORIA */}
+      {/* 4. DIVISÃO POR GRUPO (ABAS OFICIAIS COMO NO SITE PÚBLICO) */}
       <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Abas Categoria */}
-          <Tabs value={selectedCat} onValueChange={setSelectedCat} className="w-full sm:w-auto">
-            <TabsList className="grid grid-cols-5 w-full sm:w-auto">
-              <TabsTrigger value="all" className="text-xs">Todos ({totalCount})</TabsTrigger>
-              <TabsTrigger value="shineray" className="text-xs">Shineray</TabsTrigger>
-              <TabsTrigger value="ele" className="text-xs">Elétricas</TabsTrigger>
-              <TabsTrigger value="semi" className="text-xs">Semi-novos</TabsTrigger>
-              <TabsTrigger value="off" className="text-xs">Off-Road</TabsTrigger>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Abas dos 4 Grandes Grupos */}
+          <Tabs
+            value={selectedCat}
+            onValueChange={(val) => {
+              setSelectedCat(val);
+              setSelectedSub("all");
+            }}
+            className="w-full lg:w-auto"
+          >
+            <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full lg:w-auto h-auto p-1 bg-muted/60">
+              <TabsTrigger value="all" className="text-xs py-2 font-bold">
+                🌟 Todos ({totalCount})
+              </TabsTrigger>
+              <TabsTrigger value="shineray" className="text-xs py-2 font-bold gap-1 text-emerald-600 dark:text-emerald-400">
+                🟢 Shineray ({storeProducts.filter((p) => p.cat === "shineray").length})
+              </TabsTrigger>
+              <TabsTrigger value="ele" className="text-xs py-2 font-bold gap-1 text-cyan-600 dark:text-cyan-400">
+                ⚡ Elétricas ({storeProducts.filter((p) => p.cat === "ele").length})
+              </TabsTrigger>
+              <TabsTrigger value="off" className="text-xs py-2 font-bold gap-1 text-amber-600 dark:text-amber-400">
+                🏁 Off-Road ({storeProducts.filter((p) => p.cat === "off").length})
+              </TabsTrigger>
+              <TabsTrigger value="semi" className="text-xs py-2 font-bold gap-1 text-purple-600 dark:text-purple-400">
+                🔄 Semi-novos ({storeProducts.filter((p) => p.cat === "semi").length})
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          {/* Filtros de Status */}
+          {/* Filtros Rápidos de Status */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <Button
               variant={statusFilter === "all" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("all")}
-              className="h-8 text-xs"
+              className="h-8 text-xs font-semibold rounded-xl"
             >
               Todos
             </Button>
@@ -402,54 +908,74 @@ export default function CatalogControl() {
               variant={statusFilter === "active" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("active")}
-              className="h-8 text-xs gap-1"
+              className="h-8 text-xs gap-1 font-semibold rounded-xl"
             >
-              <Eye className="w-3.5 h-3.5" /> Ativos
+              <Eye className="w-3.5 h-3.5 text-emerald-500" /> Ativos
             </Button>
             <Button
               variant={statusFilter === "hidden" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("hidden")}
-              className="h-8 text-xs gap-1"
+              className="h-8 text-xs gap-1 font-semibold rounded-xl"
             >
-              <EyeOff className="w-3.5 h-3.5" /> Ocultos
+              <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> Ocultos
             </Button>
             <Button
               variant={statusFilter === "soldout" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("soldout")}
-              className="h-8 text-xs gap-1"
+              className="h-8 text-xs gap-1 font-semibold rounded-xl"
             >
-              <AlertTriangle className="w-3.5 h-3.5" /> Esgotados
+              <AlertTriangle className="w-3.5 h-3.5 text-destructive" /> Esgotados
             </Button>
             <Button
               variant={statusFilter === "promo" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("promo")}
-              className="h-8 text-xs gap-1"
+              className="h-8 text-xs gap-1 font-semibold rounded-xl"
             >
-              <Tag className="w-3.5 h-3.5" /> Ofertas
+              <Tag className="w-3.5 h-3.5 text-amber-500" /> Ofertas
             </Button>
             <Button
               variant={statusFilter === "hero" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("hero")}
-              className="h-8 text-xs gap-1"
+              className="h-8 text-xs gap-1 font-semibold rounded-xl"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Carrossel
             </Button>
           </div>
         </div>
 
-        {/* Campo de Busca */}
+        {/* Pílulas de Subcategorias (Estilos Comerciais do Grupo) */}
+        {currentAvailableSubs.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1 shrink-0">
+              Estilo / Subgrupo:
+            </span>
+            {currentAvailableSubs.map((subName) => (
+              <Button
+                key={subName}
+                variant={selectedSub === subName ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedSub(subName)}
+                className="h-7 text-xs px-2.5 rounded-full shrink-0 font-medium"
+              >
+                {subName}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {/* Campo de Busca & Alternador do Histórico de Auditoria */}
         <div className="flex items-center justify-between gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome do modelo, marca, subcategoria (Trail, Scooter, Street...) ou ID único..."
+              placeholder="Buscar por nome do modelo, marca, estilo (Trail, Scooter, Street...) ou ID único..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="pl-9 h-9 text-xs rounded-xl"
             />
           </div>
 
@@ -457,15 +983,10 @@ export default function CatalogControl() {
             variant="outline"
             size="sm"
             onClick={() => setShowLiveStream(!showLiveStream)}
-            className="gap-1.5 shrink-0"
+            className="h-9 text-xs gap-1.5 rounded-xl shrink-0"
           >
             <History className="w-4 h-4 text-primary" />
-            {showLiveStream ? "Ocultar Auditoria" : "Auditoria (60 eventos)"}
-            {allEvents.length > 0 && (
-              <Badge variant="secondary" className="text-[10px] h-4 px-1">
-                {allEvents.length}
-              </Badge>
-            )}
+            {showLiveStream ? "Ocultar Auditoria" : `Auditoria (${allEvents.length})`}
           </Button>
         </div>
       </div>
@@ -510,20 +1031,20 @@ export default function CatalogControl() {
         </div>
       )}
 
-      {/* LISTAGEM DOS 79 MODELOS */}
+      {/* 5. LISTAGEM DIVIDIDA POR GRUPO (COMO NO SITE) OU EM GRADE */}
       {isLoading ? (
         <div className="p-16 text-center text-muted-foreground">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
           <p>Carregando modelos do catálogo público...</p>
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="p-12 text-center border rounded-xl bg-card space-y-3">
+        <div className="p-12 text-center border rounded-2xl bg-card space-y-3">
           <Store className="w-10 h-10 mx-auto text-muted-foreground/60" />
-          <h3 className="text-lg font-semibold text-foreground">Nenhum veículo encontrado</h3>
+          <h3 className="text-lg font-semibold text-foreground">Nenhum veículo encontrado para este filtro</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            {search || selectedCat !== "all" || statusFilter !== "all"
-              ? "Tente ajustar os filtros ou termos da sua busca."
-              : "Seu catálogo público ainda não possui modelos cadastrados. Crie um novo ou importe diretamente do estoque."}
+            {search || selectedStore !== "all" || selectedCat !== "all" || statusFilter !== "all"
+              ? "Tente ajustar os filtros de concessionária, grupo ou busca acima."
+              : "Seu catálogo público ainda não possui modelos cadastrados."}
           </p>
           <div className="flex justify-center gap-2 pt-2">
             <Button size="sm" onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-1.5">
@@ -534,299 +1055,131 @@ export default function CatalogControl() {
             </Button>
           </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProducts.map((p) => {
-            const hasPromo = (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price);
-            const isSoldOut = p.stock === 0;
-            const isLowStock = p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= lowStockLimit;
-            const isUnlimited = p.stock === null || p.stock === undefined;
-            const mainPhoto = p.photos && p.photos.length > 0 ? p.photos[0] : "";
+      ) : viewGrouping === "sections" && selectedCat === "all" ? (
+        // VISUALIZAÇÃO DIVIDIDA POR GRUPO (SEÇÕES COMO NO SITE PÚBLICO)
+        <div className="space-y-8">
+          {OFFICIAL_GROUPS.map((group) => {
+            const groupProducts = filteredProducts.filter((p) => p.cat === group.id);
+            if (groupProducts.length === 0) return null;
+
+            const GroupIcon = group.icon;
 
             return (
-              <div
-                key={p.id}
-                className={`rounded-xl border bg-card overflow-hidden shadow-2xs transition-all hover:shadow-md flex flex-col justify-between ${
-                  !p.active ? "opacity-60 border-dashed" : ""
-                }`}
-              >
-                {/* TOPO COM FOTO, BADGES E SELOS */}
-                <div>
-                  <div className="relative aspect-video w-full bg-muted/40 overflow-hidden">
-                    {mainPhoto ? (
-                      <img
-                        src={mainPhoto}
-                        alt={p.name}
-                        className={`w-full h-full object-cover transition-transform hover:scale-105 duration-300 ${
-                          isSoldOut ? "grayscale filter contrast-125" : ""
-                        }`}
-                        onError={(e) => {
-                          (e.target as HTMLElement).style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                        Sem Foto
-                      </div>
-                    )}
-
-                    {/* Carimbo de ESGOTADO com botão Avise-me */}
-                    {isSoldOut && (
-                      <div className="absolute inset-0 bg-black/65 backdrop-blur-[1px] flex flex-col items-center justify-center gap-1.5">
-                        <span className="px-3 py-1 bg-destructive text-destructive-foreground font-black text-xs uppercase tracking-widest rounded shadow-md">
-                          ESGOTADO
-                        </span>
-                        <span className="text-[10px] text-white/90">Botão WhatsApp: "Avise-me quando chegar"</span>
-                      </div>
-                    )}
-
-                    {/* Badges Flutuantes Superiores */}
-                    <div className="absolute top-2 left-2 flex flex-col gap-1">
-                      <Badge
-                        variant="secondary"
-                        className="bg-background/90 backdrop-blur-sm text-[10px] font-semibold uppercase"
-                      >
-                        {p.cat === "shineray"
-                          ? "Shineray"
-                          : p.cat === "ele"
-                          ? "Elétrica"
-                          : p.cat === "semi"
-                          ? "Semi-novo"
-                          : "Off-Road"}
-                      </Badge>
-                      {p.sub && (
-                        <Badge
-                          variant="outline"
-                          className="bg-background/80 backdrop-blur-sm text-[9px] border-border"
-                        >
-                          {p.sub}
-                        </Badge>
-                      )}
+              <div key={group.id} className="space-y-4">
+                {/* CABEÇALHO DO GRUPO (IDÊNTICO AO SITE PÚBLICO) */}
+                <div className={`p-4 rounded-2xl border ${group.borderTheme} ${group.bgTheme} flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center shrink-0 shadow-xs">
+                      <GroupIcon className="w-5 h-5 text-primary" />
                     </div>
-
-                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-                      {p.featuredHero && (
-                        <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold gap-1 shadow-xs">
-                          <Star className="w-3 h-3 fill-white" /> HERO {p.heroOrder ? `#${p.heroOrder}` : ""}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-black tracking-tight text-foreground">
+                          {group.name}
+                        </h2>
+                        <Badge className={`${group.badgeTheme} text-[10px] font-bold`}>
+                          {group.badge}
                         </Badge>
-                      )}
-
-                      {hasPromo && (
-                        <Badge className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold gap-1 shadow-xs">
-                          <Tag className="w-3 h-3" /> {p.promo?.label || "OFERTA"}
-                        </Badge>
-                      )}
-
-                      {p.readyDelivery && (
-                        <Badge className="bg-emerald-600 text-white text-[10px] shadow-xs">
-                          Pronta Entrega
-                        </Badge>
-                      )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {group.tagline}
+                      </p>
                     </div>
                   </div>
 
-                  {/* CORPO DO CARD */}
-                  <div className="p-4 space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">{p.brand}</span>
-                        <span className="text-[10px] font-mono text-muted-foreground">{p.id}</span>
-                      </div>
-                      <h3 className="font-bold text-base text-foreground truncate" title={p.name}>
-                        {p.name}
-                      </h3>
-                    </div>
-
-                    {/* PREÇO E VALOR ANTERIOR (DE / POR) */}
-                    <div className="flex items-baseline justify-between pt-1 border-t">
-                      <div>
-                        {p.oldPrice && (
-                          <div className="text-xs line-through text-muted-foreground">
-                            De: {formatCurrency(p.oldPrice)}
-                          </div>
-                        )}
-                        <div className="text-lg font-black text-foreground">
-                          {formatCurrency(p.price)}
-                        </div>
-                        {p.installments && (
-                          <span className="text-[10px] text-muted-foreground block">
-                            Simulador até 21x ativo
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col items-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleQuickPrice(p)}
-                          className="h-6 px-1.5 text-xs text-primary hover:text-primary gap-1"
-                          title="Alterar Preço"
-                        >
-                          <DollarSign className="w-3 h-3" />
-                          Preço
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenPromo(p)}
-                          className="h-6 px-1.5 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-500 gap-1"
-                          title="Configurar Promoção"
-                        >
-                          <Tag className="w-3 h-3" />
-                          Promoção
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* CONTROLE DE ESTOQUE REATIVO */}
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-xs">
-                      <span className="text-muted-foreground">Estoque:</span>
-                      <div className="flex items-center gap-1.5">
-                        {isSoldOut ? (
-                          <Badge variant="destructive" className="text-[10px] font-bold">
-                            ESGOTADO (0)
-                          </Badge>
-                        ) : isLowStock ? (
-                          <Badge variant="outline" className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold">
-                            Últimas {p.stock} unid.!
-                          </Badge>
-                        ) : isUnlimited ? (
-                          <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-400">
-                            Pronta Entrega
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px] font-semibold">
-                            {p.stock} unid.
-                          </Badge>
-                        )}
-
-                        {/* Botão rápido para alternar esgotado */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => updateStock(p.id, isSoldOut ? null : 0)}
-                          className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
-                          title={isSoldOut ? "Tornar Pronta Entrega" : "Marcar como Esgotado"}
-                        >
-                          {isSoldOut ? "Reativar" : "Esgotar"}
-                        </Button>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <Badge variant="outline" className="font-mono text-xs bg-card/80">
+                      {groupProducts.length} {groupProducts.length === 1 ? "modelo" : "modelos"} nesta loja
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCat(group.id);
+                        setSelectedSub("all");
+                      }}
+                      className="text-xs h-7 px-2"
+                    >
+                      Ver apenas este grupo →
+                    </Button>
                   </div>
                 </div>
 
-                {/* RODAPÉ DO CARD: ATIVO / SWITCH / MENU */}
-                <div className="p-3 bg-muted/10 border-t flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={p.active !== false}
-                      onCheckedChange={() => toggleActive(p.id, p.active !== false)}
-                    />
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {p.active !== false ? "Visível" : "Oculto"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditProduct(p)}
-                      className="h-8 px-2 text-xs gap-1"
-                    >
-                      <Edit className="w-3.5 h-3.5" /> Editar
-                    </Button>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Ações Rápidas</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleQuickPrice(p)} className="gap-2">
-                          <DollarSign className="w-4 h-4 text-emerald-500" /> Alterar Preço
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenPromo(p)} className="gap-2">
-                          <Tag className="w-4 h-4 text-amber-500" /> Configurar Promoção
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => toggleFeaturedHero(p.id, !p.featuredHero, (p.heroOrder || 1))}
-                          className="gap-2"
-                        >
-                          <Sparkles className="w-4 h-4 text-primary" />
-                          {p.featuredHero ? "Remover do Carrossel Hero" : "Destacar no Carrossel Hero"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => updateStock(p.id, isSoldOut ? null : 0)}
-                          className="gap-2"
-                        >
-                          <PackageCheck className="w-4 h-4 text-blue-500" />
-                          {isSoldOut ? "Tornar Pronta Entrega" : "Marcar como Esgotado"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEditProduct(p)} className="gap-2">
-                          <Edit className="w-4 h-4" /> Editar Completo
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setDeleteProduct(p)}
-                          className="gap-2 text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" /> Remover do Catálogo
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                {/* GRID DE CARDS DO GRUPO */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {groupProducts.map(renderProductCard)}
                 </div>
               </div>
             );
           })}
         </div>
+      ) : (
+        // VISUALIZAÇÃO EM GRADE FILTRADA (OU ABA ESPECÍFICA)
+        <div className="space-y-4">
+          {selectedCat !== "all" && (
+            <div className="p-3.5 rounded-2xl border bg-muted/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Store className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold text-foreground">
+                  Exibindo grupo: {OFFICIAL_GROUPS.find((g) => g.id === selectedCat)?.name || selectedCat}
+                </span>
+                <span className="text-xs text-muted-foreground">({filteredProducts.length} modelos)</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedCat("all");
+                  setSelectedSub("all");
+                }}
+                className="text-xs h-7"
+              >
+                ← Ver todos os grupos
+              </Button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredProducts.map(renderProductCard)}
+          </div>
+        </div>
       )}
 
-      {/* DIÁLOGOS E FERRAMENTAS */}
+      {/* 6. MODAIS DO SISTEMA DO CATÁLOGO */}
+      {/* Modal de Configurações da Loja e Taxas */}
       <CatalogConfigDialog
         open={configOpen}
         onOpenChange={setConfigOpen}
-        currentConfig={catalog?.config}
-        onSaveStoreConfig={updateConfig}
+        config={catalog?.config || {}}
+        onSaveConfig={updateConfig}
         onSaveRates={updateRates}
       />
 
+      {/* Modal de Campanha Sazonal */}
+      <CatalogCampaignDialog
+        open={campaignOpen}
+        onOpenChange={setCampaignOpen}
+        campaign={catalog?.config?.campaign}
+        onSaveCampaign={updateCampaign}
+      />
+
+      {/* Modal do Carrossel Hero */}
       <CatalogHeroCarouselDialog
         open={heroDialogOpen}
         onOpenChange={setHeroDialogOpen}
         products={products}
         onSaveHeroList={setHeroList}
-        onToggleHero={toggleFeaturedHero}
       />
 
-      <CatalogPromoDialog
-        open={promoDialogOpen}
-        onOpenChange={setPromoDialogOpen}
-        product={selectedProductForPromo}
-        onSavePromo={updatePromo}
-      />
-
+      {/* Sandbox do Chatbot com IA */}
       <CatalogChatTestDialog
         open={chatDialogOpen}
         onOpenChange={setChatDialogOpen}
         onSendMessage={(messages) => chatMutation.mutateAsync(messages)}
+        isSending={chatMutation.isPending}
       />
 
-      <CatalogCampaignDialog
-        open={campaignOpen}
-        onOpenChange={setCampaignOpen}
-        currentCampaign={
-          catalog?.config?.campaign ||
-          catalog?.events?.find((e) => e.action === "campaign")?.details ||
-          null
-        }
-        onSaveCampaign={updateCampaign}
-      />
-
+      {/* Modal de Produto Completo */}
       <CatalogProductDialog
         open={productDialogOpen}
         onOpenChange={setProductDialogOpen}
@@ -834,6 +1187,7 @@ export default function CatalogControl() {
         onSaveProduct={upsertProduct}
       />
 
+      {/* Modal de Importação do Estoque Físico */}
       <CatalogImportFromStockDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
@@ -841,6 +1195,7 @@ export default function CatalogControl() {
         onBatchSync={batchSync}
       />
 
+      {/* Modal de Alteração Rápida de Preço */}
       <CatalogQuickPriceDialog
         open={priceDialogOpen}
         onOpenChange={setPriceDialogOpen}
@@ -848,15 +1203,22 @@ export default function CatalogControl() {
         onSavePrice={updatePrice}
       />
 
-      {/* CONFIRMAÇÃO DE EXCLUSÃO */}
-      <AlertDialog open={!!deleteProduct} onOpenChange={(o) => !o && setDeleteProduct(null)}>
+      {/* Modal de Configuração de Oferta / Promoção */}
+      <CatalogPromoDialog
+        open={promoDialogOpen}
+        onOpenChange={setPromoDialogOpen}
+        product={selectedProductForPromo}
+        onSavePromo={updatePromo}
+      />
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <AlertDialog open={!!deleteProduct} onOpenChange={(open) => !open && setDeleteProduct(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover Veículo do Catálogo?</AlertDialogTitle>
+            <AlertDialogTitle>Remover Veículo do Catálogo Público?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação removerá permanentemente o modelo{" "}
-              <strong>{deleteProduct?.name}</strong> (ID: {deleteProduct?.id}) do catálogo público
-              L1MA Motors através da operação <code>remove</code>.
+              Esta ação enviará uma requisição de exclusão permanente para o Catálogo L1MA Motors
+              do veículo <strong>"{deleteProduct?.name}"</strong> ({deleteProduct?.id}).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -866,7 +1228,7 @@ export default function CatalogControl() {
               disabled={deleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? "Removendo..." : "Confirmar Remoção"}
+              {deleting ? "Excluindo..." : "Sim, Excluir do Catálogo"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

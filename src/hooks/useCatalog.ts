@@ -128,6 +128,15 @@ export function useCatalog() {
     });
   };
 
+  const updateStore = (id: string, store_id: string, store_name?: string) => {
+    return syncMutation.mutateAsync({
+      action: "store",
+      id,
+      store_id,
+      store_name,
+    });
+  };
+
   const setHeroList = (items: Array<{ id: string; heroOrder: number }>) => {
     return syncMutation.mutateAsync({
       action: "hero_list",
@@ -201,6 +210,7 @@ export function useCatalog() {
     updatePromo,
     toggleFeaturedHero,
     setHeroList,
+    updateStore,
     updateCampaign,
     updateConfig,
     updateRates,

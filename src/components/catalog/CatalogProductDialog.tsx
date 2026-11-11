@@ -46,6 +46,7 @@ export function CatalogProductDialog({
   const [desc, setDesc] = useState("");
   const [active, setActive] = useState(true);
   const [readyDelivery, setReadyDelivery] = useState(true);
+  const [storeId, setStoreId] = useState<string>("all");
   const [video, setVideo] = useState("");
   const [disc, setDisc] = useState("");
 
@@ -77,6 +78,7 @@ export function CatalogProductDialog({
         setDesc(product.desc || "");
         setActive(product.active !== false);
         setReadyDelivery(!!product.readyDelivery);
+        setStoreId(product.store_id || "all");
         setVideo(product.video || "");
         setDisc(product.disc || "");
 
@@ -121,6 +123,7 @@ export function CatalogProductDialog({
         setDesc("");
         setActive(true);
         setReadyDelivery(true);
+        setStoreId("all");
         setVideo("");
         setDisc("Imagens ilustrativas. Preços e condições sujeitos a alteração sem aviso prévio.");
         setPrice("");
@@ -206,6 +209,8 @@ export function CatalogProductDialog({
       oldPrice: oldPrice.trim() !== "" ? parseFloat(oldPrice) : undefined,
       installments,
       readyDelivery,
+      store_id: storeId,
+      store_name: storeId === "store-divinopolis" ? "Divinópolis" : storeId === "store-montesclaros" ? "Montes Claros" : "Todas as Lojas",
       stock: finalStock,
       desc: desc.trim(),
       photos: photos.length > 0 ? photos : ["https://placehold.co/600x400/png?text=Sem+Foto"],
@@ -315,6 +320,26 @@ export function CatalogProductDialog({
                   onChange={(e) => setBrand(e.target.value)}
                 />
               </div>
+            </div>
+
+            {/* Disponibilidade por Loja / Concessionária */}
+            <div className="space-y-1.5 p-3 rounded-xl border bg-muted/30">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                🏢 Concessionária / Disponibilidade por Loja
+              </Label>
+              <Select value={storeId} onValueChange={setStoreId}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Selecione a loja..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">🏢 Todas as Lojas / Rede (Disponível em Divinópolis e Montes Claros)</SelectItem>
+                  <SelectItem value="store-divinopolis">📍 Concessionária Divinópolis (Matriz Oeste)</SelectItem>
+                  <SelectItem value="store-montesclaros">📍 Concessionária Montes Claros (Polo Norte)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Define se o veículo e estoque pertencem a uma loja específica ou estão disponíveis em toda a rede.
+              </p>
             </div>
 
             <div className="space-y-1.5">

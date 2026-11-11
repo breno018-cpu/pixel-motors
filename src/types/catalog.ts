@@ -21,9 +21,11 @@ export interface CatalogProduct {
   featuredHero?: boolean;   // Se vai para o carrossel rotativo principal de topo
   heroOrder?: number;       // Ordem numérica de prioridade nos slides (1º, 2º, 3º lugar...)
 
-  // Estoque
+  // Estoque & Loja / Unidade
   stock: number | null;     // 0 = ESGOTADO; 1 a 2 = "Últimas unidades!"; > 2 = normal; null = pronta entrega
   readyDelivery: boolean;   // Selo de pronta entrega
+  store_id?: string;        // ID da loja / concessionária ('store-divinopolis', 'store-montesclaros', 'all')
+  store_name?: string;      // Nome da concessionária ("Divinópolis", "Montes Claros", "Todas as Lojas")
 
   // Mídias
   photos: string[];         // URLs das fotos oficiais em alta definição (photos[0] é a principal)
@@ -85,6 +87,7 @@ export type CatalogSyncAction =
   | { action: "promo"; id: string; promo: CatalogPromo | null }
   | { action: "featuredHero"; id: string; value: boolean; heroOrder?: number }
   | { action: "hero_list"; items: Array<{ id: string; heroOrder: number }> }
+  | { action: "store"; id: string; store_id: string; store_name?: string }
   | { action: "campaign"; campaign: CatalogCampaign | null }
   | { action: "remove"; id: string }
   | { action: "config"; config: CatalogConfig }

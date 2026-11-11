@@ -14,6 +14,14 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useVehicles } from "@/hooks/useVehicles";
 import { useVehicleModels } from "@/hooks/useVehicleModels";
+import { useStores } from "@/hooks/useStores";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CatalogProduct, CatalogSyncAction } from "@/types/catalog";
 import { Download, Search, CheckSquare, Square, PackageCheck } from "lucide-react";
 
@@ -32,6 +40,8 @@ export function CatalogImportFromStockDialog({
 }: CatalogImportFromStockDialogProps) {
   const { data: vehicles = [], isLoading: loadingVehicles } = useVehicles();
   const { data: models = [], isLoading: loadingModels } = useVehicleModels();
+  const { data: stores = [] } = useStores();
+  const [storeFilter, setStoreFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
@@ -92,7 +102,7 @@ export function CatalogImportFromStockDialog({
         isAlreadyInCatalog: existingCatalogProductIds.has(key),
       };
 
-      if (v.status === "disponivel") {
+      if (v.status === "disponivel" && (storeFilter === "all" || v.store_id === storeFilter)) {
         existing.stockQty += 1;
       }
       if (!existing.price && v.sale_price) {
@@ -172,6 +182,8 @@ export function CatalogImportFromStockDialog({
         price: item.price,
         installments: true,
         readyDelivery: item.stockQty > 0,
+        store_id: storeFilter !== "all" ? storeFilter : undefined,
+        store_name: storeFilter === "store-divinopolis" ? "Divinópolis" : storeFilter === "store-montesclaros" ? "Montes Claros" : "Todas as Lojas",
         stock: item.stockQty > 0 ? item.stockQty : null,
         desc: `${item.brand} ${item.modelName} com excelente custo-benefício, pronto para entrega na L1MA Motors.`,
         photos:
@@ -217,7 +229,7 @@ export function CatalogImportFromStockDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-2 my-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 my-2">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -227,6 +239,18 @@ export function CatalogImportFromStockDialog({
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
+          <Select value={storeFilter} onValueChange={setStoreFilter}>
+            <SelectTrigger className="w-full sm:w-[200px] h-9 text-xs">
+              <SelectValue placeholder="Filtrar por Loja" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">🏢 Todas as Lojas (Rede)</SelectItem>
+              <SelectItem value="store-divinopolis">📍 Concessionária Divinópolis</SelectItem>
+              <SelectItem value="store-montesclaros">📍 Concessionária Montes Claros</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Button
             type="button"
             variant="outline"
