@@ -30,15 +30,7 @@ import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { ConcurrentSessionModal } from "@/components/security/ConcurrentSessionModal";
 import { ConfirmationProvider } from "@/contexts/ConfirmationContext";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      staleTime: 30_000,
-    },
-  },
-});
+import { queryClient } from "@/lib/queryClient";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

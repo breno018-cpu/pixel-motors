@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 
 export interface Store {
   id: string;
@@ -54,6 +55,7 @@ export function useStores() {
   return useQuery({
     queryKey: ['stores'],
     queryFn: async () => {
+      await ensureSupabaseSession();
       const { data, error } = await supabase
         .from('stores')
         .select('*')

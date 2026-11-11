@@ -166,7 +166,7 @@ export default function Sales() {
   const [search, setSearch] = useState('');
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [resellerFilter, setResellerFilter] = useState<string>('all');
-  const [periodFilter, setPeriodFilter] = useState<string>('30d');
+  const [periodFilter, setPeriodFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
   // Modais de Vendas

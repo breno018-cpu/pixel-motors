@@ -124,8 +124,9 @@ export async function initializeSingleSessionGuard(userId: string): Promise<stri
     .on('broadcast', { event: 'NEW_DEVICE_LOGIN' }, (payload: any) => {
       const incoming = payload?.payload;
       if (incoming && incoming.session_token && incoming.session_token !== sessionToken) {
-        // Outro aparelho efetuou login com a mesma conta! Expulsa esta sessão.
-        handleSupersededSession(incoming.device_name || 'Outro dispositivo');
+        if (incoming.device_id && incoming.device_id !== fingerprint.deviceId) {
+          handleSupersededSession(incoming.device_name || 'Outro dispositivo');
+        }
       }
     })
     .on('broadcast', { event: 'FORCE_LOGOUT_ALL' }, (payload: any) => {
@@ -174,8 +175,9 @@ function startSessionHeartbeat(userId: string, mySessionToken: string) {
       if (data && data.length > 0) {
         const details = (data[0].details as any) || {};
         if (details.session_token && details.session_token !== mySessionToken) {
-          // Outra sessão mais recente foi gravada no banco!
-          handleSupersededSession(details.device_name || 'Outro dispositivo');
+          if (details.device_id && details.device_id !== fingerprint.deviceId) {
+            handleSupersededSession(details.device_name || 'Outro dispositivo');
+          }
         }
       }
     } catch {

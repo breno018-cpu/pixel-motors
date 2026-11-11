@@ -225,7 +225,9 @@ export default function Vehicles() {
 
   const filteredVehicles = useMemo(() => {
     const list = scopedVehicles.filter((vehicle) => {
-      if (statusFilter === 'active') {
+      if (statusFilter === 'all') {
+        // Exibe todos os veículos
+      } else if (statusFilter === 'active') {
         if (vehicle.status === 'vendido') return false;
       } else if (statusFilter === 'aging60') {
         if (vehicle.status === 'vendido' || getDaysInStock(vehicle.created_at) <= 60) {
@@ -827,7 +829,8 @@ export default function Vehicles() {
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50">
               <div className="flex flex-wrap items-center gap-1">
                 {[
-                  { id: 'active', label: 'Estoque Ativo' },
+                  { id: 'all', label: `Todos (${scopedVehicles.length})` },
+                  { id: 'active', label: `Estoque Ativo (${activeInventory.length})` },
                   { id: 'disponivel', label: 'Disponíveis' },
                   { id: 'reservado', label: 'Reservados' },
                   { id: 'aging60', label: `Pátio > 60d (${kpis.aging60Count})` },

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useToast } from '@/hooks/use-toast';
 
 export interface VehicleModel {
@@ -51,6 +52,7 @@ export function useVehicleModels() {
   return useQuery({
     queryKey: ['vehicle-models'],
     queryFn: async () => {
+      await ensureSupabaseSession();
       const { data, error } = await supabase
         .from('vehicle_models')
         .select('*')

@@ -47,7 +47,7 @@ const DEFAULT_ACTIVE_ADMIN: CachedUserData = {
     must_change_password: false,
   },
   roles: ['admin'],
-  userStore: { id: 'store-divinopolis', name: 'Concessionária Divinópolis (Matriz Oeste)' },
+  userStore: { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS' },
   permissions: ['*'],
   dataScope: 'all',
   customRoleName: null,
@@ -61,7 +61,11 @@ function readAuthCache(): CachedUserData | null {
     }
     const raw = localStorage.getItem(AUTH_CACHE_KEY) || sessionStorage.getItem(AUTH_CACHE_KEY);
     if (!raw) return DEFAULT_ACTIVE_ADMIN;
-    return JSON.parse(raw) as CachedUserData;
+    const parsed = JSON.parse(raw) as CachedUserData;
+    if (parsed.userId === 'dev-master-admin') {
+      return DEFAULT_ACTIVE_ADMIN;
+    }
+    return parsed;
   } catch {
     return DEFAULT_ACTIVE_ADMIN;
   }
@@ -469,7 +473,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             must_change_password: false,
           },
           roles: ['admin', 'gerente'],
-          userStore: { id: 'store-divinopolis', name: 'Concessionária Divinópolis (Matriz Oeste)' },
+          userStore: { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS' },
           permissions: ['*'],
           dataScope: 'all',
           customRoleName: null,
@@ -524,7 +528,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             must_change_password: false,
           },
           roles: ['admin'],
-          userStore: { id: 'store-divinopolis', name: 'Concessionária Divinópolis (Matriz Oeste)' },
+          userStore: { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS' },
           permissions: ['*'],
           dataScope: 'all',
           customRoleName: null,

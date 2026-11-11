@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useToast } from '@/hooks/use-toast';
 
 export interface CommissionTier {
@@ -56,6 +57,7 @@ export function useEmployees() {
   return useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
+      await ensureSupabaseSession();
       const { data, error } = await (supabase as any)
         .from('employees')
         .select('*, store:stores(id, name)')

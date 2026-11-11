@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { INITIAL_USER_BACKUP_CSV, parseBackupCsv, SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { resolveSaleStore } from '@/lib/storeResolution';
 
@@ -200,6 +201,7 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
 }
 
 async function fetchConsolidatedContracts(): Promise<Contract[]> {
+  await ensureSupabaseSession();
   const { data } = await supabase
     .from('contracts')
     .select(`

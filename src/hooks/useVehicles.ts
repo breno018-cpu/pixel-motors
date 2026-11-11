@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 
 export interface Vehicle {
   id: string;
@@ -34,13 +35,14 @@ export function useVehicles() {
   return useQuery({
     queryKey: ['vehicles'],
     queryFn: async () => {
+      await ensureSupabaseSession();
       const { data, error } = await supabase
         .from('vehicles')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Vehicle[];
+      return (data || []) as Vehicle[];
     },
   });
 }
@@ -49,6 +51,7 @@ export function useVehicleStats() {
   return useQuery({
     queryKey: ['vehicle-stats'],
     queryFn: async () => {
+      await ensureSupabaseSession();
       const { data, error } = await supabase
         .from('vehicles')
         .select('status, vehicle_type');
