@@ -184,7 +184,7 @@ export function NewInspectionDialog({
       const res = await lookupMotoByPlate(clean);
       setPlate(res.plate);
 
-      if (res.found) {
+      if (res.found === true) {
         setBrand(res.brand);
         setModel(res.model);
         setYear(res.year);

@@ -484,7 +484,7 @@ export function BarcodeScannerDialog({
                     <p className="text-[11px] text-muted-foreground max-w-xs">
                       Você pode usar um leitor de código de barras físico USB/Bluetooth ou digitar o código abaixo.
                     </p>
-                    <Button variant="secondary" size="sm" onClick={startCamera} className="mt-1 text-xs h-8">
+                    <Button variant="secondary" size="sm" onClick={() => startCamera()} className="mt-1 text-xs h-8">
                       <RefreshCw className="w-3.5 h-3.5 mr-1" /> Tentar novamente
                     </Button>
                   </div>

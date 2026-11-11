@@ -41,6 +41,7 @@ export interface MarketingLeadRadiusMapProps {
     lead_mapping?: string;
     source?: string;
     store_id?: string;
+    store_name?: string;
   }>;
   contracts?: Array<any>;
   baseCity?: string;

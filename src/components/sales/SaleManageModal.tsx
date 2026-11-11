@@ -407,7 +407,7 @@ export function SaleManageModal({
           const updated = list.map((r) => {
             if (
               r.id === sale.id ||
-              (vehicleChassis && r.chassis === vehicleChassis) ||
+              (vehicleChassis && r.chassi === vehicleChassis) ||
               r.cliente.toUpperCase().includes(buyerName.toUpperCase().slice(0, 4))
             ) {
               return {
@@ -415,7 +415,7 @@ export function SaleManageModal({
                 cliente: buyerName.trim().toUpperCase(),
                 modelo: vehicleModel || r.modelo,
                 chassi: vehicleChassis || r.chassi,
-                cor: vehicleColor || r.cor,
+                cor: vehicleColor,
                 valor: priceNum || r.valor,
                 total: priceNum || r.total,
                 pix: pixNum,
@@ -479,7 +479,7 @@ export function SaleManageModal({
     }
     const cleanPhone = rawPhone.startsWith('55') ? rawPhone : `55${rawPhone}`;
     const text = encodeURIComponent(
-      `Olá ${buyerName}! Segue o link de atendimento e a 2ª via oficial do seu contrato de compra e venda da concessionária ${currentStore?.name || 'Shineray'}.\n\n*Contrato:* ${contractNumber}\n*Veículo:* ${vehicleBrand} ${vehicleModel}\n*Valor:* ${maskCurrency(parseCurrency(salePrice))}\n\nFicamos à sua total disposição!`
+      `Olá ${buyerName}! Segue o link de atendimento e a 2ª via oficial do seu contrato de compra e venda da concessionária ${currentStore?.storeName || 'Shineray'}.\n\n*Contrato:* ${contractNumber}\n*Veículo:* ${vehicleBrand} ${vehicleModel}\n*Valor:* ${maskCurrency(parseCurrency(salePrice))}\n\nFicamos à sua total disposição!`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
   };
@@ -1062,7 +1062,7 @@ export function SaleManageModal({
                 </div>
 
                 <div className="text-xs text-muted-foreground">
-                  Loja: <strong>{currentStore?.name || 'Divinópolis'}</strong>
+                  Loja: <strong>{currentStore?.storeName || 'Divinópolis'}</strong>
                 </div>
               </div>
 

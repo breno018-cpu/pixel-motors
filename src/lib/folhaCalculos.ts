@@ -120,7 +120,7 @@ export interface FuncionarioFolhaMeta {
   __folha_meta?: boolean;
   matricula?: string;
   cargoId?: string;
-  departamento: 'VENDAS' | 'MECANICA' | 'ADMINISTRATIVO' | 'GERENCIA';
+  departamento: RegraComissaoCargo['departamento'];
   tipoContrato: 'CLT' | 'TERCEIRIZADO' | 'PJ' | 'ESTAGIO' | 'APRENDIZ';
   modeloComissaoVendedor: 'PADRAO' | 'PLUS' | 'PERCENTUAL';
   status?:

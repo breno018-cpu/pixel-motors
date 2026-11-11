@@ -52,6 +52,7 @@ export interface GeographicSalesRadiusMapProps {
     vendedor?: string;
     dateStr?: string;
     store_id?: string;
+    store_name?: string;
   }>;
   referenceStoreCity?: string;
   storeName?: string;

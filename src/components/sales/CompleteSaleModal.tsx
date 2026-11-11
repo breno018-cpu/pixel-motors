@@ -610,7 +610,7 @@ export function CompleteSaleModal({
           const list: SheetRowV9[] = JSON.parse(raw);
           const updated = list.map((r) => {
             if (
-              (vehicleChassis && r.chassis === vehicleChassis) ||
+              (vehicleChassis && r.chassi === vehicleChassis) ||
               r.cliente.toUpperCase().includes(buyerName.toUpperCase().slice(0, 5))
             ) {
               return {

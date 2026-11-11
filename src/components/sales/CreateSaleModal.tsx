@@ -746,7 +746,7 @@ export function CreateSaleModal({
                     }
                     if (veh.sale_price) {
                       const pStr = String(veh.sale_price);
-                      setSalePrice(pStr);
+                      setSaleValue(pStr);
                       if (paymentMethodCategory === 'a_vista_pix') setPixVal(pStr);
                       else if (paymentMethodCategory === 'a_vista_dinheiro') setCashVal(pStr);
                       else if (paymentMethodCategory === 'financiamento_100') setFinVal(pStr);
