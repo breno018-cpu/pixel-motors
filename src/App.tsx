@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Vehicles from "./pages/Vehicles";
+import CatalogControl from "./pages/CatalogControl";
 import Organization from "./pages/Organization";
 import Contracts from "./pages/Contracts";
 import Sales from "./pages/Sales";
@@ -68,6 +69,18 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/catalog-control"
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <CatalogControl />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/catalog-sync" element={<Navigate to="/catalog-control" replace />} />
+              <Route path="/catalogo" element={<Navigate to="/catalog-control" replace />} />
               <Route
                 path="/inspections"
                 element={

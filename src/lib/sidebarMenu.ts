@@ -40,6 +40,7 @@ export type SidebarMenuItem = {
 export const ALL_MENU_ITEMS: SidebarMenuItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/', group: 'operacao' },
   { icon: Car, label: 'Estoque', path: '/vehicles', group: 'operacao' },
+  { icon: Store, label: 'Catálogo L1MA', path: '/catalog-control', roles: ['admin', 'gerente'], group: 'operacao' },
   { icon: ShieldCheck, label: 'Investigação & Laudos', path: '/inspections', group: 'operacao' },
   { icon: ShoppingCart, label: 'Vendas', path: '/sales', group: 'operacao' },
   { icon: Truck, label: 'Logística & Entregas', path: '/logistics', group: 'operacao' },
