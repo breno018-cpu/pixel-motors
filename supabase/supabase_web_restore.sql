@@ -1,0 +1,5484 @@
+-- Supabase Web Restore - Sanitized Clean Script
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+SET check_function_bodies = false;
+
+--
+-- PostgreSQL database dump
+--
+
+
+-- Dumped from database version 17.6
+-- Dumped by pg_dump version 18.6 (Debian 18.6-3)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+ALTER TABLE IF EXISTS ONLY public.vehicles DROP CONSTRAINT IF EXISTS vehicles_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.vehicles DROP CONSTRAINT IF EXISTS vehicles_reseller_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.vehicle_colors DROP CONSTRAINT IF EXISTS vehicle_colors_vehicle_model_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_roles DROP CONSTRAINT IF EXISTS user_roles_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_roles DROP CONSTRAINT IF EXISTS user_roles_custom_role_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stores DROP CONSTRAINT IF EXISTS stores_manager_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.store_ads DROP CONSTRAINT IF EXISTS store_ads_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_vehicle_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_to_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_to_reseller_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_from_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_from_reseller_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_created_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.sales_targets DROP CONSTRAINT IF EXISTS sales_targets_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.role_permissions DROP CONSTRAINT IF EXISTS role_permissions_role_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.resellers DROP CONSTRAINT IF EXISTS resellers_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.resellers DROP CONSTRAINT IF EXISTS resellers_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.reseller_consignment_contracts DROP CONSTRAINT IF EXISTS reseller_consignment_contracts_vehicle_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.reseller_consignment_contracts DROP CONSTRAINT IF EXISTS reseller_consignment_contracts_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.reseller_consignment_contracts DROP CONSTRAINT IF EXISTS reseller_consignment_contracts_reseller_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.reseller_consignment_contracts DROP CONSTRAINT IF EXISTS reseller_consignment_contracts_created_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.profiles DROP CONSTRAINT IF EXISTS profiles_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.payslips DROP CONSTRAINT IF EXISTS payslips_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.payslips DROP CONSTRAINT IF EXISTS payslips_employee_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.payslips DROP CONSTRAINT IF EXISTS payslips_batch_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.payroll_batches DROP CONSTRAINT IF EXISTS payroll_batches_created_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.payroll_batches DROP CONSTRAINT IF EXISTS payroll_batches_closed_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.eula_acceptances DROP CONSTRAINT IF EXISTS eula_acceptances_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.employees DROP CONSTRAINT IF EXISTS employees_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.employees DROP CONSTRAINT IF EXISTS employees_profile_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.contracts DROP CONSTRAINT IF EXISTS contracts_vehicle_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.contracts DROP CONSTRAINT IF EXISTS contracts_template_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.contracts DROP CONSTRAINT IF EXISTS contracts_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.contracts DROP CONSTRAINT IF EXISTS contracts_reseller_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.contracts DROP CONSTRAINT IF EXISTS contracts_ad_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.contract_templates DROP CONSTRAINT IF EXISTS contract_templates_updated_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.contract_templates DROP CONSTRAINT IF EXISTS contract_templates_store_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.contract_templates DROP CONSTRAINT IF EXISTS contract_templates_created_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.contract_revisions DROP CONSTRAINT IF EXISTS contract_revisions_contract_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.contract_revisions DROP CONSTRAINT IF EXISTS contract_revisions_changed_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.contract_acceptances DROP CONSTRAINT IF EXISTS contract_acceptances_created_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.contract_acceptances DROP CONSTRAINT IF EXISTS contract_acceptances_contract_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.activity_logs DROP CONSTRAINT IF EXISTS activity_logs_user_id_fkey;
+DROP INDEX IF EXISTS public.vehicle_models_unique_idx;
+DROP INDEX IF EXISTS public.vehicle_colors_unique_name;
+DROP INDEX IF EXISTS public.idx_vehicles_reseller_id;
+DROP INDEX IF EXISTS public.idx_store_ads_store;
+DROP INDEX IF EXISTS public.idx_payslips_batch;
+DROP INDEX IF EXISTS public.idx_contracts_review_status;
+DROP INDEX IF EXISTS public.idx_contracts_ad;
+DROP INDEX IF EXISTS public.idx_activity_logs_entity;
+DROP INDEX IF EXISTS public.idx_activity_logs_created_at;
+DROP INDEX IF EXISTS public.financing_banks_name_key;
+DROP INDEX IF EXISTS public.employees_profile_id_unique;
+DROP INDEX IF EXISTS public.contracts_sale_group_id_idx;
+DROP INDEX IF EXISTS public.contracts_sale_channel_idx;
+DROP INDEX IF EXISTS public.contract_acceptances_contract_id_idx;
+DROP INDEX IF EXISTS public.chassis_year_codes_code_brand_idx;
+ALTER TABLE IF EXISTS ONLY public.vehicles DROP CONSTRAINT IF EXISTS vehicles_plate_key;
+ALTER TABLE IF EXISTS ONLY public.vehicles DROP CONSTRAINT IF EXISTS vehicles_pkey;
+ALTER TABLE IF EXISTS ONLY public.vehicles DROP CONSTRAINT IF EXISTS vehicles_chassis_key;
+ALTER TABLE IF EXISTS ONLY public.vehicle_reservations DROP CONSTRAINT IF EXISTS vehicle_reservations_reservation_number_key;
+ALTER TABLE IF EXISTS ONLY public.vehicle_reservations DROP CONSTRAINT IF EXISTS vehicle_reservations_pkey;
+ALTER TABLE IF EXISTS ONLY public.vehicle_models DROP CONSTRAINT IF EXISTS vehicle_models_pkey;
+ALTER TABLE IF EXISTS ONLY public.vehicle_colors DROP CONSTRAINT IF EXISTS vehicle_colors_pkey;
+ALTER TABLE IF EXISTS ONLY public.user_roles DROP CONSTRAINT IF EXISTS user_roles_user_id_role_key;
+ALTER TABLE IF EXISTS ONLY public.user_roles DROP CONSTRAINT IF EXISTS user_roles_pkey;
+ALTER TABLE IF EXISTS ONLY public.stores DROP CONSTRAINT IF EXISTS stores_pkey;
+ALTER TABLE IF EXISTS ONLY public.store_ads DROP CONSTRAINT IF EXISTS store_ads_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_sync_config DROP CONSTRAINT IF EXISTS stock_sync_config_pkey;
+ALTER TABLE IF EXISTS ONLY public.sales_targets DROP CONSTRAINT IF EXISTS sales_targets_pkey;
+ALTER TABLE IF EXISTS ONLY public.role_permissions DROP CONSTRAINT IF EXISTS role_permissions_role_id_permission_key;
+ALTER TABLE IF EXISTS ONLY public.role_permissions DROP CONSTRAINT IF EXISTS role_permissions_pkey;
+ALTER TABLE IF EXISTS ONLY public.resellers DROP CONSTRAINT IF EXISTS resellers_pkey;
+ALTER TABLE IF EXISTS ONLY public.resellers DROP CONSTRAINT IF EXISTS resellers_cpf_key;
+ALTER TABLE IF EXISTS ONLY public.reseller_consignment_contracts DROP CONSTRAINT IF EXISTS reseller_consignment_contracts_pkey;
+ALTER TABLE IF EXISTS ONLY public.profiles DROP CONSTRAINT IF EXISTS profiles_pkey;
+ALTER TABLE IF EXISTS ONLY public.payslips DROP CONSTRAINT IF EXISTS payslips_pkey;
+ALTER TABLE IF EXISTS ONLY public.payslips DROP CONSTRAINT IF EXISTS payslips_employee_id_reference_month_reference_year_key;
+ALTER TABLE IF EXISTS ONLY public.payroll_settings DROP CONSTRAINT IF EXISTS payroll_settings_pkey;
+ALTER TABLE IF EXISTS ONLY public.payroll_batches DROP CONSTRAINT IF EXISTS payroll_batches_year_month_key;
+ALTER TABLE IF EXISTS ONLY public.payroll_batches DROP CONSTRAINT IF EXISTS payroll_batches_pkey;
+ALTER TABLE IF EXISTS ONLY public.invoices DROP CONSTRAINT IF EXISTS invoices_pkey;
+ALTER TABLE IF EXISTS ONLY public.financing_simulations DROP CONSTRAINT IF EXISTS financing_simulations_pkey;
+ALTER TABLE IF EXISTS ONLY public.financing_banks DROP CONSTRAINT IF EXISTS financing_banks_pkey;
+ALTER TABLE IF EXISTS ONLY public.eula_acceptances DROP CONSTRAINT IF EXISTS eula_acceptances_user_id_version_key;
+ALTER TABLE IF EXISTS ONLY public.eula_acceptances DROP CONSTRAINT IF EXISTS eula_acceptances_pkey;
+ALTER TABLE IF EXISTS ONLY public.employees DROP CONSTRAINT IF EXISTS employees_pkey;
+ALTER TABLE IF EXISTS ONLY public.custom_roles DROP CONSTRAINT IF EXISTS custom_roles_system_key_key;
+ALTER TABLE IF EXISTS ONLY public.custom_roles DROP CONSTRAINT IF EXISTS custom_roles_pkey;
+ALTER TABLE IF EXISTS ONLY public.contracts DROP CONSTRAINT IF EXISTS contracts_pkey;
+ALTER TABLE IF EXISTS ONLY public.contracts DROP CONSTRAINT IF EXISTS contracts_contract_number_key;
+ALTER TABLE IF EXISTS ONLY public.contract_templates DROP CONSTRAINT IF EXISTS contract_templates_pkey;
+ALTER TABLE IF EXISTS ONLY public.contract_templates DROP CONSTRAINT IF EXISTS contract_templates_name_template_type_key;
+ALTER TABLE IF EXISTS ONLY public.contract_revisions DROP CONSTRAINT IF EXISTS contract_revisions_pkey;
+ALTER TABLE IF EXISTS ONLY public.contract_revisions DROP CONSTRAINT IF EXISTS contract_revisions_contract_id_revision_number_key;
+ALTER TABLE IF EXISTS ONLY public.contract_acceptances DROP CONSTRAINT IF EXISTS contract_acceptances_pkey;
+ALTER TABLE IF EXISTS ONLY public.contract_acceptances DROP CONSTRAINT IF EXISTS contract_acceptances_acceptance_token_key;
+ALTER TABLE IF EXISTS ONLY public.chassis_year_codes DROP CONSTRAINT IF EXISTS chassis_year_codes_pkey;
+ALTER TABLE IF EXISTS ONLY public.chassis_patterns DROP CONSTRAINT IF EXISTS chassis_patterns_pkey;
+ALTER TABLE IF EXISTS ONLY public.bank_credentials DROP CONSTRAINT IF EXISTS bank_credentials_store_id_bank_code_key;
+ALTER TABLE IF EXISTS ONLY public.bank_credentials DROP CONSTRAINT IF EXISTS bank_credentials_pkey;
+ALTER TABLE IF EXISTS ONLY public.api_keys DROP CONSTRAINT IF EXISTS api_keys_pkey;
+ALTER TABLE IF EXISTS ONLY public.api_keys DROP CONSTRAINT IF EXISTS api_keys_key_hash_key;
+ALTER TABLE IF EXISTS ONLY public.activity_logs DROP CONSTRAINT IF EXISTS activity_logs_pkey;
+DROP TABLE IF EXISTS public.vehicles CASCADE;
+DROP TABLE IF EXISTS public.vehicle_reservations CASCADE;
+DROP TABLE IF EXISTS public.vehicle_models CASCADE;
+DROP TABLE IF EXISTS public.vehicle_colors CASCADE;
+DROP TABLE IF EXISTS public.user_roles CASCADE;
+DROP TABLE IF EXISTS public.stores CASCADE;
+DROP TABLE IF EXISTS public.store_ads CASCADE;
+DROP TABLE IF EXISTS public.stock_transfers CASCADE;
+DROP TABLE IF EXISTS public.stock_sync_config CASCADE;
+DROP TABLE IF EXISTS public.sales_targets CASCADE;
+DROP TABLE IF EXISTS public.role_permissions CASCADE;
+DROP TABLE IF EXISTS public.resellers CASCADE;
+DROP TABLE IF EXISTS public.reseller_consignment_contracts CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+DROP TABLE IF EXISTS public.payslips CASCADE;
+DROP TABLE IF EXISTS public.payroll_settings CASCADE;
+DROP TABLE IF EXISTS public.payroll_batches CASCADE;
+DROP TABLE IF EXISTS public.invoices CASCADE;
+DROP TABLE IF EXISTS public.financing_simulations CASCADE;
+DROP TABLE IF EXISTS public.financing_banks CASCADE;
+DROP TABLE IF EXISTS public.eula_acceptances CASCADE;
+DROP TABLE IF EXISTS public.employees CASCADE;
+DROP TABLE IF EXISTS public.custom_roles CASCADE;
+DROP TABLE IF EXISTS public.contracts CASCADE;
+DROP TABLE IF EXISTS public.contract_templates CASCADE;
+DROP TABLE IF EXISTS public.contract_revisions CASCADE;
+DROP TABLE IF EXISTS public.contract_acceptances CASCADE;
+DROP TABLE IF EXISTS public.chassis_year_codes CASCADE;
+DROP TABLE IF EXISTS public.chassis_patterns CASCADE;
+DROP TABLE IF EXISTS public.bank_credentials CASCADE;
+DROP TABLE IF EXISTS public.api_keys CASCADE;
+DROP TABLE IF EXISTS public.activity_logs CASCADE;
+DROP FUNCTION IF EXISTS public.user_data_scope(_user_id uuid);
+DROP FUNCTION IF EXISTS public.update_updated_at_column();
+DROP FUNCTION IF EXISTS public.sync_vehicle_status_from_reservation();
+DROP FUNCTION IF EXISTS public.notify_stock_sync();
+DROP FUNCTION IF EXISTS public.normalize_contract_payment_values();
+DROP FUNCTION IF EXISTS public.is_external_seller(_user_id uuid);
+DROP FUNCTION IF EXISTS public.has_role(_user_id uuid, _role public.app_role);
+DROP FUNCTION IF EXISTS public.has_permission(_user_id uuid, _perm text);
+DROP FUNCTION IF EXISTS public.has_elevated_access(_user_id uuid);
+DROP FUNCTION IF EXISTS public.handle_new_user();
+DROP FUNCTION IF EXISTS public.get_user_store_id(_user_id uuid);
+DROP FUNCTION IF EXISTS public.can_register_vehicles(_user_id uuid);
+DROP FUNCTION IF EXISTS public.can_create_sales(_user_id uuid);
+DROP FUNCTION IF EXISTS public.apply_stock_transfer();
+DROP TYPE IF EXISTS public.contract_template_type;
+DROP TYPE IF EXISTS public.app_role;
+--
+-- Name: app_role; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.app_role AS ENUM (
+    'admin',
+    'gerente',
+    'revendedor',
+    'visualizador',
+    'vendedor',
+    'vendedor_plus',
+    'vendedor_externo'
+);
+
+
+ALTER TYPE public.app_role OWNER TO postgres;
+
+--
+-- Name: contract_template_type; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.contract_template_type AS ENUM (
+    'venda_carro',
+    'venda_moto',
+    'repasse',
+    'generico',
+    'reserva'
+);
+
+
+ALTER TYPE public.contract_template_type OWNER TO postgres;
+
+--
+-- Name: apply_stock_transfer(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.apply_stock_transfer() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+  IF NEW.status = 'concluida' AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM 'concluida') THEN
+    IF NEW.transfer_type = 'parceiro_externo' THEN
+      UPDATE public.vehicles SET status = 'transferido' WHERE id = NEW.vehicle_id;
+    ELSE
+      UPDATE public.vehicles
+      SET store_id = COALESCE(NEW.to_store_id, store_id),
+          reseller_id = CASE WHEN NEW.transfer_type = 'revendedor_para_loja' THEN NULL ELSE COALESCE(NEW.to_reseller_id, reseller_id) END
+      WHERE id = NEW.vehicle_id;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.apply_stock_transfer() OWNER TO postgres;
+
+--
+-- Name: can_create_sales(uuid); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.can_create_sales(_user_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT public.has_permission(_user_id,'sales.create') OR EXISTS (
+    SELECT 1 FROM public.user_roles WHERE user_id=_user_id AND custom_role_id IS NULL
+      AND role::text IN ('admin','gerente','vendedor','vendedor_plus','vendedor_externo'))
+$$;
+
+
+ALTER FUNCTION public.can_create_sales(_user_id uuid) OWNER TO postgres;
+
+--
+-- Name: can_register_vehicles(uuid); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.can_register_vehicles(_user_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT public.has_elevated_access(_user_id) OR public.has_permission(_user_id,'vehicles.create') OR EXISTS (
+    SELECT 1 FROM public.user_roles WHERE user_id=_user_id AND custom_role_id IS NULL
+      AND role::text IN ('vendedor','vendedor_plus','vendedor_externo'))
+$$;
+
+
+ALTER FUNCTION public.can_register_vehicles(_user_id uuid) OWNER TO postgres;
+
+--
+-- Name: get_user_store_id(uuid); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.get_user_store_id(_user_id uuid) RETURNS uuid
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT COALESCE(
+    (SELECT store_id FROM public.employees
+      WHERE profile_id = _user_id AND is_active AND store_id IS NOT NULL LIMIT 1),
+    (SELECT store_id FROM public.resellers
+      WHERE user_id = _user_id AND store_id IS NOT NULL LIMIT 1)
+  )
+$$;
+
+
+ALTER FUNCTION public.get_user_store_id(_user_id uuid) OWNER TO postgres;
+
+--
+-- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.handle_new_user() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, email)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data ->> 'full_name', NEW.email),
+    NEW.email
+  );
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.handle_new_user() OWNER TO postgres;
+
+--
+-- Name: has_elevated_access(uuid); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.has_elevated_access(_user_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT public.has_role(_user_id,'admin') OR public.has_permission(_user_id,'access.elevated')
+    OR EXISTS (SELECT 1 FROM public.user_roles WHERE user_id=_user_id AND role='gerente' AND custom_role_id IS NULL)
+$$;
+
+
+ALTER FUNCTION public.has_elevated_access(_user_id uuid) OWNER TO postgres;
+
+--
+-- Name: has_permission(uuid, text); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.has_permission(_user_id uuid, _perm text) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT public.has_role(_user_id,'admin') OR EXISTS (
+    SELECT 1 FROM public.user_roles ur
+    JOIN public.custom_roles cr ON cr.id = ur.custom_role_id AND cr.is_active
+    JOIN public.role_permissions rp ON rp.role_id = cr.id
+    WHERE ur.user_id = _user_id AND rp.permission = _perm)
+$$;
+
+
+ALTER FUNCTION public.has_permission(_user_id uuid, _perm text) OWNER TO postgres;
+
+--
+-- Name: has_role(uuid, public.app_role); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.has_role(_user_id uuid, _role public.app_role) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles
+    WHERE user_id = _user_id
+      AND role = _role
+  )
+$$;
+
+
+ALTER FUNCTION public.has_role(_user_id uuid, _role public.app_role) OWNER TO postgres;
+
+--
+-- Name: is_external_seller(uuid); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.is_external_seller(_user_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = _user_id
+      AND role::text = 'vendedor_externo'
+  )
+$$;
+
+
+ALTER FUNCTION public.is_external_seller(_user_id uuid) OWNER TO postgres;
+
+--
+-- Name: normalize_contract_payment_values(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.normalize_contract_payment_values() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+  NEW.down_payment_pix := COALESCE(NEW.down_payment_pix, 0);
+  NEW.down_payment_cash := COALESCE(NEW.down_payment_cash, 0);
+  NEW.down_payment_card := COALESCE(NEW.down_payment_card, 0);
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.normalize_contract_payment_values() OWNER TO postgres;
+
+--
+-- Name: notify_stock_sync(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.notify_stock_sync() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'extensions'
+    AS $$
+DECLARE
+  cfg record;
+BEGIN
+  SELECT enabled, function_url, function_token, spreadsheet_id
+    INTO cfg
+  FROM public.stock_sync_config
+  LIMIT 1;
+
+  IF cfg IS NULL OR NOT cfg.enabled OR cfg.function_url IS NULL OR cfg.spreadsheet_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  PERFORM extensions.http_post(
+    url := cfg.function_url,
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || COALESCE(cfg.function_token, '')
+    ),
+    body := jsonb_build_object('action', 'push')
+  );
+  RETURN NULL;
+EXCEPTION WHEN OTHERS THEN
+  RETURN NULL;
+END;
+$$;
+
+
+ALTER FUNCTION public.notify_stock_sync() OWNER TO postgres;
+
+--
+-- Name: sync_vehicle_status_from_reservation(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.sync_vehicle_status_from_reservation() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE public.vehicles SET status = 'reservado' WHERE id = NEW.vehicle_id;
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF NEW.status = 'cancelada' AND OLD.status <> 'cancelada' THEN
+      UPDATE public.vehicles SET status = 'disponivel' WHERE id = NEW.vehicle_id;
+    ELSIF NEW.status = 'convertida' AND OLD.status <> 'convertida' THEN
+      UPDATE public.vehicles SET status = 'vendido' WHERE id = NEW.vehicle_id;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.sync_vehicle_status_from_reservation() OWNER TO postgres;
+
+--
+-- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.update_updated_at_column() OWNER TO postgres;
+
+--
+-- Name: user_data_scope(uuid); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.user_data_scope(_user_id uuid) RETURNS text
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT CASE WHEN public.has_role(_user_id,'admin') THEN 'all' ELSE COALESCE((
+    SELECT CASE MAX(CASE cr.data_scope WHEN 'all' THEN 3 WHEN 'store' THEN 2 ELSE 1 END)
+      WHEN 3 THEN 'all' WHEN 2 THEN 'store' ELSE 'own' END
+    FROM public.user_roles ur JOIN public.custom_roles cr ON cr.id = ur.custom_role_id AND cr.is_active
+    WHERE ur.user_id = _user_id), 'own') END
+$$;
+
+
+ALTER FUNCTION public.user_data_scope(_user_id uuid) OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: activity_logs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.activity_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid,
+    action text NOT NULL,
+    entity_type text,
+    entity_id uuid,
+    details jsonb,
+    ip_address text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.activity_logs OWNER TO postgres;
+
+--
+-- Name: api_keys; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.api_keys (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    key_prefix text NOT NULL,
+    key_hash text NOT NULL,
+    scopes text[] DEFAULT ARRAY['read'::text] NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    last_used_at timestamp with time zone,
+    expires_at timestamp with time zone,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.api_keys OWNER TO postgres;
+
+--
+-- Name: bank_credentials; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.bank_credentials (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    store_id uuid NOT NULL,
+    bank_code text NOT NULL,
+    bank_name text NOT NULL,
+    client_id text,
+    client_secret text,
+    api_environment text DEFAULT 'sandbox'::text NOT NULL,
+    partner_code text,
+    extra_config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.bank_credentials OWNER TO postgres;
+
+--
+-- Name: chassis_patterns; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.chassis_patterns (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    wmi_code text NOT NULL,
+    brand text NOT NULL,
+    vehicle_type text DEFAULT 'moto'::text NOT NULL,
+    model_pattern text,
+    model_name text,
+    engine_cc integer,
+    fuel_type text DEFAULT 'Flex'::text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    transmission text,
+    warranty_months integer,
+    service_interval_months integer,
+    service_interval_km integer,
+    default_purchase_price numeric,
+    default_sale_price numeric
+);
+
+
+ALTER TABLE public.chassis_patterns OWNER TO postgres;
+
+--
+-- Name: chassis_year_codes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.chassis_year_codes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    year_code text NOT NULL,
+    model_year integer NOT NULL,
+    brand text,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    manufacture_year integer
+);
+
+
+ALTER TABLE public.chassis_year_codes OWNER TO postgres;
+
+--
+-- Name: contract_acceptances; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.contract_acceptances (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    contract_id uuid NOT NULL,
+    acceptance_token uuid DEFAULT gen_random_uuid() NOT NULL,
+    revision_number integer DEFAULT 1 NOT NULL,
+    accepted_at timestamp with time zone,
+    accepted_ip text,
+    accepted_user_agent text,
+    buyer_name_typed text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid
+);
+
+
+ALTER TABLE public.contract_acceptances OWNER TO postgres;
+
+--
+-- Name: contract_revisions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.contract_revisions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    contract_id uuid NOT NULL,
+    revision_number integer NOT NULL,
+    active_clause_ids text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    clause_variables jsonb DEFAULT '{}'::jsonb NOT NULL,
+    change_reason text,
+    changed_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.contract_revisions OWNER TO postgres;
+
+--
+-- Name: contract_templates; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.contract_templates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    template_type public.contract_template_type NOT NULL,
+    is_active boolean DEFAULT false NOT NULL,
+    version integer DEFAULT 1 NOT NULL,
+    header_content text,
+    body_content text NOT NULL,
+    clauses_content text,
+    signature_content text,
+    fixed_clauses text[] DEFAULT ARRAY[]::text[],
+    store_id uuid,
+    created_by uuid,
+    updated_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    logo_url text,
+    watermark_url text,
+    signature_url text,
+    watermark_opacity numeric DEFAULT 0.10 NOT NULL,
+    optional_clauses jsonb DEFAULT '[]'::jsonb NOT NULL,
+    vehicle_types text[] DEFAULT ARRAY['carro'::text, 'moto'::text] NOT NULL,
+    clause_categories text[] DEFAULT ARRAY['Fiscal'::text, 'Garantia'::text, 'Financeiro'::text, 'Documentação'::text, 'Outros'::text] NOT NULL
+);
+
+
+ALTER TABLE public.contract_templates OWNER TO postgres;
+
+--
+-- Name: contracts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.contracts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    contract_number text NOT NULL,
+    vehicle_id uuid NOT NULL,
+    reseller_id uuid,
+    store_id uuid NOT NULL,
+    buyer_name text NOT NULL,
+    buyer_cpf text NOT NULL,
+    buyer_phone text,
+    buyer_email text,
+    buyer_address text,
+    sale_price numeric(12,2) NOT NULL,
+    down_payment numeric(12,2) DEFAULT 0,
+    installments integer DEFAULT 1,
+    installment_value numeric(12,2),
+    status text DEFAULT 'pendente'::text NOT NULL,
+    signed_at timestamp with time zone,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    signed_contract_url text,
+    template_id uuid,
+    contract_type text DEFAULT 'venda'::text,
+    created_by uuid,
+    financing_bank text,
+    active_clause_ids text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    clause_variables jsonb DEFAULT '{}'::jsonb NOT NULL,
+    revision_number integer DEFAULT 1 NOT NULL,
+    payment_method text,
+    down_payment_pix numeric DEFAULT 0 NOT NULL,
+    down_payment_cash numeric DEFAULT 0 NOT NULL,
+    down_payment_card numeric DEFAULT 0 NOT NULL,
+    down_payment_card_installments integer,
+    financing_installments integer,
+    financing_installment_value numeric,
+    lead_source text,
+    lead_source_detail text,
+    review_status text DEFAULT 'ok'::text NOT NULL,
+    review_note text,
+    review_requested_by uuid,
+    review_requested_at timestamp with time zone,
+    review_resolved_by uuid,
+    review_resolved_at timestamp with time zone,
+    review_response text,
+    ad_id uuid,
+    campaign_name text,
+    sale_group_id uuid,
+    sale_channel text DEFAULT 'interna'::text NOT NULL,
+    evidence_paths text[] DEFAULT '{}'::text[] NOT NULL,
+    external_data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT contracts_review_status_check CHECK ((review_status = ANY (ARRAY['ok'::text, 'questionada'::text, 'corrigida'::text]))),
+    CONSTRAINT contracts_status_check CHECK ((status = ANY (ARRAY['pre_venda'::text, 'pendente'::text, 'assinado'::text, 'cancelado'::text, 'concluido'::text])))
+);
+
+
+ALTER TABLE public.contracts OWNER TO postgres;
+
+--
+-- Name: custom_roles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.custom_roles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    description text,
+    color text DEFAULT 'neutral'::text NOT NULL,
+    data_scope text DEFAULT 'own'::text NOT NULL,
+    system_key text,
+    base_role public.app_role DEFAULT 'visualizador'::public.app_role NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT custom_roles_data_scope_check CHECK ((data_scope = ANY (ARRAY['own'::text, 'store'::text, 'all'::text])))
+);
+
+
+ALTER TABLE public.custom_roles OWNER TO postgres;
+
+--
+-- Name: employees; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.employees (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    profile_id uuid,
+    store_id uuid,
+    full_name text NOT NULL,
+    cpf text,
+    role text DEFAULT 'funcionario'::text NOT NULL,
+    "position" text,
+    base_salary numeric DEFAULT 0 NOT NULL,
+    commission_rate numeric DEFAULT 0 NOT NULL,
+    hire_date date,
+    phone text,
+    email text,
+    pix_key text,
+    bank_info text,
+    is_active boolean DEFAULT true NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    commission_tiers jsonb DEFAULT '[]'::jsonb NOT NULL,
+    commission_type text DEFAULT 'percentage'::text NOT NULL,
+    manager_commission_rate numeric DEFAULT 0 NOT NULL,
+    transport_allowance numeric DEFAULT 0 NOT NULL,
+    meal_allowance numeric DEFAULT 0 NOT NULL,
+    other_allowance numeric DEFAULT 0 NOT NULL,
+    salary_additions jsonb DEFAULT '[]'::jsonb NOT NULL
+);
+
+
+ALTER TABLE public.employees OWNER TO postgres;
+
+--
+-- Name: eula_acceptances; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.eula_acceptances (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    version text NOT NULL,
+    accepted_at timestamp with time zone DEFAULT now() NOT NULL,
+    accepted_ip text,
+    user_agent text,
+    full_name_typed text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.eula_acceptances OWNER TO postgres;
+
+--
+-- Name: financing_banks; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.financing_banks (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    lien_holder text
+);
+
+
+ALTER TABLE public.financing_banks OWNER TO postgres;
+
+--
+-- Name: financing_simulations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.financing_simulations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    store_id uuid NOT NULL,
+    vehicle_id uuid,
+    bank_code text NOT NULL,
+    customer_name text NOT NULL,
+    customer_document text NOT NULL,
+    customer_phone text,
+    customer_email text,
+    customer_income numeric,
+    customer_birthdate date,
+    vehicle_value numeric NOT NULL,
+    down_payment numeric DEFAULT 0 NOT NULL,
+    installments integer NOT NULL,
+    financed_amount numeric NOT NULL,
+    monthly_rate numeric,
+    installment_value numeric,
+    total_amount numeric,
+    cet numeric,
+    status text DEFAULT 'pendente'::text NOT NULL,
+    response_data jsonb,
+    error_message text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.financing_simulations OWNER TO postgres;
+
+--
+-- Name: invoices; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.invoices (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    invoice_number text NOT NULL,
+    invoice_type text DEFAULT 'servico'::text NOT NULL,
+    issue_date date DEFAULT CURRENT_DATE NOT NULL,
+    store_id uuid,
+    customer_name text NOT NULL,
+    customer_document text,
+    customer_address text,
+    customer_email text,
+    customer_phone text,
+    items jsonb DEFAULT '[]'::jsonb NOT NULL,
+    subtotal numeric DEFAULT 0 NOT NULL,
+    tax_rate numeric DEFAULT 0 NOT NULL,
+    tax_value numeric DEFAULT 0 NOT NULL,
+    total numeric DEFAULT 0 NOT NULL,
+    status text DEFAULT 'emitida'::text NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.invoices OWNER TO postgres;
+
+--
+-- Name: payroll_batches; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payroll_batches (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    month smallint NOT NULL,
+    year smallint NOT NULL,
+    status text DEFAULT 'rascunho'::text NOT NULL,
+    total_bruto numeric(12,2) DEFAULT 0 NOT NULL,
+    total_liquido numeric(12,2) DEFAULT 0 NOT NULL,
+    total_encargos numeric(12,2) DEFAULT 0 NOT NULL,
+    employee_count integer DEFAULT 0 NOT NULL,
+    closed_at timestamp with time zone,
+    closed_by uuid,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT payroll_batches_month_check CHECK (((month >= 1) AND (month <= 12))),
+    CONSTRAINT payroll_batches_status_check CHECK ((status = ANY (ARRAY['rascunho'::text, 'aprovado'::text, 'fechado'::text]))),
+    CONSTRAINT payroll_batches_year_check CHECK (((year >= 2020) AND (year <= 2100)))
+);
+
+
+ALTER TABLE public.payroll_batches OWNER TO postgres;
+
+--
+-- Name: payroll_settings; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payroll_settings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    closing_day smallint DEFAULT 30 NOT NULL,
+    reminder_days_before smallint DEFAULT 5 NOT NULL,
+    auto_reminder_enabled boolean DEFAULT true NOT NULL,
+    default_dependents smallint DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.payroll_settings OWNER TO postgres;
+
+--
+-- Name: payslips; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.payslips (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    payslip_number text NOT NULL,
+    employee_id uuid NOT NULL,
+    store_id uuid,
+    reference_month integer NOT NULL,
+    reference_year integer NOT NULL,
+    base_salary numeric DEFAULT 0 NOT NULL,
+    commission_amount numeric DEFAULT 0 NOT NULL,
+    commission_sales_total numeric DEFAULT 0 NOT NULL,
+    bonus numeric DEFAULT 0 NOT NULL,
+    overtime numeric DEFAULT 0 NOT NULL,
+    inss_discount numeric DEFAULT 0 NOT NULL,
+    irrf_discount numeric DEFAULT 0 NOT NULL,
+    other_discounts numeric DEFAULT 0 NOT NULL,
+    net_total numeric DEFAULT 0 NOT NULL,
+    payment_date date,
+    payment_method text,
+    status text DEFAULT 'pendente'::text NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    transport_allowance numeric DEFAULT 0 NOT NULL,
+    meal_allowance numeric DEFAULT 0 NOT NULL,
+    other_allowance numeric DEFAULT 0 NOT NULL,
+    manager_commission numeric DEFAULT 0 NOT NULL,
+    additions jsonb DEFAULT '[]'::jsonb NOT NULL,
+    batch_id uuid,
+    breakdown jsonb DEFAULT '{}'::jsonb,
+    sent_email_at timestamp with time zone,
+    sent_whatsapp_at timestamp with time zone,
+    CONSTRAINT payslips_reference_month_check CHECK (((reference_month >= 1) AND (reference_month <= 12)))
+);
+
+
+ALTER TABLE public.payslips OWNER TO postgres;
+
+--
+-- Name: profiles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.profiles (
+    id uuid NOT NULL,
+    full_name text NOT NULL,
+    email text NOT NULL,
+    phone text,
+    avatar_url text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    must_change_password boolean DEFAULT false
+);
+
+
+ALTER TABLE public.profiles OWNER TO postgres;
+
+--
+-- Name: reseller_consignment_contracts; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.reseller_consignment_contracts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    vehicle_id uuid NOT NULL,
+    reseller_id uuid NOT NULL,
+    store_id uuid NOT NULL,
+    vehicle_cost numeric NOT NULL,
+    payment_type text DEFAULT 'percentage'::text NOT NULL,
+    upfront_percentage numeric DEFAULT 0,
+    upfront_amount numeric DEFAULT 0,
+    remaining_percentage numeric DEFAULT 0,
+    remaining_amount numeric DEFAULT 0,
+    full_payment_amount numeric DEFAULT 0,
+    upfront_paid boolean DEFAULT false,
+    upfront_paid_at timestamp with time zone,
+    remaining_paid boolean DEFAULT false,
+    remaining_paid_at timestamp with time zone,
+    status text DEFAULT 'ativo'::text NOT NULL,
+    terms text,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.reseller_consignment_contracts OWNER TO postgres;
+
+--
+-- Name: resellers; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.resellers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid,
+    store_id uuid,
+    full_name text NOT NULL,
+    cpf text,
+    phone text,
+    email text,
+    commission_rate numeric(5,2) DEFAULT 0,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    partner_type text DEFAULT 'parceiro_externo'::text NOT NULL,
+    CONSTRAINT resellers_partner_type_check CHECK ((partner_type = ANY (ARRAY['parceiro_externo'::text, 'consignado'::text, 'interno'::text])))
+);
+
+
+ALTER TABLE public.resellers OWNER TO postgres;
+
+--
+-- Name: role_permissions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.role_permissions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    role_id uuid NOT NULL,
+    permission text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.role_permissions OWNER TO postgres;
+
+--
+-- Name: sales_targets; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.sales_targets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    store_id uuid,
+    user_id uuid,
+    month smallint NOT NULL,
+    year smallint NOT NULL,
+    target_qty integer DEFAULT 0 NOT NULL,
+    target_value numeric DEFAULT 0 NOT NULL,
+    bonus_on_target numeric DEFAULT 0 NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.sales_targets OWNER TO postgres;
+
+--
+-- Name: stock_sync_config; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.stock_sync_config (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    spreadsheet_id text,
+    sheet_name text DEFAULT 'Estoque'::text NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    function_url text,
+    function_token text,
+    last_pushed_at timestamp with time zone,
+    last_pulled_at timestamp with time zone,
+    last_error text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.stock_sync_config OWNER TO postgres;
+
+--
+-- Name: stock_transfers; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.stock_transfers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    vehicle_id uuid NOT NULL,
+    transfer_type text DEFAULT 'loja_para_revendedor'::text NOT NULL,
+    from_store_id uuid,
+    to_store_id uuid,
+    from_reseller_id uuid,
+    to_reseller_id uuid,
+    partner_name text,
+    agreed_amount numeric DEFAULT 0 NOT NULL,
+    received_amount numeric DEFAULT 0 NOT NULL,
+    status text DEFAULT 'pendente'::text NOT NULL,
+    transfer_date date DEFAULT CURRENT_DATE NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT stock_transfers_status_check CHECK ((status = ANY (ARRAY['pendente'::text, 'concluida'::text, 'cancelada'::text]))),
+    CONSTRAINT stock_transfers_transfer_type_check CHECK ((transfer_type = ANY (ARRAY['loja_para_loja'::text, 'loja_para_revendedor'::text, 'revendedor_para_loja'::text, 'parceiro_externo'::text])))
+);
+
+
+ALTER TABLE public.stock_transfers OWNER TO postgres;
+
+--
+-- Name: store_ads; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.store_ads (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    store_id uuid NOT NULL,
+    campaign_name text NOT NULL,
+    title text NOT NULL,
+    platform text DEFAULT 'instagram'::text NOT NULL,
+    image_url text,
+    caption text,
+    ad_url text,
+    started_at date,
+    ended_at date,
+    budget_spent numeric DEFAULT 0 NOT NULL,
+    status text DEFAULT 'ativo'::text NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.store_ads OWNER TO postgres;
+
+--
+-- Name: stores; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.stores (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    address text,
+    city text,
+    state text,
+    phone text,
+    email text,
+    manager_id uuid,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    cnpj text,
+    instagram_handle text
+);
+
+
+ALTER TABLE public.stores OWNER TO postgres;
+
+--
+-- Name: user_roles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.user_roles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    role public.app_role DEFAULT 'visualizador'::public.app_role NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    custom_role_id uuid
+);
+
+
+ALTER TABLE public.user_roles OWNER TO postgres;
+
+--
+-- Name: vehicle_colors; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.vehicle_colors (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    hex text,
+    vehicle_model_id uuid,
+    is_active boolean DEFAULT true NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    hex_secondary text,
+    vehicle_model_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+    model_scope text DEFAULT 'todos'::text NOT NULL,
+    CONSTRAINT vehicle_colors_model_scope_check CHECK ((model_scope = ANY (ARRAY['todos'::text, 'apenas'::text, 'exceto'::text])))
+);
+
+
+ALTER TABLE public.vehicle_colors OWNER TO postgres;
+
+--
+-- Name: vehicle_models; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.vehicle_models (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    brand text NOT NULL,
+    model text NOT NULL,
+    vehicle_type text DEFAULT 'moto'::text NOT NULL,
+    engine_cc integer,
+    fuel_type text,
+    transmission text,
+    warranty_months integer,
+    revision_period_months integer,
+    revision_period_km integer,
+    is_active boolean DEFAULT true NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    default_purchase_price numeric,
+    default_sale_price numeric,
+    promo_price numeric,
+    promo_active boolean DEFAULT false NOT NULL,
+    promo_label text,
+    promo_ends_on date
+);
+
+
+ALTER TABLE public.vehicle_models OWNER TO postgres;
+
+--
+-- Name: vehicle_reservations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.vehicle_reservations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    reservation_number text NOT NULL,
+    vehicle_id uuid NOT NULL,
+    store_id uuid NOT NULL,
+    reseller_id uuid,
+    created_by uuid,
+    buyer_name text NOT NULL,
+    buyer_cpf text NOT NULL,
+    buyer_phone text,
+    buyer_email text,
+    buyer_address text,
+    vehicle_price numeric NOT NULL,
+    reservation_amount numeric DEFAULT 0 NOT NULL,
+    payment_method text,
+    reservation_date date DEFAULT CURRENT_DATE NOT NULL,
+    expires_at date,
+    status text DEFAULT 'ativa'::text NOT NULL,
+    converted_contract_id uuid,
+    signed_contract_url text,
+    template_id uuid,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.vehicle_reservations OWNER TO postgres;
+
+--
+-- Name: vehicles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.vehicles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    store_id uuid,
+    brand text NOT NULL,
+    model text NOT NULL,
+    year integer NOT NULL,
+    color text,
+    plate text,
+    chassis text,
+    renavam text,
+    mileage integer DEFAULT 0,
+    fuel_type text,
+    transmission text,
+    purchase_price numeric(12,2),
+    sale_price numeric(12,2),
+    status text DEFAULT 'disponivel'::text NOT NULL,
+    images text[],
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    vehicle_type text DEFAULT 'carro'::text,
+    engine_cc integer,
+    reseller_id uuid,
+    warranty_months integer,
+    revision_period_months integer,
+    revision_period_km integer,
+    manufacture_year integer,
+    CONSTRAINT vehicles_status_check CHECK ((status = ANY (ARRAY['disponivel'::text, 'reservado'::text, 'vendido'::text, 'transferido'::text]))),
+    CONSTRAINT vehicles_vehicle_type_check CHECK ((vehicle_type = ANY (ARRAY['carro'::text, 'moto'::text])))
+);
+
+
+ALTER TABLE public.vehicles OWNER TO postgres;
+
+--
+-- Name: COLUMN vehicles.reseller_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.vehicles.reseller_id IS 'ID do revendedor responsável pelo veículo (null = estoque da loja)';
+
+
+--
+-- Name: COLUMN vehicles.manufacture_year; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.vehicles.manufacture_year IS 'Ano de fabricacao (controle interno). A coluna year representa o ano modelo usado em contratos.';
+
+
+--
+-- Data for Name: activity_logs; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.activity_logs (id, user_id, action, entity_type, entity_id, details, ip_address, created_at) VALUES
+  ('a9d7ce53-ce95-4845-b01d-bb5e47db2b98', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {}, "audit_id": "EXP-MJGBDZ9K-RLIKXD", "user_name": "admbreno@index.com", "exported_at": "2025-12-21T22:44:21.622Z", "record_count": 6}', NULL, '2025-12-21 22:44:22.881985+00'),
+  ('0b1faf10-314a-4e73-9002-0caa51972379', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'sales', NULL, '{"title": "Relatório de Vendas", "filters": {}, "audit_id": "EXP-MJGI35HK-368OED", "user_name": "admbreno@index.com", "exported_at": "2025-12-22T01:51:53.708Z", "record_count": 0}', NULL, '2025-12-22 01:51:55.066923+00'),
+  ('5dfcfe4d-7719-4f8c-88d9-6b86e774e3eb', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'contracts', NULL, '{"title": "Relatório de Contratos", "filters": {}, "audit_id": "EXP-MJGI45CA-CDSVD3", "user_name": "admbreno@index.com", "exported_at": "2025-12-22T01:52:40.133Z", "record_count": 0}', NULL, '2025-12-22 01:52:41.465657+00'),
+  ('5fbaf3b4-25df-45cf-bb89-893ea870ddf0', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'payments', NULL, '{"title": "Relatório de Pagamentos", "filters": {}, "audit_id": "EXP-MJGI4FBN-VVW78S", "user_name": "admbreno@index.com", "exported_at": "2025-12-22T01:52:53.072Z", "record_count": 0}', NULL, '2025-12-22 01:52:54.377355+00'),
+  ('5dba4561-8e94-426a-bd1f-0f242c3a91e1', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'sales', NULL, '{"title": "Relatório de Vendas", "filters": {}, "audit_id": "EXP-MJJYFZFI-4LGPC5", "user_name": "admbreno@index.com", "exported_at": "2025-12-24T11:53:04.893Z", "record_count": 3}', NULL, '2025-12-24 11:53:05.087537+00'),
+  ('a56840b9-6c70-43f2-8f5b-64b727f217b3', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'sales', NULL, '{"title": "Relatório de Vendas", "filters": {}, "audit_id": "EXP-MKIBP63T-LBTWPX", "user_name": "admbreno@index.com", "exported_at": "2026-01-17T13:08:18.602Z", "record_count": 8}', NULL, '2026-01-17 13:08:18.823805+00'),
+  ('4d0679aa-f69c-4241-bd95-92af6ce64576', 'def5409c-f9cc-47ae-b45e-9e15fd52727f', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Loja": "SHINERAY MONTES CLAROS", "Período": "01/01/2026 a 31/01/2026"}, "audit_id": "EXP-MKWQXXRH-1KX7CI", "user_name": "laurentinobreno08@gmail.com", "store_name": "SHINERAY MONTES CLAROS", "exported_at": "2026-01-27T15:23:48.282Z", "record_count": 100}', NULL, '2026-01-27 15:23:48.492337+00'),
+  ('4d67bea9-28d2-415b-9521-902332a5d723', 'def5409c-f9cc-47ae-b45e-9e15fd52727f', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Loja": "SHINERAY MONTES CLAROS", "Período": "01/02/2026 a 28/02/2026"}, "audit_id": "EXP-ML53WTPU-7Z9VYL", "user_name": "laurentinobreno08@gmail.com", "store_name": "SHINERAY MONTES CLAROS", "exported_at": "2026-02-02T11:49:00.829Z", "record_count": 0}', NULL, '2026-02-02 11:49:00.950863+00'),
+  ('620c7fbf-cd5b-483d-9964-6b29f99bc615', 'def5409c-f9cc-47ae-b45e-9e15fd52727f', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Loja": "SHINERAY MONTES CLAROS", "Período": "01/12/2025 a 28/02/2026"}, "audit_id": "EXP-ML53XCFH-XK822L", "user_name": "laurentinobreno08@gmail.com", "store_name": "SHINERAY MONTES CLAROS", "exported_at": "2026-02-02T11:49:24.873Z", "record_count": 112}', NULL, '2026-02-02 11:49:24.962109+00'),
+  ('de4cd876-a66f-47bc-85ef-622906a076f0', 'def5409c-f9cc-47ae-b45e-9e15fd52727f', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Período": "01/12/2025 a 28/02/2026"}, "audit_id": "EXP-ML57L5XZ-HJ6Y8S", "user_name": "laurentinobreno08@gmail.com", "store_name": "Todas as Lojas", "exported_at": "2026-02-02T13:31:55.355Z", "record_count": 112}', NULL, '2026-02-02 13:31:55.708095+00'),
+  ('2da2a11e-023f-4cb6-9e3c-f30d52c87c75', 'def5409c-f9cc-47ae-b45e-9e15fd52727f', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Período": "01/02/2026 a 28/02/2026"}, "audit_id": "EXP-ML59O4UN-MH706I", "user_name": "laurentinobreno08@gmail.com", "store_name": "Todas as Lojas", "exported_at": "2026-02-02T14:30:13.145Z", "record_count": 1}', NULL, '2026-02-02 14:30:13.340043+00'),
+  ('b256827d-da2c-45c2-b843-c77c0e285ffc', 'def5409c-f9cc-47ae-b45e-9e15fd52727f', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Período": "01/12/2025 a 28/02/2026"}, "audit_id": "EXP-ML59OO4A-QUUN0R", "user_name": "laurentinobreno08@gmail.com", "store_name": "Todas as Lojas", "exported_at": "2026-02-02T14:30:37.940Z", "record_count": 113}', NULL, '2026-02-02 14:30:38.131419+00'),
+  ('bf869238-7b2e-44e5-9f34-b366f2474879', 'def5409c-f9cc-47ae-b45e-9e15fd52727f', 'export', 'sales', NULL, '{"title": "Relatório de Vendas", "filters": {"Período": "01/01/2026 a 31/01/2026"}, "audit_id": "EXP-ML5AIYWA-ULKYEW", "user_name": "laurentinobreno08@gmail.com", "store_name": "Todas as Lojas", "exported_at": "2026-02-02T14:54:11.656Z", "record_count": 16}', NULL, '2026-02-02 14:54:11.886714+00'),
+  ('43e89abc-4ad3-4d1b-87e9-a53dce6698c8', 'def5409c-f9cc-47ae-b45e-9e15fd52727f', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Período": "01/01/2026 a 31/01/2026"}, "audit_id": "EXP-ML5HSNQ1-GZ4KYJ", "user_name": "laurentinobreno08@gmail.com", "store_name": "Todas as Lojas", "exported_at": "2026-02-02T18:17:40.892Z", "record_count": 100}', NULL, '2026-02-02 18:17:41.281304+00'),
+  ('00d2ac58-8b18-4712-a7e3-7831e420fd0c', 'def5409c-f9cc-47ae-b45e-9e15fd52727f', 'export', 'sales', NULL, '{"title": "Relatório de Vendas", "filters": {"Período": "01/01/2026 a 31/01/2026"}, "audit_id": "EXP-ML5HSQUN-GKNM8X", "user_name": "laurentinobreno08@gmail.com", "store_name": "Todas as Lojas", "exported_at": "2026-02-02T18:17:44.912Z", "record_count": 16}', NULL, '2026-02-02 18:17:45.265028+00'),
+  ('19d03b02-9306-4785-9093-ace1c8b360fc', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Loja": "SHINERAY MONTES CLAROS", "Período": "01/03/2026 a 31/03/2026"}, "audit_id": "EXP-MMXPMSD8-SN3KMW", "user_name": "Breno", "store_name": "SHINERAY MONTES CLAROS", "exported_at": "2026-03-19T16:54:19.467Z", "record_count": 77}', NULL, '2026-03-19 16:54:20.389585+00'),
+  ('a4f4b6b1-26cd-48bd-8301-e2db3c72aeb0', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '361975a2-bcf2-4599-a88c-7f3228410375', '{"chassi": "99HSHF175VS002317", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-17 13:15:56.505485+00'),
+  ('99a25c3f-ff5f-44ad-9441-f2a93ae6b106', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '4e9cde3b-3a62-4a0d-9608-04ceba3ed32f', '{"chassi": "99HSHF175VS002449", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-17 13:16:32.3039+00'),
+  ('9c21815d-56d0-4f9e-b9d4-9d3b55cd04e4', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '1550df0a-60c5-4a8b-be0e-6dc493785644', '{"chassi": "99HULF150TS000553", "modelo": "SHINERAY URBAN LITE 150"}', NULL, '2026-09-17 13:29:15.608398+00'),
+  ('36a5e4d2-7da7-4319-9692-07eec462b94d', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '5df6d2d9-7cc0-478c-9203-4598e7363e6d', '{"chassi": "99HSTF200TS004557", "modelo": "SHINERAY STORM 200"}', NULL, '2026-09-17 13:30:13.606816+00'),
+  ('fff54294-6cb6-4d72-97cd-9eeb2a2ee91e', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '6ea60891-87c3-4dbe-8272-46e4a091bc4f', '{"chassi": "99HSB1400TS000579", "modelo": "SHINERAY SBM 400s"}', NULL, '2026-09-17 13:31:00.194601+00'),
+  ('e4360243-7e98-440f-90f6-02b01ac5886f', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', '63083a24-444e-4993-a94f-1af20a3805b6', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-09-17 13:31:52.083566+00'),
+  ('1b2bdbc4-d852-44a4-b930-8eefca8edadd', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', 'be6a7ac4-aad1-4e0e-b2cc-2ab17cb619a9', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-09-17 13:32:14.065375+00'),
+  ('c4152a6f-ea29-4305-afa3-edb96deb0b05', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', '87a39b3f-a464-424f-989a-fa1f2b2dd3f1', '{"store_id": "e8254a81-d669-464b-9806-457ba25ce7f0"}', NULL, '2026-09-17 13:32:38.381025+00'),
+  ('f8725540-3901-4bf1-b88e-e65bbe233095', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', '87a39b3f-a464-424f-989a-fa1f2b2dd3f1', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-09-17 13:32:41.917415+00'),
+  ('65b2737e-3a69-439e-abd7-4b74d89c1948', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'sales', NULL, '{"title": "Relatório de Vendas", "filters": {"Período": "01/03/2026 a 31/03/2026"}, "audit_id": "EXP-MNG5R3MS-VPUTB8", "user_name": "Breno", "store_name": "Todas as Lojas", "exported_at": "2026-04-01T14:45:25.544Z", "record_count": 30}', NULL, '2026-04-01 14:45:25.817203+00'),
+  ('0709355b-9512-4b7f-998f-66e6e6e5bcb7', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Período": "01/04/2026 a 30/04/2026"}, "audit_id": "EXP-MO1WDP03-87ICRM", "user_name": "Breno", "store_name": "Todas as Lojas", "exported_at": "2026-04-16T19:53:59.350Z", "record_count": 2}', NULL, '2026-04-16 19:53:59.464845+00'),
+  ('72ec435a-c3a7-4241-b0e2-56d98b418dcf', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', 'e4a58205-1f1b-4d61-a3d3-face7af6054d', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-09-17 13:33:22.238397+00'),
+  ('b6a5deb0-924d-4a94-a982-6ac4eb398ad4', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', 'c51a760d-a336-4b3f-80cf-692f42764f90', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-09-17 13:33:44.33913+00'),
+  ('2bff90c0-4625-467a-9f6e-0ae8b7173160', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '1fc1da3f-bdda-492c-a0fd-040e457d79fb', '{"chassi": "99HNS1175VS002573", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-09-17 13:34:37.644072+00'),
+  ('093fea73-0b9b-410e-a3f9-b250f854ca7a', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '387a3f6b-8aeb-4346-ba79-72edcbe0d560', '{"chassi": "99HSHF175VS002444", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-17 13:35:36.030783+00'),
+  ('33f21784-96aa-4def-822f-92a9589b23d9', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', '43e8f9e5-7ef0-4cd2-9234-105c8b2c339e', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-09-17 13:35:54.382966+00'),
+  ('cada7ee9-39f8-42d3-81ba-6abd3468a7d6', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '8e242f65-b03d-45c8-8995-1320f1e83c9f', '{"chassi": "99hstf200vs000278", "modelo": "SHINERAY STORM 200"}', NULL, '2026-09-17 16:20:07.454052+00'),
+  ('4a551963-ef9b-48d4-991b-a6c032816f3d', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', 'b7ce81f8-ff40-47ae-803a-136895335286', '{"valor": 23990, "numero": "CTR-MU5QWZEN", "cliente": "GABRIEL MADUREIRA PEREIRA "}', NULL, '2026-09-17 16:30:22.865425+00'),
+  ('de2bdd09-bd5c-4370-97f9-17d3d5709d28', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', 'b7ce81f8-ff40-47ae-803a-136895335286', '{"tipo": "venda", "valor": 23990, "cliente": "GABRIEL MADUREIRA PEREIRA ", "pagamento": "financiamento"}', NULL, '2026-09-17 16:30:24.155166+00'),
+  ('816eb45d-6ca7-4370-af9d-784982ee7628', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '82aa962c-9534-440f-98b0-42f7eb9d82ae', '{"chassi": "99hshf175vs003312", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-17 19:07:20.309835+00'),
+  ('65f67841-b9ef-4c61-b07a-8806d6cc2c7e', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '661156b7-a60d-4468-97da-09fc45318d19', '{"valor": 19990, "numero": "CTR-MU5WM0FB", "cliente": "KECI JHONATA SOUZA MATOS"}', NULL, '2026-09-17 19:09:47.265455+00'),
+  ('238b27f4-d98e-49bc-8e7d-e87869246c57', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '661156b7-a60d-4468-97da-09fc45318d19', '{"tipo": "venda", "valor": 19990, "cliente": "KECI JHONATA SOUZA MATOS", "pagamento": "financiamento"}', NULL, '2026-09-17 19:09:48.599188+00'),
+  ('ba1fe442-0c3e-4939-9ecd-1cba4d671848', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Período": "01/02/2026 a 01/02/2026"}, "audit_id": "EXP-MO1WELG4-5CK4GG", "user_name": "Breno", "store_name": "Todas as Lojas", "exported_at": "2026-04-16T19:54:41.249Z", "record_count": 0}', NULL, '2026-04-16 19:54:41.319899+00'),
+  ('246a8992-d27b-4031-b0a3-70ec409d5585', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Período": "01/12/2025 a 16/04/2026"}, "audit_id": "EXP-MO1WFBHO-SJMIVT", "user_name": "Breno", "store_name": "Todas as Lojas", "exported_at": "2026-04-16T19:55:15.150Z", "record_count": 145}', NULL, '2026-04-16 19:55:15.330214+00'),
+  ('73cd7ea0-e0c8-4887-86dd-eec1df4a5293', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'export', 'vehicles', NULL, '{"title": "Relatório de Estoque", "filters": {"Loja": "SHINERAY MONTES CLAROS", "Período": "01/09/2025 a 30/04/2026"}, "audit_id": "EXP-MO3A56U3-6QG3I6", "user_name": "Breno", "store_name": "SHINERAY MONTES CLAROS", "exported_at": "2026-04-17T19:07:03.511Z", "record_count": 161}', NULL, '2026-04-17 19:07:03.980954+00'),
+  ('60d3000b-8bd1-4322-9afa-6c1c0671c41b', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '3ca10be0-e762-46e8-96eb-566266fef423', '{"valor": 23000, "numero": "CTR-MTU2R6LB", "cliente": "VALERIA SOUZA GUSMAO"}', NULL, '2026-09-09 12:28:32.610149+00'),
+  ('ec46c744-8666-4e8d-bd38-facc35fed76e', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '3ca10be0-e762-46e8-96eb-566266fef423', '{"tipo": "venda", "valor": 23000, "cliente": "VALERIA SOUZA GUSMAO", "pagamento": "financiamento"}', NULL, '2026-09-09 12:28:33.279903+00'),
+  ('5b5ae134-d370-40af-b8b4-c651f01c6a79', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'editar', 'venda', '3ca10be0-e762-46e8-96eb-566266fef423', '{"revisao": "solicitada", "observacao": "ALTERAR ENTRADA"}', NULL, '2026-09-09 15:30:39.952615+00'),
+  ('ad0e5513-7d3e-4355-aa48-3a62590d5cf9', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'editar', 'venda', '3ca10be0-e762-46e8-96eb-566266fef423', '{"cliente": "VALERIA SOUZA GUSMAO", "correcao": "sim", "pagamento": "financiamento"}', NULL, '2026-09-09 15:33:53.652335+00'),
+  ('a3362ecd-6779-4266-a762-b83bdf22afea', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', 'ca81d7f9-44c8-4cd4-8579-0984f2ec28d7', '{"valor": 23500, "numero": "CTR-MTVO02A7", "cliente": "DOMINGOS DOS SANTOS GONCALVES"}', NULL, '2026-09-10 15:11:05.160827+00'),
+  ('99e954a5-6e47-4cd9-a581-415de0186b47', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', 'ca81d7f9-44c8-4cd4-8579-0984f2ec28d7', '{"tipo": "venda", "valor": 23500, "cliente": "DOMINGOS DOS SANTOS GONCALVES", "pagamento": "avista"}', NULL, '2026-09-10 15:11:06.776456+00'),
+  ('a2f11a86-f21f-42ab-bb65-191406ed09a9', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', 'ca93d600-32e2-4791-834c-266467415ef2', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-09-10 17:49:30.4934+00'),
+  ('a5b00472-9067-4005-97dc-135c988e9ee1', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', 'a489c2ab-3f6e-4292-9596-edeb8c268d79', '{"valor": 14990, "numero": "CTR-MTVU29SU", "cliente": "UANDERSON RONEY DE CASTRO"}', NULL, '2026-09-10 18:00:45.497399+00'),
+  ('0ad586b4-f6b3-4659-b0e5-b8ac368d055b', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', 'a489c2ab-3f6e-4292-9596-edeb8c268d79', '{"tipo": "venda", "valor": 14990, "cliente": "UANDERSON RONEY DE CASTRO", "pagamento": "financiamento"}', NULL, '2026-09-10 18:00:47.137113+00');
+
+INSERT INTO public.activity_logs (id, user_id, action, entity_type, entity_id, details, ip_address, created_at) VALUES
+  ('69b6bc46-d0d9-489a-945d-669ac88cb651', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '972ef775-ef54-4003-9d15-a3aa25b20973', '{"valor": 9600, "numero": "CTR-MTVXNHP3", "cliente": "JOAO CARDOSO PEREIRA"}', NULL, '2026-09-10 19:41:14.260238+00'),
+  ('d70c16a9-c369-4d23-acc3-2a3157b1193d', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '972ef775-ef54-4003-9d15-a3aa25b20973', '{"tipo": "venda", "valor": 9600, "cliente": "JOAO CARDOSO PEREIRA", "pagamento": "avista"}', NULL, '2026-09-10 19:41:15.534269+00'),
+  ('ffeed66e-af65-4860-976a-5283d166b6e7', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'deb0539b-5bb5-447e-9818-338f97186dd9', '{"chassi": "99HJTS125VS000395", "modelo": "SHINERAY JET 125"}', NULL, '2026-09-10 20:15:27.254659+00'),
+  ('8a2783eb-a14b-4bb8-807e-9eca651034cc', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '0defbef9-2aaa-49c4-a07e-ead72c782907', '{"valor": 12500, "numero": "CTR-MTVZ03WF", "cliente": "JESSICA BRUNA VIEIRA ALVES"}', NULL, '2026-09-10 20:19:02.257822+00'),
+  ('8b00417b-c819-4f40-ba38-90cbd2d3e68c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '0defbef9-2aaa-49c4-a07e-ead72c782907', '{"tipo": "venda", "valor": 12500, "cliente": "JESSICA BRUNA VIEIRA ALVES", "pagamento": "financiamento"}', NULL, '2026-09-10 20:19:03.616728+00'),
+  ('14628502-896c-43bf-b7ce-32a30df602eb', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '085721d9-a11e-467d-85f4-3dd610bd3a0a', '{"chassi": "99hr1c125vs000264", "modelo": "SHINERAY RIO 125"}', NULL, '2026-09-11 13:28:33.95774+00'),
+  ('a294d5df-fdb5-42f3-8ec3-767ba8ff5252', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '44019514-99d8-41b2-b73a-9e1212e0db2d', '{"valor": 13400, "numero": "CTR-MTWZVO87", "cliente": "LARISSA JOSEFINA DE OLIVEIRA DIAS"}', NULL, '2026-09-11 13:31:21.613126+00'),
+  ('56ff3fc6-e022-42a4-b517-e66a641f75e1', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '44019514-99d8-41b2-b73a-9e1212e0db2d', '{"tipo": "venda", "valor": 13400, "cliente": "LARISSA JOSEFINA DE OLIVEIRA DIAS", "pagamento": "avista"}', NULL, '2026-09-11 13:31:23.143544+00'),
+  ('985a6393-1cc2-4c4d-ad97-81bef7a7b557', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', '500a2c3c-d546-454d-b338-88fb234509a0', '{"valor": 24190, "numero": "CTR-MU17R31U", "cliente": "JULIO CESAR CRISOSTOMO DA SILVA"}', NULL, '2026-09-14 12:22:50.084404+00'),
+  ('2ded31cb-d05c-4f66-a288-b1c5ac7c480f', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', '500a2c3c-d546-454d-b338-88fb234509a0', '{"tipo": "venda", "valor": 24190, "cliente": "JULIO CESAR CRISOSTOMO DA SILVA", "pagamento": "financiamento"}', NULL, '2026-09-14 12:22:51.818096+00'),
+  ('1dc1a4a5-5ddf-4e62-b60c-491703d5accb', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'e7535191-05e5-4d97-b013-8c772223c2ed', '{"chassi": "99hnj1125vs007426", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-09-14 14:23:03.679463+00'),
+  ('a9144745-04c8-4c3e-b64e-8fe65c456203', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '03bd41ab-40a8-4203-9b8d-c01f1c93b02e', '{"chassi": "99hcs2170ts000993", "modelo": "SHINERAY NEW FREE 170"}', NULL, '2026-09-15 13:29:40.697215+00'),
+  ('adb49b22-6349-479e-9c76-3833df64931c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'f338d9d7-9eed-4518-a2fa-ba8d1c4807c3', '{"valor": 15990, "numero": "CTR-MU2PR95H", "cliente": "CINARA CIBELE MEDEIROS"}', NULL, '2026-09-15 13:34:37.462187+00'),
+  ('4f58eb14-9300-4cca-b201-21d69a6c83c0', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'f338d9d7-9eed-4518-a2fa-ba8d1c4807c3', '{"tipo": "venda", "valor": 15990, "cliente": "CINARA CIBELE MEDEIROS", "pagamento": "financiamento"}', NULL, '2026-09-15 13:34:38.946521+00'),
+  ('5f41cfdc-2226-4afd-89c5-ecff0dc91a17', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '319040ac-e6a7-485d-84c7-76bb672e2ba1', '{"valor": 14000, "numero": "CTR-MU2QM3CN", "cliente": "LETICIA LISBOA  VALIM"}', NULL, '2026-09-15 13:58:36.335898+00'),
+  ('067d055a-7690-4e49-9cc5-b9f85b4d446a', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '319040ac-e6a7-485d-84c7-76bb672e2ba1', '{"tipo": "venda", "valor": 14000, "cliente": "LETICIA LISBOA  VALIM", "pagamento": "financiamento"}', NULL, '2026-09-15 13:58:37.49084+00'),
+  ('e64c4dfe-3371-4b61-a25f-c81612bf60a2', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '59c385e6-b7e1-48f1-b26f-9a255e43591c', '{"valor": 14990, "numero": "CTR-MU2QY14B", "cliente": "SARA EMANUELLE DOS SANTOS DIAS"}', NULL, '2026-09-15 14:07:53.720067+00'),
+  ('44af63c9-04a6-4292-a307-af4008d42a4e', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '59c385e6-b7e1-48f1-b26f-9a255e43591c', '{"tipo": "venda", "valor": 14990, "cliente": "SARA EMANUELLE DOS SANTOS DIAS", "pagamento": "financiamento"}', NULL, '2026-09-15 14:07:54.926488+00'),
+  ('f65087b8-e7af-4948-8152-c930dc28edc8', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'e92b0d64-df24-4865-9d89-575d8960971e', '{"chassi": "99HR1C125VS000266", "modelo": "SHINERAY RIO 125"}', NULL, '2026-09-15 23:01:24.192458+00'),
+  ('9d0a2a11-2b7e-488d-935e-cb4de1b2e3e2', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'ec0f6234-594b-4c12-9af8-f35b9748c520', '{"valor": 8394, "numero": "CTR-MU3A52SQ", "cliente": "ASHILEY VICTORIA ANTUNES DIAS"}', NULL, '2026-09-15 23:05:14.135598+00'),
+  ('22a52441-674f-4845-8a06-7cba30dc9cd6', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'ec0f6234-594b-4c12-9af8-f35b9748c520', '{"tipo": "venda", "valor": 8394, "cliente": "ASHILEY VICTORIA ANTUNES DIAS", "pagamento": "financiamento"}', NULL, '2026-09-15 23:05:16.273643+00'),
+  ('8f1d3ce8-5b59-4b6f-a7fb-7b0de79c87a3', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'cd150f42-aac7-4701-904b-7b48e630dcaf', '{"chassi": "99HNJ1125VS007342", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-09-16 18:08:44.659935+00'),
+  ('1701e89d-6ea5-48c1-bd4f-69d0ef7029a6', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '7a4d6568-89f4-4844-ada2-215aaf4036ea', '{"valor": 13994, "numero": "CTR-MU4F2M9W", "cliente": "CLEONICE PEREIRA DA SILVA"}', NULL, '2026-09-16 18:11:03.781467+00'),
+  ('96daa80c-7799-4140-ac73-867fe2b8b2be', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '7a4d6568-89f4-4844-ada2-215aaf4036ea', '{"tipo": "venda", "valor": 13994, "cliente": "CLEONICE PEREIRA DA SILVA", "pagamento": "financiamento"}', NULL, '2026-09-16 18:11:04.746739+00'),
+  ('6b0d60ac-4db2-4a96-8003-b1374e875f72', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'f47f307f-356a-4171-86f8-5ab16382b447', '{"chassi": "99HSHF250VS000187", "modelo": "SHINERAY SHI 250"}', NULL, '2026-09-17 11:55:14.859497+00'),
+  ('07a1f2a2-b966-4cda-ad34-e4315c3925d0', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'f6a26a8b-78b3-47c8-8ecc-f04961bcb6f7', '{"chassi": "99HSHF175VS002315", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-17 13:07:28.56551+00'),
+  ('8d244c27-4f4f-4401-80ea-69e3be5942cd', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '12e38126-92fd-4b47-9cd1-7b34dc2ec62c', '{"chassi": "99HSHF175VS024619", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-17 13:15:16.621975+00'),
+  ('5b70fbae-9d15-4a36-9784-b00e58845f94', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'e2b01fb4-8cf4-4e4d-bdca-14c22559be72', '{"chassi": "99hnj1125vs008966", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-09-18 13:16:40.566477+00'),
+  ('52276b41-396f-46c8-8b39-e44d0e673e3a', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '6c631e29-14aa-4cec-9ef5-e40b3b384a00', '{"valor": 14990, "numero": "CTR-MU6ZOI2S", "cliente": "PAULA VITORIA PEREIRA DE SOUZA"}', NULL, '2026-09-18 13:23:29.772942+00'),
+  ('c3b18c5e-5874-4b27-b8d6-311dfbb8bf87', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '6c631e29-14aa-4cec-9ef5-e40b3b384a00', '{"tipo": "venda", "valor": 14990, "cliente": "PAULA VITORIA PEREIRA DE SOUZA", "pagamento": "financiamento"}', NULL, '2026-09-18 13:23:31.199437+00'),
+  ('791802ac-920e-49cd-81e4-43b156b8a6a7', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '6e7b7ca1-53f1-4f62-8dd2-6f627c704d26', '{"chassi": "99hshf175vs002596", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-18 14:35:44.447578+00'),
+  ('2e0a68c0-82e9-4a64-b9c7-64467c31c467', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'e548ea82-9b4f-4dbd-bd66-2cd337ddf658', '{"valor": 19000, "numero": "CTR-MU72I6SP", "cliente": "HEVERTON EVALDO OLIVEIRA SILVA"}', NULL, '2026-09-18 14:42:33.530018+00'),
+  ('24513e01-56a0-4f7c-b40a-65554b49b6f0', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'e548ea82-9b4f-4dbd-bd66-2cd337ddf658', '{"tipo": "venda", "valor": 19000, "cliente": "HEVERTON EVALDO OLIVEIRA SILVA", "pagamento": "avista"}', NULL, '2026-09-18 14:42:35.161986+00'),
+  ('053b3b2c-ade5-4417-8372-36ccb9f01773', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '93f871b3-830a-43bb-9c60-16c0df53f1c4', '{"valor": 14990, "numero": "CTR-MU76R8EJ", "cliente": "BRENO FELIPE SANTOS DOS REIS"}', NULL, '2026-09-18 16:41:34.851764+00'),
+  ('32b26e03-5aa3-4eb0-8e54-ca345a462f0a', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '93f871b3-830a-43bb-9c60-16c0df53f1c4', '{"tipo": "venda", "valor": 14990, "cliente": "BRENO FELIPE SANTOS DOS REIS", "pagamento": "financiamento"}', NULL, '2026-09-18 16:41:36.6077+00'),
+  ('0546904f-84a5-4d63-aa21-96bf820badfc', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '9763ad9f-fdd9-46a3-a4ba-636a2fe54211', '{"chassi": "99hnj1125vs007335", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-09-18 18:55:04.468243+00'),
+  ('8dbae3ad-1982-4f90-a26c-d712278c2ace', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '32bb6f24-919f-4aa6-9646-91d1c05ef3d4', '{"valor": 14990, "numero": "CTR-MU7BRM5E", "cliente": "JARBAS DIEGO DIAS OLIVEIRA"}', NULL, '2026-09-18 19:01:50.704413+00'),
+  ('d55cbbe8-eaf3-4853-8c6c-0c361b0664f5', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '32bb6f24-919f-4aa6-9646-91d1c05ef3d4', '{"tipo": "venda", "valor": 14990, "cliente": "JARBAS DIEGO DIAS OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-09-18 19:01:52.050963+00'),
+  ('3766e7ff-2220-4aad-b860-f770145bad77', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '37241f86-b9e4-4117-ba9a-2ffff9233015', '{"valor": 13000, "numero": "CTR-MU8FDKVM", "cliente": "MARIANA RODRIGUES FERREIRA"}', NULL, '2026-09-19 13:30:41.87169+00'),
+  ('7339e744-7895-43a6-ae45-d1c57dd3b9f1', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '37241f86-b9e4-4117-ba9a-2ffff9233015', '{"tipo": "venda", "valor": 13000, "cliente": "MARIANA RODRIGUES FERREIRA", "pagamento": "avista"}', NULL, '2026-09-19 13:30:42.840477+00'),
+  ('9d664776-c605-457b-8ad6-897e28b8ef12', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', 'e1a5c49e-f700-4d8f-a8ed-0469a3ffe5ff', '{"valor": 14500, "numero": "CTR-MU8HLNZL", "cliente": "MÁRCIO ALLVES DE SOUSA"}', NULL, '2026-09-19 14:32:55.036505+00'),
+  ('68dfd651-9e73-45ff-8ceb-138f68e5dafa', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', 'e1a5c49e-f700-4d8f-a8ed-0469a3ffe5ff', '{"tipo": "pre_venda", "valor": 14500, "cliente": "MÁRCIO ALLVES DE SOUSA", "pagamento": "financiamento"}', NULL, '2026-09-19 14:32:55.454747+00'),
+  ('30407dd6-d266-4731-8296-0a035b87cec9', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'c597e13f-7145-462e-babc-bfa6effc9a53', '{"chassi": "99HNS1175VS001942", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-09-19 14:57:11.068525+00'),
+  ('43812555-6133-449b-81b9-80ab3c2ddfa4', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', 'b384c184-ce43-41e8-9dad-b5d56cee7513', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-09-19 14:57:37.841034+00'),
+  ('ab8bf4c8-d67b-409d-8ece-693817f70ed6', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '2d57b836-d4c4-4698-af77-c098f17e1074', '{"chassi": "99HSTF200VS000860", "modelo": "SHINERAY STORM 200"}', NULL, '2026-09-21 12:21:10.204987+00'),
+  ('f5cdefc6-4033-4218-a993-d44a4c20771a', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '75f3fca3-e762-4029-bcf1-2d27c1866c02', '{"valor": 23990, "numero": "CTR-MUB83328", "cliente": "THIAGO MOURA LOPES FARIA"}', NULL, '2026-09-21 12:29:53.219137+00'),
+  ('da2a22a7-ccec-4131-9258-a549ab0d8063', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '75f3fca3-e762-4029-bcf1-2d27c1866c02', '{"tipo": "venda", "valor": 23990, "cliente": "THIAGO MOURA LOPES FARIA", "pagamento": "financiamento"}', NULL, '2026-09-21 12:29:54.575798+00'),
+  ('fb5c86af-a658-40e8-8ec8-40bc0cb5c272', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '5f2a6e09-4c89-49aa-8b4f-fe5f780d96df', '{"chassi": "99HSHF175VS001056", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-21 16:16:51.21187+00'),
+  ('522da2e9-50c4-4060-9b33-5fe95f8f5add', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'cf287744-c3bd-46f4-9c63-7ac4e9e61630', '{"valor": 19990, "numero": "CTR-MUBG9Z5F", "cliente": "TIAGO FERREIRA DE SOUSA"}', NULL, '2026-09-21 16:19:11.842437+00'),
+  ('8218515b-d86f-4a5c-9215-019b0f33de04', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'cf287744-c3bd-46f4-9c63-7ac4e9e61630', '{"tipo": "venda", "valor": 19990, "cliente": "TIAGO FERREIRA DE SOUSA", "pagamento": "financiamento"}', NULL, '2026-09-21 16:19:13.219952+00');
+
+INSERT INTO public.activity_logs (id, user_id, action, entity_type, entity_id, details, ip_address, created_at) VALUES
+  ('fa073621-2440-4bfb-876d-3310e4b502dd', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'c810844a-02c4-4eba-a464-29dfc1b74ce2', '{"chassi": "99hshf250vs000533", "modelo": "SHINERAY SHI 250"}', NULL, '2026-09-21 16:21:40.532187+00'),
+  ('085bd414-d6ed-4a0b-9425-3aa3553c0fdb', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', 'c97da298-c746-4b49-aa04-244c27fab830', '{"valor": 14500, "numero": "CTR-MUBGO0NZ", "cliente": "FERNANDA APARECIDA RIBEIRO LEAL ARANTES"}', NULL, '2026-09-21 16:30:03.697267+00'),
+  ('80d09d95-df3f-404a-8f34-c484dd2ac4c0', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', 'c97da298-c746-4b49-aa04-244c27fab830', '{"tipo": "venda", "valor": 14500, "cliente": "FERNANDA APARECIDA RIBEIRO LEAL ARANTES", "pagamento": "parcelado"}', NULL, '2026-09-21 16:30:04.771986+00'),
+  ('03ff8ad7-1606-4514-9084-0963e09f7ce6', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', '5ebfa663-94cf-4ad4-b921-9c77ff49eb6c', '{"valor": 23990, "numero": "CTR-MUBGU4W1", "cliente": "ALAN RICHARD GONTIJO"}', NULL, '2026-09-21 16:34:49.199102+00'),
+  ('2d11f8df-9e5b-40c5-955b-93797ff58e64', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', '5ebfa663-94cf-4ad4-b921-9c77ff49eb6c', '{"tipo": "pre_venda", "valor": 23990, "cliente": "ALAN RICHARD GONTIJO", "pagamento": "financiamento"}', NULL, '2026-09-21 16:34:51.058117+00'),
+  ('1995edae-8dc2-4ae4-9168-889e26f0bd69', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', 'a462abf4-738d-414c-9080-278515207f9b', '{"valor": 13064, "numero": "CTR-MUBHH3LG", "cliente": "IRINEIA APARECIDADE DA SILVA"}', NULL, '2026-09-21 16:52:41.05022+00'),
+  ('2e00289b-b5fe-4555-a39a-e74cf9245933', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', 'a462abf4-738d-414c-9080-278515207f9b', '{"tipo": "venda", "valor": 13064, "cliente": "IRINEIA APARECIDADE DA SILVA", "pagamento": "financiamento"}', NULL, '2026-09-21 16:52:42.400748+00'),
+  ('78f038cc-5c9e-4269-a813-703f2c7fa93f', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '4a30bba5-e8e9-4af9-8284-854541313a89', '{"valor": 22990, "numero": "CTR-MUBJAL1L", "cliente": "GILSONEY DE SOUZA MACEDO"}', NULL, '2026-09-21 17:43:39.295693+00'),
+  ('714d657d-a3d2-443e-a7db-a5637c9a5287', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '4a30bba5-e8e9-4af9-8284-854541313a89', '{"tipo": "venda", "valor": 22990, "cliente": "GILSONEY DE SOUZA MACEDO", "pagamento": "financiamento"}', NULL, '2026-09-21 17:43:41.192424+00'),
+  ('91c933c4-0761-49e2-8f96-673930eecff9', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '7450fe73-c0db-4f4d-ba7a-67acb528ba65', '{"valor": 10000, "numero": "CTR-MUBNOBY1", "cliente": "JANEIDE GOMES FERREIRA"}', NULL, '2026-09-21 19:46:15.883664+00'),
+  ('e38a1833-dc87-4cc9-9bc5-c6047b9a4715', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '7450fe73-c0db-4f4d-ba7a-67acb528ba65', '{"tipo": "pre_venda", "valor": 10000, "cliente": "JANEIDE GOMES FERREIRA", "pagamento": "financiamento"}', NULL, '2026-09-21 19:46:16.662759+00'),
+  ('9902c073-9241-4ca2-a8bb-b143608fa0dc', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '2a6d7c80-dcc2-4566-815c-9233094a9517', '{"valor": 14990, "numero": "CTR-MUBOAA2R", "cliente": "SOFIA BARBOSA TUPINAMBA"}', NULL, '2026-09-21 20:03:21.201046+00'),
+  ('d75e9f5e-c40c-4995-9ffb-d809d535daec', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '2a6d7c80-dcc2-4566-815c-9233094a9517', '{"tipo": "venda", "valor": 14990, "cliente": "SOFIA BARBOSA TUPINAMBA", "pagamento": "financiamento"}', NULL, '2026-09-21 20:03:23.500896+00'),
+  ('e9275911-86c2-4790-8bb2-78232ee1014f', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '2611c77e-ff8f-4617-93f5-646312ed55f1', '{"valor": 18990, "numero": "CTR-MUBY6XPX", "cliente": "MARIA JOSÉ AUXILIADORA REZENDE SILVA"}', NULL, '2026-09-22 00:40:47.117927+00'),
+  ('da9619b5-fbbb-45a3-ab2b-090eb0f31770', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '2611c77e-ff8f-4617-93f5-646312ed55f1', '{"tipo": "pre_venda", "valor": 18990, "cliente": "MARIA JOSÉ AUXILIADORA REZENDE SILVA", "pagamento": "financiamento"}', NULL, '2026-09-22 00:40:48.481012+00'),
+  ('5b849b7b-3151-4b43-b8d7-233bb9e28e2c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '261e0a6e-dd46-4995-be41-631634165406', '{"chassi": "99HNJ1125VS008967", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-09-22 13:34:26.113451+00'),
+  ('4e8ad252-04ab-4241-9974-dbd05c28b0c8', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'd676ab49-7c74-487e-9582-3dc01c9f6013', '{"valor": 14990, "numero": "CTR-MUCPZOFB", "cliente": "RAISSA GUEDES BATISTA"}', NULL, '2026-09-22 13:38:51.088972+00'),
+  ('18a64504-e3c3-409a-ab25-179e993de61a', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'd676ab49-7c74-487e-9582-3dc01c9f6013', '{"tipo": "venda", "valor": 14990, "cliente": "RAISSA GUEDES BATISTA", "pagamento": "financiamento"}', NULL, '2026-09-22 13:38:52.453043+00'),
+  ('a72ece15-5aeb-40b1-abb1-9273b9c53164', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'c47aea20-4541-4644-b988-08471841a484', '{"chassi": "99hjts125vs000464", "modelo": "SHINERAY JET 125"}', NULL, '2026-09-22 14:09:08.015277+00'),
+  ('98157436-862e-4fcf-88ff-889e9d1d3bff', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '72b92673-c766-431a-a5f3-b6381a5e50a6', '{"valor": 14500, "numero": "CTR-MUCR702W", "cliente": "LEONARDO SIMOES DE SOUZA"}', NULL, '2026-09-22 14:12:32.561324+00'),
+  ('268bf04e-5d2b-41ee-995b-2d645b721f67', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '72b92673-c766-431a-a5f3-b6381a5e50a6', '{"tipo": "venda", "valor": 14500, "cliente": "LEONARDO SIMOES DE SOUZA", "pagamento": "financiamento"}', NULL, '2026-09-22 14:12:33.535493+00'),
+  ('2b8b9156-8c5d-4d9f-a1d7-bf69e81c5e80', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'eef1aa1e-1350-4d18-8816-9add7890d801', '{"chassi": "99HSTF200VS000285", "modelo": "SHINERAY STORM 200"}', NULL, '2026-09-22 14:40:54.328003+00'),
+  ('afc4e864-7ec2-44a0-96f3-e790eb5a5ca8', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'e74e196a-3c1c-4037-b248-633446ba88fc', '{"valor": 23990, "numero": "CTR-MUCSBM1I", "cliente": "HUDSON MENDES LEAL"}', NULL, '2026-09-22 14:44:07.140141+00'),
+  ('b69d23f4-33e3-4b16-9ad8-9dd4eb163b50', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'e74e196a-3c1c-4037-b248-633446ba88fc', '{"tipo": "venda", "valor": 23990, "cliente": "HUDSON MENDES LEAL", "pagamento": "financiamento"}', NULL, '2026-09-22 14:44:08.118605+00'),
+  ('e1ba3122-9109-497b-aa2e-27bf640116f2', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '5158be0e-71a8-4c95-a4db-ce2552aaccfa', '{"chassi": "99HSB4400VS000224", "modelo": "SHINERAY DENVER 400"}', NULL, '2026-09-22 17:33:01.329499+00'),
+  ('7c3f0ce7-00f3-4282-accb-ae6fa5756150', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '45cfe12a-b9f5-4c53-b5ae-b8955dfa9227', '{"valor": 32890, "numero": "CTR-MUCYH8JS", "cliente": "CAIO VINICIUS LEITE SAMPAIO"}', NULL, '2026-09-22 17:36:28.055166+00'),
+  ('cd82adae-171e-4e66-afdd-50a7235819af', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '45cfe12a-b9f5-4c53-b5ae-b8955dfa9227', '{"tipo": "venda", "valor": 32890, "cliente": "CAIO VINICIUS LEITE SAMPAIO", "pagamento": "avista"}', NULL, '2026-09-22 17:36:30.053977+00'),
+  ('a16ad3b0-eb4b-422c-a5ee-b4354b91e270', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', '7a5111cb-57ef-4ce6-b2c4-5675ee111f2e', '{"valor": 13994, "numero": "CTR-MUE2G5EG", "cliente": "CARLA DA SILVA SOUSA"}', NULL, '2026-09-23 12:15:21.776301+00'),
+  ('ab769569-29f9-4cef-8afe-59e4cd24b538', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', '7a5111cb-57ef-4ce6-b2c4-5675ee111f2e', '{"tipo": "venda", "valor": 13994, "cliente": "CARLA DA SILVA SOUSA", "pagamento": "financiamento"}', NULL, '2026-09-23 12:15:22.652898+00'),
+  ('485d64c3-01ad-4512-a6e8-772ef0f29eb4', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'be107eb3-267f-44e2-aec6-e3a898b0fb1e', '{"chassi": "99HSHF250VS000445", "modelo": "SHINERAY SHI 250"}', NULL, '2026-09-23 12:19:22.815043+00'),
+  ('5c13cf3f-c73d-4eaa-a5cc-1d044e284b07', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '0a284879-97a1-46af-b33f-0f2f0548898d', '{"chassi": "99HST1250TS000494", "modelo": "SHINERAY SBM 250T B"}', NULL, '2026-09-23 12:20:06.011526+00'),
+  ('cc623924-2749-4c50-a20e-ab4561034a68', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', 'e367c430-2d2f-4929-b7bb-4d2f755a5c22', '{"valor": 27000, "numero": "CTR-MUE2XU8L", "cliente": "ALAN DA SILVA CUNHA"}', NULL, '2026-09-23 12:29:05.92063+00'),
+  ('b5448667-a037-4a32-b311-b5c0722d1b4d', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', 'e367c430-2d2f-4929-b7bb-4d2f755a5c22', '{"tipo": "venda", "valor": 27000, "cliente": "ALAN DA SILVA CUNHA", "pagamento": "financiamento"}', NULL, '2026-09-23 12:29:07.310616+00'),
+  ('38189fc5-397d-4031-8e04-47fe3b0933a9', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'editar', 'veiculo', 'be107eb3-267f-44e2-aec6-e3a898b0fb1e', '{"year": 2026, "brand": "SHINERAY", "color": "Preto", "model": "SHI 250", "notes": null, "plate": null, "mileage": 0, "renavam": null, "store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634", "fuel_type": "gasolina", "sale_price": 22990, "transmission": null, "warranty_months": 12, "manufacture_year": 2027, "revision_period_km": 3000, "revision_period_months": 3}', NULL, '2026-09-23 12:32:22.799607+00'),
+  ('69078f90-01bb-4ae1-8228-9a9fd104f9a5', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', 'd96a0d8d-69fa-4cc3-b8e1-e13a8958af18', '{"valor": 23990, "numero": "CTR-MUE3AHC1", "cliente": "EDNA OLIVEIRA DA SILVA"}', NULL, '2026-09-23 12:38:56.975449+00'),
+  ('317930ff-d39b-41b5-8be1-1bb72a1967d9', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', 'd96a0d8d-69fa-4cc3-b8e1-e13a8958af18', '{"tipo": "pre_venda", "valor": 23990, "cliente": "EDNA OLIVEIRA DA SILVA", "pagamento": "financiamento"}', NULL, '2026-09-23 12:38:58.006226+00'),
+  ('f3c1aff0-ba63-4652-82b0-19d25521d19d', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '2aee1096-1de3-42a0-97a2-b8f51b57da91', '{"chassi": "99HNS1175VS002687", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-09-23 15:02:46.665444+00'),
+  ('9bbf07c6-290e-45e2-8c43-0f54eafeba4e', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', '08ceeaa8-cd9f-454e-a52e-d6fb52c638f5', '{"valor": 22990, "numero": "CTR-MUE8RX4J", "cliente": "LEONARDO BARNABE DE ARRUDA"}', NULL, '2026-09-23 15:12:29.31761+00'),
+  ('8c4a847d-b1b9-4651-a1d9-464cb9987f2d', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', '08ceeaa8-cd9f-454e-a52e-d6fb52c638f5', '{"tipo": "venda", "valor": 22990, "cliente": "LEONARDO BARNABE DE ARRUDA", "pagamento": "avista"}', NULL, '2026-09-23 15:12:31.185511+00'),
+  ('63d9a47c-ec20-4a54-9ed5-37d8999124d8', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', 'd4403767-9418-407e-904b-f943eb17df3b', '{"valor": 23990, "numero": "CTR-MUEC8R07", "cliente": "SHIRLEY FARIA DE CASTRO "}', NULL, '2026-09-23 16:49:31.864512+00'),
+  ('a2a69224-0a7e-4209-a0ac-71eef2100724', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', 'd4403767-9418-407e-904b-f943eb17df3b', '{"tipo": "pre_venda", "valor": 23990, "cliente": "SHIRLEY FARIA DE CASTRO ", "pagamento": "financiamento"}', NULL, '2026-09-23 16:49:33.059897+00'),
+  ('292920c6-00a9-4424-99a4-7dc0137d7768', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '420b6e34-b6de-48ba-b1da-e4c58b469d07', '{"chassi": "99HNS1175VS002571", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-09-24 11:23:54.583602+00'),
+  ('23ad3329-064f-42b4-913d-d0411ba84c33', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', 'ab403fd8-fb3a-43e0-977d-6881f91dc0c7', '{"valor": 17800, "numero": "CTR-MUFGC01E", "cliente": "NILDA VALADARES GOMES "}', NULL, '2026-09-24 11:31:47.851905+00'),
+  ('e974bbcc-6198-414b-b39c-e42fc022aa9e', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', 'ab403fd8-fb3a-43e0-977d-6881f91dc0c7', '{"tipo": "venda", "valor": 17800, "cliente": "NILDA VALADARES GOMES ", "pagamento": "financiamento"}', NULL, '2026-09-24 11:31:49.569007+00'),
+  ('1ef49340-e522-496c-972d-c36a5b303389', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '63dcc92e-30b3-4b92-a7fd-b071a326c6fe', '{"valor": 20000, "numero": "CTR-MUFH7CMI", "cliente": "FÁBIO JÚNIOR MENDES"}', NULL, '2026-09-24 11:56:10.964243+00'),
+  ('4579799d-1c97-47f7-8061-c1af80cbf9da', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '63dcc92e-30b3-4b92-a7fd-b071a326c6fe', '{"tipo": "pre_venda", "valor": 20000, "cliente": "FÁBIO JÚNIOR MENDES", "pagamento": "financiamento"}', NULL, '2026-09-24 11:56:12.396846+00'),
+  ('fd6f914c-fcdf-4bda-91f9-041fedcffd7b', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '3bee908f-a505-49ec-a5c2-78e695854b24', '{"chassi": "99hsh250vs0000000", "modelo": "SHINERAY SBM 250 T 6B"}', NULL, '2026-09-26 14:43:49.253438+00'),
+  ('5b5e9dbe-1961-4272-ae24-d188a2ccdbd8', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '24c0a444-0a22-469f-881b-bcd5e2d27cca', '{"valor": 26000, "numero": "CTR-MUIIFYRI", "cliente": "JOAO VITOR DE OLIVEIRA"}', NULL, '2026-09-26 14:54:11.992971+00'),
+  ('d058585e-a64a-46ab-8d53-df745295cd39', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '24c0a444-0a22-469f-881b-bcd5e2d27cca', '{"tipo": "venda", "valor": 26000, "cliente": "JOAO VITOR DE OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-09-26 14:54:12.936141+00'),
+  ('5e979bdb-e188-4f87-89db-540e1f8f08b5', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'fa6d2da5-7a40-4ae5-8f5c-cca1d0d4ead5', '{"chassi": "99HSTF200VS000844", "modelo": "SHINERAY STORM 200"}', NULL, '2026-09-28 17:54:46.195512+00');
+
+INSERT INTO public.activity_logs (id, user_id, action, entity_type, entity_id, details, ip_address, created_at) VALUES
+  ('614b4880-917c-493e-84f3-855b98dffca6', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '48a21a5b-1bca-42b7-b95f-d2ee176e894d', '{"valor": 14990, "numero": "CTR-MULM3HMQ", "cliente": "JOSIELY QUEIROZ DE ALMEIDA"}', NULL, '2026-09-28 18:59:47.23598+00'),
+  ('62ee4e92-b5e8-4135-93b8-801d743e6fab', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '48a21a5b-1bca-42b7-b95f-d2ee176e894d', '{"tipo": "venda", "valor": 14990, "cliente": "JOSIELY QUEIROZ DE ALMEIDA", "pagamento": "financiamento"}', NULL, '2026-09-28 18:59:48.17123+00'),
+  ('0e04ec64-98e5-4a1b-b522-ceb9f9715980', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', 'e53c7e08-a9d9-4811-a0ce-83ef5f613bfe', '{"valor": 22800, "numero": "CTR-MUMMRJIY", "cliente": "MARCOS HENRIQUE DA SILVA PEDROSA"}', NULL, '2026-09-29 12:06:15.106355+00'),
+  ('9de14862-e23d-47f7-8e3c-5833f855d1bb', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', 'e53c7e08-a9d9-4811-a0ce-83ef5f613bfe', '{"tipo": "pre_venda", "valor": 22800, "cliente": "MARCOS HENRIQUE DA SILVA PEDROSA", "pagamento": "avista"}', NULL, '2026-09-29 12:06:15.993393+00'),
+  ('478f5054-13d8-4e94-9486-be86d58be30d', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '0c897ea2-13c2-4234-bd81-bd7986fa7062', '{"chassi": "99hshf175vs002597", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-29 13:38:18.011817+00'),
+  ('2d226a77-2745-4eee-b871-41a0151ccb5e', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', 'ec0a38df-9a17-452d-b026-ec81fd1d4882', '{"valor": 19990, "numero": "CTR-MUMQNR24", "cliente": "DJAVAN LOPES DE OLIVEIRA"}', NULL, '2026-09-29 13:55:15.707148+00'),
+  ('3db2730b-3cc6-44bb-a2b6-5aedd1c1ebe9', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'c830685a-539b-4afa-8059-609667f98dc2', '{"chassi": "99HNJ1125VS008964", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-03 12:40:33.619687+00'),
+  ('289e2dd2-1941-429d-82bf-0599add85e2a', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', 'ec0a38df-9a17-452d-b026-ec81fd1d4882', '{"tipo": "venda", "valor": 19990, "cliente": "DJAVAN LOPES DE OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-09-29 13:55:16.831783+00'),
+  ('e42b14e6-6820-406a-9dc2-11a28126bf55', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'a9d6c1c7-1fd4-4384-b8e9-56f66cece722', '{"chassi": "99HR1C125VS000415", "modelo": "SHINERAY RIO 125"}', NULL, '2026-09-29 14:18:34.064142+00'),
+  ('e286da99-2709-40f6-8374-a81b5b1d4398', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', '739b0457-2fef-45eb-9680-22444373990e', '{"valor": 14297.8, "numero": "CTR-MUMTQE52", "cliente": "MARIA LUISA GARCIA MORAIS"}', NULL, '2026-09-29 15:21:18.187182+00'),
+  ('e3e5b577-73cb-4060-9167-274e684a1cfb', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', '739b0457-2fef-45eb-9680-22444373990e', '{"tipo": "pre_venda", "valor": 14297.8, "cliente": "MARIA LUISA GARCIA MORAIS", "pagamento": "financiamento"}', NULL, '2026-09-29 15:21:20.112744+00'),
+  ('d3bd575b-2231-4770-b080-a761044e1dbf', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '65af520b-b185-4fbd-8f44-bceb209ff8e3', '{"chassi": "99HSHF175TS024619", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-09-29 17:55:40.27466+00'),
+  ('7c6188f7-d919-4769-b4be-8db22919cb57', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '88e72b8a-7e6c-438a-8af4-da190ad9cc8e', '{"valor": 14740, "numero": "CTR-MUN11UHI", "cliente": "LETICIA TATIANE MENDES LOURENCO"}', NULL, '2026-09-29 18:46:09.563771+00'),
+  ('6821e8a3-9b55-4e23-a6a9-4b6b14092e1b', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '88e72b8a-7e6c-438a-8af4-da190ad9cc8e', '{"tipo": "venda", "valor": 14740, "cliente": "LETICIA TATIANE MENDES LOURENCO", "pagamento": "financiamento"}', NULL, '2026-09-29 18:46:10.51933+00'),
+  ('34ebbae3-b346-4057-9bc7-e4897067afde', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', '0f0adbe3-7834-4fc8-a0e3-0b0121803af3', '{"valor": 19990, "numero": "CTR-MUNZSHRQ", "cliente": "LOURIVAL MESSIAS DE SOUSA"}', NULL, '2026-09-30 10:58:39.616291+00'),
+  ('445c99e1-0e24-4863-b3e4-fe6a2a283eb5', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', '0f0adbe3-7834-4fc8-a0e3-0b0121803af3', '{"tipo": "venda", "valor": 19990, "cliente": "LOURIVAL MESSIAS DE SOUSA", "pagamento": "financiamento"}', NULL, '2026-09-30 10:58:40.802846+00'),
+  ('9a31f2aa-088f-4c19-bdc7-d79e615a6b6b', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '138124ae-9169-4aa5-a4c5-4b387349f976', '{"chassi": "99hphs050vs001550", "modelo": "SHINERAY PHOENIX 50"}', NULL, '2026-09-30 13:11:24.274347+00'),
+  ('964c7be9-e96b-47a3-aced-1394f8b06c54', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'a3603243-dd04-4822-b564-f4a2b3afbc36', '{"valor": 10990, "numero": "CTR-MUO4WHYH", "cliente": "RAYSSA VICTORIA MESQUITA ASSUNCAO"}', NULL, '2026-09-30 13:21:45.473269+00'),
+  ('5391b0e6-1a6b-41e9-8f01-f620096121e6', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'a3603243-dd04-4822-b564-f4a2b3afbc36', '{"tipo": "venda", "valor": 10990, "cliente": "RAYSSA VICTORIA MESQUITA ASSUNCAO", "pagamento": "financiamento"}', NULL, '2026-09-30 13:21:46.765354+00'),
+  ('199722b5-bb64-46b8-a9fa-e1f81285144c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'edd06d90-ad72-4c8a-8f16-2816cbc9c913', '{"valor": 18990, "numero": "CTR-MUO6SGTH", "cliente": "SONIA MARIA GONÇALVES DO NASCIMENTO"}', NULL, '2026-09-30 14:14:36.743583+00'),
+  ('1120e9a4-0441-405c-9fee-f4eba1f34919', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'edd06d90-ad72-4c8a-8f16-2816cbc9c913', '{"tipo": "venda", "valor": 18990, "cliente": "SONIA MARIA GONÇALVES DO NASCIMENTO", "pagamento": "financiamento"}', NULL, '2026-09-30 14:14:38.104217+00'),
+  ('e69f4d20-e705-4a2f-a344-e3299ede1968', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '7cfac19b-5266-4cf7-b37f-4dff506fd850', '{"chassi": "99hnj1125vs008981", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-09-30 15:10:48.475103+00'),
+  ('b55ecc47-95c4-4009-973c-2a8d5ef819cb', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '80210a51-5d91-4eea-867e-450e4ab2230a', '{"valor": 14740, "numero": "CTR-MUO8YFPX", "cliente": "THALISSA MICHAELLY PEREIRA SANTOS"}', NULL, '2026-09-30 15:15:14.521158+00'),
+  ('4300c46e-282f-4e64-9262-fcb6616ee6d9', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '80210a51-5d91-4eea-867e-450e4ab2230a', '{"tipo": "venda", "valor": 14740, "cliente": "THALISSA MICHAELLY PEREIRA SANTOS", "pagamento": "financiamento"}', NULL, '2026-09-30 15:15:15.505371+00'),
+  ('ca3a174a-7edb-4720-8c09-5e9950189ff3', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '43d51f8e-691d-4d9b-b884-80c32423404f', '{"chassi": "99hstf200vs000856", "modelo": "SHINERAY STORM 200"}', NULL, '2026-09-30 17:21:47.581222+00'),
+  ('3e7e1dcc-f98c-4687-857e-b1209a499031', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '7e40bb68-8c7b-4be6-899d-e95fc1e82c28', '{"valor": 23990, "numero": "CTR-MUODRWYG", "cliente": "UILTON CHAVES DE ARAUJO"}', NULL, '2026-09-30 17:30:11.010255+00'),
+  ('284d3de9-d38d-498d-b07f-bd72ce13be19', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '7e40bb68-8c7b-4be6-899d-e95fc1e82c28', '{"tipo": "venda", "valor": 23990, "cliente": "UILTON CHAVES DE ARAUJO", "pagamento": "financiamento"}', NULL, '2026-09-30 17:30:12.328697+00'),
+  ('53cd9c2b-2d24-4466-810e-0383419e207c', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'ea4c42eb-02b1-4e94-8abc-6dc30282d3d7', '{"chassi": "99HSTF200TS004675", "modelo": "SHINERAY STORM 200"}', NULL, '2026-09-30 19:12:12.364269+00'),
+  ('e38d7c4f-91c9-4feb-9441-34d3c9af5017', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', 'e80320fc-66b6-4a94-834b-73cacc7cf151', '{"valor": 22800, "numero": "CTR-MUOHP93U", "cliente": "LUCIENE APARECIDA DE MENDONCA"}', NULL, '2026-09-30 19:20:01.755067+00'),
+  ('0efb7704-a6dd-45d0-a88b-cc75ef8a11a7', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', 'e80320fc-66b6-4a94-834b-73cacc7cf151', '{"tipo": "pre_venda", "valor": 22800, "cliente": "LUCIENE APARECIDA DE MENDONCA", "pagamento": "avista"}', NULL, '2026-09-30 19:20:02.628158+00'),
+  ('f5d75247-0f26-4c51-8a7a-73934cbec4d5', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'editar', 'venda', 'edd06d90-ad72-4c8a-8f16-2816cbc9c913', '{"cliente": "DAIANE GONCALVES DO NASCIMENTO", "correcao": "nao", "pagamento": "financiamento"}', NULL, '2026-10-01 11:53:54.103658+00'),
+  ('c19dfba2-6be9-45a6-a469-81216ff07ae7', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'editar', 'venda', 'ec0f6234-594b-4c12-9af8-f35b9748c520', '{"revisao": "solicitada", "observacao": "VALOR ERRADO?"}', NULL, '2026-10-01 12:04:54.642411+00'),
+  ('fa583a6d-2342-4248-9502-a05ab6222061', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'bc54076b-5f7d-4e94-9618-5ebdc26fbf0b', '{"chassi": "99HSHF250VS001222", "modelo": "SHINERAY SHI 250"}', NULL, '2026-10-01 13:36:31.427433+00'),
+  ('8912b32f-24d9-4c6e-9780-fbbf4eeec961', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', '8024cfce-7c71-4c60-8d5c-5e50928636ae', '{"valor": 23330, "numero": "CTR-MUPLT0CD", "cliente": "RODRIGO VICTOR DE MOURA"}', NULL, '2026-10-01 14:02:41.421326+00'),
+  ('b5d93fad-b03f-41a0-88f2-8f5a81ce3717', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', '8024cfce-7c71-4c60-8d5c-5e50928636ae', '{"tipo": "pre_venda", "valor": 23330, "cliente": "RODRIGO VICTOR DE MOURA", "pagamento": "financiamento"}', NULL, '2026-10-01 14:02:42.557223+00'),
+  ('d64965fa-f82f-4e53-b731-b7f1a809e422', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '6f9f07b9-91ac-4794-97f6-792d6eaa66de', '{"chassi": "99hshf175vs003560", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-10-01 18:06:45.262403+00'),
+  ('bb81220b-38f9-41fb-8917-7ea2bfed636d', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '552fa778-7a46-4d19-ad1a-6e49072edb9e', '{"valor": 18994, "numero": "CTR-MUPUNC8V", "cliente": "JAILSON LOPES DE SOUZA"}', NULL, '2026-10-01 18:10:15.12561+00'),
+  ('5fefaf3d-69d8-4549-9765-8e50ff30bfca', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '552fa778-7a46-4d19-ad1a-6e49072edb9e', '{"tipo": "venda", "valor": 18994, "cliente": "JAILSON LOPES DE SOUZA", "pagamento": "financiamento"}', NULL, '2026-10-01 18:10:16.419967+00'),
+  ('2db9552e-5dcd-47d0-ae0d-76b49015d6a8', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'db066c86-59eb-4697-a618-19a43a0fe196', '{"chassi": "99HNS1175VS002628", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-10-02 13:04:54.383332+00'),
+  ('4ddd763a-af9b-4a14-920a-0344b9089a04', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'a0eaf50e-d075-4335-b65b-a8448514a3b7', '{"chassi": "99hnj1125vs008979", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-02 14:47:54.559123+00'),
+  ('4c3e4091-3d25-4478-b025-f8c0ef5ba762', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '075e9ff5-36f2-4dcf-b942-1eb7bce68b5b', '{"chassi": "99HR1F125VS000402", "modelo": "SHINERAY RIO 125"}', NULL, '2026-10-02 14:50:41.226875+00'),
+  ('58fa9506-60c7-44a4-acd5-ced6ca81c7b2', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '0640adf6-1ef7-40ac-8b13-3a28faa7cb70', '{"valor": 14020, "numero": "CTR-MUR3EMFD", "cliente": "JOMAR FERREIRA SANTOS"}', NULL, '2026-10-02 15:03:10.628314+00'),
+  ('d0af4574-c592-4a98-8f0d-b4189d2ce1df', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '0640adf6-1ef7-40ac-8b13-3a28faa7cb70', '{"tipo": "venda", "valor": 14020, "cliente": "JOMAR FERREIRA SANTOS", "pagamento": "financiamento"}', NULL, '2026-10-02 15:03:12.28304+00'),
+  ('d9e3b347-9b64-4254-993b-53f82ab03336', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', 'eb61f700-4334-414e-9d2e-d524bb64e0f8', '{"valor": 13900, "numero": "CTR-MURHFMAE", "cliente": "LORENA PAULA DE OLIVEIRA"}', NULL, '2026-10-02 21:35:52.753229+00'),
+  ('5ae71662-eab7-48e1-b077-92c2b03aee1b', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', 'eb61f700-4334-414e-9d2e-d524bb64e0f8', '{"tipo": "pre_venda", "valor": 13900, "cliente": "LORENA PAULA DE OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-10-02 21:35:54.333217+00'),
+  ('7ccc742c-53d3-4d87-8667-26d2b28556d3', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '8cc29de9-110a-4d22-b012-99b29b4eecde', '{"chassi": "99HSB3250VS000323", "modelo": "SHINERAY SBM 250S"}', NULL, '2026-10-03 12:27:13.783895+00'),
+  ('ad98c096-8cec-48c2-bd22-793fe406977f', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'e950a0a4-4671-4858-8cd8-9ebdb6026b92', '{"chassi": "99HNS1175VS002630", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-10-03 12:33:12.570706+00'),
+  ('346bcb05-23ac-4390-8298-1a2a96bc34c3', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '243476b3-58da-45d1-b478-04a55e121572', '{"chassi": "99HNJ1125VS008968", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-03 12:38:55.907021+00'),
+  ('4b8016f2-946d-4dd8-af73-7d4276c37369', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'cdeb6a6b-d469-4a86-9995-3b4877fa6043', '{"chassi": "99HR1F125VS000399", "modelo": "SHINERAY RIO 125"}', NULL, '2026-10-03 12:44:54.023048+00'),
+  ('a60416c7-f95f-4cc2-8875-21abe9787cfb', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '7c3d57a9-1739-4d87-b98e-0351fcbd228c', '{"chassi": "99HSTF200VS004675", "modelo": "SHINERAY STORM 200"}', NULL, '2026-10-03 12:49:08.942019+00');
+
+INSERT INTO public.activity_logs (id, user_id, action, entity_type, entity_id, details, ip_address, created_at) VALUES
+  ('bc315985-2a6b-48b9-b918-4b3295f3a9ca', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '55185f75-372a-4a05-9061-fcc9ce6ee37a', '{"valor": 19000, "numero": "CTR-MUSFCRL2", "cliente": "SAULO ALMEIDA OLIVEIRA"}', NULL, '2026-10-03 13:25:25.57297+00'),
+  ('31a44c33-6021-4bc6-85cd-9bb7057118fb', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '55185f75-372a-4a05-9061-fcc9ce6ee37a', '{"tipo": "pre_venda", "valor": 19000, "cliente": "SAULO ALMEIDA OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-10-03 13:25:26.651609+00'),
+  ('6791ce97-21ed-4990-9140-05aadf272b46', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '9a62a43e-e345-495c-b901-b4185366cb5d', '{"valor": 14990, "numero": "CTR-MUSGKONY", "cliente": "EMANUELLE GOMES DE OLIVEIRA"}', NULL, '2026-10-03 13:59:34.64132+00'),
+  ('cad6c3fa-e872-40da-aa80-a4f13db0dd60', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '9a62a43e-e345-495c-b901-b4185366cb5d', '{"tipo": "pre_venda", "valor": 14990, "cliente": "EMANUELLE GOMES DE OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-10-03 13:59:35.159016+00'),
+  ('b56cd409-320b-4cf2-b652-83c9d1f29382', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'bd8ea256-971e-410e-a1ab-73505bad4257', '{"chassi": "99hstf200vs000907", "modelo": "SHINERAY STORM 200"}', NULL, '2026-10-05 15:44:50.083378+00'),
+  ('e27fd393-6d46-498a-aeed-02cd14adc294', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '4ae14dfb-ff9e-480a-a963-41504a5665c4', '{"valor": 23990, "numero": "CTR-MUVFB34C", "cliente": "ADRIELLE ANTUNES DA SILVA"}', NULL, '2026-10-05 15:47:25.625638+00'),
+  ('a03ea04b-88a6-47f2-aada-1569519ebb35', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '4ae14dfb-ff9e-480a-a963-41504a5665c4', '{"tipo": "venda", "valor": 23990, "cliente": "ADRIELLE ANTUNES DA SILVA", "pagamento": "financiamento"}', NULL, '2026-10-05 15:47:26.864952+00'),
+  ('ca1e07bc-cea7-4ae6-b408-8014d0dda262', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '18da06af-2c2e-4392-8a45-0d4239874b3f', '{"valor": 12540.07, "numero": "CTR-MUWSANN9", "cliente": "ROSIVANIA SOARES DE OLIVEIRA SOUZA"}', NULL, '2026-10-06 14:38:45.956414+00'),
+  ('5c975c90-786c-48fb-ae91-77e57b9e19d1', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '18da06af-2c2e-4392-8a45-0d4239874b3f', '{"tipo": "venda", "valor": 12540.07, "cliente": "ROSIVANIA SOARES DE OLIVEIRA SOUZA", "pagamento": "financiamento"}', NULL, '2026-10-06 14:38:47.223749+00'),
+  ('f95d7d0c-793f-4684-af0d-f808cc66cfff', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '5a523665-59e0-472a-8c78-f686fb0790eb', '{"valor": 19000, "numero": "CTR-MUWSN77V", "cliente": "LUCAS DANIEL ALVES PEDERNEIRA"}', NULL, '2026-10-06 14:48:30.956681+00'),
+  ('1571dc6d-3c8c-4df4-b5c9-7729e4d3f7a9', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '5a523665-59e0-472a-8c78-f686fb0790eb', '{"tipo": "venda", "valor": 19000, "cliente": "LUCAS DANIEL ALVES PEDERNEIRA", "pagamento": "avista"}', NULL, '2026-10-06 14:48:32.168639+00'),
+  ('fc20eeb3-98a5-401a-917e-656efd2f0c2b', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '852a6f9e-8674-499b-ba66-33ff740d323b', '{"chassi": "99HDVF250VS000185", "modelo": "SHINERAY DENVER 250"}', NULL, '2026-10-06 17:22:22.447376+00'),
+  ('bd7f45bb-b9bc-41a7-ace6-f32b977d7a51', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'editar', 'veiculo', '63083a24-444e-4993-a94f-1af20a3805b6', '{"year": 2026, "brand": "SHINERAY ", "color": "Cinza", "model": "DENVER 250", "notes": "[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.", "plate": null, "mileage": 0, "renavam": null, "store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634", "fuel_type": "gasolina", "sale_price": 28990, "transmission": "manual", "warranty_months": null, "manufacture_year": null, "revision_period_km": null, "revision_period_months": null}', NULL, '2026-10-06 17:22:51.59071+00'),
+  ('86a8975b-136b-4d14-a850-996185cfb986', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', 'ebfa109c-e232-4864-9878-e88b49498e7c', '{"valor": 28990, "numero": "CTR-MUWZ4E7V", "cliente": "GABRIEL DE CASTRO RIBEIRO"}', NULL, '2026-10-06 17:49:50.716857+00'),
+  ('35c48655-8b95-42a1-be87-f25e4f11d1fe', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', 'ebfa109c-e232-4864-9878-e88b49498e7c', '{"tipo": "pre_venda", "valor": 28990, "cliente": "GABRIEL DE CASTRO RIBEIRO", "pagamento": "financiamento"}', NULL, '2026-10-06 17:49:52.203741+00'),
+  ('6f11da2d-acca-4156-a296-2cb1f0093c14', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'f39eb576-2e9c-487e-af4a-25c70d93ae2a', '{"chassi": "99HPHS050VS001704", "modelo": "SHINERAY PHOENIX 50"}', NULL, '2026-10-06 17:50:20.956071+00'),
+  ('33c1ce12-2e7f-4e61-a856-2cde834940bc', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '822effe4-e6a0-4a0a-8c70-ce87d948b5b5', '{"valor": 10000, "numero": "CTR-MUX0B2H8", "cliente": "DAIANE ALVES"}', NULL, '2026-10-06 18:23:03.060133+00'),
+  ('dd899e11-2bc7-4c68-a6ed-6d2aece78387', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '822effe4-e6a0-4a0a-8c70-ce87d948b5b5', '{"tipo": "pre_venda", "valor": 10000, "cliente": "DAIANE ALVES", "pagamento": "financiamento"}', NULL, '2026-10-06 18:23:06.385971+00'),
+  ('f9bef836-fabd-4e52-aedd-7974d31da332', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '601e269a-a470-47e2-81b2-322ea260cf5f', '{"chassi": "99HSHF175VS003320", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-10-07 14:13:38.291726+00'),
+  ('b32c118a-4017-4cc5-9247-49076c77fd89', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'e9acccd2-b6c0-4df7-a094-eed3d060437e', '{"valor": 19990, "numero": "CTR-MUY72UNV", "cliente": "DIOGO SOUZA DINIZ"}', NULL, '2026-10-07 14:20:23.546691+00'),
+  ('897ecb07-4328-4539-a3f0-2df99d1fadef', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'e9acccd2-b6c0-4df7-a094-eed3d060437e', '{"tipo": "venda", "valor": 19990, "cliente": "DIOGO SOUZA DINIZ", "pagamento": "financiamento"}', NULL, '2026-10-07 14:20:24.84917+00'),
+  ('c97f3cd0-8a81-4f52-892b-b78527dec732', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'd2c73d9f-6835-4120-9236-f44be45ba556', '{"chassi": "99HSTF200VS000961", "modelo": "SHINERAY STORM 200"}', NULL, '2026-10-07 20:11:00.130354+00'),
+  ('4bf3f171-e98b-48fe-b223-125a2e1a16eb', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'contrato', '39b2ce89-404a-4aa1-a66a-334b0e9e562b', '{"valor": 23990, "numero": "CTR-MUYKECCU", "cliente": "JOSE CELIO NUNES"}', NULL, '2026-10-07 20:33:13.370264+00'),
+  ('eae0bc9e-b744-4ca2-a455-f165003039aa', '08581b57-bbaf-4147-a92c-83aab9a80240', 'criar', 'venda', '39b2ce89-404a-4aa1-a66a-334b0e9e562b', '{"tipo": "pre_venda", "valor": 23990, "cliente": "JOSE CELIO NUNES", "pagamento": "financiamento"}', NULL, '2026-10-07 20:33:14.520652+00'),
+  ('2d616dd2-8107-47a0-b9e4-14783f62ae73', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', 'c233e671-698b-4a1d-956f-8dcbac34d30e', '{"valor": 14000, "numero": "CTR-MV0XS7HG", "cliente": "JOSIMAR DIAS"}', NULL, '2026-10-09 12:23:27.915375+00'),
+  ('05fc438f-3380-489c-99fe-bbfed6ff0324', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', 'c233e671-698b-4a1d-956f-8dcbac34d30e', '{"tipo": "pre_venda", "valor": 14000, "cliente": "JOSIMAR DIAS", "pagamento": "financiamento"}', NULL, '2026-10-09 12:23:29.423161+00'),
+  ('0bf2e9be-cbac-45a8-b064-f19223c31ffb', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '8a2e16e7-b606-4a23-a89e-4f3775bea51d', '{"chassi": "99hstf200vs000944", "modelo": "SHINERAY STORM 200"}', NULL, '2026-10-09 15:02:14.410948+00'),
+  ('5317f8d7-06f5-4f57-ba93-cb854928f53c', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '31b1dc44-1f79-48a4-9ebd-dc139b6a4d32', '{"valor": 14000, "numero": "CTR-MV13KZV1", "cliente": "ANA LARA NUNES DA SILVA"}', NULL, '2026-10-09 15:05:49.084447+00'),
+  ('c89595d9-b3d6-4121-84a4-2e395aa8f73e', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '31b1dc44-1f79-48a4-9ebd-dc139b6a4d32', '{"tipo": "pre_venda", "valor": 14000, "cliente": "ANA LARA NUNES DA SILVA", "pagamento": "financiamento"}', NULL, '2026-10-09 15:05:49.207355+00'),
+  ('a6e2a79d-e384-415f-9597-79f57b3ce12b', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '57f404b2-e541-4c5c-b904-d38fdd06a4a8', '{"valor": 14000, "numero": "CTR-MV6P34WA", "cliente": "MARCELO FERREIRA PACHECO JUNIOR"}', NULL, '2026-10-13 13:06:37.642963+00'),
+  ('7f735218-900b-4c04-9699-3bc72a8093a7', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '57f404b2-e541-4c5c-b904-d38fdd06a4a8', '{"tipo": "pre_venda", "valor": 14000, "cliente": "MARCELO FERREIRA PACHECO JUNIOR", "pagamento": "financiamento"}', NULL, '2026-10-13 13:06:38.142567+00'),
+  ('17951948-595c-421c-bf9d-2334ac725a70', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'b72fdf53-0684-4ac7-ab02-c43880e461a5', '{"chassi": "99hnjf1150vs00000", "modelo": "SHINERAY JEF 150"}', NULL, '2026-10-13 18:45:20.680117+00'),
+  ('f1710349-c18a-4e4c-aa17-1747eff98b05', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'cc5c7992-3bf8-4cf3-a6b4-87f751126cda', '{"valor": 17990, "numero": "CTR-MV71M8TW", "cliente": "ANDRE PEREIRA ALVES"}', NULL, '2026-10-13 18:57:25.859414+00'),
+  ('5c1d091e-f97f-46e3-8318-b5e8ec01b3bc', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'cc5c7992-3bf8-4cf3-a6b4-87f751126cda', '{"tipo": "venda", "valor": 17990, "cliente": "ANDRE PEREIRA ALVES", "pagamento": "avista"}', NULL, '2026-10-13 18:57:27.887008+00'),
+  ('87d389b8-61c5-49c1-92df-1634cbb65231', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '053930f1-8235-455d-97d5-0e05e9b6441c', '{"valor": 14000, "numero": "CTR-MV84H90A", "cliente": "VERONICA RAMOS DE LIMA"}', NULL, '2026-10-14 13:05:16.06902+00'),
+  ('f7dacbff-793d-4ee7-86fd-02c91cd79fc3', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '053930f1-8235-455d-97d5-0e05e9b6441c', '{"tipo": "pre_venda", "valor": 14000, "cliente": "VERONICA RAMOS DE LIMA", "pagamento": "financiamento"}', NULL, '2026-10-14 13:05:16.548463+00'),
+  ('956803c8-3827-431f-b425-b76a84465f7e', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', 'ae960d0c-2437-4737-b385-4f7658562614', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-10-14 17:37:02.292578+00'),
+  ('c63af77e-f5c8-47d6-b766-36a00b16a838', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', 'c080f2fd-d4ed-4724-afba-316b486a8e28', '{"valor": 15000, "numero": "CTR-MV8FHX7K", "cliente": "EDMAR RODRIGUES DE OLIVEIRA"}', NULL, '2026-10-14 18:13:43.621163+00'),
+  ('706f05d9-a6de-44c3-8bfb-cd3997d95ae0', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', 'c080f2fd-d4ed-4724-afba-316b486a8e28', '{"tipo": "pre_venda", "valor": 15000, "cliente": "EDMAR RODRIGUES DE OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-10-14 18:13:44.822012+00'),
+  ('f530ec22-6176-4c79-a2aa-5e43f5f6d401', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', 'a88f1819-5c0c-493d-ac7e-e33b5f837dcd', '{"valor": 15000, "numero": "CTR-MV8GI6QW", "cliente": "EDMAR RODRIGUES DE OLIVEIRA"}', NULL, '2026-10-14 18:41:56.271461+00'),
+  ('e0200a45-bef7-4ac3-8779-2ab9ececee07', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', 'a88f1819-5c0c-493d-ac7e-e33b5f837dcd', '{"tipo": "pre_venda", "valor": 15000, "cliente": "EDMAR RODRIGUES DE OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-10-14 18:41:57.256665+00'),
+  ('73f073a2-c400-4c95-866a-335de11b7ace', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'c47a17ad-12d0-4c88-89d1-996a6477195f', '{"chassi": "99hnj1150ts000433", "modelo": "SHINERAY SBM 250S"}', NULL, '2026-10-14 21:00:25.966253+00'),
+  ('db6ca4e0-2b3d-4c21-bf23-7fb1e91469c0', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '0c4e0dbe-f96d-4662-96cc-e55826dc7286', '{"chassi": "99hsb3250vs000322", "modelo": "SHINERAY SBM 250S"}', NULL, '2026-10-14 21:01:54.166602+00'),
+  ('629ab450-f4cc-4ac0-b821-e37018c6c469', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'caf521b1-c0b2-4224-a5a6-e5c8e3454cc2', '{"valor": 25000, "numero": "CTR-MV8LQ7HM", "cliente": "JULIANO SERGIO FREIRE"}', NULL, '2026-10-14 21:08:10.040352+00'),
+  ('327b5202-b975-43f9-8e76-5fdb1823d3d2', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'caf521b1-c0b2-4224-a5a6-e5c8e3454cc2', '{"tipo": "venda", "valor": 25000, "cliente": "JULIANO SERGIO FREIRE", "pagamento": "avista"}', NULL, '2026-10-14 21:08:11.386232+00'),
+  ('935ea63b-2a27-45e4-95ce-d498dfac7129', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', 'de74b37f-b2af-4816-b908-4ef98acc7e22', '{"valor": 17990, "numero": "CTR-MV9THVCV", "cliente": "HUGO RICARDO RABELO DOS SANTOS "}', NULL, '2026-10-15 17:33:22.358362+00'),
+  ('b2f366a5-c2ce-4090-856a-2cdc8f4390b4', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', 'de74b37f-b2af-4816-b908-4ef98acc7e22', '{"tipo": "venda", "valor": 17990, "cliente": "HUGO RICARDO RABELO DOS SANTOS ", "pagamento": "financiamento"}', NULL, '2026-10-15 17:33:23.709153+00'),
+  ('19bb49b2-9255-4b6a-aff4-23b9b27f9ce6', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '09848ba3-6b8c-4e84-9da7-befb0468f6c3', '{"chassi": "99HSHF175VS003555", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-10-15 18:49:26.657147+00'),
+  ('30ceaced-1fc0-4ecc-834b-40b45c2e93ee', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '4175ab50-f145-4cdd-93af-e9faa51dce6a', '{"valor": 19990, "numero": "CTR-MV9X8BT6", "cliente": "ARIEL LEYVA CUTINO"}', NULL, '2026-10-15 19:17:55.59579+00'),
+  ('f719f0a2-df43-44c3-bb5e-906cf9c87d29', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '4175ab50-f145-4cdd-93af-e9faa51dce6a', '{"tipo": "venda", "valor": 19990, "cliente": "ARIEL LEYVA CUTINO", "pagamento": "avista"}', NULL, '2026-10-15 19:17:56.842432+00');
+
+INSERT INTO public.activity_logs (id, user_id, action, entity_type, entity_id, details, ip_address, created_at) VALUES
+  ('aaaadf61-d9ef-4de5-aa29-97f63d3c988c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '6cafa0ca-b040-4574-8c15-61a5a29aed10', '{"chassi": "99hns1175vs002567", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-10-15 21:50:33.059622+00'),
+  ('a4ff1c0c-dc9c-43ea-a3e0-0db98d82e04a', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '9100fb34-c1e8-438a-a1fa-edae9f707649', '{"valor": 18990, "numero": "CTR-MVA2VIPX", "cliente": "JOYCE EMANUUELLEN REIS XAVIER"}', NULL, '2026-10-15 21:55:55.732614+00'),
+  ('f152da26-efef-4cb9-bc66-768e5b2fe3c8', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '9100fb34-c1e8-438a-a1fa-edae9f707649', '{"tipo": "venda", "valor": 18990, "cliente": "JOYCE EMANUUELLEN REIS XAVIER", "pagamento": "financiamento"}', NULL, '2026-10-15 21:55:57.789375+00'),
+  ('293c0d03-59f5-4727-903b-5e1fddb5ece2', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'editar', 'venda', '9100fb34-c1e8-438a-a1fa-edae9f707649', '{"cliente": "JOYCE EMANUELLEN REIS XAVIER", "correcao": "nao", "pagamento": "financiamento"}', NULL, '2026-10-15 21:56:16.61699+00'),
+  ('160d8212-aafc-499d-a62b-13db6e037f5a', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '394b23ed-2a0d-4141-a0ca-27c00e6ffdd3', '{"chassi": "LHJYJLLA5TB474699", "modelo": "BULL BMT 180"}', NULL, '2026-10-16 12:02:08.968571+00'),
+  ('974b88c7-4a90-4bea-b7f5-d3fe9b9b7b69', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', 'c58f0543-f3b5-4429-8211-838145a69c49', '{"valor": 19000, "numero": "CTR-MVAXSMYT", "cliente": "JEFERSON ROCHA DA SILVA"}', NULL, '2026-10-16 12:21:29.054862+00'),
+  ('d6730787-4023-4c43-aa5e-293f973da03c', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', 'c58f0543-f3b5-4429-8211-838145a69c49', '{"tipo": "pre_venda", "valor": 19000, "cliente": "JEFERSON ROCHA DA SILVA", "pagamento": "financiamento"}', NULL, '2026-10-16 12:21:29.809437+00'),
+  ('e22ae837-6da8-4853-bec1-e2ca440cc614', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '17adae21-d06b-4235-bb42-21fabfedbead', '{"chassi": "99hnj1125vs008457", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-16 19:58:38.300521+00'),
+  ('e0c4a85f-83d3-4495-b3e6-983ebac2ea3a', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '33a37517-d4f4-439c-8ec2-944e0f1a3390', '{"valor": 14990, "numero": "CTR-MVBFDRMY", "cliente": "EMILIA DOURADA FRAGA "}', NULL, '2026-10-16 20:33:48.971039+00'),
+  ('7c6248ce-08dc-4e5f-bc34-66bc4e0f7030', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '33a37517-d4f4-439c-8ec2-944e0f1a3390', '{"tipo": "venda", "valor": 14990, "cliente": "EMILIA DOURADA FRAGA ", "pagamento": "financiamento"}', NULL, '2026-10-16 20:33:49.991514+00'),
+  ('ae3a95e5-2620-48e6-9b25-cdc81cd06a50', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'e0f0ec08-7dbc-444a-9a80-a2fafbae5cdd', '{"chassi": "99hns1175vs002595", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-10-17 13:17:00.114383+00'),
+  ('210ede3b-6106-4ab9-a021-9e149f2d69bd', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '64a2451a-7b6a-4e5d-bedf-e34e84dae396', '{"valor": 18990, "numero": "CTR-MVCFI63V", "cliente": "RONALD DE JESUS TEIXEIRA"}', NULL, '2026-10-17 13:25:01.090088+00'),
+  ('a9767247-9ec7-4ea0-959e-3f89cb32fde3', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '64a2451a-7b6a-4e5d-bedf-e34e84dae396', '{"tipo": "venda", "valor": 18990, "cliente": "RONALD DE JESUS TEIXEIRA", "pagamento": "financiamento"}', NULL, '2026-10-17 13:25:02.719117+00'),
+  ('8dfb8025-520e-4e92-bf9c-0f502ad712ba', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', 'b8ff7669-5949-434f-9365-33336b862115', '{"valor": 18500, "numero": "CTR-MVCFPXTJ", "cliente": "GUT LOC LOCADORA DE VEICULOS E MOTOS"}', NULL, '2026-10-17 13:31:03.384583+00'),
+  ('52c670a2-d7c1-45fc-97f7-72d683ba7535', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', 'b8ff7669-5949-434f-9365-33336b862115', '{"tipo": "pre_venda", "valor": 18500, "cliente": "GUT LOC LOCADORA DE VEICULOS E MOTOS", "pagamento": "avista"}', NULL, '2026-10-17 13:31:04.485887+00'),
+  ('5459c023-a6ad-4313-8961-b1f398523f9e', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '2d02257d-919f-4c19-b753-115d37b0c19d', '{"valor": 13900, "numero": "CTR-MVCFUHHL", "cliente": "ANGELICA DE LIRIO ALVES"}', NULL, '2026-10-17 13:34:34.951032+00'),
+  ('da37304f-0ef4-4e3a-ad35-b35ae8145e19', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '2d02257d-919f-4c19-b753-115d37b0c19d', '{"tipo": "pre_venda", "valor": 13900, "cliente": "ANGELICA DE LIRIO ALVES", "pagamento": "financiamento"}', NULL, '2026-10-17 13:34:35.40668+00'),
+  ('4e08d5bc-113a-4cbb-87d6-372673d293d8', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '1bb0b50e-4548-4b04-b76f-6e3c6ae41371', '{"valor": 17424, "numero": "CTR-MVCHM3NG", "cliente": "GENILSON RODRIGUES FRANCO"}', NULL, '2026-10-17 14:24:02.468634+00'),
+  ('3f4b1361-725b-4e6e-af03-901bf76be834', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '1bb0b50e-4548-4b04-b76f-6e3c6ae41371', '{"tipo": "pre_venda", "valor": 17424, "cliente": "GENILSON RODRIGUES FRANCO", "pagamento": "financiamento"}', NULL, '2026-10-17 14:24:02.942034+00'),
+  ('027d8abb-7e86-4e9b-ab8c-1e8d8a09fac8', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'editar', 'venda', '64a2451a-7b6a-4e5d-bedf-e34e84dae396', '{"cliente": "RONALD DE JESUS TEIXEIRA", "correcao": "nao", "pagamento": "financiamento"}', NULL, '2026-10-17 14:36:39.082852+00'),
+  ('1b98fae6-de54-45ec-9ebc-c8fb707ba66e', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'f74391c7-c542-4aae-8166-32e3010d6043', '{"chassi": "99HSHF250VS000969", "modelo": "SHINERAY SHI 250"}', NULL, '2026-10-19 13:17:32.747681+00'),
+  ('0c2392a3-06ca-469a-acb6-93373042d19b', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', 'a22748e6-c9a5-41a8-83e1-7861139699b0', '{"valor": 23000, "numero": "CTR-MVFAAK0D", "cliente": "OVISMAR ROSA DA SILVA"}', NULL, '2026-10-19 13:22:26.480779+00'),
+  ('091a8a7f-2813-479d-9903-39fa20a7a527', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', 'a22748e6-c9a5-41a8-83e1-7861139699b0', '{"tipo": "pre_venda", "valor": 23000, "cliente": "OVISMAR ROSA DA SILVA", "pagamento": "financiamento"}', NULL, '2026-10-19 13:22:27.32917+00'),
+  ('b4f78753-ee08-4519-a528-2bb9381487a2', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '9b7d0fe8-0d42-408c-8cb2-7df93d59a95d', '{"chassi": "99hshf175vs002435", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-10-19 15:59:48.857764+00'),
+  ('24f2cd8f-94d5-4fb6-8af3-f07ac5f8d31f', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '458e487e-62cf-4eca-906f-73c7c54ac248', '{"chassi": "99HST1250TS000471", "modelo": "SHINERAY SBM 250T B"}', NULL, '2026-10-19 16:51:08.636772+00'),
+  ('83627be5-44bf-4e87-a6aa-b5797103b63a', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '37351645-8290-4980-8f6a-311fcc325b83', '{"valor": 19990, "numero": "CTR-MVFHTQEK", "cliente": "IGOR ANDRE GOMES GONCALVES"}', NULL, '2026-10-19 16:53:20.614219+00'),
+  ('218f3894-420f-471f-9828-f614dd34499a', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '37351645-8290-4980-8f6a-311fcc325b83', '{"tipo": "venda", "valor": 19990, "cliente": "IGOR ANDRE GOMES GONCALVES", "pagamento": "avista"}', NULL, '2026-10-19 16:53:22.297543+00'),
+  ('66a181fc-0c36-4290-806a-7072198a4490', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', '2819dc9e-e812-4548-bf81-ca1d609c9894', '{"valor": 27000, "numero": "CTR-MVFI7QU1", "cliente": "RYAN RAMOS MESQUITA SANTOS"}', NULL, '2026-10-19 17:04:12.139998+00'),
+  ('383eed06-1452-4066-8d35-374406abf209', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', '2819dc9e-e812-4548-bf81-ca1d609c9894', '{"tipo": "pre_venda", "valor": 27000, "cliente": "RYAN RAMOS MESQUITA SANTOS", "pagamento": "financiamento"}', NULL, '2026-10-19 17:04:13.997965+00'),
+  ('49778fa1-bcc6-44ad-82bb-3f02385a3307', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '4be56996-2047-4c1b-980c-62d7be8d08c8', '{"chassi": "99HNS1175VS002635", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-10-20 15:52:28.134878+00'),
+  ('142cdab8-46e5-4776-ab72-b48c53f52b01', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '622b0c84-3b0c-4c71-936f-c41a0faab5ee', '{"valor": 18372.64, "numero": "CTR-MVH2HAI8", "cliente": "ANA VITORA DA SILVA MAIA"}', NULL, '2026-10-20 19:19:15.849825+00'),
+  ('53bf7eab-4560-4b3c-b740-c90a12432ea7', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '622b0c84-3b0c-4c71-936f-c41a0faab5ee', '{"tipo": "venda", "valor": 18372.64, "cliente": "ANA VITORA DA SILVA MAIA", "pagamento": "financiamento"}', NULL, '2026-10-20 19:19:17.817142+00'),
+  ('dfb22baa-4b90-4dca-bf63-6d9d483fad62', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '228487a6-7744-48d0-9958-88af2ef14621', '{"chassi": "99HJTS125VS001005", "modelo": "SHINERAY JET 125"}', NULL, '2026-10-22 13:56:55.265468+00'),
+  ('fec498c3-74f3-4ee5-9562-36e4ce4d4240', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'ed30f42b-3003-4536-9844-9317b334f030', '{"chassi": "99hnj1125vs008459", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-22 15:33:55.095768+00'),
+  ('5ecc7f0a-6e4d-4ede-8b9d-a6236b0ef8ae', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '6145867c-cf46-4242-aa90-cc0555c8b623', '{"chassi": "99hshf175vs003446", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-10-22 15:43:10.262335+00'),
+  ('3b746409-2a0d-4241-91d1-e554b813ac13', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '54dd112e-81a2-45b3-8a8b-b96eaee317f6', '{"valor": 19990, "numero": "CTR-MVJPRUYO", "cliente": "MARIA LUISA SANTOS NOBRE"}', NULL, '2026-10-22 15:46:53.876632+00'),
+  ('5faa5a7b-683b-43d4-ba28-4946992fc26a', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '54dd112e-81a2-45b3-8a8b-b96eaee317f6', '{"tipo": "venda", "valor": 19990, "cliente": "MARIA LUISA SANTOS NOBRE", "pagamento": "financiamento"}', NULL, '2026-10-22 15:46:55.468734+00'),
+  ('b5c7ee59-ada5-4f40-9f44-727781538dbd', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '5823b883-9a57-4b2a-b245-48fa9597b836', '{"valor": 18500, "numero": "CTR-MVJYABWR", "cliente": "MARIA DAS GRAÇAS CARDOSO SANTOS"}', NULL, '2026-10-22 19:45:11.772292+00'),
+  ('526ece41-0e15-4d2f-bc59-32369a3b973c', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '5823b883-9a57-4b2a-b245-48fa9597b836', '{"tipo": "pre_venda", "valor": 18500, "cliente": "MARIA DAS GRAÇAS CARDOSO SANTOS", "pagamento": "financiamento"}', NULL, '2026-10-22 19:45:12.907474+00'),
+  ('9bcf41aa-ade0-4aab-963d-2b4bd3075b13', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'c62e2972-0172-46c7-bb59-7e180ef3514c', '{"chassi": "99hnj1125vs010391", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-22 20:34:46.859667+00'),
+  ('00e882ea-ad71-47a1-b979-67ac2f4a0e5e', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'aad27605-75af-48a3-9515-90c61ce6b246', '{"chassi": "99HSHF175VS005122", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-10-22 20:43:16.587537+00'),
+  ('e8cdc547-dfbb-4f98-851f-f581c5780945', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'f0f87665-a670-476d-bc70-a783ecf0731d', '{"chassi": "99HJTS125VS001003", "modelo": "SHINERAY JET 125"}', NULL, '2026-10-22 20:45:39.65979+00'),
+  ('97e328b7-a36e-4fa3-8019-4653ea01a238', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '74eacd46-83b5-4140-95ee-06efe186d6ed', '{"chassi": "99HNJ1125VS008575", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-22 20:47:06.287014+00'),
+  ('5469da08-54db-45d4-8ddb-f07f51e2a07c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'cf77b301-97f7-425d-bd24-8ed5d066181f', '{"chassi": "99HjTS125VS001767", "modelo": "SHINERAY JET 125"}', NULL, '2026-10-22 20:48:23.416666+00'),
+  ('70a1fee9-a7d5-422c-8149-08f2e19db7c1', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '69d5de59-7f80-42f3-804b-64c51549ccc1', '{"chassi": "99HJTS125VS001764", "modelo": "SHINERAY JET 125"}', NULL, '2026-10-22 20:49:46.48011+00'),
+  ('a71cc4cf-a84e-4d07-a013-ad71099899f7', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '61df00de-e128-4764-b573-6ecb0d356326', '{"chassi": "99HSHF175VS005100", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-10-22 20:52:13.01615+00'),
+  ('5ba038e2-045d-478f-bdc8-55ccb2bc8df3', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '2a319f97-ed35-4e08-9543-0aa720cb7e6a', '{"chassi": "99HSHF175VS005102", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-10-22 20:53:09.514289+00'),
+  ('8924cf9b-9c5f-4750-ae83-6c972e155f73', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '0c709913-8412-4ab6-9fc5-57bf29f56e05', '{"chassi": "99Hphs050vs001547", "modelo": "SHINERAY PHOENIX 50"}', NULL, '2026-10-22 20:54:44.249061+00'),
+  ('babb0dbb-359d-4f9d-80df-cd110235d7a5', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'f6aab255-75cf-47c9-91fd-27da6bad1f61', '{"chassi": "99hnj1125vs009797", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-22 20:55:44.953242+00'),
+  ('54e1a47c-31da-40dd-b1e4-98094fb311e8', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'a3ca0697-f5ec-4380-81f7-985e9725defc', '{"chassi": "99hr1f125vs000340", "modelo": "SHINERAY RIO 125"}', NULL, '2026-10-22 20:58:15.219957+00');
+
+INSERT INTO public.activity_logs (id, user_id, action, entity_type, entity_id, details, ip_address, created_at) VALUES
+  ('816bf243-f68f-426f-8472-1c61601922f4', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '97d2c20e-7dcd-4cc1-9e70-121a8144725e', '{"chassi": "99hnj1125vs008976", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-22 20:58:26.868663+00'),
+  ('417bc7f5-b0bc-4ca1-80d0-07be1aaeb4fd', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '263c9d54-3983-49a3-a718-f3d41972d70e', '{"chassi": "99hnj1125vs010390", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-22 21:00:07.221003+00'),
+  ('98f898d9-e299-421f-82c4-abb36947d160', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '206aab93-8479-4cfa-b09c-bc660f344ab4', '{"chassi": "99hnj1125vs010388", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-22 21:01:03.96433+00'),
+  ('89785653-6370-49c5-8c4b-459fc999ec66', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '8208facb-91e7-4f83-a77f-51d3bcfc75cb', '{"chassi": "99hshf250vs001178", "modelo": "SHINERAY SHI 250"}', NULL, '2026-10-22 21:03:06.806033+00'),
+  ('a7a4ef32-ad9a-4b35-abc2-b9d4315fff0d', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '1aad2958-7b70-465e-aeb1-491ed19abe93', '{"chassi": "99HNJ1125VS009799", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-23 12:50:06.820359+00'),
+  ('3f3d85de-e014-475c-9d80-d0f5b9d1e951', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'ab3459ca-f8ce-45f3-915d-8f6a94abb12f', '{"valor": 14990, "numero": "CTR-MVKZJIPW", "cliente": "PAMELLA DUANY RODRIGUES ALVES"}', NULL, '2026-10-23 13:08:06.418815+00'),
+  ('c5c78544-897e-448f-8740-3eeb8ae5958f', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'ab3459ca-f8ce-45f3-915d-8f6a94abb12f', '{"tipo": "venda", "valor": 14990, "cliente": "PAMELLA DUANY RODRIGUES ALVES", "pagamento": "financiamento"}', NULL, '2026-10-23 13:08:08.454883+00'),
+  ('87aef878-9dbb-44f5-8ca0-c6d2b150a81e', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '131c0c0b-7254-4aa6-9ecd-7cc6196aa1dd', '{"chassi": "99HDVF250VS000373", "modelo": "SHINERAY DENVER 250"}', NULL, '2026-10-23 15:54:38.348596+00'),
+  ('0a7347de-27f9-4bb3-a74a-b6a7cc73c70c', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'contrato', '2167400e-1117-4b0e-8dda-caf3dd5a7618', '{"valor": 28990, "numero": "CTR-MVL60WY3", "cliente": "WEBERSONESTEVAO@HOTMAIL.COM"}', NULL, '2026-10-23 16:09:34.920837+00'),
+  ('66699369-3fc4-403a-a0fd-f34e438fe64e', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'venda', '2167400e-1117-4b0e-8dda-caf3dd5a7618', '{"tipo": "venda", "valor": 28990, "cliente": "WEBERSONESTEVAO@HOTMAIL.COM", "pagamento": "financiamento"}', NULL, '2026-10-23 16:09:36.136695+00'),
+  ('1cfe65f6-a561-4eca-9dbb-bbd0bbe6ffe0', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'contrato', 'a30c3437-5abe-4be1-9c06-ba36bdbcfcc3', '{"valor": 28990, "numero": "CTR-MVL9FAZT", "cliente": "WEBERSON APARECIDO ESTEVAO SILVA"}', NULL, '2026-10-23 17:44:46.270174+00'),
+  ('744a65c0-97d4-493b-b056-b30ffe9708c2', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'venda', 'a30c3437-5abe-4be1-9c06-ba36bdbcfcc3', '{"tipo": "pre_venda", "valor": 28990, "cliente": "WEBERSON APARECIDO ESTEVAO SILVA", "pagamento": "financiamento"}', NULL, '2026-10-23 17:44:47.821968+00'),
+  ('94f44057-157f-45fe-9f01-fe7c29c2549b', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '464e8920-6255-47ed-9066-1235ca1627c6', '{"chassi": "99HNS1175VS002089", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-10-23 19:54:45.513574+00'),
+  ('7d70eb12-ae67-46a1-9be7-ff9b986c79ff', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '0a3d2c4c-8d01-4aa3-b744-f62ca4a6cb51', '{"valor": 18500, "numero": "CTR-MVLEB0QN", "cliente": "PAULO ROBERTO V S MOTA"}', NULL, '2026-10-23 20:01:22.541795+00'),
+  ('841eb5ae-bd64-4dc3-b82e-160610c3c4ba', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '0a3d2c4c-8d01-4aa3-b744-f62ca4a6cb51', '{"tipo": "pre_venda", "valor": 18500, "cliente": "PAULO ROBERTO V S MOTA", "pagamento": "financiamento"}', NULL, '2026-10-23 20:01:23.587277+00'),
+  ('e66f35a8-6773-4e1d-9e14-72f579c9135f', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'a10db5de-82b8-4051-a950-be399b4167ff', '{"valor": 14990, "numero": "CTR-MVLGFWGA", "cliente": "ROSILENE PEREIRA LOPES BARBOSA"}', NULL, '2026-10-23 21:01:11.889709+00'),
+  ('81fa629a-9c9b-4658-92ee-1ded5d513908', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'a10db5de-82b8-4051-a950-be399b4167ff', '{"tipo": "venda", "valor": 14990, "cliente": "ROSILENE PEREIRA LOPES BARBOSA", "pagamento": "financiamento"}', NULL, '2026-10-23 21:01:13.815847+00'),
+  ('d60dfeec-f7b6-4c2f-90b7-a1009877ce1c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'b29132d7-b270-475b-bf33-2dc0b40592c2', '{"valor": 19990, "numero": "CTR-MVMIZXFN", "cliente": "MARIA EDUARDA RIEIRO DE OLIVEIRA"}', NULL, '2026-10-24 15:00:31.882297+00'),
+  ('411d02ea-1e51-4c7b-b49e-d588c1cd0904', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'b29132d7-b270-475b-bf33-2dc0b40592c2', '{"tipo": "venda", "valor": 19990, "cliente": "MARIA EDUARDA RIEIRO DE OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-10-24 15:00:33.344048+00'),
+  ('85413bcb-2152-4d75-b016-a587729a87c7', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', '1890973f-4967-4274-a338-b3a7b75bd1a6', '{"valor": 27000, "numero": "CTR-MVP9Y0GP", "cliente": "RYAN RAMOS MESQUITA SANTOS"}', NULL, '2026-10-26 13:10:22.618938+00'),
+  ('489f504e-adac-41dc-b3f5-ecbdea62f48c', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', '1890973f-4967-4274-a338-b3a7b75bd1a6', '{"tipo": "pre_venda", "valor": 27000, "cliente": "RYAN RAMOS MESQUITA SANTOS", "pagamento": "financiamento"}', NULL, '2026-10-26 13:10:24.098546+00'),
+  ('1beed8c2-5c1e-4a27-ae65-f4b0129532c0', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '706ddb73-c7e1-4ec8-b6d5-4ffb2655bce6', '{"chassi": "99hjts125vs001005", "modelo": "SHINERAY JET 125"}', NULL, '2026-10-26 13:15:18.684264+00'),
+  ('ab810e18-2bf6-46d6-b243-666990e74b8c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '71e7bc7d-a19e-428f-9ea5-9b697422a3d1', '{"valor": 14815, "numero": "CTR-MVPAI9NK", "cliente": "BRENO RICHARD PEREIRA DE SA"}', NULL, '2026-10-26 13:26:11.722859+00'),
+  ('27a2a6eb-4963-4ba9-989a-1046afdee316', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '71e7bc7d-a19e-428f-9ea5-9b697422a3d1', '{"tipo": "venda", "valor": 14815, "cliente": "BRENO RICHARD PEREIRA DE SA", "pagamento": "financiamento"}', NULL, '2026-10-26 13:26:13.68115+00'),
+  ('7dcfefab-5e15-45f1-8205-345a0121aaa1', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '58636b43-1be6-4f31-b016-1bba714d7ede', '{"chassi": "99HSTF200VS000946", "modelo": "SHINERAY STORM 200"}', NULL, '2026-10-26 15:18:52.30603+00'),
+  ('4255dc7b-6649-428f-a719-05ba02c4dd34', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', '02335d78-072e-4b32-83d0-422283f1abf7', '{"valor": 23990, "numero": "CTR-MVPERM2M", "cliente": "MARCELO LUCAS DOS SANTOS"}', NULL, '2026-10-26 15:25:22.39111+00'),
+  ('8b4027ff-425f-4956-9b1d-988c3f1578eb', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', '02335d78-072e-4b32-83d0-422283f1abf7', '{"tipo": "pre_venda", "valor": 23990, "cliente": "MARCELO LUCAS DOS SANTOS", "pagamento": "financiamento"}', NULL, '2026-10-26 15:25:24.221536+00'),
+  ('975d8802-236a-426c-b748-1e8a7544fdb6', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'editar', 'venda', '02335d78-072e-4b32-83d0-422283f1abf7', '{"cliente": "MARCELO LUCAS DOS SANTOS SIMAO", "correcao": "nao", "pagamento": "financiamento"}', NULL, '2026-10-26 17:29:13.176858+00'),
+  ('d06c5e7d-90ee-4e77-b6c1-59a57487012a', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '2764c74f-f9a9-40db-b6a6-2817acbe1aa6', '{"chassi": "99HNS1175VS002098", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-10-26 21:03:08.509151+00'),
+  ('0f3edf0f-0eac-42e0-8de2-098a426f36ae', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', 'dda6437a-2e11-4061-a271-e7a0f59edd28', '{"valor": 18500, "numero": "CTR-MVPRNIT6", "cliente": "BRUNO AUGUSTO DA SILVA"}', NULL, '2026-10-26 21:26:06.098044+00'),
+  ('34906c1d-d200-4b25-b19c-6d2656427cec', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', 'dda6437a-2e11-4061-a271-e7a0f59edd28', '{"tipo": "pre_venda", "valor": 18500, "cliente": "BRUNO AUGUSTO DA SILVA", "pagamento": "financiamento"}', NULL, '2026-10-26 21:26:06.515537+00'),
+  ('f6a2183c-f278-4d51-8965-5ae172286fb2', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'transferir', 'veiculo', '6f9f07b9-91ac-4794-97f6-792d6eaa66de', '{"store_id": "ccf8e097-09d7-4305-8077-5c16fc8b5634"}', NULL, '2026-10-28 12:37:58.437703+00'),
+  ('7446ea4d-79e6-4172-bcde-d0a1d7e0bfd7', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', 'bbac0b33-bf21-4926-82b9-d6dca1d9a7a3', '{"valor": 19000, "numero": "CTR-MVS4I8LV", "cliente": "WESLEY CESAR SILVA ADAO"}', NULL, '2026-10-28 13:01:29.127986+00'),
+  ('8985f4c4-37ca-49eb-a465-2a10fe26f222', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', 'bbac0b33-bf21-4926-82b9-d6dca1d9a7a3', '{"tipo": "pre_venda", "valor": 19000, "cliente": "WESLEY CESAR SILVA ADAO", "pagamento": "financiamento"}', NULL, '2026-10-28 13:01:29.912694+00'),
+  ('09f4e163-d49f-4d80-b865-38830d69ecbd', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '97aa9ae0-2212-4e31-8e30-c31034d6184f', '{"chassi": "99hsb3250vs000323", "modelo": "SHINERAY SBM 250S"}', NULL, '2026-10-29 11:45:58.692647+00'),
+  ('ffe59886-fe9d-4bb4-bf56-7b5cf93bb683', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '38b7b571-48ef-44af-a65c-7197b60b4cf9', '{"valor": 27693, "numero": "CTR-MVTHMB5Z", "cliente": "ADEMIR JOSE DA SILVA"}', NULL, '2026-10-29 11:56:18.206638+00'),
+  ('0f3076c7-8c0f-4b61-9f87-2452804daef1', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '38b7b571-48ef-44af-a65c-7197b60b4cf9', '{"tipo": "venda", "valor": 27693, "cliente": "ADEMIR JOSE DA SILVA", "pagamento": "financiamento"}', NULL, '2026-10-29 11:56:19.540175+00'),
+  ('3352bf02-df0c-41ea-b10a-2030bb301921', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '512e24f7-67ed-44e8-a1f8-b7563dc9f313', '{"chassi": "99hr1f125vs000336", "modelo": "SHINERAY RIO 125"}', NULL, '2026-10-29 14:26:51.103794+00'),
+  ('aa70f494-bdaa-402b-bb1f-c9b9d010277d', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'bb141c82-16c7-4a43-baee-397f124c7f3f', '{"valor": 12992, "numero": "CTR-MVTN34BR", "cliente": "BIANCA PEREIRA DOS REIS"}', NULL, '2026-10-29 14:29:20.968606+00'),
+  ('bd812771-c227-40cf-9ceb-07d090e3834a', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'bb141c82-16c7-4a43-baee-397f124c7f3f', '{"tipo": "venda", "valor": 12992, "cliente": "BIANCA PEREIRA DOS REIS", "pagamento": "financiamento"}', NULL, '2026-10-29 14:29:22.891711+00'),
+  ('f78c1e2d-5e47-43cd-9f1a-b75528070e8b', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'ca6c6f8a-fb83-4353-82cd-1685babbf7be', '{"chassi": "99hnj1125vs008978", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-10-29 17:25:47.646846+00'),
+  ('06e742ba-bacc-41e2-ac5b-317c65efe6cb', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '5d07f8a1-455d-4291-9cf5-23ff1df251e3', '{"valor": 14000, "numero": "CTR-MVTTV2Z2", "cliente": "ANGEL ALVES RIBEIRO"}', NULL, '2026-10-29 17:39:04.481573+00'),
+  ('fd7c7c4b-1a05-4ff9-b032-0bc9ea6955f5', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '5d07f8a1-455d-4291-9cf5-23ff1df251e3', '{"tipo": "venda", "valor": 14000, "cliente": "ANGEL ALVES RIBEIRO", "pagamento": "financiamento"}', NULL, '2026-10-29 17:39:06.331391+00'),
+  ('9f461ea4-cf60-4ab7-bf8e-4aafad33e72c', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'contrato', '6df95705-fb90-4390-8548-e5e47586c343', '{"valor": 23000, "numero": "CTR-MVV1GLEI", "cliente": "MARIA DE FATIMA RIBEIRO DE OLIVEIRA"}', NULL, '2026-10-30 13:59:29.499306+00'),
+  ('cfa64769-41a4-4c60-a332-625ec522412c', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'criar', 'venda', '6df95705-fb90-4390-8548-e5e47586c343', '{"tipo": "pre_venda", "valor": 23000, "cliente": "MARIA DE FATIMA RIBEIRO DE OLIVEIRA", "pagamento": "financiamento"}', NULL, '2026-10-30 13:59:30.540985+00'),
+  ('7d74038e-ffc4-475e-995e-57b3748020a9', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '7e3e5cd4-2d50-49f1-a3c1-8e42af2ec875', '{"chassi": "99hjf1170vs002011", "modelo": "SHINERAY NEW JEF 170"}', NULL, '2026-10-30 16:04:50.273374+00'),
+  ('3cae8f48-9841-48aa-8dfe-afc3e11ef5f8', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', 'c5c62166-4731-4067-af8c-d2dd5c4aa746', '{"valor": 17000, "numero": "CTR-MVV7KP1H", "cliente": "CHRISTIANO XAVIER DE SOUZA"}', NULL, '2026-10-30 16:50:38.749781+00'),
+  ('1edc5176-b5c6-49cb-9372-c24c70a05173', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', 'c5c62166-4731-4067-af8c-d2dd5c4aa746', '{"tipo": "venda", "valor": 17000, "cliente": "CHRISTIANO XAVIER DE SOUZA", "pagamento": "financiamento"}', NULL, '2026-10-30 16:50:40.098622+00'),
+  ('bae96591-f879-42dd-ad52-b144b33933e6', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'contrato', '424293b7-a3c9-4d20-83f5-fe587471f49a', '{"valor": 13500, "numero": "CTR-MVVDRIAJ", "cliente": "SARA GLENY ALVES"}', NULL, '2026-10-30 19:43:53.966305+00'),
+  ('20a9a598-2e80-460f-9d8d-da84a9a9ef48', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'venda', '424293b7-a3c9-4d20-83f5-fe587471f49a', '{"tipo": "venda", "valor": 13500, "cliente": "SARA GLENY ALVES", "pagamento": "financiamento"}', NULL, '2026-10-30 19:43:55.264749+00');
+
+INSERT INTO public.activity_logs (id, user_id, action, entity_type, entity_id, details, ip_address, created_at) VALUES
+  ('3bd6b77f-bce7-42c3-8b93-b21a5cbedfc7', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '643979ee-90c4-4d64-a3ef-e6b35fe1e3de', '{"chassi": "99HSHF175VS003314", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-11-03 13:43:14.383085+00'),
+  ('fcd97955-4c1c-4c5b-83ae-ac41fd0f2306', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '79e678ab-f68f-44c6-ba06-ab77acd702f6', '{"valor": 19990, "numero": "CTR-MW0QWLC6", "cliente": "REGINALDO ALVES DOS SANTOS"}', NULL, '2026-11-03 13:50:37.870003+00'),
+  ('37067c02-3269-4a4a-9636-d84db6db67be', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '79e678ab-f68f-44c6-ba06-ab77acd702f6', '{"tipo": "venda", "valor": 19990, "cliente": "REGINALDO ALVES DOS SANTOS", "pagamento": "financiamento"}', NULL, '2026-11-03 13:50:38.883965+00'),
+  ('5c0bb085-7fb4-4478-8cf6-ae48a352e7d7', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '74f635d2-d619-46f2-b721-0bd5a55ecdcc', '{"chassi": "99hr1f125vs000334", "modelo": "SHINERAY RIO 125"}', NULL, '2026-11-03 18:44:29.598035+00'),
+  ('69004cc4-caa5-437f-9711-02f3b2529b26', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'a362c54e-2f5d-410f-93ac-001a00f9612b', '{"valor": 12990, "numero": "CTR-MW11P21V", "cliente": "LUAN LINCOLN FERREIRA SANTOS"}', NULL, '2026-11-03 18:52:41.819776+00'),
+  ('550a34a2-9f9a-4953-8ce0-8afea9ea3818', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'a362c54e-2f5d-410f-93ac-001a00f9612b', '{"tipo": "venda", "valor": 12990, "cliente": "LUAN LINCOLN FERREIRA SANTOS", "pagamento": "financiamento"}', NULL, '2026-11-03 18:52:43.476515+00'),
+  ('5a3aaad0-ca9d-4bf1-ab53-3d082f818372', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'e0aaea3d-6dc6-4db6-b430-4095d83c951e', '{"chassi": "99hshf175vs003316", "modelo": "SHINERAY SHI 175 EFI"}', NULL, '2026-11-03 19:25:41.477809+00'),
+  ('34d82b3b-e42e-4486-ad22-092419035255', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '82254f2c-ce3c-4677-bbcb-91473be1cb8a', '{"valor": 19000, "numero": "CTR-MW1307M7", "cliente": "MIRIAN DO CARMO COSTA PEREIRA"}', NULL, '2026-11-03 19:29:22.137766+00'),
+  ('cc4f8ddc-177e-4a00-b090-c6fa9831bf70', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '82254f2c-ce3c-4677-bbcb-91473be1cb8a', '{"tipo": "venda", "valor": 19000, "cliente": "MIRIAN DO CARMO COSTA PEREIRA", "pagamento": "financiamento"}', NULL, '2026-11-03 19:29:24.036011+00'),
+  ('8b57098e-4353-4da1-99a5-68928b0372e5', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'cdc323b9-6f33-4c22-b26d-2cff671d308c', '{"chassi": "99hcs2170vs000494", "modelo": "SHINERAY NEW FREE 170"}', NULL, '2026-11-03 19:43:24.645552+00'),
+  ('72cb7aa0-fb72-4ea0-b2bd-19caa34282bc', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '692ed81d-179c-4af2-a02c-021c9e3a159b', '{"valor": 15990, "numero": "CTR-MW13WXWE", "cliente": "LARAH BEATRIZ DE OLIVEIRA SILVA"}', NULL, '2026-11-03 19:54:49.758334+00'),
+  ('2cbe5f10-1604-46cb-a0fb-81035dba15b0', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '692ed81d-179c-4af2-a02c-021c9e3a159b', '{"tipo": "venda", "valor": 15990, "cliente": "LARAH BEATRIZ DE OLIVEIRA SILVA", "pagamento": "financiamento"}', NULL, '2026-11-03 19:54:51.068517+00'),
+  ('65738bb6-516b-4eca-b08f-ea833389592a', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '55d57b30-0fb4-4a75-a6dd-1cdab654599d', '{"valor": 23500, "numero": "CTR-MW2F0EKX", "cliente": "DIEGO CRISTIAN RIBEIRO"}', NULL, '2026-11-04 17:53:12.845613+00'),
+  ('d9574fb8-47a2-4a34-835a-88df97430c22', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '55d57b30-0fb4-4a75-a6dd-1cdab654599d', '{"tipo": "venda", "valor": 23500, "cliente": "DIEGO CRISTIAN RIBEIRO", "pagamento": "avista"}', NULL, '2026-11-04 17:53:14.798362+00'),
+  ('ab10984e-ad03-4fad-8fb8-0c363deb7e58', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '9ee7c84f-fd55-4805-a129-d0aef5b5dd19', '{"chassi": "99hns1175vs002637", "modelo": "SHINERAY NEW SHI 175"}', NULL, '2026-11-05 20:30:24.93933+00'),
+  ('3908f768-5fd4-48b2-9ab2-b6b63f13a954', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '59e2e65e-76ec-4c38-aa2f-1509e481cc73', '{"valor": 18000, "numero": "CTR-MW40GG7S", "cliente": "HEBERTON RODRIGUES PAMPLONA"}', NULL, '2026-11-05 20:41:18.918821+00'),
+  ('94297079-8869-40bb-b27d-7d0eab5d3973', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '59e2e65e-76ec-4c38-aa2f-1509e481cc73', '{"tipo": "venda", "valor": 18000, "cliente": "HEBERTON RODRIGUES PAMPLONA", "pagamento": "financiamento"}', NULL, '2026-11-05 20:41:20.605897+00'),
+  ('86bac97f-1623-4e5c-806c-0646d910ecb8', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'contrato', '6ec29007-bbf1-41ca-b4e4-ac07426af49d', '{"valor": 14990, "numero": "CTR-MW4W1QV4", "cliente": "FLAVIA ALVES DOS SANTOS RODRIGUES "}', NULL, '2026-11-06 11:25:41.367739+00'),
+  ('33196a85-fbe3-4a71-9990-70a2951b8c79', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'criar', 'venda', '6ec29007-bbf1-41ca-b4e4-ac07426af49d', '{"tipo": "venda", "valor": 14990, "cliente": "FLAVIA ALVES DOS SANTOS RODRIGUES ", "pagamento": "financiamento"}', NULL, '2026-11-06 11:25:42.280944+00'),
+  ('a8e70f38-5f67-45f6-98a2-1cf50c4f0282', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', '100012a1-e433-42b7-8ea2-89f6cd9dab1c', '{"chassi": "99HPHS050VS001839", "modelo": "SHINERAY PHOENIX 50"}', NULL, '2026-11-06 18:53:22.772087+00'),
+  ('d635cbe9-bdf7-4bd9-a597-100faeb20215', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', '4600bbdd-ed1e-4a90-888c-35c11c2a0196', '{"valor": 10990, "numero": "CTR-MW5CGS8V", "cliente": "EDINEIA DOS SANTOS REIS"}', NULL, '2026-11-06 19:05:15.774137+00'),
+  ('39b1912f-a11a-4dad-a475-021e6fe19fac', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', '4600bbdd-ed1e-4a90-888c-35c11c2a0196', '{"tipo": "venda", "valor": 10990, "cliente": "EDINEIA DOS SANTOS REIS", "pagamento": "financiamento"}', NULL, '2026-11-06 19:05:16.742312+00'),
+  ('90c9ea7a-ed34-4c89-b763-da8e4ee254cc', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '15569143-5603-4a4b-8fb4-2d41cf20b183', '{"valor": 18727.01, "numero": "CTR-MW6C15AN", "cliente": "DIENE KELLY DOS SANTOS BARBOSA"}', NULL, '2026-11-07 11:40:53.333191+00'),
+  ('e5db9d15-5371-444e-8d04-3b5a565233b8', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '15569143-5603-4a4b-8fb4-2d41cf20b183', '{"tipo": "venda", "valor": 18727.01, "cliente": "DIENE KELLY DOS SANTOS BARBOSA", "pagamento": "financiamento"}', NULL, '2026-11-07 11:40:54.484003+00'),
+  ('14d8871a-4413-4def-8ea5-853489f0383c', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'criar', 'veiculo', 'aa0161be-2dcc-4b08-8538-d9d99c8df82e', '{"chassi": "99HNJ1125VS010500", "modelo": "SHINERAY NEW JET 125"}', NULL, '2026-11-07 13:48:40.927069+00'),
+  ('3b0c6a9c-33d8-4d82-b272-0972e5fdd26d', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'contrato', '2ef760ae-2d5c-434e-8303-21f14f759e56', '{"valor": 14990, "numero": "CTR-MW6HKDEC", "cliente": "EUSTANIA MONIQUE MARQUES"}', NULL, '2026-11-07 14:15:47.579074+00'),
+  ('60e8bf7e-2297-4e50-9b2c-5de5edc4ae97', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'criar', 'venda', '2ef760ae-2d5c-434e-8303-21f14f759e56', '{"tipo": "venda", "valor": 14990, "cliente": "EUSTANIA MONIQUE MARQUES", "pagamento": "financiamento"}', NULL, '2026-11-07 14:15:49.211838+00'),
+  ('098af664-9ea5-4c3a-8889-5c7e53dacea5', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', 'cc52ad7c-9172-4e0d-9f87-8745adeb9996', '{"valor": 10990, "numero": "CTR-MW9DCHEO", "cliente": "LAURA SUELZ DIAS RUAS"}', NULL, '2026-11-09 14:41:01.002868+00'),
+  ('a9062010-97fd-4750-be27-90b9817064ca', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', 'cc52ad7c-9172-4e0d-9f87-8745adeb9996', '{"tipo": "venda", "valor": 10990, "cliente": "LAURA SUELZ DIAS RUAS", "pagamento": "financiamento"}', NULL, '2026-11-09 14:41:02.697833+00'),
+  ('e51b966e-0c06-4aa9-8699-7d26ff375097', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', 'fa61dd2a-406e-4390-ba25-8c4298c2cf6c', '{"chassi": "99hst1250ts000494", "modelo": "SHINERAY SBM 250T B"}', NULL, '2026-11-09 21:59:55.64357+00'),
+  ('6bbaed78-a2dc-4007-8f8b-7c4c89958300', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'contrato', '4502fb16-9f2b-4d23-87e9-06f320db6d89', '{"valor": 27990, "numero": "CTR-MW9TENJ8", "cliente": "WALMOR MARTINS DOS SANTOS"}', NULL, '2026-11-09 22:10:34.429277+00'),
+  ('22b11ec9-cd83-41bd-9f05-2310f32b0d2c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'venda', '4502fb16-9f2b-4d23-87e9-06f320db6d89', '{"tipo": "venda", "valor": 27990, "cliente": "WALMOR MARTINS DOS SANTOS", "pagamento": "financiamento"}', NULL, '2026-11-09 22:10:36.226321+00'),
+  ('a4268db4-09c4-4ae8-93ba-edace67c3413', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'criar', 'veiculo', '5dbc23a7-84c6-4e2c-9949-e009f9c3db73', '{"chassi": "99hjf1170vs006461", "modelo": "SHINERAY NEW JEF 170"}', NULL, '2026-11-10 19:45:10.982296+00');
+
+
+
+--
+-- Data for Name: api_keys; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: bank_credentials; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: chassis_patterns; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.chassis_patterns (id, wmi_code, brand, vehicle_type, model_pattern, model_name, engine_cc, fuel_type, created_at, updated_at, transmission, warranty_months, service_interval_months, service_interval_km, default_purchase_price, default_sale_price) VALUES
+  ('ca05fb88-82cd-43d8-b25c-3b0c546ab19c', '99HNS1175', 'SHINERAY', 'moto', '99HNS1175', 'NEW SHI 175', '175', 'Gasolina', '2026-06-09 14:33:31.421002+00', '2026-08-13 12:04:58.563365+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('4df1d5ad-dd89-46db-8f9e-f61e7e3af958', '99HSW1400', 'SHINERAY', 'moto', '99HSW1400', 'SCRAMBLER 400', '400', 'Gasolina', '2026-06-09 14:36:26.645914+00', '2026-08-13 12:05:06.115045+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('0126710e-aa73-413f-9e1d-053867ae7ffe', '99HSB1400', 'SHINERAY', 'moto', '99HSB1400', 'SBM 400s', '400', 'Gasolina', '2026-04-23 20:13:05.838033+00', '2026-08-13 12:05:17.473379+00', NULL, NULL, NULL, NULL, NULL, NULL),
+  ('684c15cd-d37f-4b4d-9c53-dbcb725733af', '99HSTF200', 'SHINERAY', 'moto', '99HSTF200', 'STORM 200', '200', 'Gasolina', '2026-04-23 20:11:23.502704+00', '2026-08-13 12:05:26.904921+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('aff0dc8a-1fa4-452e-981c-225cacf03718', '99HTTF250', 'SHINERAY', 'moto', '99HTTF250', 'TITANIUM 250', '250', 'Gasolina', '2026-08-11 11:18:11.453112+00', '2026-08-13 12:05:35.699462+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('cc724811-fe36-4966-be4e-6664ce83f95f', '99HJTS125', 'SHINERAY', 'moto', '99HJTS125', 'JET 125', '125', 'Gasolina', '2026-04-06 13:10:55.149711+00', '2026-08-13 12:05:43.591074+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('aa393448-4de7-4e96-a711-d6297291cbbc', '99HJF1150', 'SHINERAY', 'moto', '99HJF1150', 'JEF 150', '150', 'Gasolina', '2026-04-08 20:35:36.43715+00', '2026-08-13 12:06:07.334363+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('26d87de4-92e9-4c1b-ac35-1bca615ed911', '99HSHF175', 'SHINERAY', 'moto', '99HSHF175', 'SHI 175 EFI', '175', 'Gasolina', '2026-04-23 20:12:02.454754+00', '2026-08-13 12:06:16.85807+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('386a97c8-6bb4-4b3b-86a8-4e07b75bfbc7', '99HFLF250', 'SHINERAY', 'moto', '99HFLF250', 'FLASH 250', '250', 'Gasolina', '2026-04-23 20:12:30.9471+00', '2026-08-13 12:06:24.3866+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('09ec34e5-54ac-49ce-a83c-f33ea4e6098e', '99HSB1250', 'SHINERAY', 'moto', '99HSB1250', 'SBM 250S', '250', 'Gasolina', '2026-08-22 12:55:52.644667+00', '2026-08-22 12:55:52.644667+00', 'Manual', '36', '3', '3000', NULL, NULL),
+  ('8a218c4c-3291-441a-9346-bc3738cd6f26', '99HULF150', 'SHINERAY', 'moto', '99HULF150', 'URBAN LITE 150', '150', 'Gasolina', '2026-09-17 13:18:04.008797+00', '2026-09-17 13:18:04.008797+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('fe5ea893-46f8-481b-bcd7-ca8565a10e8f', '99HSB4400', 'SHINERAY', 'moto', '99HSB4400', 'DENVER 400', '400', 'Gasolina', '2026-09-22 17:32:22.92464+00', '2026-09-22 17:32:22.92464+00', 'Manual', '36', '3', '3000', NULL, NULL),
+  ('8384ae69-dc85-4587-8c18-f0de16f27ae9', '99HJF1170', 'SHINERAY', 'moto', '99HJF1170', 'NEW JEF 170', '170', 'Gasolina', '2026-10-30 16:04:22.132097+00', '2026-10-30 16:04:22.132097+00', 'Manual', '12', '3', '3000', NULL, '17990'),
+  ('c3086760-3e9f-4611-bda8-b674c24e09ef', '99HNJ1125', 'SHINERAY', 'moto', '99HNJ1125', 'NEW JET 125', '125', 'Gasolina', '2026-06-09 14:32:37.604792+00', '2026-08-12 13:00:36.089594+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('74c3c6d3-c44e-4387-a067-e14dc386f954', '99HDVF250', 'SHINERAY', 'moto', '99HDVF250', 'DENVER 250', '250', 'Gasolina', '2026-04-28 20:55:25.277956+00', '2026-08-12 13:00:44.124985+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('e35c82bc-8df1-4099-89de-feb3daab3531', '99HST1250', 'SHINERAY', 'moto', '99HST1250', 'SBM 250T B', '250', 'Gasolina', '2026-08-12 13:10:17.306161+00', '2026-08-12 13:10:17.306161+00', 'Manual', '36', '3', '3000', NULL, NULL),
+  ('6a753f7e-92d9-4e62-9069-7f0a480cf7c9', '99HSHF250', 'SHINERAY', 'moto', '99HSHF250', 'SHI 250', '250', 'Gasolina', '2026-06-09 14:30:45.420809+00', '2026-08-13 12:04:21.650346+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('aa6aebe2-b307-43fc-aeba-1e6cda352616', '99HPHS050', 'SHINERAY', 'moto', '99HPHS050', 'PHOENIX 50', '50', 'Gasolina', '2026-06-09 14:31:53.968734+00', '2026-08-13 12:04:28.013621+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('074e8305-5e4d-42d8-9276-eb7f76674801', '99HR1C125', 'SHINERAY', 'moto', '99HR1C125', 'RIO 125', '125', 'Gasolina', '2026-06-09 14:34:24.96439+00', '2026-08-13 12:04:34.48772+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('87cb82cd-32e4-4df9-bd95-322d3be9ec56', '99HCS2170', 'SHINERAY', 'moto', '99HCS2170', 'NEW FREE 170', '170', 'Gasolina', '2026-06-09 14:35:07.363133+00', '2026-08-13 12:04:47.370499+00', 'Manual', '12', '3', '3000', NULL, NULL),
+  ('213f76e4-917d-41d2-b8ec-bcec94d23eca', '99HARF250', 'SHINERAY', 'moto', '99HARF250', 'IRON 250', '250', 'Gasolina', '2026-06-19 20:13:14.642479+00', '2026-08-13 12:04:52.762896+00', 'Manual', '12', '3', '3000', NULL, NULL);
+
+
+
+--
+-- Data for Name: chassis_year_codes; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.chassis_year_codes (id, year_code, model_year, brand, notes, created_by, created_at, updated_at, manufacture_year) VALUES
+  ('d68cefb9-0a5e-47de-959d-ad1afcca1c52', 'VS', '2026', 'SHINERAY', NULL, NULL, '2026-08-12 12:59:22.668896+00', '2026-09-17 12:42:37.129903+00', '2026'),
+  ('432aa6eb-bced-40ca-a9e1-6759d422101f', 'SS', '2024', 'SHINERAY', NULL, NULL, '2026-08-12 12:59:10.632301+00', '2026-09-17 12:42:51.573337+00', '2024'),
+  ('d6a1f6a5-a073-40ac-9339-57032b7242a3', 'TS', '2026', 'SHINERAY', NULL, NULL, '2026-08-12 12:58:57.31712+00', '2026-09-17 13:28:54.104905+00', '2025');
+
+
+
+--
+-- Data for Name: contract_acceptances; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: contract_revisions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: contract_templates; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.contract_templates (id, name, template_type, is_active, version, header_content, body_content, clauses_content, signature_content, fixed_clauses, store_id, created_by, updated_by, created_at, updated_at, logo_url, watermark_url, signature_url, watermark_opacity, optional_clauses, vehicle_types, clause_categories) VALUES
+  ('7aa6d179-e3b5-4748-ac17-da8e9889cb8a', 'Contrato de Reserva', 'generico', 'f', '7', '[center][size:12][b]CONTRATO DE RESERVA DE VEÍCULO[/b][/size][/center]', 'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a reserva do veiculo abaixo descrita:
+
+[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Cor:[/b] {{VEICULO_COR}}
+
+[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}', '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA – RESERVA DE VEÍCULO[/b][/center]
+Declaro que estou reservando ao(à) COMPRADOR(A) acima identificado o veículo descrito no cabeçalho deste contrato e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a efetiva assinatura do contrato de compra e venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza.
+A partir da assinatura do contrato definitivo de compra e venda, tais responsabilidades passam a ser integralmente do(a) COMPRADOR(A). Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do(a) COMPRADOR(A) somente após a transferência de propriedade junto ao órgão competente.
+[b]CLÁUSULAS:[/b]
+[b]1.[/b] O(A) VENDEDOR(A) declara que o veículo descrito no cabeçalho deste contrato encontra-se reservado ao(à) COMPRADOR(A), mediante o pagamento do valor de reserva de R$ 39.990,00.
+[b]2.[/b] Após a conclusão da compra e venda, todas as responsabilidades passam integralmente ao(à) COMPRADOR(A).
+[b]3.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.', '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]
+
+
+[signatures]VENDEDORA|{{LOJA_RAZAO_SOCIAL}}||COMPRADOR(A)|{{CLIENTE_NOME}}[/signatures]', '{}', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-07-17 17:48:05.346871+00', '2026-10-02 13:38:39.034093+00', NULL, 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/contract-assets/watermark/1784311442227-4ujkf9t675s.png', NULL, '0.1', '[]', '{moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}'),
+  ('150656d4-d673-460c-89ba-26b0f44a6443', 'Contrato de Venda - Moto - Com Observações', 'venda_moto', 'f', '11', '[center][b][size:13]CONTRATO PARTICULAR DE COMPRA E VENDA DE MOTOCICLETA[/size][/b][/center]', 'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:
+
+[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}
+[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}
+
+[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}} — [b]Forma de Pagamento:[/b] Financiamento e Boleto Bancario — [b]Entrada:[/b] R$ 3.000,00 no Boleto Bancario dividido em 2x de R$ 1.650,00 — [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}', '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA[/b][/center]
+Declaro que estou vendendo o veículo acima descrito e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a presente data de venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza. A partir desta venda, tais responsabilidades passam a ser integralmente do comprador acima identificado. Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do comprador a partir desta data.
+
+[b]CLÁUSULAS:[/b]
+[b]1.[/b] A VENDEDORA transfere ao(à) COMPRADOR(A) a propriedade e posse da motocicleta acima descrita, livre de ônus, na presente data.
+[b]2.[/b] O(A) COMPRADOR(A) declara ter vistoriado a motocicleta e a recebe no estado em que se encontra, sem direito a reclamações posteriores quanto a defeitos aparentes.
+[b]3.[/b] A partir desta data, todas as responsabilidades civis, criminais e tributárias (multas, IPVA, licenciamento) passam a ser exclusivas do(a) COMPRADOR(A).
+[b]4.[/b] O emplacamento e a transferência junto ao DETRAN são de responsabilidade exclusiva do(a) COMPRADOR(A), devendo ser realizados em até 30 dias.
+[b]5.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.', '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]
+
+
+[signatures]VENDEDORA|{{LOJA_RAZAO_SOCIAL}}||COMPRADOR(A)|{{CLIENTE_NOME}}[/signatures]', '{"O EMPLACAMENTO É DE RESPONSABILIDADE EXCLUSIVA DO COMPRADOR.","O não pagamento do boleto bancário na data de vencimento acarretará a incidência de multa, juros e demais encargos previstos em lei, bem como a possibilidade de inclusão do nome do comprador em cadastros de restrição de crédito."}', NULL, NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2025-12-19 20:48:36.07391+00', '2026-07-05 16:13:11.620789+00', NULL, NULL, NULL, '0.10', '[]', '{carro,moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}'),
+  ('e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'Contrato de Venda - Moto', 'venda_moto', 'f', '21', '[center][b][size:13]CONTRATO PARTICULAR DE COMPRA E VENDA DE MOTOCICLETA[/size][/b][/center]', 'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:
+
+[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}
+[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}
+
+[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}', '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA[/b][/center]
+Declaro que estou vendendo o veículo acima descrito e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a presente data de venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza. A partir desta venda, tais responsabilidades passam a ser integralmente do comprador acima identificado. Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do comprador a partir desta data.
+
+[b]CLÁUSULAS:[/b]
+[size:9][b]1.[/b] A VENDEDORA transfere ao(à) COMPRADOR(A) a propriedade e posse da motocicleta acima descrita, livre de ônus, na presente data.[/size]
+[size:9][b]2.[/b] O(A) COMPRADOR(A) declara ter vistoriado a motocicleta e a recebe no estado em que se encontra, sem direito a reclamações posteriores quanto a defeitos aparentes.[/size]
+[size:9][b]3.[/b] A partir desta data, todas as responsabilidades civis, criminais e tributárias (multas, IPVA, licenciamento) passam a ser exclusivas do(a) COMPRADOR(A).[/size]
+[size:9][b]4.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.[/size]
+[size:9][b]5.[/b] O(A) COMPRADOR(A) declara ter recebido as informações sobre o histórico de revisões da motocicleta no ato da entrega, estando o cronograma registrado no manual. A assinatura deste termo confirma tal ciência, e o não cumprimento do cronograma acarretará na perda da garantia.[/size]', '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]
+
+
+[signatures]VENDEDORA|{{LOJA_RAZAO_SOCIAL}}||COMPRADOR(A)|{{CLIENTE_NOME}}[/signatures]', '{"O emplacamento e a transferência junto ao DETRAN são de responsabilidade exclusiva do(a) COMPRADOR(A), devendo ser realizados em até 30 dias.","A motocicleta possui garantia de 01 ano, condicionada às revisões e trocas de óleo em oficinas autorizadas Shineray. A 1ª revisão deve ser feita aos 1.000 km ou em até 90 dias. As demais revisões a cada 3.000 km ou 90 dias, e as trocas de óleo a cada 1.000 km. Não há revisões gratuitas; o descumprimento implica perda da garantia."}', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-01-16 20:57:00.654748+00', '2026-07-05 16:13:11.620789+00', NULL, 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/contract-assets/watermark/1778587883165-gejob44nuog.png', NULL, '0.43', '[]', '{carro,moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}'),
+  ('c2cb2a8f-b2d8-4149-84b1-49ccd1337373', 'Contrato de Venda - Moto - Para Sorteios', 'venda_moto', 'f', '4', '[center][b][size:13]CONTRATO PARTICULAR DE COMPRA E VENDA DE MOTOCICLETA[/size][/b][/center]', 'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:
+
+[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}
+[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}
+
+[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}} — [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}} — [b]Entrada:[/b] {{VALOR_ENTRADA}} — [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}', '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA[/b][/center]
+Declaro que estou vendendo o veículo acima descrito e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a presente data de venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza. A partir desta venda, tais responsabilidades passam a ser integralmente do comprador acima identificado. Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do comprador a partir desta data.
+
+[b]CLÁUSULAS:[/b]
+[b]1.[/b] A VENDEDORA transfere ao(à) COMPRADOR(A) a propriedade e posse da motocicleta acima descrita, livre de ônus, na presente data.
+[b]2.[/b] O(A) COMPRADOR(A) declara ter vistoriado a motocicleta e a recebe no estado em que se encontra, sem direito a reclamações posteriores quanto a defeitos aparentes.
+[b]3.[/b] A partir desta data, todas as responsabilidades civis, criminais e tributárias (multas, IPVA, licenciamento) passam a ser exclusivas do(a) COMPRADOR(A).
+[b]4.[/b] O emplacamento e a transferência junto ao DETRAN são de responsabilidade exclusiva do(a) COMPRADOR(A), devendo ser realizados em até 30 dias.
+[b]5.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.', '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]
+
+
+[signatures]VENDEDORA|{{LOJA_RAZAO_SOCIAL}}||COMPRADOR(A)|{{CLIENTE_NOME}}[/signatures]', '{"O EMPLACAMENTO É DE RESPONSABILIDADE EXCLUSIVA DO COMPRADOR."}', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-01-23 16:35:05.646667+00', '2026-04-17 11:29:07.89734+00', NULL, NULL, NULL, '0.10', '[]', '{carro,moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}'),
+  ('68a39aa1-9376-44c9-85e6-5618d79de50b', 'Contrato de Venda - Carro', 'venda_carro', 'f', '1', 'CONTRATO PARTICULAR DE COMPRA E VENDA DE VEÍCULO AUTOMOTOR', 'Pelo presente instrumento particular, de um lado {{LOJA_RAZAO_SOCIAL}}, inscrita no CNPJ sob nº {{LOJA_CNPJ}}, com sede em {{LOJA_ENDERECO}}, doravante denominada VENDEDORA, e de outro lado {{CLIENTE_NOME}}, portador(a) do CPF nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) COMPRADOR(A), têm entre si justo e contratado a compra e venda do veículo abaixo descrito:
+
+VEÍCULO: {{VEICULO_MARCA}} {{VEICULO_MODELO}}
+ANO: {{VEICULO_ANO}}
+COR: {{VEICULO_COR}}
+CHASSI: {{VEICULO_CHASSI}}
+PLACA: {{VEICULO_PLACA}}
+RENAVAM: {{VEICULO_RENAVAM}}
+
+VALOR DA VENDA: {{VALOR_TOTAL}}
+ENTRADA: {{VALOR_ENTRADA}}
+FORMA DE PAGAMENTO: {{FORMA_PAGAMENTO}}
+PARCELAS: {{PARCELAS}}', 'CLÁUSULA PRIMEIRA: A VENDEDORA vende e transfere ao COMPRADOR o veículo acima descrito, livre e desembaraçado de quaisquer ônus.
+
+CLÁUSULA SEGUNDA: O COMPRADOR declara ter examinado o veículo e estar de acordo com seu estado de conservação.
+
+CLÁUSULA TERCEIRA: A transferência de propriedade será realizada após a quitação total do valor acordado.
+
+CLÁUSULA QUARTA: As partes elegem o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer dúvidas oriundas deste contrato.', '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]
+
+
+[signatures]VENDEDORA|{{LOJA_RAZAO_SOCIAL}}||COMPRADOR(A)|{{CLIENTE_NOME}}[/signatures]', '{}', NULL, NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2025-12-19 20:48:36.07391+00', '2026-04-17 11:29:07.89734+00', NULL, NULL, NULL, '0.10', '[]', '{carro,moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}'),
+  ('d7518170-b957-4d4d-a1e1-196d7646aa3e', 'Contrato de Reserva - Moto', 'venda_moto', 'f', '3', '[center][b][size:13]CONTRATO PARTICULAR DE COMPRA E VENDA DE MOTOCICLETA[/size][/b][/center]', 'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:
+
+[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}
+[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}
+
+[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}} — [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}} — [b]Valor para Reserva do veículo:[/b] R$ 1.000,00 — [b]Valor remanescente para quitação e retirada do veículo:[/b] R$ 27.000,00 — ', '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA[/b][/center]
+Declaro que estou vendendo o veículo acima descrito e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a presente data de venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza. A partir desta venda, tais responsabilidades passam a ser integralmente do comprador acima identificado. Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do comprador a partir desta data.
+
+[b]CLÁUSULAS:[/b]
+[b]1.[/b] A VENDEDORA transfere ao(à) COMPRADOR(A) a propriedade e posse da motocicleta acima descrita, livre de ônus, na presente data.
+[b]2.[/b] O(A) COMPRADOR(A) declara ter vistoriado a motocicleta e a recebe no estado em que se encontra, sem direito a reclamações posteriores quanto a defeitos aparentes.
+[b]3.[/b] A partir desta data, todas as responsabilidades civis, criminais e tributárias (multas, IPVA, licenciamento) passam a ser exclusivas do(a) COMPRADOR(A).
+[b]4.[/b] O emplacamento e a transferência junto ao DETRAN são de responsabilidade exclusiva do(a) COMPRADOR(A), devendo ser realizados em até 30 dias.
+[b]5.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.', '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]
+
+
+[signatures]VENDEDORA|{{LOJA_RAZAO_SOCIAL}}||COMPRADOR(A)|{{CLIENTE_NOME}}[/signatures]', '{"O EMPLACAMENTO É DE RESPONSABILIDADE EXCLUSIVA DO COMPRADOR."}', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-04-09 20:27:46.608524+00', '2026-07-17 18:10:53.323568+00', NULL, NULL, NULL, '0.1', '[]', '{carro,moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}'),
+  ('843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'Contrato de Venda - Moto - Com emplacamento', 'venda_moto', 'f', '17', '[center][b][size:10]CONTRATO PARTICULAR DE COMPRA E VENDA DE MOTOCICLETA[/size][/b][/center]', 'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:
+[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}} [b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}
+
+[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}} — [b]Forma de Pagamento:[/b] Financiamento  — [b]Entrada:[/b] {{VALOR_ENTRADA}} — [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}', '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA[/b][/center]
+Declaro que estou vendendo o veículo acima descrito e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a presente data de venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza. A partir desta venda, tais responsabilidades passam a ser integralmente do comprador acima identificado. Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do comprador a partir desta data.
+[b]CLÁUSULAS:[/b]
+[b]1.[/b] A VENDEDORA transfere ao(à) COMPRADOR(A) a propriedade e posse da motocicleta acima descrita, livre de ônus, na presente data.
+[b]2.[/b] O(A) COMPRADOR(A) declara ter vistoriado a motocicleta e a recebe no estado em que se encontra, sem direito a reclamações posteriores quanto a defeitos aparentes.
+[b]3.[/b] A partir desta data, todas as responsabilidades civis, criminais e tributárias (multas, IPVA, licenciamento) passam a ser exclusivas do(a) COMPRADOR(A).
+[b]4.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.', '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]
+
+
+[signatures]VENDEDORA|{{LOJA_RAZAO_SOCIAL}}||COMPRADOR(A)|{{CLIENTE_NOME}}[/signatures]', '{"A motocicleta possui garantia de 01 ano, condicionada às revisões e trocas de óleo em oficinas autorizadas Shineray. A 1ª revisão deve ser feita aos 1.000 km ou em até 90 dias. As demais revisões a cada 3.000 km, e as trocas de óleo a cada 1.000 km. Não há revisões gratuitas; o descumprimento implica perda da garantia.","A garantia cobre partes do motor, da caixa de marchas, do sistema elétrico e da suspensão, além de defeitos de fabricação. Não se aplica a danos por mau uso, desgaste natural ou modificações não autorizadas.","O valor do emplacamento foi incluído na proposta."}', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-03-27 18:06:55.985649+00', '2026-07-05 16:13:11.620789+00', NULL, 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/contract-assets/watermark/1780069724697-kexn4pwoqz9.png', NULL, '0.41', '[]', '{carro,moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}'),
+  ('e6138c44-6a4f-4625-a2c6-43173ecb4c16', 'Contrato de Repasse', 'repasse', 'f', '1', 'CONTRATO DE REPASSE DE VEÍCULO', 'Pelo presente instrumento particular, de um lado {{LOJA_RAZAO_SOCIAL}}, inscrita no CNPJ sob nº {{LOJA_CNPJ}}, com sede em {{LOJA_ENDERECO}}, doravante denominada CEDENTE, e de outro lado {{CLIENTE_NOME}}, portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, com endereço em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, doravante denominado(a) CESSIONÁRIO(A), firmam o presente contrato de repasse:
+
+VEÍCULO: {{VEICULO_MARCA}} {{VEICULO_MODELO}}
+ANO: {{VEICULO_ANO}}
+COR: {{VEICULO_COR}}
+CHASSI: {{VEICULO_CHASSI}}
+PLACA: {{VEICULO_PLACA}}
+
+VALOR DO REPASSE: {{VALOR_TOTAL}}', 'CLÁUSULA PRIMEIRA: O CEDENTE transfere ao CESSIONÁRIO todos os direitos sobre o veículo acima descrito.
+
+CLÁUSULA SEGUNDA: O CESSIONÁRIO assume todas as responsabilidades legais e financeiras a partir da assinatura deste contrato.
+
+CLÁUSULA TERCEIRA: Eventuais débitos anteriores à data deste contrato são de responsabilidade do CEDENTE.
+
+CLÁUSULA QUARTA: As partes elegem o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer dúvidas.', '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]
+
+
+[signatures]VENDEDORA|{{LOJA_RAZAO_SOCIAL}}||COMPRADOR(A)|{{CLIENTE_NOME}}[/signatures]', '{}', NULL, NULL, NULL, '2025-12-19 20:48:36.07391+00', '2026-07-05 16:13:11.620789+00', NULL, NULL, NULL, '0.10', '[]', '{carro,moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}'),
+  ('8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'Contrato de Venda', 'generico', 't', '5', '[center][size:12][b]CONTRATO DE COMPRA E VENDA DE VEÍCULO[/b][/size][/center]', 'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:
+
+[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}
+[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}
+
+[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}', '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA[/b][/center]
+Declaro que estou vendendo o veículo acima descrito e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a presente data de venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza. A partir desta venda, tais responsabilidades passam a ser integralmente do comprador acima identificado. Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do comprador a partir desta data.
+[b]CLÁUSULAS:[/b]
+[b]1.[/b] A VENDEDORA transfere ao(à) COMPRADOR(A) a propriedade e posse do Veiculo acima descrita, livre de ônus, na presente data.
+[b]2.[/b] O(A) COMPRADOR(A) declara ter vistoriado o Veiculo e a recebe no estado em que se encontra, sem direito a reclamações posteriores quanto a defeitos aparentes.
+[b]3.[/b] A partir desta data, todas as responsabilidades civis, criminais e tributárias (multas, IPVA, licenciamento) passam a ser exclusivas do(a) COMPRADOR(A).
+[b]4.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.', '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]
+
+
+[signatures]VENDEDORA|{{LOJA_RAZAO_SOCIAL}}||COMPRADOR(A)|{{CLIENTE_NOME}}[/signatures]', '{}', NULL, NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-07-05 16:13:11.620789+00', '2026-09-09 14:32:20.796518+00', NULL, 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/contract-assets/watermark/1783342356155-1lcikxkc8qo.png', NULL, '0.17', '[{"id": "emplacamento", "label": "Emplacamento por conta da loja", "body_bbcode": "[b]EMPLACAMENTO:[/b] O valor do emplacamento foi incluído na proposta.", "vehicle_types": ["moto"], "enabled_by_default": false}, {"id": "garantia", "label": "Garantia contratual", "body_bbcode": "[b]GARANTIA:[/b] O veículo possui garantia de {{GARANTIA_MESES}} meses, A garantia cobre partes do motor, da caixa de marchas, do sistema elétrico e da suspensão, além de defeitos de fabricação. Não se aplica a danos por mau uso, desgaste natural ou modificações não autorizadas.", "vehicle_types": ["carro", "moto"], "enabled_by_default": true}, {"id": "revisoes", "label": "Plano de revisões", "body_bbcode": "[b]REVISÕES:[/b] Para manutenção da garantia, o(a) comprador(a) deverá realizar revisões periódicas a cada {{REVISAO_MESES}} meses ou {{REVISAO_KM}} km — o que ocorrer primeiro — em oficinas credenciadas Shineray. O não cumprimento dos prazos estabelecidos acarretará na perda total da garantia (OBS: Primeira revisão deve ser realizada obrigatoriamente com 1.000km).", "vehicle_types": ["carro", "moto"], "enabled_by_default": true}, {"id": "clause_mr97xhf0", "label": "Nova cláusula", "body_bbcode": "", "vehicle_types": ["carro", "moto"], "enabled_by_default": false}]', '{carro,moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}'),
+  ('1571d80e-a9a1-4f7d-a40d-437b6ad6a2ba', 'Contrato de Reserva de Motocicleta (Pré-compra)', 'reserva', 't', '1', '[center][b]{{LOJA_RAZAO_SOCIAL}}[/b][/center]
+[center]CNPJ {{LOJA_CNPJ}} • {{LOJA_ENDERECO}} - {{LOJA_CIDADE}}[/center]
+[center]{{LOJA_TELEFONE}} • {{LOJA_EMAIL}}[/center]', '[center][b]INSTRUMENTO PARTICULAR DE RESERVA DE MOTOCICLETA COM SINAL DE ARRAS CONFIRMATÓRIAS E CLÁUSULA DE IRRETRATABILIDADE DO VALOR PAGO[/b][/center]
+[center]Contrato nº {{NUMERO_CONTRATO}}[/center]
+
+[b]RESERVANTE (VENDEDORA):[/b] {{LOJA_RAZAO_SOCIAL}}, inscrita no CNPJ sob nº {{LOJA_CNPJ}}, com sede em {{LOJA_ENDERECO}}, {{LOJA_CIDADE}}, doravante denominada simplesmente "LOJA".
+
+[b]RESERVATÁRIO (COMPRADOR):[/b] {{CLIENTE_NOME}}, inscrito no CPF/CNPJ sob nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado simplesmente "COMPRADOR".
+
+As partes acima qualificadas, por livre e espontânea vontade, celebram o presente instrumento, que se regerá pelas cláusulas e condições seguintes.
+
+[b]OBJETO DA RESERVA[/b]
+Marca: {{VEICULO_MARCA}} • Modelo: {{VEICULO_MODELO}} • Ano/Modelo: {{VEICULO_ANO}} • Cor: {{VEICULO_COR}}
+Chassi: {{VEICULO_CHASSI}} • Placa: {{VEICULO_PLACA}} • RENAVAM: {{VEICULO_RENAVAM}}
+
+[b]VALORES[/b]
+Preço total ajustado da motocicleta: {{VALOR_TOTAL}}
+Valor pago a título de reserva (sinal/arras): {{VALOR_ENTRADA}}
+Forma de pagamento da reserva: {{FORMA_PAGAMENTO}}', '[b]CLÁUSULA 1ª – DA NATUREZA DA RESERVA.[/b] O presente instrumento constitui modalidade de pré-compra, pela qual a LOJA se compromete a retirar a motocicleta descrita de oferta ao público durante o prazo de validade da reserva, mediante o pagamento, pelo COMPRADOR, do valor de reserva acima indicado, o qual possui natureza de sinal e arras, nos termos dos arts. 417 a 420 do Código Civil (Lei nº 10.406/2002).
+
+[b]CLÁUSULA 2ª – DA NÃO DEVOLUÇÃO DO VALOR PAGO.[/b] O COMPRADOR declara estar ciente e de pleno acordo que o valor pago a título de reserva [b]NÃO SERÁ ESTORNADO, RESTITUÍDO OU COMPENSADO, EM HIPÓTESE ALGUMA[/b], caso a compra não se concretize por desistência, arrependimento, cancelamento, não comparecimento, reprovação de crédito/financiamento por motivo imputável ao COMPRADOR, falta de documentação ou decurso do prazo de validade sem a quitação do saldo. Nessas hipóteses, o valor será retido integralmente pela LOJA a título de arras penitenciais e indenização prefixada pelas despesas administrativas, pela indisponibilidade do bem e pela perda de oportunidade de venda a terceiros (art. 418 e art. 420 do Código Civil).
+
+[b]CLÁUSULA 3ª – DA CIÊNCIA DO DIREITO DE ARREPENDIMENTO.[/b] Por se tratar de negociação realizada no estabelecimento comercial da LOJA, com análise presencial do bem, o COMPRADOR reconhece não se aplicar o direito de arrependimento previsto no art. 49 do Código de Defesa do Consumidor (Lei nº 8.078/1990), restrito às contratações realizadas fora do estabelecimento.
+
+[b]CLÁUSULA 4ª – DO PRAZO DE VALIDADE.[/b] A reserva terá validade até a data registrada no sistema da LOJA e informada ao COMPRADOR no ato da assinatura. Findo o prazo sem a quitação integral do saldo ou a aprovação do financiamento, a reserva será considerada automaticamente cancelada por culpa do COMPRADOR, independentemente de notificação, ficando a LOJA livre para alienar a motocicleta a terceiros, aplicando-se o disposto na Cláusula 2ª.
+
+[b]CLÁUSULA 5ª – DO ABATIMENTO NO PREÇO.[/b] Concretizada a compra dentro do prazo de validade, o valor da reserva será abatido do preço total ajustado, devendo o COMPRADOR quitar o saldo remanescente na forma acordada com a LOJA, mediante a formalização do contrato definitivo de compra e venda.
+
+[b]CLÁUSULA 6ª – DA MANUTENÇÃO DO PREÇO.[/b] O preço total ajustado é garantido somente durante o prazo de validade da reserva. Encerrado o prazo, a LOJA poderá praticar o preço vigente em tabela, sem obrigação de manter qualquer condição anterior.
+
+[b]CLÁUSULA 7ª – DA DESISTÊNCIA DA LOJA.[/b] Somente na hipótese de a LOJA, por ato exclusivamente seu, deixar de entregar a motocicleta reservada, o COMPRADOR terá direito à devolução do valor pago, na forma do art. 418 do Código Civil, ressalvados casos fortuitos ou de força maior (art. 393 do Código Civil), como sinistro, roubo, recall ou impedimento do fabricante, em que a LOJA poderá, a seu critério, oferecer motocicleta equivalente ou devolver o valor pago de forma simples, sem qualquer acréscimo.
+
+[b]CLÁUSULA 8ª – DA DOCUMENTAÇÃO E CRÉDITO.[/b] Compete exclusivamente ao COMPRADOR apresentar a documentação pessoal exigida e obter a aprovação de crédito, quando houver financiamento. A reprovação de crédito por restrição, renda insuficiente ou informação inverídica prestada pelo COMPRADOR não exime a aplicação da Cláusula 2ª.
+
+[b]CLÁUSULA 9ª – DA POSSE E DO RISCO.[/b] A presente reserva não transfere a posse, a propriedade ou o direito de uso da motocicleta, que permanecerá sob guarda da LOJA até a quitação integral do preço e a assinatura do contrato definitivo (art. 1.267 do Código Civil).
+
+[b]CLÁUSULA 10ª – DA INTRANSFERIBILIDADE.[/b] A reserva é pessoal e intransferível, não podendo ser cedida a terceiros sem autorização prévia e por escrito da LOJA.
+
+[b]CLÁUSULA 11ª – DA ASSINATURA OBRIGATÓRIA.[/b] A reserva somente produzirá efeitos após a assinatura deste instrumento pelo COMPRADOR, de forma física ou eletrônica (inclusive pela plataforma gov.br), nos termos da Lei nº 14.063/2020 e da MP nº 2.200-2/2001. O pagamento sem a respectiva assinatura não gera qualquer obrigação à LOJA além da devolução simples do valor.
+
+[b]CLÁUSULA 12ª – DAS DECLARAÇÕES.[/b] O COMPRADOR declara que leu integralmente este instrumento, que teve oportunidade de esclarecer todas as dúvidas, que compreendeu especialmente a Cláusula 2ª (não devolução do valor pago) e que assina de forma livre, consciente e sem qualquer coação.
+
+[b]CLÁUSULA 13ª – DO FORO.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer controvérsias oriundas deste instrumento, com renúncia a qualquer outro, por mais privilegiado que seja.', '{{LOJA_CIDADE}}, {{DATA_CONTRATO}}.
+
+[b]CIENTE E DE ACORDO COM A NÃO DEVOLUÇÃO DO VALOR DA RESERVA:[/b]
+
+_______________________________________
+{{CLIENTE_NOME}} – CPF/CNPJ {{CLIENTE_CPF}}
+COMPRADOR (assinatura física ou gov.br)
+
+_______________________________________
+{{LOJA_RAZAO_SOCIAL}} – CNPJ {{LOJA_CNPJ}}
+LOJA
+
+TESTEMUNHAS:
+1) ______________________ CPF: ______________
+2) ______________________ CPF: ______________', '{}', NULL, NULL, NULL, '2026-10-05 16:27:03.416784+00', '2026-10-05 16:27:03.416784+00', NULL, NULL, NULL, '0.10', '[]', '{moto}', '{Fiscal,Garantia,Financeiro,Documentação,Outros}');
+
+
+
+--
+-- Data for Name: contracts; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.contracts (id, contract_number, vehicle_id, reseller_id, store_id, buyer_name, buyer_cpf, buyer_phone, buyer_email, buyer_address, sale_price, down_payment, installments, installment_value, status, signed_at, notes, created_at, updated_at, signed_contract_url, template_id, contract_type, created_by, financing_bank, active_clause_ids, clause_variables, revision_number, payment_method, down_payment_pix, down_payment_cash, down_payment_card, down_payment_card_installments, financing_installments, financing_installment_value, lead_source, lead_source_detail, review_status, review_note, review_requested_by, review_requested_at, review_resolved_by, review_resolved_at, review_response, ad_id, campaign_name, sale_group_id, sale_channel, evidence_paths, external_data) VALUES
+  ('3d043587-cbfb-48d9-a1b8-8d9976a99cd3', 'CTR-MJHI4PBG', '15f8664d-c54c-4eb9-ad31-865f2bf0ea9f', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Tatiane Pereira Freitas', '01631043609', '(38) 99185-5245', 'tatyfreitas369@gmail.com', 'Espirito Santo, 465 - Esplanada, Montes Claros/MG - CEP: 39401-452', '11990.00', '0.00', '12', '999.17', 'assinado', '2025-12-22 18:40:54.25+00', 'Modelo: Contrato de Venda - Moto.', '2025-12-22 18:40:52.937107+00', '2025-12-22 18:40:55.280262+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/3d043587-cbfb-48d9-a1b8-8d9976a99cd3.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('fb24c2e6-65f0-4224-b51e-d02d4019ce79', 'CTR-MJJXYFRI', '5f557c54-0602-49aa-a45f-9deec79db636', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Helder Mota Ferreira', '32184930644', '(00) 00000-0000', 'Maluh810@gmail.com', 'Possidonio Oliveira Costa, 320 - Tamua, Manga/MG - CEP: 39460-000', '18990.00', '14000.00', '5', '998.00', 'assinado', '2025-12-24 11:39:27.63+00', 'Modelo: Contrato de Venda - Moto.', '2025-12-24 11:39:26.184095+00', '2025-12-24 11:39:27.862256+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/fb24c2e6-65f0-4224-b51e-d02d4019ce79.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('cdcf6ae7-929f-4644-98f5-28036068696a', 'CTR-MJMVMMQ8', '332a8565-57ab-4969-acfa-859ea3a70d38', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Vanei Alcantara Pereira', '03904252658', '(38) 99136-1299', 'VANEI@GMAIL.COM', 'TEODORO SARMENTO, 263 - SAO PEDRO, SALINAS/MG - CEP: 39560-000', '26000.00', '13000.00', '12', '1083.33', 'assinado', '2025-12-26 12:57:36.456+00', 'Modelo: Contrato de Venda - Moto.', '2025-12-26 12:57:34.992799+00', '2025-12-26 12:57:36.561028+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/cdcf6ae7-929f-4644-98f5-28036068696a.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('65a50755-2846-4684-abdc-b154d30f3c7f', 'CTR-MJSS51QT', '8d599bd9-ab84-4ba7-9e53-cbc4b6494b11', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'IGOR BRAGA DE SOUSA', '14355899632', '(38) 99975-3861', 'igorbraga03062002@gmail.com', 'JACARANDA, 89 - NOVA ESPERANCA, SALINAS/MG - CEP: 39560-000', '26990.00', '10000.00', '12', '1415.83', 'assinado', '2025-12-30 16:06:33.805+00', 'Modelo: Contrato de Venda - Moto.', '2025-12-30 16:06:32.476615+00', '2025-12-30 16:06:34.011533+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/65a50755-2846-4684-abdc-b154d30f3c7f.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('9876845e-1e92-4808-a82f-84ddf1872d60', 'CTR-MJHEJOFQ', '7352afa2-b898-4b61-83df-25aac3eaf71b', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Monick Soares de Oliveira', '11582734607', '(00) 00000-0000', 'monicksoares19@gmail.com', 'Itacarambi, 171 - Quintino, Brasilia de Minas/MG - CEP: 39330-000', '11990.00', '5000.00', '12', '582.50', 'assinado', '2025-12-22 17:00:34.714+00', 'Modelo: Contrato de Venda - Moto.', '2025-12-22 17:00:33.036316+00', '2025-12-22 17:00:35.435646+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/9876845e-1e92-4808-a82f-84ddf1872d60.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0c093110-ba63-4f2f-be43-3a84d68bdc53', 'CTR-MJU10JIU', 'c3c6d482-f1cd-49c6-909f-27c45793dacf', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SARA LORRANE RIBEIRO DE QUEIROZ', '02294581652', '(38) 99262-6900', 'saralorrane252@gmail.com', ' LORENCO SOARES SALES, 143 - ALTO DA BOA VISTA, MONTES CLAROS/MG - CEP: 39400-257', '11990.00', '0.00', '48', '679.55', 'assinado', '2025-12-31 13:02:47.778+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2025-12-31 13:02:44.944831+00', '2025-12-31 13:02:47.949055+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/0c093110-ba63-4f2f-be43-3a84d68bdc53.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2503b29d-503b-4109-993f-defd51e1dcb5', 'CTR-MK1IS2R6', 'e88c5ca6-774f-49d2-af4c-590c0cf94d38', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Nayane Nerden Martins Costas de Sa', '07447572667', '(38) 99991-8268', 'nana.nardem@hotmail.com', 'Rua B, 121 - Camilo Prates, Montes Claros/MG - CEP: 39402-104', '11990.00', '690.00', '12', '941.67', 'concluido', '2026-01-05 18:54:29.136+00', 'Modelo: Contrato de Venda - Moto.', '2026-01-05 18:54:26.26116+00', '2026-01-23 16:44:25.68028+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/2503b29d-503b-4109-993f-defd51e1dcb5.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('bc10e746-3b63-4217-be6b-cf6ae6ea03ad', 'CTR-MKE5SZXO', '3feda227-c8e9-4634-8b91-85f0a19a53ea', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Maria Clara Martins Oliveira', '13374228607', '(38) 99844-6117', 'mariaclaramartinsdeoliveira355@gmail.com', 'Avenida Montes Claros, 147 - Alvorada, São João da Ponte/MG - CEP: 39430-000', '11500.00', '0.00', '1', '11500.00', 'concluido', '2026-01-14 15:12:16.123+00', 'Modelo: Contrato de Venda - Moto.', '2026-01-14 15:12:14.505154+00', '2026-01-23 16:44:15.813726+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/bc10e746-3b63-4217-be6b-cf6ae6ea03ad.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('837bba9e-2da6-4edc-9fda-05dcd8f6548d', 'CTR-MKLB3GEB', '5fb22ba4-e503-4e37-a8c8-f02f5ab0293d', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ERICO SEGISMUNDO LIMA VILASBOAS', '36736740649', '(38) 99986-6027', 'ericosegismundo@gmail.com', 'Tuninabas, 320 - Melo, Montes Claros/MG - CEP: 39401-509', '25990.00', '0.00', '12', '2165.83', 'concluido', '2026-01-19 15:14:45.35+00', 'Modelo: Contrato de Venda - Moto.', '2026-01-19 15:14:43.721336+00', '2026-01-23 16:44:11.275849+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/837bba9e-2da6-4edc-9fda-05dcd8f6548d.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('85be0de5-c00d-4949-bb26-64a60a26b15e', 'CTR-MKR28FAB', '0ecf579e-90a6-4293-9932-11f2fff09c1c', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARLEY DIAS DA SILVA ALVES', '03255560675', '(38) 99124-8459', 'andressadasilvaalves84@gmail.com', 'RUA TRINTA E TRES, 184 - ALTEROSAS, Montes Claros/MG - CEP: 39403-010', '11790.00', '2000.00', '24', '743.72', 'concluido', '2026-01-23 15:53:17.569+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-01-23 15:53:16.124614+00', '2026-01-23 16:44:08.192076+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/85be0de5-c00d-4949-bb26-64a60a26b15e.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0ef9d8fe-0399-481d-ac06-47a1646b711b', 'CTR-MKR37M9T', '57ed8114-70ca-473f-9b9f-253776e241ce', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Renato Abreu Campos Filho', '09192761640', '(38) 99970-1214', 'renatofilhoabreu@gmail.com', 'Rua K, 300 - Delfino Magalhães, Montes Claros/MG - CEP: 39402-181', '11990.00', '0.00', '48', '548.01', 'concluido', '2026-01-23 16:20:39.43+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-01-23 16:20:38.068638+00', '2026-01-23 16:43:58.580851+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/0ef9d8fe-0399-481d-ac06-47a1646b711b.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('c34c3881-6ef3-4a49-b37f-b6593231157e', 'CTR-MKR3OQY1', '6f8af9ae-494f-4e8c-bf9a-2479dafa3907', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOAO PAULO DOS SANTOS', '01706502605', '(38) 99907-2393', 'paulosjoaosantos@gmail.com', 'RUA SAO DOMINGOS, 237 - CATUNI, FRANCISCO SA/MG - CEP: 39590-000', '18990.00', '0.00', '48', '789.00', 'concluido', '2026-01-23 16:33:59.203+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-01-23 16:33:57.661439+00', '2026-01-23 16:43:55.252889+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/c34c3881-6ef3-4a49-b37f-b6593231157e.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('653187c3-c241-4d60-95d0-0ff12c728088', 'CTR-MKR3YS51', 'c9eded1b-b256-4572-a683-a891d6b20ca8', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RICARDO WILLIAN VELOSO', '62399144600', '(38) 99999-9999', 'ricardowiliansgt@gmail.com', 'Rua São Rumao, 155 - Santos Reis, São João da Ponte/MG - CEP: 39430-000', '18990.00', '0.00', '12', '1582.50', 'concluido', '2026-01-23 16:41:46.565+00', 'Modelo: Contrato de Venda - Moto.', '2026-01-23 16:41:45.344015+00', '2026-01-23 16:43:48.96643+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/653187c3-c241-4d60-95d0-0ff12c728088.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0d9cc9f1-dca2-4855-8183-14e0587bbe64', 'CTR-MKR4GRQC', '2a1a68f1-a632-4ba1-8d58-e61b447ad484', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LUCAS DE JESUS SOUZA', '70240905610', '(38) 98812-5978', 'NULL@NULL.NULL', 'RUA C, 426  - NOSSA SENHORA DAS GRACAS, MONTES CLAROS/MG - CEP: 39403-532', '22990.00', '0.00', '48', '0.00', 'concluido', '2026-01-23 16:55:45.897+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-01-23 16:55:44.658302+00', '2026-01-23 16:56:00.018559+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/0d9cc9f1-dca2-4855-8183-14e0587bbe64.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('eb0408b2-6b91-461c-88cf-85574ae05a8b', 'CTR-MKXZYHMQ', 'b2d96131-b2d9-494e-920e-e7fba26ddb9a', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'AMANDA CHRISTINA TEIXEIRA ROCHA', '12960550609', '(38) 99987-7639', '', 'WASHINGTON DRUMOND, 175 - CENTRO, BOCAIUVA/MG - CEP: 39390-000', '11990.00', '2650.00', '48', '565.96', 'concluido', '2026-01-28 12:23:58.823+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-01-28 12:23:56.910433+00', '2026-01-28 12:24:25.612615+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/eb0408b2-6b91-461c-88cf-85574ae05a8b.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('be04104c-924f-4991-8573-eb63db4a1ea3', 'CTR-MKY02JGK', '5deaac92-f339-41e8-bd8f-5408e92f7162', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VANESIA PEREIRA DE ALMEIDA', '04992277608', '(38) 99903-9589', '', 'RUA FLOR DE CEREJEIRA, 151 - JARDIM OLIMPO, MONTES CLARO/MG - CEP: 39406-524', '11500.00', '0.00', '1', '11500.00', 'concluido', '2026-01-28 12:27:07.691+00', 'Modelo: Contrato de Venda - Moto.', '2026-01-28 12:27:05.782761+00', '2026-01-28 12:27:22.515989+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/be04104c-924f-4991-8573-eb63db4a1ea3.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('057837db-7c0c-427b-9882-8c53899fca41', 'CTR-ML2BZ0JI', 'afbfe6e8-82f5-49be-bfa3-235a80d5b196', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MAHOUGNAN DOROTHEE SAGBO', '70597093636', '', 'DODO.SAGBO@GMAIL.COM', 'R DA BIOLOGIA, 200 - UNIVERSITARIO, MONTES CLAROS/MG - CEP: 39404-570', '11990.00', '0.00', '24', '870.17', 'concluido', '2026-01-31 13:11:22.537+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-01-31 13:11:21.155282+00', '2026-01-31 14:27:16.155341+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/057837db-7c0c-427b-9882-8c53899fca41.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('d6d984bf-ffc2-4d61-986b-d835f2a36f75', 'CTR-ML2BE4HP', '61cd13c8-1643-4f3b-a990-a1f07570b5a9', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIA GIRLENE SOARES DOS SANTOS', '78448034600', '', 'Marianedepaulass26@gmail.com', 'RUA JOSE ROUSSIN GUEDES, 275 - PANORAMA II, MONTES CLAROS/MG - CEP: 39401-609', '11990.00', '0.00', '36', '695.92', 'concluido', '2026-01-31 12:55:08.51+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-01-31 12:55:06.587712+00', '2026-01-31 13:00:50.551964+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/d6d984bf-ffc2-4d61-986b-d835f2a36f75.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b67703db-18f1-4c07-9b36-4526d3550b76', 'CTR-ML0VOAWM', '07a8788e-77a0-4714-a627-2d5e81e98b59', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VENDA DE GAS DENTRO DO ESTADO', '06223900000184', '(38) 9185-1617', '', 'AV. CEL. MOACIR J. SILVA, 1155 - CENTRO, JAIBA/MG - CEP: 39508-000', '11200.00', '0.00', '6', '1866.67', 'concluido', '2026-01-30 12:47:21.752+00', '[VENDA MÚLTIPLA 3/3] Modelo: Contrato de Venda - Moto Para Sorteios.', '2026-01-30 12:47:21.264819+00', '2026-01-31 13:01:08.381624+00', NULL, 'c2cb2a8f-b2d8-4149-84b1-49ccd1337373', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ff57e2de-fe78-4b55-9a7d-259d1fa86d8a', 'CTR-ML0VO9VJ', 'd6de8a4b-4bc7-4437-901a-d22f17b906e2', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VENDA DE GAS DENTRO DO ESTADO', '06223900000184', '(38) 9185-1617', '', 'AV. CEL. MOACIR J. SILVA, 1155 - CENTRO, JAIBA/MG - CEP: 39508-000', '11200.00', '0.00', '6', '1866.67', 'concluido', '2026-01-30 12:47:20.424+00', '[VENDA MÚLTIPLA 2/3] Modelo: Contrato de Venda - Moto Para Sorteios.', '2026-01-30 12:47:19.943009+00', '2026-01-31 13:01:23.334403+00', NULL, 'c2cb2a8f-b2d8-4149-84b1-49ccd1337373', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('04fddab1-cacd-46b6-88e0-79cd3d1b76f2', 'CTR-ML0VO88X', 'f245df8c-ce4c-464f-a865-2a6493ae3fa2', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VENDA DE GAS DENTRO DO ESTADO', '06223900000184', '(38) 9185-1617', '', 'AV. CEL. MOACIR J. SILVA, 1155 - CENTRO, JAIBA/MG - CEP: 39508-000', '11200.00', '0.00', '6', '1866.67', 'concluido', '2026-01-30 12:47:19.141+00', '[VENDA MÚLTIPLA 1/3] Modelo: Contrato de Venda - Moto Para Sorteios.', '2026-01-30 12:47:17.858921+00', '2026-01-31 13:01:35.480225+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/04fddab1-cacd-46b6-88e0-79cd3d1b76f2.pdf', 'c2cb2a8f-b2d8-4149-84b1-49ccd1337373', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('5dd4089c-2847-4239-bd75-cfdde5e2656a', 'CTR-ML2F7VBR', '24df8b63-86a6-49d5-ba5c-92bb60d8a2e6', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JECKSON COLARES PEREIRA', '09345909664', '', 'JACKSONCOLARESP@GMAIL.COM', 'AVENIDA D, 40B - RESIDENCIAL VILA SEGURA, MONTES CLAROS/MG - CEP: 39405-144', '18990.00', '0.00', '12', '1582.50', 'concluido', '2026-01-31 14:42:14.599+00', 'Modelo: Contrato de Venda - Moto.  -  Carenagem traseira do passageiro
+-  Apoio para passageiroo+
+
+Substituição programada para a primeira revisão', '2026-01-31 14:42:13.133845+00', '2026-01-31 14:42:29.507695+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/5dd4089c-2847-4239-bd75-cfdde5e2656a.png', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0840633c-75f8-40d1-8eb0-b8ef1404215f', 'CTR-ML56WM2U', '8c75c2ac-51dd-4c42-b541-2d7c4cd32c86', 'bb8faec1-fdd5-4aac-8836-dfe767c9c1fb', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIA ZELITA BARBOSA', '25293353896', '', 'mariazeli@gmail.com', 'Não informado', '18990.00', '0.00', '1', '18990.00', 'assinado', '2026-02-02 13:12:51.235+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda - Moto.', '2026-02-02 13:12:49.882489+00', '2026-02-02 13:12:51.703993+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/0840633c-75f8-40d1-8eb0-b8ef1404215f.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a0eaf946-4b2b-48fc-93cc-e621f7ec5074', 'CTR-ML5G71A6', '43bbcf03-0301-4ba5-b225-4f408de619db', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIA DANIELLA SILVA', '14376005657', '(38) 99948-0011', 'daniellasilva05@icloud.com', 'RUA BARIUM, 292 - LOURDES, MONTES CLAROS/MG - CEP: 39401-500', '18990.00', '0.00', '36', '1111.32', 'concluido', '2026-02-02 17:32:53.725+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-02-02 17:32:52.813365+00', '2026-02-07 12:51:44.868704+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/a0eaf946-4b2b-48fc-93cc-e621f7ec5074.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ff94d704-8e73-48ea-8f25-1c74bbc2ef45', 'CTR-MLB2CFI2', 'ede270b7-33ec-4a0b-839f-5278d5426ad7', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DIRCEU PEREIRA DA SILVA', '01266782605', '(38) 99136-6939', 'dirceups0102@gmail.com', 'RUA SAO JOAO DA PONTE, 398 - POCOES, SÃO JOÃO DA PONTE/MG - CEP: 39430-000', '19000.00', '0.00', '1', '19000.00', 'concluido', '2026-02-06 15:51:47.705+00', 'Modelo: Contrato de Venda - Moto.', '2026-02-06 15:51:45.984553+00', '2026-02-06 19:16:41.986213+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/ff94d704-8e73-48ea-8f25-1c74bbc2ef45.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('444e5771-67a1-48b0-a8e9-16a1002d738b', 'CTR-MLB9Z45Y', 'c48d0e5a-07b4-4295-8513-9735ef00a887', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GILVANIO SANTOS VIANA', '10594590604', '(38) 99198-0708', '', 'RUA EXUPERIO P CARVALHO, 290 - CENTRO, JANUARIA/MG - CEP: 39480-000', '13233.00', '0.00', '1', '13233.00', 'concluido', '2026-02-06 19:25:26.301+00', 'Modelo: Contrato de Venda - Moto.', '2026-02-06 19:25:22.055202+00', '2026-02-06 19:25:41.896025+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/444e5771-67a1-48b0-a8e9-16a1002d738b.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a165296a-ccf7-4d03-9de7-563a7a285db0', 'CTR-ML55I5QY', '035efeb5-8289-440d-b35c-0eabb4ea24e9', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOAO PAULO DOS SANTOS', '01706502605', '', 'paulojoaosantos@gmail.com', 'RUA SÃO DOMINGOS, 237 - CATURI, MONTES CLAROS/MG - CEP: 39590-000', '18990.00', '2260.00', '48', '1000.00', 'concluido', '2026-02-02 12:33:37.47+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-02-02 12:33:35.647311+00', '2026-02-07 12:52:00.362886+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/a165296a-ccf7-4d03-9de7-563a7a285db0.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b59f29d5-8dcd-4b0b-af1c-6e6d23af5d63', 'CTR-MLII5ZHG', 'f76ab658-5745-4a5c-aab8-471d9f70ef8f', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SIDNEI GOMES DE ALMEIDA', '00325441626', '(38) 99994-1874', 'neyg85147@gmail.com', 'Rua Vila Nova , 41 - Santos Reis, Montes Claros/MG - CEP: 39401-540', '17000.00', '0.00', '48', '749.97', 'concluido', '2026-02-11 20:49:03.739+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-02-11 20:49:03.302026+00', '2026-02-11 22:29:24.085346+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/b59f29d5-8dcd-4b0b-af1c-6e6d23af5d63.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('afe75602-ab10-45d2-8c9e-f3ab3b691db4', 'CTR-MLJS3434', 'ea33b7d4-0f15-4951-9294-3da94dceacde', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'BRUNO PEREIRA SANTOS', '09467110628', '(38) 99934-0213', 'santosbruno2120@gmail.com', 'R NECO DELFINO, 02 - DELFINO MAGALHAES, Montes Claros/MG - CEP: 39402-181', '16990.00', '0.00', '36', '955.56', 'concluido', '2026-02-12 18:14:32.402+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-02-12 18:14:33.970062+00', '2026-02-13 17:25:29.539213+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/afe75602-ab10-45d2-8c9e-f3ab3b691db4.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a605e5c1-5eb5-4ee6-826f-cf850bcffd23', 'CTR-MMFD33LQ', 'fe206598-aeeb-4c09-bd9a-b010eac7300d', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DOUGLAS HENRIQUE PEREIRA DO CARMO', '08287375681', '', 'douglashenriquepdocarmo04@gmail.com', 'RUA CARLOS LEITE, 120 - MORRINHOS, MONTES CLAROS/MG - CEP: 39400-451', '23990.00', '3500.00', '48', '810.96', 'assinado', '2026-03-06 20:43:14.772+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-06 20:43:13.893001+00', '2026-03-31 16:19:39.171394+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/a605e5c1-5eb5-4ee6-826f-cf850bcffd23.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7e903519-6466-4884-9ba2-84a45bc62b1d', 'CTR-MM4T8W5E', 'a82e11c2-f586-4493-ae1e-dd84e3b92b54', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JHONATAN RODRIGUES SILVA', '08704460618', '(00) 00000-0000', '', 'R CAMBOATA, 49 - CHACARAS PARAISO, MONTES CLAROS/MG - CEP: 39403-702', '16000.00', '6000.00', '10', '1000.00', 'assinado', '2026-02-27 11:30:11.395+00', 'Modelo: Contrato de Venda - Moto.', '2026-02-27 11:30:11.094579+00', '2026-02-27 11:30:12.137406+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/7e903519-6466-4884-9ba2-84a45bc62b1d.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e88f4a4f-0a0c-4d52-b552-4b4d090a4bb6', 'CTR-MLM8XQTX', '722072b2-76fc-4894-9a4e-aae2cae1b6b4', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RODRIGO DE SOUZA FERREIRA', '29001365809', '(38) 99969-8923', 'rodriroll@gmail.co', 'R NILZA MELO DE LIMA, 411 - INDUSTRIAL, Pirapora /MG - CEP: 39272-026', '24990.00', '0.00', '36', '1226.61', 'concluido', '2026-02-14 11:41:47.733+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-02-14 11:41:46.478775+00', '2026-02-27 11:32:01.160046+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/e88f4a4f-0a0c-4d52-b552-4b4d090a4bb6.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('320e1789-743e-49d8-898c-717b5801bb7e', 'CTR-MLUVNKM9', '7111d772-b817-44ee-9493-0f98664733ff', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LUCAS PEREIRA SANTOS', '12874283630', '(38) 98424-5241', 'lucassantos.1gallo@gmail.com', 'R WALDEMAR DE OLIVEIRA SANTOS, 256 - IBITURUNA, Montes Claros/MG - CEP: 39400-000', '13990.00', '0.00', '36', '865.08', 'concluido', '2026-02-20 12:39:53.684+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-02-20 12:39:52.56687+00', '2026-02-27 11:32:15.372848+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/320e1789-743e-49d8-898c-717b5801bb7e.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', NULL, NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b8ccbc69-4d13-451a-8053-4e637693ba21', 'CTR-MMDU3515', '23fc5962-0d99-4b18-a4e0-66dce12d0b4b', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANA BEATRIZ CARDOSO DA SILVA', '70422558605', '', 'anabetrizcardoso095@gmail.com', 'RUA F, 501 - VILA ANALIA, MONTES CLAROS/MG - CEP: 39402-111', '19990.00', '0.00', '48', '754.83', 'assinado', '2026-03-05 19:03:37.783+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-05 19:03:38.770826+00', '2026-03-31 16:19:07.014246+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/b8ccbc69-4d13-451a-8053-4e637693ba21.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '63f4c11a-7675-4209-bcc5-770bd7e514a3', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e1d424ae-3474-44ef-ae56-5615bb47c9bf', 'CTR-MMDV9KBL', '947afeb4-0b35-44bc-94a6-1722f7a95c9a', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DANIEL SOARES MAIA', '08072177605', '(38) 9188-3250', 'soaresmaiadaniel@gmail.com', 'RUA DOZE, 99 - JARDIM PRIMAREVA, MONTES CLAROS/MG - CEP: 39404-138', '19990.00', '0.00', '48', '705.86', 'assinado', '2026-03-05 19:36:37.342+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-05 19:36:38.103676+00', '2026-03-31 16:19:15.520833+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/e1d424ae-3474-44ef-ae56-5615bb47c9bf.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b96ca663-680a-4236-964d-5ee3b2364366', 'CTR-MMFB20VP', 'e6e75d4d-e167-4a59-9fbb-e77a9d492e31', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIA BEATRIZ DE SOUZA FERREIRA', '02279834677', '(38) 98842-2692', 'beatrizsouza17075@gmail.com', 'RUA SANTO INACIO , 175 - ALTO SAO JOAO, MONTES CLAROS/MG - CEP: 39400-323', '13990.00', '0.00', '36', '689.96', 'assinado', '2026-03-06 19:46:26.379+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-06 19:46:24.51592+00', '2026-03-31 16:19:29.328763+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/b96ca663-680a-4236-964d-5ee3b2364366.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('1071fd71-9b4d-4673-bf1c-5e2a0c8d134b', 'CTR-MMKZQO2A', '632d9ba5-187f-4134-8eaa-185680e698de', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'EMERSON SANTANA FERREIRA', '09221500608', '', 'fbarbearia47@gmail.com', 'R ZE FERRISTA , 336 - MAJOR PRATES, MONTES CLAROS/MG - CEP: 39403-208', '13990.00', '0.00', '48', '696.64', 'assinado', '2026-03-10 19:16:18.516+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-10 19:16:17.776025+00', '2026-03-31 16:20:07.964322+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/1071fd71-9b4d-4673-bf1c-5e2a0c8d134b.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('f5062960-d74f-4932-8fed-e4cb15019e62', 'CTR-MMM2FOQE', '1fc6eb57-0a1d-47d8-8d71-02ff57d49f5f', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JANTRAX ADMINISTRAÇÃO LTDA', '29469083000144', '', 'jantrax@hotmail.com', 'RUA PADRE TEIXEIRA , 253 - CENTRO, MONTES CLAROS/MG - CEP: 39400-015', '13990.00', '0.00', '10', '1482.94', 'assinado', '2026-03-11 13:19:29.575+00', 'Modelo: Contrato de Venda - Moto.', '2026-03-11 13:19:28.832689+00', '2026-03-31 16:20:20.277748+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/f5062960-d74f-4932-8fed-e4cb15019e62.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b9b5b3b4-99b4-48f8-9977-a684398a3110', 'CTR-MMNQMMHW', '571766cc-bbbd-41cf-afc2-57fe38befb8e', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ELISANDRA BARBOSA MUNIZ DE BARROS', '13265281655', '', 'barbosaelisandra696@gmail.com', 'AVENIDA CORACAO DE JESUS, 161 - SAO GERALDO, MONTES CLAROS/MG - CEP: 39403-170', '13990.00', '0.00', '48', '752.39', 'assinado', '2026-03-12 17:24:31.009+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-12 17:24:29.234532+00', '2026-03-31 16:20:31.32559+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/b9b5b3b4-99b4-48f8-9977-a684398a3110.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a8a9d191-5572-4c42-bdbb-54293ca66c18', 'CTR-MMQEC0IC', 'b1ef82dd-6d0a-4411-b335-f94311d9ed00', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GUILHERME DA SILVA BORGES', '04662277604', '', 'guilherme.silvaborges@yahoo.com.br', 'RUA RUFINO CARDOSO, 175 - CENTRO, SÃO JOAO DA PONTE/MG - CEP: 39430-000', '12990.00', '10000.00', '5', '639.86', 'assinado', '2026-03-14 14:03:39.245+00', 'Modelo: Contrato de Venda - Moto.', '2026-03-14 14:03:37.840321+00', '2026-03-31 16:21:57.55015+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/a8a9d191-5572-4c42-bdbb-54293ca66c18.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('fcbd4717-a2f5-4d75-8b58-91220891fc28', 'CTR-MMTFYL36', 'a8e295ae-e44e-4b45-9da6-69f69155f68d', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LETÍCIA ALVEZ MARTINS SOUZA', '02235939155', '', 'Letícia.martins27.lam@gmail.com', 'PCA MANOEL JOSE, 245 - SAO JOSE , MONTES CLAROS/MG - CEP: 39400-341', '13189.00', '1650.00', '36', '685.67', 'assinado', '2026-03-16 17:12:30.089+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-16 17:12:28.75562+00', '2026-03-31 16:22:08.781595+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/fcbd4717-a2f5-4d75-8b58-91220891fc28.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('9771a1c7-4dab-4251-9c77-55ee2a6aac42', 'CTR-MMC99VYD', 'c7c9ad3a-b986-4320-8f3b-1758e7637cfa', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'FATIMA APARECIDA DE QUEIROZ', '01544056630', '(38) 9111-3306', 'fatinhagolv@gmail.com', 'R LOURENCO SOARES SALES, 143 - ALTO DA BOA VISTA, MONTES CLAROS/MG - CEP: 39402-579', '13990.00', '0.00', '48', '577.02', 'assinado', '2026-03-04 16:33:14.814+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-04 16:33:15.400184+00', '2026-03-31 16:18:54.240778+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/9771a1c7-4dab-4251-9c77-55ee2a6aac42.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('14b4168f-21ad-4150-a747-ba48e5be2ea4', 'CTR-MN39GYOG', 'e8f639bf-09a8-4817-8602-0e31840eae9d', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIA DE LURDES BRITO SILVA RIBEIRO', '06364490689', '', 'lourdes.brito.silva@gmail.com', 'VIA ACESSO SEIS, 197 - COND MORADAS, MONTES CLAROS/Mg - CEP: 39404-303', '18990.00', '0.00', '48', '1012.06', 'assinado', '2026-03-23 14:08:31.645+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-23 14:08:30.424809+00', '2026-03-31 16:24:51.022334+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/14b4168f-21ad-4150-a747-ba48e5be2ea4.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a4753c5a-2fec-4131-9c86-d7bd3108d418', 'CTR-MN6422Q1', 'c61d5641-0ef3-40fe-aa13-2e809a4a92f5', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JARDEL RABELO DE SOUZA', '08594831692', '', 'jardelrabelotst.bmmg@hotmail.com', 'RUA PROFESSORA REGINA BASTOS, 226 - CRISTINA ROCHA, BRASILIA DE MINAS/MG - CEP: 39330-000', '19900.00', '900.00', '24', '831.76', 'assinado', '2026-03-25 14:00:17.563+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-25 14:00:17.900578+00', '2026-03-31 16:23:38.041035+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/a4753c5a-2fec-4131-9c86-d7bd3108d418.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('318d7af5-022c-4d6c-8a54-6f61a98b607a', 'CTR-MN6I2HOM', 'd8777b37-6072-4722-bed3-04f1c7e4d7dc', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'BARBARA MICHELLE ATHAYDE', '05461892612', '', 'JANTRAX@HOTMAIL.COM', 'R JONAS ALVES DE ALMEIDA , 308 - MAJOR PRATES, MONTES CLAROS/MG - CEP: 39403-200', '27500.00', '7000.00', '12', '1827.92', 'assinado', '2026-03-25 20:32:32.117+00', 'Modelo: Contrato de Venda - Moto.', '2026-03-25 20:32:30.704455+00', '2026-03-31 16:25:14.996421+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/318d7af5-022c-4d6c-8a54-6f61a98b607a.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e42af0d3-6162-4d0d-9c13-6946fe22be3b', 'CTR-MN6HZK5L', '0261ed05-30ce-4fbb-aebc-ece295360cec', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'REINALDO DE CARVALHO SILVA', '02836663316', '', 'reinaldocarvalho852@gmail.com', 'Rua vinte e sete, 114 - NOVO DELFINO, MONTES CLAROS/MG - CEP: 39402-133', '19990.00', '0.00', '48', '891.33', 'assinado', '2026-03-25 20:30:15.176+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-25 20:30:14.073326+00', '2026-03-31 16:23:51.276157+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/e42af0d3-6162-4d0d-9c13-6946fe22be3b.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('1b3e7112-9c20-40c2-b8a6-fbf23428f64a', 'CTR-MMZ7IIXX', '0d9aebdb-ac2d-40b3-9883-ec161028f9e0', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'A NA CLAUDIA DE OLIVEIRA SOUZA', '13230731670', '(00) 0000-0000', '', 'RUA HERILTON JOSE DE SOUZA, 456 - ZUMBI, BOCAIUVA /MG - CEP: 39390-000', '13490.00', '1500.00', '48', '531.84', 'assinado', '2026-03-20 18:02:40.628+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-20 18:02:40.315059+00', '2026-03-31 16:24:24.327655+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/1b3e7112-9c20-40c2-b8a6-fbf23428f64a.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('08c34a2b-0441-4196-82b2-4cd86bddac27', 'CTR-MN6I73HI', 'b7bc83fc-f077-459f-84a5-94993a530e1a', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ROSILENE SOARES LIMA', '08054663633', '', 'ANESOARES940@GMAIL.COM', 'RUA URANIO , 442 - CIDADE INDUSTRIAL, MONTES CLAROS/MG - CEP: 39401-480', '19990.00', '0.00', '48', '19900.00', 'assinado', '2026-03-25 20:36:06.946+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-25 20:36:06.089116+00', '2026-03-31 16:25:31.569109+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/08c34a2b-0441-4196-82b2-4cd86bddac27.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('50a2fa46-a454-4f3b-a0cb-0aca1896b9d6', 'CTR-MN6IDRT5', '72e53a75-7624-403c-9f6d-ce4b03558a26', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GILMAR PEREIRA DA SILVA', '93123256634', '', 'ROSANGELANUNESDEAGUIAR1983@GMAIL.COM', 'AV A, 103 - NOVA AMERICA, MONTES CLAROS/MG - CEP: 39404-117', '19000.00', '0.00', '24', '1218.19', 'assinado', '2026-03-25 20:41:17.626+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-25 20:41:17.190257+00', '2026-03-31 16:25:48.501149+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/50a2fa46-a454-4f3b-a0cb-0aca1896b9d6.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('c1d8c92b-d307-4072-8f81-cbe123d19c26', 'CTR-MN6IJ9L8', '553e4cfc-6e4d-4592-9c9e-7b126e5fd8a7', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DEBORA DE OLIVEIRA SILVEIRO', '00920600131', '', 'D4995660@GMAIL.COM', 'RIACHO DA AREIA, SN - ZONA RUAL, MONTES CLAROS/MG - CEP: 38355-000', '17383.22', '0.00', '36', '976.36', 'assinado', '2026-03-25 20:45:34.695+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-25 20:45:33.792336+00', '2026-03-31 16:26:05.781864+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/c1d8c92b-d307-4072-8f81-cbe123d19c26.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}');
+
+INSERT INTO public.contracts (id, contract_number, vehicle_id, reseller_id, store_id, buyer_name, buyer_cpf, buyer_phone, buyer_email, buyer_address, sale_price, down_payment, installments, installment_value, status, signed_at, notes, created_at, updated_at, signed_contract_url, template_id, contract_type, created_by, financing_bank, active_clause_ids, clause_variables, revision_number, payment_method, down_payment_pix, down_payment_cash, down_payment_card, down_payment_card_installments, financing_installments, financing_installment_value, lead_source, lead_source_detail, review_status, review_note, review_requested_by, review_requested_at, review_resolved_by, review_resolved_at, review_response, ad_id, campaign_name, sale_group_id, sale_channel, evidence_paths, external_data) VALUES
+  ('7497e2af-26f7-49b7-b6ce-4d0c77151d2c', 'CTR-MN957E72', '2b59cf89-bd75-4303-abd8-91e1c6046b64', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DANIEL ROCHA DE SOUZA', '12506550640', '', 'dadanielrds15@gmail.com', 'RUA ARTHUR GANGANA, 2683 - ELDORADO, SÃO FRANCISCO/MG - CEP: 39300-000', '10990.00', '5000.00', '12', '534.11', 'assinado', '2026-03-27 16:55:44.275+00', 'Modelo: Contrato de Venda - Moto.', '2026-03-27 16:55:43.712566+00', '2026-03-31 16:26:38.795828+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/7497e2af-26f7-49b7-b6ce-4d0c77151d2c.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a701643d-b8ca-4202-91c6-cf61c99e2451', 'CTR-MN9GSHFO', '2a8b6151-e630-45fd-a8fb-8208202dc9d6', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DANIELA LEAL ROCHA', '11531810616', '', 'danielalealrocha1994@gmail.com', 'AV CARLOS FERRANTE, 704 B - EDGAR PEREIRA, MONTES CLAROS/MG - CEP: 39400-177', '15990.00', '0.00', '36', '835.41', 'assinado', '2026-03-27 22:20:03.565+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-27 22:20:02.523547+00', '2026-03-31 16:27:56.839339+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/a701643d-b8ca-4202-91c6-cf61c99e2451.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('06668431-e044-412d-90c3-d999ebbd1188', 'CTR-MN9BUU25', '72608e1a-5841-489d-b8b3-0880cbc71cca', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'KEURYN DAYANE ALVES DOS SANTOS', '09680537692', '', 'keurymdaiane@yahoo.com.br', 'AVENIDA DUZENTOS, SN - JARAGUA, MONTES CLAROS/MG - CEP: 39404-201', '12990.00', '2000.00', '36', '652.23', 'assinado', '2026-03-27 20:01:56.435+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-27 20:01:55.846349+00', '2026-03-27 20:01:57.883178+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/06668431-e044-412d-90c3-d999ebbd1188.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('83b19c72-ffc3-4d97-b239-a70ee62450ad', 'CTR-MN9HCYO3', '15bb0c90-5371-4e20-8937-499d34ec7695', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CAROLINE PEREIRA DE OLIVEIRA', '11271323699', '', 'karolyne00oliveira@gmail.com', 'AV BRASILIA, 446 - MARACANA, MONTES CLAROS/MG - CEP: 39403-070', '13000.00', '0.00', '1', '13000.00', 'assinado', '2026-03-27 22:35:59.33+00', 'Modelo: Contrato de Venda - Moto.', '2026-03-27 22:35:58.196413+00', '2026-03-31 16:28:11.065474+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/83b19c72-ffc3-4d97-b239-a70ee62450ad.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('8e55edcf-d67f-48d1-8c00-9f4d234a9052', 'CTR-MMVZQ9GS', '078e0522-b700-4e28-bb76-2de3b8002e29', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'NILZA BATISTA MENDES', '12449411666', '(00) 00000-0000', 'nilzamendes3610@gmail.com', 'AFONSO PENA, 165 - SAO GONCALO , JANAUBA /Mg - CEP: 39445-000', '13990.00', '2700.00', '36', '660.55', 'assinado', '2026-03-18 12:01:26.157+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-18 12:01:25.325315+00', '2026-03-31 16:22:27.344215+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/8e55edcf-d67f-48d1-8c00-9f4d234a9052.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2ec68a6e-7d70-496a-bdd4-3a71a6012b37', 'CTR-MMZCXXBP', 'af47d944-e10c-4fd6-a6a8-766ef25bbbd8', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'BIANCA PEREIRA DE SOUZA', '02060803608', '', 'biancaduarte9@icloud.com', 'Rua Itatiaia , 215 - SANTOS REIS, Montes claros/MG - CEP: 39401-187', '17000.00', '1220.00', '48', '778.09', 'assinado', '2026-03-20 20:34:37.094+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-20 20:34:36.83072+00', '2026-03-31 16:23:04.68955+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/2ec68a6e-7d70-496a-bdd4-3a71a6012b37.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('3b515fd4-2a6f-42d5-9b9c-c247d9e72d29', 'CTR-MNOZ58PO', '71f88ece-80d6-4fe5-9c40-d19facddda7e', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'WANDER RIBEIRO FIUZA', '03828413609', '', 'ribeirowander10@gmail.com', 'R VICENTE BRAGA, 1001 - VILA ATLANTIDA, montes claros/mg - CEP: 39401-135', '13990.00', '0.00', '36', '692.30', 'concluido', '2026-04-08 20:33:05.334+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. bonus de 990,00
+financiado PAN', '2026-04-07 18:50:23.918572+00', '2026-04-08 20:33:05.599448+00', 'contracts/3b515fd4-2a6f-42d5-9b9c-c247d9e72d29.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('9e7447aa-6380-4f3d-a177-64e735c8f1a5', 'CTR-MNGN4WHN', 'e10230f9-e249-4f83-9262-11ac4eeb0b66', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'KAYANE AGNA FARIAS', '14819462695', '', 'kayaneagna123@gmail.com', 'av imperatriz leopoldina, 1605 - independencia, montes claros/mg - CEP: 39404-287', '13500.00', '0.00', '48', '735.52', 'concluido', '2026-04-02 15:02:41.887+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. valor promocional 13.500
+valor todo financiado banco pan', '2026-04-01 22:52:02.781095+00', '2026-04-02 15:02:42.995368+00', 'contracts/9e7447aa-6380-4f3d-a177-64e735c8f1a5.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('1490b4d1-e021-4803-b78f-7da9e19fde2c', 'CTR-MNACG9Y7', '06d23720-ecc1-4a9d-a608-8e751df3b0d4', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JEOVA BATISTA ALVES', '10802152635', '(00) 00000-0000', '', 'RUA EUROPA, 490 - INDEPENDENCIA, MONTES CLAROS/MG - CEP: 39404-303', '23990.00', '0.00', '36', '1360.78', 'assinado', '2026-03-28 13:06:23.726+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-28 13:06:21.638738+00', '2026-03-31 16:28:32.668248+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/1490b4d1-e021-4803-b78f-7da9e19fde2c.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b98bed5d-7955-44a8-951f-b507aca3ce9e', 'CTR-MNACKYV2', 'a9a994b1-9d74-4108-bcb6-e4984d08568b', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'THALLES GIOVANE OLIVEIRA SANTOS', '13620873607', '', 'thallesgeovane309@gmail.com', 'RUA PADRE MAGALHAES, 116 - SANTA LUCIA, MONTES CLAROS/MG - CEP: 39402-084', '23000.00', '9000.00', '48', '685.55', 'assinado', '2026-03-28 13:10:01.083+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-28 13:10:00.17502+00', '2026-03-31 16:28:51.884341+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/b98bed5d-7955-44a8-951f-b507aca3ce9e.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ee8beca6-b12a-49ae-8d74-635ce45f4fd4', 'CTR-MNACQA77', '0381926d-1260-4909-a9a1-3f669773c07f', 'af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JANAINA GONCALVES DE JESUS', '10923016660', '(00) 00000-0000', '', 'AVENIDA URSINO GARCIA, 524 - CIDADE NOVA, LUISANDIA/MG - CEP: 39336-000', '19590.00', '0.00', '48', '955.56', 'assinado', '2026-03-28 13:14:09.392+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-03-28 13:14:08.306316+00', '2026-03-31 16:29:14.605046+00', 'https://xktihtajunjmzbltqmrz.supabase.co/storage/v1/object/public/signed-contracts/contracts/ee8beca6-b12a-49ae-8d74-635ce45f4fd4.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c75534a4-1b08-4ccf-a2d7-96d882df7966', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('8119e066-a544-44fe-b4ce-5c2096f0c7e0', 'CTR-MNN6SEHB', '37d0d8d4-2be2-48d1-be89-6e7468fe1f62', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ELPIDIO CELESTINO SILVA JUNIOR', '08742092698', '', 'elpidiojuniorjnr78@gmail.com', 'av L, 179 - novo delfino, montes claros/mg - CEP: 39402-121', '13990.00', '500.00', '36', '675.93', 'concluido', '2026-04-07 12:33:32.923+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 500 de entrada via pix
+bônus de 990,00', '2026-04-06 12:48:53.355555+00', '2026-04-07 12:33:33.396077+00', 'contracts/8119e066-a544-44fe-b4ce-5c2096f0c7e0.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('4a0252f1-d310-4837-84b2-8ba86fddcbc3', 'CTR-MNHR2T2N', '39e1871f-e42c-4cc5-a4b2-c62443c64192', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VERA LUCIA BORGES BRITO', '70090638697', '', 'italojordan25@gmail.com', 'rua 7, 210 - vila aliança, montes claros/mg - CEP: 39406-777', '23990.00', '4000.00', '48', '1068.86', 'concluido', '2026-04-02 17:37:27.664+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-04-02 17:30:10.920647+00', '2026-04-02 17:37:28.898596+00', 'contracts/4a0252f1-d310-4837-84b2-8ba86fddcbc3.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('28a65d90-162a-477b-9512-8a5495c20901', 'CTR-MNF4CLSH', 'f406aedd-c0d5-46f8-9c33-c2f2389ab2be', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ERICA STEFFANE SANTOS RIBEIRO', '02170381660', '', 'esteffane@yahoo.com', 'Beco beija flor, 66 - sao francisco de assis, montes claros/mg - CEP: 39401-173', '23990.00', '10000.00', '48', '523.37', 'concluido', '2026-04-01 12:39:58.802+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. MOTO SAIU NO VALOR DE 22.000
+SENDO 10.000 ENTRADA E 12.000 FINANCIADO PELO BANCO PAN EM 48X 523,37', '2026-03-31 21:18:23.890166+00', '2026-04-01 12:39:59.014167+00', 'contracts/28a65d90-162a-477b-9512-8a5495c20901.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('64d2fa28-644e-46dc-8a35-aa8a23d81a57', 'CTR-MNNJUICA', 'f61f5fb0-b695-4a0f-9de7-e56744d391cc', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ROSARIA PEREIRA DA SILVA', '08169166675', '(38) 99953-5300', '', 'rua 16, 465 - vitoria II, montes claros/mg - CEP: 39405-691', '13990.00', '2890.00', '48', '599.81', 'concluido', '2026-04-07 12:33:35.447+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-04-06 18:54:22.269376+00', '2026-04-07 12:33:35.950783+00', 'contracts/64d2fa28-644e-46dc-8a35-aa8a23d81a57.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7126de5b-c9da-45f5-aefd-6a3c7f25770e', 'CTR-MNNKUCFS', 'f20144c6-94dd-4db4-a69c-2ad4d04c418a', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANE CAROLINE MAIA GONCALVES', '14819051636', '', 'daianepereiradepaulaa2004@gmail.com', 'R PRFA MARIA MACHADO, 202 - francisco peres, montes claros/mg - CEP: 39402-232', '13500.00', '0.00', '36', '789.27', 'concluido', '2026-04-07 12:33:38.83+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-04-06 19:22:14.210065+00', '2026-04-07 12:33:39.177805+00', 'contracts/7126de5b-c9da-45f5-aefd-6a3c7f25770e.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e2243d7f-5cc9-415b-846b-515721a30f54', 'CTR-MNRP3ZVP', '19434496-439c-4b12-b0c8-e5be9647637d', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JUSCELINO BATISTA DE ARAUJO', '09666610604', '', 'JUSCELINOBATISTAARAUJO@GMAIL.COM', 'R LAGOA AZUL, 280 - CARMELO, MONTES CLAROS/MG - CEP: 39402-696', '15490.00', '0.00', '36', '866.88', 'concluido', '2026-04-09 19:11:31.725+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 16.000 PAN
+500,00 emplacamento', '2026-04-09 16:32:48.468515+00', '2026-04-09 19:11:32.499836+00', 'contracts/e2243d7f-5cc9-415b-846b-515721a30f54.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('6328d019-f97f-4c7d-bbad-2d605e31b2a3', 'CTR-MNQIBN5P', '9c258aa6-d69a-40e8-9392-8f833aaea59a', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SEBASTIAO CELIO FERREIRA LOPES', '28958514841', '', 'sebastiaocelio00@gmail.com', 'R DEZESSEIS, 121 - JADETE, MONTES CLAROS/MG - CEP: 39480-000', '13990.00', '0.00', '36', '789.27', 'concluido', '2026-04-09 13:13:42.248+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 490,00 BONUS', '2026-04-08 20:35:00.969205+00', '2026-04-09 13:13:42.781754+00', 'contracts/6328d019-f97f-4c7d-bbad-2d605e31b2a3.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('8e521a89-6015-40bf-ad64-e7d7df583ac5', 'CTR-MNSV0H7W', 'ab41ed50-c0e0-418a-8b8a-9df4f77f2d03', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ALEXANDRE MUNIZ DA SILVA', '11046975641', '(38) 99917-3414', '', 'praça platão, 84 - centro, montes claros/mg - CEP: 39495-000', '25000.00', '0.00', '1', '25000.00', 'concluido', '2026-04-15 13:31:56.021+00', 'Modelo: Contrato de Venda - Moto.', '2026-04-10 12:05:49.060495+00', '2026-04-15 13:31:56.298439+00', 'contracts/8e521a89-6015-40bf-ad64-e7d7df583ac5.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0be98edd-2456-4ada-a40d-91ea73c078e4', 'CTR-MNEXBM0L', '257771a5-0774-4a3f-9cec-4e1527d689aa', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VIVIANE PEREIRA BRANDAO', '01542861683', '(00) 00000-0000', '', 'RUA VALDEMAR FRANCA RIBEIRO, 80 - VILA JADETE, JANUARIA/MG - CEP: 39480-000', '13500.00', '0.00', '1', '13500.00', 'concluido', '2026-04-01 11:33:06.314+00', 'Modelo: Contrato de Venda - Moto.', '2026-03-31 18:01:41.171253+00', '2026-07-08 13:57:28.024828+00', 'contracts/0be98edd-2456-4ada-a40d-91ea73c078e4.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('8dc9802d-dfef-4a04-b8b5-489d047e1e29', 'CTR-MNRXEHXX', '1c7e4cb4-2a15-4e05-9c45-6bc8309704e4', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSUE DE JESUS PABIQUE BELISARIO', '70813145201', '', 'josuepabique015@gmail.com', 'rua olinda, 171 - santo antonio, montes claros/mg - CEP: 39402-282', '13500.00', '60.00', '36', '799.99', 'concluido', '2026-04-13 18:32:47.096+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-04-09 20:24:55.553638+00', '2026-04-13 18:32:47.674113+00', 'contracts/8dc9802d-dfef-4a04-b8b5-489d047e1e29.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b78df831-13c9-4d08-bd3e-1abf75107983', 'CTR-MNTAIJNX', '567edd96-96e6-4c4b-a977-232136355c99', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GUILHERME SANTOS ABREU', '05567290640', '', 'guiled8262@gmail.com', 'AVENIDA LEONEL BEIRAO DE JESUS, 1660B - SUMARE, MONTES CLAROS/MG - CEP: 39402-637', '28990.00', '0.00', '1', '28990.00', 'concluido', '2026-04-15 13:31:59.2+00', 'Modelo: Contrato de Venda - Moto.', '2026-04-10 19:19:45.477677+00', '2026-04-15 13:31:59.460725+00', 'contracts/b78df831-13c9-4d08-bd3e-1abf75107983.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('77292fa3-0a04-41fd-91b8-67e131e5ddfb', 'CTR-MNUEHOMM', '1357e11e-1a0c-458a-81ed-b095b679c135', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSE GERALDO FERREIRA DA SILVA', '05809317650', '', 'gr772268@gmail.com', 'av zezinho horácio, 600 - vila ipiranga, montes claros/mg - CEP: 39401-469', '15500.00', '3000.00', '48', '588.33', 'concluido', '2026-04-15 13:32:02.152+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 3000 entrada PIX', '2026-04-11 13:58:50.064602+00', '2026-04-15 13:32:02.398025+00', 'contracts/77292fa3-0a04-41fd-91b8-67e131e5ddfb.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('3d3a90b9-c4aa-46c7-9d9d-522402061504', 'CTR-MOBXNZZ0', '5e076ff7-4b7e-4362-b515-724009b48d07', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DIEGO NOGUEIRA SOARES', '11735517607', '', 'digasinline@gmail.com', 'cosme e damiao, 217 - santo expedito, montes claros/mg - CEP: 39401-502', '17990.00', '0.00', '23', '1187.13', 'concluido', '2026-04-24 18:30:02.8+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. BONUS LOJA 490,00
+FINANCIADO 17.500 PAN', '2026-04-23 20:27:41.832281+00', '2026-04-24 18:30:03.906476+00', 'contracts/3d3a90b9-c4aa-46c7-9d9d-522402061504.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('8b14e972-cfce-4040-810f-936f8dfa6d07', 'CTR-MOBXUIZR', '36f27228-74a6-40cd-a78b-5c890f1fefb9', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ROSANGELA CORDEIRO DA SILVA OGASAWARA', '05068095877', '', 'emersonhideo@gmail.com', 'catanduva , 43 - sao geraldo, montes calros/mg - CEP: 39403-166', '23900.00', '15000.00', '36', '534.88', 'concluido', '2026-04-24 18:30:15.273+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. ENTRADA NO CARTÃO 15.000
+FINANCIADO 8.900,00', '2026-04-23 20:32:46.459232+00', '2026-04-24 18:30:16.443639+00', 'contracts/8b14e972-cfce-4040-810f-936f8dfa6d07.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7ad09fb0-ea02-439c-aa20-c23af01c9c67', 'CTR-MO7FIKI1', 'c6afaf27-c701-4a37-9e9f-209b0b01858c', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VANESSA CASTRO FONSECA', '07635732641', '', 'vangleissacadtrosampa21@gmail.com', 'Rua Cosme Antunes , 107 - Vargem Grande 2, MONTES CLAROS/MG - CEP: 39403-249', '13000.00', '0.00', '1', '13000.00', 'concluido', '2026-04-20 16:48:43.484+00', 'Modelo: Contrato de Venda - Moto.', '2026-04-20 16:48:30.452423+00', '2026-04-20 16:48:43.921152+00', 'contracts/7ad09fb0-ea02-439c-aa20-c23af01c9c67.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('4a0b9cf7-cbb1-42fa-9668-829390f143eb', 'CTR-MO7ERYVV', 'daa21bdd-1eeb-4723-92f5-6927b1c8418c', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'TIAGO RANDERSON GONCALVES DIAS', '09518984697', '', 'tiagodiasah@gmail.com', 'RUA F, 285 - BELVEDERE, MONTES CLAROS/MG - CEP: 39406-152', '19990.00', '400.00', '48', '573.89', 'concluido', '2026-04-23 15:45:10.036+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. VALOR PROMOCIONAL 19.990', '2026-04-20 16:27:49.332417+00', '2026-04-23 15:45:10.72587+00', 'contracts/4a0b9cf7-cbb1-42fa-9668-829390f143eb.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('658ff617-2669-4235-ba81-c6f8ff3b02a9', 'CTR-MOHJI8CI', 'a458eb05-520b-41d9-8676-19498fa36708', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SAMUEL RIBEIRO DOS SANTOS', '70729228657', '', 'samuelrsantos2007@gmail.com', 'RUA JERULASEM, 85 - SANTO INACIO, MONTES CLAROS/MG - CEP: 39402-488', '17500.00', '0.00', '1', '17500.00', 'concluido', '2026-04-27 19:21:46.101+00', 'Modelo: Contrato de Venda - Moto.  17.000 A VISTA NO PIX
+500,00 PRA EMPLACAMENTO', '2026-04-27 18:37:55.17847+00', '2026-04-27 19:21:46.442701+00', 'contracts/658ff617-2669-4235-ba81-c6f8ff3b02a9.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('9393f6bb-ab3d-480c-bb5c-14f130c0e58a', 'CTR-MODEMULB', '361dce70-92ac-44c9-b05c-91904666109f', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'KEILA CAMILA OLIVEIRA SANTOS', '14353161695', '', 'keilacaah321@icloud.com', 'AV A, 97 - SAO GERALDO, MONTES CLAROS/MG - CEP: 39403-119', '13000.00', '3000.00', '48', '550.54', 'concluido', '2026-04-27 19:24:01.97+00', 'Modelo: Contrato de Venda - Moto - Com Observações. Financiamento bancário.', '2026-04-24 21:10:27.402517+00', '2026-04-27 19:24:02.355776+00', 'contracts/9393f6bb-ab3d-480c-bb5c-14f130c0e58a.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('8f705809-3871-4ab0-8707-88350ae9cedd', 'CTR-MO77D7A2', '05106a6a-2fdc-4ceb-b52c-9cc7c9c601c3', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANDREIA MUNIZ DE SOUZA', '77574958653', '', 'deiamuniz1974@gmail.com', 'RUA JEQUITAI, 180 - MONTE ALEGRE, MONTES CLAROS/MG - CEP: 39401-487', '19990.00', '1000.00', '48', '982.18', 'concluido', '2026-04-23 15:45:15.573+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 600,00 DESCONTO LOJA
+18.390 FINANCIADO PAN
+1.000,00 ENTRADA VIA PIX CLIENTE
+
+19.390 VALOR FINAL', '2026-04-20 13:00:23.118602+00', '2026-04-23 15:45:15.940812+00', 'contracts/8f705809-3871-4ab0-8707-88350ae9cedd.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('1bc89343-7a2a-4632-9e9b-5843d46e1868', 'CTR-MOIV0FUU', '1c13d61c-dc44-41fb-899c-afe44115a2d5', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANA CAROLINA CARDOSO DE AMORIM', '13921553636', '', 'anacarollinecardoso@gmail.com', 'RUA CILIO EVANGELISTA, 161 - ALTO BURITI, CORAÇÃO DE JESUS/MG - CEP: 39340-000', '15600.00', '0.00', '36', '910.43', 'concluido', '2026-04-28 23:28:05.997+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. VALOR 15.600 FINANCIADO PAN', '2026-04-28 16:47:47.62506+00', '2026-04-28 23:28:06.921087+00', 'contracts/1bc89343-7a2a-4632-9e9b-5843d46e1868.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('9e0aeb37-72e6-4a81-9e67-5e9b17e5c2ef', 'CTR-MOM16FJG', '6b676547-8f81-4b41-861a-253d517edf63', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SILVIO CRISTIANO GOMES RUAS', '93087420697', '', 'cristianoruas27@gmail.com', 'montes claros, 339 - vila kennedy, porteirinha/mg - CEP: 39520-000', '28000.00', '0.00', '1', '28000.00', 'concluido', '2026-05-01 14:27:55.92+00', 'Modelo: Contrato de Venda - Moto.  5.500 EM DINHEIRO
+18.000 CARTÃO EM 12X A 12%
+4.500 PIX', '2026-04-30 22:03:42.784587+00', '2026-05-01 14:27:56.988506+00', 'contracts/9e0aeb37-72e6-4a81-9e67-5e9b17e5c2ef.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7933d7a1-33b9-4a35-864e-9007e53a5c5c', 'CTR-MOHOCRKS', 'a3f39898-803f-4a26-8280-9b22bfeae995', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LINDACI RIBEIRO', '10741081679', '', 'lindaci.william2014@gmail.com', 'FRANCISCA MARIA DA ROCHA, 58 - CENTRO, NINHEIRA/MG - CEP: 39553-000', '13900.00', '0.00', '1', '13900.00', 'concluido', '2026-04-28 23:27:41.07+00', 'Modelo: Contrato de Venda - Moto.  13.0000 VALOR DA MOTO
+500,00 EMPLACAMENTO
+400,00 TAXA DE ENTREGA', '2026-04-27 20:53:37.982509+00', '2026-04-28 23:27:42.148856+00', 'contracts/7933d7a1-33b9-4a35-864e-9007e53a5c5c.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('31196e93-f17e-4f0d-ae66-b600b1a4e47b', 'CTR-MOIWJYHX', 'f7efd1db-2fda-445f-9318-aa7a1eb0e616', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'WEDERSON TAYRONE SILVA VIEIRA', '14711517600', '', 'pecaideliveryboc@gmail.com', 'rua da paz, 125 - jardim america, bocaiuva/mg - CEP: 39390-000', '19900.00', '5970.00', '24', '1031.10', 'concluido', '2026-04-28 23:28:09.464+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 5.970 entrada DINHEIRO
+emplacamento e capacete de brinde
+13.930 financiado', '2026-04-28 17:30:57.899469+00', '2026-04-28 23:28:10.637299+00', 'contracts/31196e93-f17e-4f0d-ae66-b600b1a4e47b.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('fc57746c-b46d-4545-9aaa-d77e657f1a12', 'CTR-MOJ5BDUJ', 'e1a1a1ca-4095-4153-a0a5-9c0241c37c76', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ALONSO GONCALVES MENDES', '05173288604', '', 'lobo_capoeira83@hotmail.com', 'AVENIDA DO CONTORNO, 20 - VILA ESPERANÇA 2, UBAI/MG - CEP: 39320-000', '28900.00', '0.00', '48', '1124.23', 'concluido', '2026-05-01 14:27:53.23+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-04-28 21:36:14.55868+00', '2026-05-01 14:27:54.275694+00', 'contracts/fc57746c-b46d-4545-9aaa-d77e657f1a12.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('12f2da46-92cc-425c-a0dc-b80645d69291', 'CTR-MOM1FOOP', 'ea25ce91-2a32-4dd2-a742-733c54ee7d30', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ISAIAS DE JESUS PEREIRA DE OLIVEIRA', '10816916624', '', 'isaiasdejesuspereiradeoliveira@gmail.com', 'RUA I, 160 - DONA NICINHA, BRASILIA DE MINAS/MG - CEP: 39330-000', '13000.00', '0.00', '48', '649.46', 'concluido', '2026-05-05 19:55:33.114+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-05-04 00:00:00+00', '2026-05-05 19:55:35.443766+00', 'contracts/12f2da46-92cc-425c-a0dc-b80645d69291.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('d904099e-db6b-4390-a7cb-4679a97b7dbf', 'CTR-MOSSO3W1', 'd75ea398-b9fc-4f9f-b357-57b3be2c28f5', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DIEGO FERNANDO RENDON CARDONA', '00356315622', '', 'diegorendon899@gmail.com', 'alameda beija flor, 590 - jardim primavera, montes claros/mg - CEP: 39404-161', '23900.00', '0.00', '36', '1359.29', 'concluido', '2026-05-05 19:57:58.998+00', 'Modelo: Contrato de Venda - Moto - Com Observações. Financiamento bancário.', '2026-05-05 15:39:55.299712+00', '2026-05-05 19:58:01.549391+00', 'contracts/d904099e-db6b-4390-a7cb-4679a97b7dbf.pdf', '150656d4-d673-460c-89ba-26b0f44a6443', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('bd0264e0-b417-4938-8ee3-3d81184acfa1', 'CTR-MOVRCOLL', '8048f753-e979-49a4-b255-7e6003f44ff6', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LUCAS UGUIBINY FERREIRA GUIMARAES', '11617743607', '', 'uguibiny66@yahoo.com', 'rua quatro, 141B - res golden village, montes claros/mg - CEP: 39404-435', '34500.00', '0.00', '36', '1388.96', 'concluido', '2026-05-07 17:32:06.33+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. 34.500 Santander
+MOTO SERA EMPLACADA PELA LOJA', '2026-05-07 17:26:19.668444+00', '2026-05-07 17:32:06.701124+00', 'contracts/bd0264e0-b417-4938-8ee3-3d81184acfa1.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('1fd1c3fb-dc70-460a-8e2f-08270f71ab38', 'CTR-MPCV4XQB', 'aa393680-94aa-4251-a06b-39a0da70c19a', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VANDERLEI GERALDO MAIA', '60092130615', '', 'ludmila_andrademaia@yahoo.com.br', 'RUA 17, 101A - RESIDENCIAL SUL, MONTES CLAROS/MG - CEP: 39407-158', '13990.00', '2000.00', '48', '660.54', 'concluido', '2026-05-22 11:39:09.461+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. FINANCIADO PAN 11.548,46
+ENTRADA DE 2.000
+441,54 BONUS LOJA', '2026-05-19 16:44:21.484431+00', '2026-05-22 11:39:10.503827+00', 'contracts/1fd1c3fb-dc70-460a-8e2f-08270f71ab38.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2bdfbf06-c566-4f9f-b92c-9422f49ab1da', 'CTR-MOVT5N3Y', '821265fd-badd-4e99-a612-cd07e26b532b', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JEFFERSON DIAS NUNES ALMEIDA', '17156940660', '', 'juanclaudiocardosodemoura@gmail.com', 'RUA CAMPO BELO, 1691 - ANTONIO PIMENTA, MONTES CLAROS/MG - CEP: 39402-310', '19000.00', '1377.11', '24', '0.00', 'concluido', '2026-05-07 18:16:51.05+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-05-07 18:16:50.329535+00', '2026-05-07 18:17:00.828392+00', 'contracts/2bdfbf06-c566-4f9f-b92c-9422f49ab1da.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2bbd8d31-c106-4ba2-a362-a06dc398903c', 'CTR-MP5TBS16', '0c00e20e-c7b4-4d3a-badb-f8eecb9d757c', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RAYSSA ANTUNES DE OLIVEIRA', '13195276631', '', 'rayssanutri12@gmail.com', 'RUA DO ATENEU, 491A - MARACANA, MONTES CLAROS/MG - CEP: 39403-075', '11500.00', '0.00', '36', '660.78', 'concluido', '2026-05-14 18:26:45.094+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-05-14 18:19:18.006439+00', '2026-05-14 18:26:47.472416+00', 'contracts/2bbd8d31-c106-4ba2-a362-a06dc398903c.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a543eaf1-1c7a-4db4-8213-e1f3b61f83c3', 'CTR-MOWYRJON', '3765afa8-679f-40ad-95d0-add6f013e505', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSE PAULO FERREIRA GOMES', '17873282600', '', 'jpaulo.fgomes@gmail.com', 'rua sao lucas, 156 - sao mateus, montes claros/mg - CEP: 39401-794', '23990.00', '0.00', '1', '23990.00', 'concluido', '2026-05-12 12:05:20.981+00', 'Modelo: Contrato de Venda - Moto.  10.000 no cartao 6x sem juros', '2026-05-08 13:41:37.141133+00', '2026-05-12 12:05:21.226599+00', 'contracts/a543eaf1-1c7a-4db4-8213-e1f3b61f83c3.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('84648710-ce3b-4688-b511-30f0a75ba00f', 'CTR-MOYAHI5X', '38271ab9-7177-414e-b819-f5a72c02d87b', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'WESLEY SAMUEL CAETANO FIGUEIREDO', '11343034671', '', 'wesleysamuel22@hotmail.com', 'AV MARCELINA RAMOS, 5 - VILA SION, MONTES CLAROS/MG - CEP: 39402-798', '17990.00', '817.57', '48', '729.15', 'concluido', '2026-05-12 12:05:25.236+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. VALOR DA ENTRADA FICOU COMO BRINDE DA LOJA 817,57
+17.172,43 FINANCIADO SANTANDER', '2026-05-09 11:57:29.919623+00', '2026-05-12 12:05:25.550535+00', 'contracts/84648710-ce3b-4688-b511-30f0a75ba00f.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('21402ed9-dabd-49e9-96af-47da30f4aeb7', 'CTR-MP5TH3XG', '0173baa3-02fe-4660-a2b6-ef967d46844a', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MANOEL MESSIAS SILVA DIAS', '03060487600', '', 'manoelmessiasdiassilva61@gmail.com', 'ABEL SENNA, 750 - JARDIM ELDORADO, MONTES CLAROS/MG - CEP: 39401-275', '19990.00', '0.00', '1', '19990.00', 'concluido', '2026-05-14 19:45:07.848+00', 'Modelo: Contrato de Venda - Moto.', '2026-05-14 18:23:27.027245+00', '2026-05-14 19:45:09.096282+00', 'contracts/21402ed9-dabd-49e9-96af-47da30f4aeb7.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('996dceb1-119d-4f54-af1c-8e7aebba0784', 'CTR-MP45F0KA', '8809becb-a8f0-4e4a-93bf-4575f8784b41', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'IRLANE SOARES DE SOUSA BRITTO', '59597640163', '', 'febritto122@gmail.com', 'grao mogol, 174 - centro, montes claros/mg - CEP: 39400-056', '18500.00', '0.00', '36', '1025.46', 'concluido', '2026-05-14 13:19:59.006+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. 18.500 banco PAN
+500,00 EMPLACAMENTO
+500,00 BRINDE INDICAÇÃO', '2026-05-13 14:22:13.820485+00', '2026-05-14 13:19:59.909668+00', 'contracts/996dceb1-119d-4f54-af1c-8e7aebba0784.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a24aadba-b20e-45e3-aedd-94ae601825c4', 'CTR-MP46ZRUM', 'd1a79971-79a6-4e58-83b8-d2c53c23fb94', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RAFAEL EMERSON FREITAS', '05690672602', '', 'rejbernardes@hotmail.com', 'manoel rodrigues aquino, 161 - santo inacio, montes claros/mg - CEP: 39402-646', '13500.00', '2000.00', '36', '597.54', 'concluido', '2026-05-14 13:20:02.03+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. 13.500 FINAN SANTANDER
+EMPLCAMENTO 500,00', '2026-05-13 15:06:21.103839+00', '2026-05-14 13:20:02.931146+00', 'contracts/a24aadba-b20e-45e3-aedd-94ae601825c4.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('f63a9c9d-5953-4914-ba47-a13d9aafc2c6', 'CTR-MP4IPL28', 'd5060a90-f1ae-4d11-97d0-0c251d43fc3f', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JULIANA RODRIGUES FONSECA', '06002873600', '', 'julianarodrigues8545@gmail.com', 'RUA DONA ZEZE, 143 - LAMEIRAO I, VARZEA DA PALMA/MG - CEP: 39260-000', '24990.00', '0.00', '36', '1414.96', 'concluido', '2026-05-14 13:20:49.396+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-05-13 20:34:21.126013+00', '2026-05-14 13:20:50.719033+00', 'contracts/f63a9c9d-5953-4914-ba47-a13d9aafc2c6.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0abb2fdf-134c-4722-b376-6acbb6a6f1c1', 'CTR-MPCVX3TO', 'bfe1b0a2-c0ac-4bc0-afc0-622312ab3af9', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIA APARECIDA DA SILVA RIBEIRO', '06806226671', '', 'juniomagela25@gmail.com', 'RUA 4, 25A - PEQUIZEIRO, JAPONVAR/MG - CEP: 39335-000', '17500.00', '6000.00', '48', '644.34', 'concluido', '2026-05-22 11:39:13.234+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-05-19 17:06:15.475422+00', '2026-05-22 11:39:14.277582+00', 'contracts/0abb2fdf-134c-4722-b376-6acbb6a6f1c1.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ff3b1918-9df8-4358-8e99-a2bda4ac722a', 'CTR-MP8I0SWC', 'b3701312-2aeb-4c90-be12-16f7d2c17766', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSMIELLE ALVES DOS SANTOS ALMEIDA', '05848531650', '', 'josmielle@hotmail.com', 'RUA QUINZE, 190A - RESIDENCIAL SUL IPES, MONTES CLAROS/MG - CEP: 39407-057', '14400.00', '0.00', '1', '14400.00', 'concluido', '2026-05-20 11:18:37.286+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento.', '2026-05-16 15:26:10.666702+00', '2026-05-20 11:18:38.557043+00', 'contracts/ff3b1918-9df8-4358-8e99-a2bda4ac722a.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('80ffc957-569c-4917-8d84-f7cd870e0e1e', 'CTR-MPCQWLL5', 'fef57e31-db20-4ed4-b814-1b7d306dd215', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RAQUEL DE JESUS VAZ', '13930721600', '', 'raquelzav9@gmail.com', 'MARIO RAMOS, 173 - CENTRO, SAO JOAO DAS MISSOES/MG - CEP: 39475-000', '17990.00', '5000.00', '36', '656.46', 'concluido', '2026-05-22 11:39:06.466+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 990,00 BONUS LOJA', '2026-05-19 14:45:58.461841+00', '2026-05-22 11:39:07.507443+00', 'contracts/80ffc957-569c-4917-8d84-f7cd870e0e1e.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}');
+
+INSERT INTO public.contracts (id, contract_number, vehicle_id, reseller_id, store_id, buyer_name, buyer_cpf, buyer_phone, buyer_email, buyer_address, sale_price, down_payment, installments, installment_value, status, signed_at, notes, created_at, updated_at, signed_contract_url, template_id, contract_type, created_by, financing_bank, active_clause_ids, clause_variables, revision_number, payment_method, down_payment_pix, down_payment_cash, down_payment_card, down_payment_card_installments, financing_installments, financing_installment_value, lead_source, lead_source_detail, review_status, review_note, review_requested_by, review_requested_at, review_resolved_by, review_resolved_at, review_response, ad_id, campaign_name, sale_group_id, sale_channel, evidence_paths, external_data) VALUES
+  ('eef56694-207e-413f-b5be-94f6c64f2f0f', 'CTR-MPEJK1IB', '304538ea-a84c-467c-977e-327ba3037a2f', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'KELLY FERNANDA MARIA ALVES', '13065284618', '', 'marklenio@hotmail.com', 'ALAMEDA DOS FIGOS, 236 - SILVIO SANTIAGO, SALINAS/MG - CEP: 39560-000', '13300.00', '0.00', '1', '13300.00', 'concluido', '2026-05-26 17:07:01.016+00', 'Modelo: Contrato de Venda - Moto.  300,00 FRETE PRA SALINAS', '2026-05-20 20:55:44.957732+00', '2026-05-26 17:07:01.887388+00', 'contracts/eef56694-207e-413f-b5be-94f6c64f2f0f.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('18fa3800-6334-484c-973a-527c45012878', 'CTR-MPO08HFD', 'd8b2ca13-8b9b-43e4-9a36-29cbc6e2a3f2', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'jackson douglas santos borgues ', '07674952681', '(38) 99808-2247', 'kimdaspeles@gmail.com', 'rua melo viana, 111 - morrinhos, montes claros/mg - CEP: 39400-427', '19990.00', '0.00', '48', '991.48', 'concluido', '2026-05-27 12:15:49.158+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. 490 brinde loja 
+500 emplacamento
+tanque cheio', '2026-05-27 11:52:34.079111+00', '2026-05-27 12:15:50.448415+00', 'contracts/18fa3800-6334-484c-973a-527c45012878.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2649e726-059c-4ca4-a71d-b16b3edcc188', 'CTR-MPLI5HBG', '0b12595f-eb82-4f6d-a2ee-354520bf9e24', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LARISSA GABRIELA DIAS ALVES TORQUATO', '07334476603', '', 'KLEUBERTORQUATO@GMAIL.COM', 'IPE MIRIM, 268 - CONDOMINIO SERRANO, MONTES CLAROS/MG - CEP: 39403-709', '13500.00', '0.00', '1', '13500.00', 'concluido', '2026-05-26 17:07:03.959+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento.  500,00 EMPLACAMENTO', '2026-05-25 17:50:48.013181+00', '2026-05-26 17:07:04.828161+00', 'contracts/2649e726-059c-4ca4-a71d-b16b3edcc188.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('62a70fbe-4d77-40fe-b044-270e4a7e0381', 'CTR-MPMUD4XF', 'cea57f99-ee65-41d9-8049-4457d8fb6224', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANDRE LUIZ SILVA GUARCHE', '15893212860', '', 'lucas.kelvin.dm@gmail.com', 'AV. CELIA MACHADO COLARES, 750 - centro, bocaiuva/mg - CEP: 39404-882', '15590.00', '0.00', '48', '811.57', 'concluido', '2026-05-26 17:16:11.363+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-05-26 16:20:26.015459+00', '2026-05-26 17:16:12.252214+00', 'contracts/62a70fbe-4d77-40fe-b044-270e4a7e0381.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('5437e0d1-7fcc-442c-b8a5-1a595a80b464', 'CTR-MPOE015M', '7e5f28d6-8d40-4b89-97a4-673d1dbb4218', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'FARLEY VINICIUS RIBEIRO SANTOS', '13019723639', '', 'FAFAFARLEY4@GMAIL.COM', 'RUA MAURICIO GRABOYS, 275 - JOAQUIM COSTA, MONTES CLAROS/MG - CEP: 39403-107', '14500.00', '0.00', '1', '14500.00', 'concluido', '2026-05-28 18:59:34.696+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento.  500,00 EMPLACAMENTO', '2026-05-27 18:17:54.011461+00', '2026-05-28 18:59:36.531797+00', 'contracts/5437e0d1-7fcc-442c-b8a5-1a595a80b464.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('bb7999e9-cc65-4fc2-b8ab-ad6e09663f99', 'CTR-MPOHVA5Z', '68b1a988-c488-42b8-960d-32a1a4579101', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RAIMUNDO NONATO CORREA DE MELO JUNIOR', '07605088604', '', 'henrique.martins1908@gmail.com', 'rua nove, 141 - jardim olimpico, montes claros/mg - CEP: 39406-509', '23900.00', '3500.00', '48', '850.54', 'concluido', '2026-05-28 18:59:37.96+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. emplacamento 500,00
+tanque cheio', '2026-05-27 20:06:10.16636+00', '2026-05-28 18:59:39.791123+00', 'contracts/bb7999e9-cc65-4fc2-b8ab-ad6e09663f99.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0d5d152a-824d-4c45-b207-ac3e25d540da', 'CTR-MPMQR9V7', '424e91aa-5224-4c78-8b88-65d78ce843fe', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RENATA PEREIRA MONCAO', '12727063628', '', 'renathinha473@gmail.com', 'FIRMINO FERREIRA, 54 - SANTA RAFAELA, MONTES CLAROS/MG - CEP: 39403-402', '13900.00', '1390.00', '36', '746.16', 'concluido', '2026-05-27 12:07:30.969+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. ENTRADA VIA PIX', '2026-05-26 14:39:27.073699+00', '2026-05-27 12:07:32.200028+00', 'contracts/0d5d152a-824d-4c45-b207-ac3e25d540da.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('fbdae4eb-5e3e-4123-a34d-ce36ab85fe34', 'CTR-MPN610DG', '7edc83b3-2470-4295-a4d5-68963107fb64', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANDREIA DE FREITAS VIANA', '03983796613', '', 'charlesbviana@gmail.com', 'rua eugenio eduardo souto, 75 - sao lucas, montes claros/mg - CEP: 39405-020', '19900.00', '0.00', '48', '833.46', 'concluido', '2026-05-27 12:15:36.559+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. 500,00 emplacamento
+pago SANTANDER', '2026-05-26 21:46:56.195587+00', '2026-05-27 12:15:37.86807+00', 'contracts/fbdae4eb-5e3e-4123-a34d-ce36ab85fe34.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('92a2f6f0-407f-4049-9e3b-1caeaf171180', 'CTR-MPN6CY6C', '1c9b1622-4eca-4818-af6b-465e2ca2715f', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'karolaine dos santos barbosa', '70569556651', '(38) 99851-2295', 'karolainedossantos56@gmail.com', 'rua e, 505 - jardim alegre, montes claros /mg - CEP: 39402-337', '13990.00', '0.00', '36', '866.29', 'concluido', '2026-05-27 12:15:39.335+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. 500,00 emplacamento', '2026-05-26 21:56:13.721801+00', '2026-05-27 12:15:40.581641+00', 'contracts/92a2f6f0-407f-4049-9e3b-1caeaf171180.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('d4e773f3-36e9-4754-934d-be8e6425b330', 'CTR-MPR3N38W', 'ecf40c97-494c-4546-988c-cdee3f0305f8', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOAO VITOR SANTOS DUARTE', '15930152675', '(38) 99844-9671', '', 'NECO DELFINO, 1019 - DELFINO MAGALHAES, MONTES CLAROS/MG - CEP: 39402-181', '19500.00', '0.00', '36', '1075.25', 'concluido', '2026-05-30 13:50:47.553+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. 19.000 PAN
+500,00 EMPLACAMENTO', '2026-05-29 15:51:11.861978+00', '2026-05-30 13:50:48.046276+00', 'contracts/d4e773f3-36e9-4754-934d-be8e6425b330.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('083ab8b1-0d20-4bd8-ad39-8b95560cbced', 'CTR-MPO6UWZT', '1e52566c-0818-47c5-8539-a9af044c59de', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LUCIANA FONSECA DE CASTRO', '55967868615', '', 'mateusmocassim@gmail.com', 'interna dezessete, 10 - conjunto jose correia machado, montes claros/mg - CEP: 39403-429', '13000.00', '0.00', '48', '656.32', 'concluido', '2026-05-28 18:59:31.091+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-05-27 14:57:57.168285+00', '2026-05-28 18:59:32.942423+00', 'contracts/083ab8b1-0d20-4bd8-ad39-8b95560cbced.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a02218b7-5773-4995-9e8c-0d8442f2377d', 'CTR-MPX4OFL4', '0578c904-e713-4391-b956-f93891a8daaa', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'EUDES CALDEIRA DA CRUZ', '56936974600', '', 'joaojppedro1314@gmail.com', 'RUA F, 150 - RAUL LOURENÇO, MONTES CLAROS/MG - CEP: 39404-696', '19000.00', '3000.00', '36', '857.64', 'concluido', '2026-06-05 11:20:33.186+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 3.000 PARCELADO LOJA
+FUNCIONÁRIO', '2026-06-02 21:06:52.343865+00', '2026-06-05 11:20:31.188351+00', 'contracts/a02218b7-5773-4995-9e8c-0d8442f2377d.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('545d3660-fed6-48e9-aba7-2872f5d53e63', 'CTR-MPRAS4XX', '6abca7c2-a9c6-4148-8701-8d8d6b99ccad', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARCUS VINICIUS BARBOSA ALVES', '11144915600', '', 'alvesgambi07@gmail.com', 'padre gangana, 168 - santos reis, montes claros/mg - CEP: 39401-166', '23500.00', '7500.00', '36', '797.30', 'concluido', '2026-05-30 13:50:50.351+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. SHI 250 USADA
+15.249,64 FINANCIAMENTO SANTANDER
+7.500 ENTRADA', '2026-05-29 19:11:05.562345+00', '2026-05-30 13:50:50.843205+00', 'contracts/545d3660-fed6-48e9-aba7-2872f5d53e63.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('5b6a984e-91b5-4547-b1b1-f6160e11bd99', 'CTR-MPSGGG8T', '45d3645a-a2a1-4673-8576-6c3cd2fe2e91', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANTONIO LUCRECIO BARBOSA OLIVEIRA', '09825164603', '', 'antoniolucbo@gmail.com', 'RUA BARIO, 40 - EDGAR PEREIRA, MONTES CLAROS/MG - CEP: 39400-167', '17500.00', '0.00', '1', '17500.00', 'concluido', '2026-06-01 01:09:26.404+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento.  3.300 PIX 
+RESTANTE SEGUNDA 
+VAI SER PAGO EM CARTÃO E PIX', '2026-05-30 14:37:44.646153+00', '2026-06-01 01:09:27.673015+00', 'contracts/5b6a984e-91b5-4547-b1b1-f6160e11bd99.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('9de6ddc3-cdb8-45c4-92fb-ec764b1f6c30', 'CTR-MPSF7IPK', '10f5f313-f08a-43e5-a86c-c2726a7ded5b', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'AMANDA KETLEN RODRIGUES AGUIAR', '11341673693', '', 'amandaketlen333@gmail.com', 'RUA OLIMPIO QUINTINO, 345 - VILA TELMA, MONTES CLAROS/MG - CEP: 39402-476', '17500.00', '0.00', '1', '17500.00', 'concluido', '2026-06-01 01:09:23.334+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento.  14.000 CARTA CONSORCIO ITAU
+3.500 PIX
+500,00 VAI SER PRA EMPLACAMENTO
+BRINDE IPVA PAGO', '2026-05-30 14:02:48.599694+00', '2026-06-01 01:09:24.42451+00', 'contracts/9de6ddc3-cdb8-45c4-92fb-ec764b1f6c30.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7a047ca8-48c6-403d-81a4-69bb93936dc1', 'CTR-MPX03YNY', '9d3b0899-b53e-44d2-8a04-e876761e2646', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GABRIEL AQUINO ROCHA', '15504762626', '', 'aquinorochagleison99@gmail.com', 'RUA C, 190 - PORTAL DOS IPES, MONTES CLAROS/MG - CEP: 39406-817', '19990.00', '9000.00', '36', '631.53', 'concluido', '2026-06-05 11:20:30.228+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. FINANCIAMENTO SANTANDER
+500,00 EMPLACAMENTO', '2026-06-02 18:58:58.373204+00', '2026-06-05 11:20:28.221299+00', 'contracts/7a047ca8-48c6-403d-81a4-69bb93936dc1.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b0a33d43-871e-46d2-93e9-53491003e17a', 'CTR-MQ16X5VQ', 'dcec4a49-fc22-44c7-8451-601e826a3708', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'KENNYA GONCALVES LIMA', '09823916683', '(38) 99162-4724', 'Kennya.glima@gmail.com', 'Rua  Raimundo nonato de souza , 1025 - Bela vista, Ribeirao das Neves/mg - CEP: 33805-150', '13990.00', '1000.00', '48', '575.42', 'concluido', '2026-06-06 11:45:51.401+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. Financiado pelo Santader', '2026-06-05 17:20:42.267044+00', '2026-06-06 11:45:51.718776+00', 'contracts/b0a33d43-871e-46d2-93e9-53491003e17a.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('1602ebc2-5824-4f3e-9da8-8ddb1b079252', 'CTR-MQ54RKD4', '54faf041-dd99-41d2-aa4f-9a8d3b33a2fc', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'BARBARA PRSCILA SANTOS FERREIRA', '11247066665', '', 'barbarapriscila423@gmail.com', 'RUA HUM , 3 - RES BURARAMA, CAPITAO ENEAS/MG - CEP: 39472-000', '13990.00', '0.00', '1', '13990.00', 'concluido', '2026-06-10 18:08:14.206+00', 'Modelo: Contrato de Venda - Moto.  ENTREGA EM CAPITÃO ENEAS', '2026-06-08 11:31:27.030274+00', '2026-06-10 18:08:15.042548+00', 'contracts/1602ebc2-5824-4f3e-9da8-8ddb1b079252.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ebc00a0a-35bb-4e01-9615-76c4ef076688', 'CTR-MQ2AYEOE', '2cb6f1a7-d934-414e-81f0-27dced51a339', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANA FERREIRA ROCHA', '05182226675', '(38) 99755-1728', '', 'RUA C, 45 - SAO GERALDO II, MONTES CLAROS/MG - CEP: 39407-432', '19000.00', '2000.00', '36', '1044.56', 'concluido', '2026-06-06 12:01:26.686+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. BANCO PAN R$ 17.000 O RESTO DO VALOR SERÁ PAGO NA ENTREGA R$ 2.000', '2026-06-06 12:01:25.278408+00', '2026-06-06 12:01:48.129993+00', 'contracts/ebc00a0a-35bb-4e01-9615-76c4ef076688.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('fdcff8d0-6995-4ceb-b1dd-8f253bf47bde', 'CTR-MQ81A2O1', '5d98d993-5a1a-4c7f-9ce1-910477f9691e', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CARLOS JUNIO ZUBA DA SILVA', '06492559681', '', 'carloszuba26@gmail.com', 'RUA 30, 85A - SANTO ANTONIO, MONTES CLAROS/MG - CEP: 39402-292', '23990.00', '0.00', '1', '23990.00', 'concluido', '2026-06-10 18:10:42.308+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento.  10.000 PIX DIA 09/06
+RESTANTE NA HORA DE PEGAR A MOTO', '2026-06-10 12:17:11.161973+00', '2026-06-10 18:10:43.159879+00', 'contracts/fdcff8d0-6995-4ceb-b1dd-8f253bf47bde.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('24618484-30a9-42e6-b477-843906d646e6', 'CTR-MQ2G6TRK', 'be2ca838-0f20-4e52-8549-bc1e8d565902', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'EDERSON DE JESUS TEIXEIRA', '06789802681', '', 'tatianeplopes220887@gmail.com', 'RUA A, 83 - José Carlos de Lima , MONTES CLAROS/MG - CEP: 39400-000', '13455.00', '0.00', '36', '832.93', 'concluido', '2026-06-06 14:27:58.12+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. CAPACETE E TANQUE CHEIO, PAN', '2026-06-06 14:27:56.150162+00', '2026-06-06 14:31:25.802098+00', 'contracts/24618484-30a9-42e6-b477-843906d646e6.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', 'c1251416-3afd-415f-95a8-007ac7a25237', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('bf7fd8e7-c66c-4f71-bf43-ea0ce9cb16b6', 'CTR-MQPM89RB', '902c26d5-ced1-47d9-a3ed-7175f1eb6abf', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RITA DE CASSIA RIBEIRO VELOSO', '06022489652', '', 'sauloarthur91@gmail.com', 'RUA STE, 320 - RECANTO DAS AGUAS, MONTES CLAROS/MG - CEP: 39405-035', '23990.00', '0.00', '36', '1296.12', 'concluido', '2026-06-23 13:22:01.159+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. CAPACETE BRINDE', '2026-06-22 19:35:42.965355+00', '2026-06-23 13:22:01.609263+00', 'contracts/bf7fd8e7-c66c-4f71-bf43-ea0ce9cb16b6.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ea59ac43-e72d-4e56-9c8d-c68307160981', 'CTR-MQJUGJSS', '8ed1788a-cd96-48ca-bb88-357b67fc1a03', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SOFIA BARBOSA TUPINAMBA', '04749694606', '(38) 99909-6445', 'sofiatupinamba082@gmail.com', 'RUA B,, 225 - EXPLANADA, MONTES CLAROS/MG - CEP: 39401-443', '13990.00', '0.00', '24', '1033.61', 'concluido', '2026-06-18 19:58:16.083+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. EMPLACAMENTO  E
+TANQUE CHEIO', '2026-06-18 18:39:29.082936+00', '2026-06-18 19:58:16.518616+00', 'contracts/ea59ac43-e72d-4e56-9c8d-c68307160981.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e1c6c077-7cee-40df-a886-b8d556f3e163', 'CTR-MQGMQKQ4', 'e06a977f-5595-4406-bb47-c9b245542e60', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DEISE BARBOSA DE MACEDO', '07913410620', '(38) 99995-9556', 'deisebarbosa20031984@gmail.com', 'RUA GREGORIO FERREIRA DE ANDRAE ,, 28 - VILA AUREA, MONTES CLAROS/MG - CEP: 39400-820', '14990.00', '0.00', '36', '886.64', 'concluido', '2026-06-16 15:48:55.141+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 990, BONUS 
+14.000 FINANCIADO BANCO PAN', '2026-06-16 12:40:01.668742+00', '2026-06-16 15:48:56.554777+00', 'contracts/e1c6c077-7cee-40df-a886-b8d556f3e163.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('f4783343-0e67-4ce7-8cde-3ecbfc9d8ad1', 'CTR-MQ82SDU7', '8fde8f57-63bb-40fc-bc42-406c76890697', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSE DORNELIS DA SILVA JAYME', '51000679187', '', 'josedornelis@gmail.com', 'RUA FERNANDA MOREIRA ALVES, SN - RESIDENCIAL PEDRO LUDOVICO, ANAPOLIS/GO - CEP: 75124-881', '14200.00', '0.00', '48', '696.83', 'concluido', '2026-06-10 18:12:27.575+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 14.200 FINANCIADO PAN
+13.000 VALOR DA MOTO
+1.200 SERÁ ENTREGA EM ANAPOLIS-GO', '2026-06-10 12:59:24.002956+00', '2026-06-10 18:12:28.408347+00', 'contracts/f4783343-0e67-4ce7-8cde-3ecbfc9d8ad1.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('dd746c9f-c3e5-4c48-984c-c0037ddc4941', 'CTR-MQ8CBHQU', '9905aad6-ac15-43a7-8ec8-c7c7dc01cebb', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JULIANO SOARES DOS SANTOS', '01511641690', '(38) 99857-9407', '', 'PRF JOANINHA PRATES, 54 - ALICE MAIA, MONTES CLAROS/MG - CEP: 39400-222', '19000.00', '0.00', '1', '19000.00', 'concluido', '2026-06-10 18:14:27.062+00', 'Modelo: Contrato de Venda - Moto.  16.082,75 PAGO VIA CONSÓRCIO ITAU NA CONTA BOMBERS MOTOS
+REST. EM DINHEIRO DIA DA ENTREGA DA MOTO', '2026-06-10 17:26:13.368574+00', '2026-06-10 18:14:27.904294+00', 'contracts/dd746c9f-c3e5-4c48-984c-c0037ddc4941.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('905564ec-f47c-4768-8a75-e6652e20030c', 'CTR-MQCCSWCC', 'f7a01078-60a6-49ba-9c18-1cba161049e5', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'AIRA FERREIRA CARDOSO DURAES', '08764726681', '', 'fabriciomendescardoso2026@gmail.com', 'RUA MONTE SINAI, 355A - SANTO INACIO, MONTES CLAROS/MG - CEP: 39402-489', '17900.00', '1000.00', '48', '920.00', 'concluido', '2026-06-15 14:51:33.617+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.  16.587,93 FINANCIADO PAN
+312,07 BONUS LOJA', '2026-06-13 12:50:49.058962+00', '2026-06-15 14:51:34.511277+00', 'contracts/905564ec-f47c-4768-8a75-e6652e20030c.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('9af3412b-a8c9-4671-90fd-1c3013b50bb2', 'CTR-MQIC6HVB', 'a20d516b-edd4-4adf-90f5-9527a31d4dca', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIA DALTA LEITE', '58621393620', NULL, 'manoel.leite@unimontes.br', 'RUA VALDIVINO DOS SANTOS, 255 - CIRO DOS ANJOS, MONTES CLAROS/MG - CEP: 39403-101', '24990.00', NULL, '24', '1624.39', 'concluido', '2026-06-17 18:16:15.033+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-06-17 17:20:02.022927+00', '2026-06-17 18:16:15.96072+00', 'contracts/9af3412b-a8c9-4671-90fd-1c3013b50bb2.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda_moto', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('378c17d1-6ab0-4824-94d9-41af3576f84f', 'CTR-MQTV8BJ5', '0fcde3a0-855e-4ac9-96ed-ce23708b4cf8', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'NEILA REIS SOARES', '08183952658', '', 'neila.soares02@gmail.com', 'RUA H, 514 - JARDIM OLIMPICO, MONTES CLAROS/MG - CEP: 39406-550', '19990.00', '0.00', '48', '796.12', 'concluido', '2026-06-25 19:07:33.667+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. EMPLACAMENTO E TANQUE CHEIO', '2026-06-25 18:58:46.606969+00', '2026-06-25 19:07:35.802685+00', 'contracts/378c17d1-6ab0-4824-94d9-41af3576f84f.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('f6e33bb2-afa5-47d4-b487-e9f852b0fcdc', 'CTR-MQTMG475', 'c261f3ff-3a24-4c19-9f1a-0eed24f65469', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANA SOCORRO CARVALHO DURAES', '06097013639', '', 'manoel.carlos1978@hotmail.com', 'lagoa do barro, 0 - zona rural, montes claros/mg - CEP: 39400-000', '18990.00', '0.00', '48', '970.22', 'concluido', '2026-06-25 19:06:51.871+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 990,00 BONUS LOJA', '2026-06-25 14:52:54.450828+00', '2026-06-25 19:06:54.039608+00', 'contracts/f6e33bb2-afa5-47d4-b487-e9f852b0fcdc.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('bff824b5-e467-4c73-8f82-ba5a5880bce0', 'CTR-MR3L042Q', '8e967500-638c-4e65-8815-86059f539129', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'PEDRO NOBRE PINHEIRO', '14282361638', NULL, 'pedroownp@gmail.com', 'RUA ANTONIO LOPES DA SILVA, 145 - VILA  ATLANTIDA, MONTES CLAROS/MG - CEP: 39401-138', '14600.00', '6500.00', '24', '492.03', 'concluido', '2026-07-02 19:33:11.924+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. 6.500 PIX
+FINANCIAMENTO BRADESCO
+EMPLACAMENTO', '2026-07-02 14:10:10.592888+00', '2026-07-02 19:33:13.359087+00', 'contracts/bff824b5-e467-4c73-8f82-ba5a5880bce0.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda_moto', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a818899b-77d4-4e5e-a9ee-f03d58b87dd1', 'CTR-MQV0CXLD', 'dfb593b4-9df3-4ece-b15b-777fae30218f', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANNIELY MENDES DE ANDRADE', '13168557676', '', 'anniely_mendes@hotmail.com', 'RUA ALUÍSIO DE QUADROS, 6 - SANTA LUCIA, MONTES CLAROS/MG - CEP: 39402-082', '13990.00', '1399.00', '36', '683.23', 'concluido', '2026-06-27 15:06:52.127+00', 'Modelo: Contrato de Venda - Moto - Com emplacamento. Financiamento bancário. EMPLACAMENTO E CAPACETE DE BRINDE
+BONUS DE 200,00
+FINANCIADO PAN 12.390
+ENTRADA DE 1.399,00', '2026-06-26 14:10:08.342708+00', '2026-06-27 15:06:52.831788+00', 'contracts/a818899b-77d4-4e5e-a9ee-f03d58b87dd1.pdf', '843a6108-a7a8-4c7b-9d51-b64dc2e47359', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2a1fc87e-7bff-487a-8944-21dbef9654e0', 'CTR-MQWFNOH0', '04b35a16-6a31-4493-b1e1-4a2e86710837', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSE MESSIAS DE CASTRO', '05343530613', '', 'messiascastro282@gmail.com', 'RUA MARIA ISABEL DE LIMA, 531 - SAO JUDAS TADEU, ARCOS/MG - CEP: 35600-114', '16500.00', '0.00', '48', '828.51', 'concluido', '2026-06-27 15:06:55.004+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 16.500 FINANCIADO
+1.000 FRETE', '2026-06-27 14:06:09.080659+00', '2026-06-27 15:06:55.715905+00', 'contracts/2a1fc87e-7bff-487a-8944-21dbef9654e0.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2da19be7-0ee2-48d5-9a72-62ba8857a983', 'CTR-MQWGYR8N', 'e5f4fbfe-2403-4674-aa39-5961845d7dd6', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'EDNEIA BATISTA DOS SANTOS', '04653101680', '', 'edsonmarcone851@gmail.com', 'RUA FERROVIARIO, 23 - MORRINHOS, MONTES CLAROS/MG - CEP: 39400-544', '26990.00', '8000.00', '36', '1029.60', 'concluido', '2026-06-27 15:06:58.815+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário. 97,00 BONUS LOJA
+CAPACETE BRINDE', '2026-06-27 14:42:45.110695+00', '2026-06-27 15:06:59.506928+00', 'contracts/2da19be7-0ee2-48d5-9a72-62ba8857a983.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0c1e7365-10c3-4155-9488-06291bba0964', 'CTR-MR0M76FM', 'ee306ce7-3f87-45d9-8526-6f7c1f7c75b4', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SARAH ALEXANDRINA SILVA RODRIGUES', '14018525648', '', 'sarahbrandao06@gmail.com', 'RUA JOAOZINHO DE DODÔ, 152 - SANTA RITA, MONTES CLAROS/MG - CEP: 39400-413', '14900.00', '0.00', '48', '747.88', 'concluido', '2026-07-01 14:24:24.844+00', 'Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-06-30 12:20:20.376456+00', '2026-07-01 14:24:25.201435+00', 'contracts/0c1e7365-10c3-4155-9488-06291bba0964.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e5bf5cd7-0b74-4a85-b149-81f28a6379c3', 'CTR-MR2CA34I', '12b0235b-5f96-4e49-9e31-7bcd81edf99c', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'AGUIOMAR FERREIRA SOARES', '04596645655', '', 'guisoaresferreira201@gmail.com', 'RUA SAN MARTIM, 15 - Independencia, Montes Claros/MG - CEP: 39404-332', '23000.00', '0.00', '48', '1077.66', 'concluido', '2026-07-01 17:18:12.843+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda - Moto. Financiamento bancário.', '2026-07-01 17:18:11.927809+00', '2026-07-01 17:18:13.214434+00', 'contracts/e5bf5cd7-0b74-4a85-b149-81f28a6379c3.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7e11cb9c-6e27-481f-b0a4-fcdadd33a7e5', 'CTR-MRCCIC3C', '672f5334-3533-4a0e-ba41-e520b9cf64f1', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ALINE MOTA DIAS MOURAO FONSECA', '06534608642', '(38) 98807-6165', 'alinemd_mota@yahoo.com.br', 'RUA CASSIMIRO DE ABREU, 150 - MARACANA, MONTES CLAROS/MG - CEP: 39403-076', '19990.00', '0.00', '24', '1455.26', 'concluido', '2026-07-09 12:10:51.505+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-07-08 17:22:18.595836+00', '2026-07-09 12:10:51.782327+00', 'contracts/7e11cb9c-6e27-481f-b0a4-fcdadd33a7e5.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('45d71df1-c6da-4d05-953e-3e29cb40ae20', 'CTR-MR9AU221', '3e62d156-e7e4-45df-a7fc-b333edf0d227', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LENILDO JOSE DOS SANTOS', '80304850691', '(38) 99135-4022', 'festaeciamoc@hotmail.com', 'Rua cadete Claudio fernandes, 477 - vera cruz, montes claros /mg - CEP: 39400-787', '17990.00', '0.00', '1', '17990.00', 'concluido', '2026-07-06 15:06:31.26+00', 'Modelo: Contrato de Venda.  7990 pix
+rest cartao 6x sem juros', '2026-07-06 14:12:06.567538+00', '2026-07-06 15:06:31.545318+00', 'contracts/45d71df1-c6da-4d05-953e-3e29cb40ae20.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{garantia,revisoes}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('f8dca8c7-bf29-4ed0-a096-c74c85180525', 'CTR-MRKP0V97', '57e548a3-46f1-4ece-ab33-e5804965fb39', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CLEONICE APARECIDA CARDOSO DOS SANTOS', '07972620679', '', 'charlesfernandesdearaujof92@gmail.com', 'RUA G, 220 - RESIDENCIAL PORTAL DOS IPE, MONTES CLAROS/MG - CEP: 39406-810', '14900.00', '3000.00', '36', '693.06', 'concluido', '2026-07-22 20:40:02.056+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-07-14 13:34:49.60585+00', '2026-07-22 20:40:02.512425+00', 'contracts/f8dca8c7-bf29-4ed0-a096-c74c85180525.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('8fe2f6b1-c47f-472e-8072-66aef1f6e474', 'CTR-MRNI92RW', 'a419f67a-7941-41e5-b61a-932c622ea242', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CLAUDIO MAURICIO DAMASCENO SILVA', '13582943640', '', 'claudiomauricio.com@gmail.com', 'RUA I, 15 - VILA MAURICEIA, MONTES CLAROS/MG - CEP: 39401-714', '14900.00', '0.00', '36', '775.95', 'concluido', '2026-07-16 13:05:49.17+00', 'Modelo: Contrato de Venda. Financiamento bancário. 900,00 BONUS LOJA', '2026-07-16 00:00:00+00', '2026-07-16 13:05:50.732752+00', 'contracts/8fe2f6b1-c47f-472e-8072-66aef1f6e474.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '775.95', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ac678779-0aca-4cc8-b932-e99f2b335d1c', 'CTR-MRM7LPVI', '3f616267-eb46-467a-a51a-6fbd0198c0ee', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'FELIPE BORGES CAMPOS', '11607283646', '', 'moveiscamposibiracatu@hotmail.com', 'PRAÇA CICERO DUMONT, 144 - CENTRO, VARZELANDIA/MG - CEP: 39450-000', '19000.00', '0.00', '1', '19000.00', 'concluido', '2026-07-16 12:00:13.862+00', 'Modelo: Contrato de Venda.', '2026-07-15 15:02:41.647642+00', '2026-07-16 12:00:15.419695+00', 'contracts/ac678779-0aca-4cc8-b932-e99f2b335d1c.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('053ef451-ab71-4768-a5a6-01236daf6571', 'CTR-MRM7VX2W', '1fd5b824-4fbb-4d38-85fb-d2fa1819a420', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANDRE GONCALVES DOS REIS', '14115985631', '', 'andregoncalvesdosreis125@gmail.com', 'RUA C, 607 - VILA ANALIA, MONTES CLAROS/MG - CEP: 39402-643', '18008.30', '2000.00', '36', '968.54', 'concluido', '2026-07-16 12:00:18.613+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-07-15 15:10:36.918143+00', '2026-07-16 12:00:20.164116+00', 'contracts/053ef451-ab71-4768-a5a6-01236daf6571.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '2000', '0', '0', NULL, '36', '968.54', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ab25d8dd-4b14-41ef-8ef1-f605acedd11f', 'CTR-MQWHMTMZ', '5c3402c7-3d13-460a-83e0-d6562dba9799', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'BRUNA PINHEIRO SOBRINHO', '12822520623', '', 'brunasobrinhobps@gmail.com', 'RUA DO BOTAFOGO, 65 - RUA DO BOTAFOGO, MONTES CLAROS/MG - CEP: 39403-073', '14000.00', '0.00', '1', '14000.00', 'concluido', '2026-06-27 15:01:28.514+00', 'Modelo: Contrato de Venda - Moto.  PAGAMENTO AVISTA PIX', '2026-06-27 15:01:27.535173+00', '2026-07-16 14:33:42.55534+00', 'contracts/ab25d8dd-4b14-41ef-8ef1-f605acedd11f.pdf', 'e800f7e6-4fea-40ff-85b2-b1c816cc4d7d', 'venda', '308366d4-3b96-47a0-9658-d53ec88c92b0', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('5f70849b-5249-4f4a-8808-bd992b3f75e3', 'CTR-MRFBU7G8', 'c997cec0-cf2b-4beb-b87a-9c42e6191e25', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARCIA SANTOS SILVA', '12929451688', '', 'mrhvalentina@gmail.com', 'RUA ERNESTINA CALDEIRA BRANT, 253 - SANTOS DUMOND, PIRAPORA/MG - CEP: 39274-192', '14990.00', '0.00', '1', '14990.00', 'concluido', '2026-07-22 20:39:57.551+00', 'Modelo: Contrato de Venda.', '2026-07-10 19:26:51.154997+00', '2026-07-22 20:39:57.719809+00', 'contracts/5f70849b-5249-4f4a-8808-bd992b3f75e3.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes,emplacamento}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('95d89453-8d64-4c74-9a8b-98a8666d04c9', 'CTR-MRNU3S16', 'ab3ee18d-5bf5-43d8-a43c-ae1f5e5952d8', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'IZAIAS ALVES DE SOUZA', '07382270645', '', 'izaiasalves7443@gmail.com', 'RUA DOIS, 85 A - BELA VISTA, MONTES CLAROS/MG - CEP: 39401-725', '16500.00', '0.00', '36', '833.00', 'concluido', '2026-07-17 14:51:59.52+00', 'Modelo: Contrato de Venda. Financiamento bancário. EMPLACAMENTO INCLUSO', '2026-07-16 18:20:20.318754+00', '2026-07-17 14:52:00.320328+00', 'contracts/95d89453-8d64-4c74-9a8b-98a8666d04c9.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '833', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2b495ec5-cc2e-426b-bdfc-7e7117b9c64f', 'CTR-MRP7ANUE', '7695d4e6-7e3b-4980-9f97-445881789084', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JHIEMERSON SILVA FERREIRA', '12318555680', '', 'ohanamicaella@gmail.com', 'AVENIDA RUY DUARTE PINTO, 514 - BELVEDERE, MONTES CLAROS/MG - CEP: 39406-148', '13000.00', '0.00', '36', '739.40', 'concluido', '2026-07-17 19:18:53.591+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-07-17 17:17:24.115414+00', '2026-07-17 19:18:54.233891+00', 'contracts/2b495ec5-cc2e-426b-bdfc-7e7117b9c64f.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '739.4', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('54b2bea5-0d81-40e8-9082-d5a6a584199f', 'CTR-MRXPKAY5', '517add29-74d0-4e8c-82c5-ab552286959a', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'KELLY DE BRITO FERREIRA TEIXEIRA MARTINS', '06788352682', '(38) 99168-9154', '', 'RUA DOZE, 122 - JARDIM PRIMAVERA, MONTES CLAROS/MG - CEP: 39404-138', '39490.00', '0.00', '1', '39490.00', 'concluido', '2026-07-30 12:05:32.89+00', 'Modelo: Contrato de Venda.  NO CARTAO EM 18X A 16%
+39.990 + 16% = 45.588,60
+DEVOLVER 500,00 NO PIX (PROMOÇÃO)', '2026-07-23 16:10:56.150673+00', '2026-07-30 12:05:33.045959+00', NULL, NULL, 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{}', '{}', '1', NULL, '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('3c4d5e2e-4cc1-4829-8392-bfeb983c27b4', 'CTR-MRPEEGER', '7ef25ce7-4530-4a0c-8551-277c6f4b7200', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ROGERIO PEREIRA DE SOUSA', '77580796600', '', 'rogeriopereiramc@outlook.com', 'RUA JOAO V. LOPES, 71 - PLANETARIO, MONTE SIAO/MG - CEP: 37580-000', '22990.00', '0.00', '36', '1305.01', 'concluido', '2026-07-18 12:06:10.824+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-07-17 20:36:18.796154+00', '2026-07-18 12:06:11.694952+00', 'contracts/3c4d5e2e-4cc1-4829-8392-bfeb983c27b4.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '1305.01', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('5a5403c0-5fa7-4e7f-a6ec-a82fa8a5e03e', 'CTR-MRV4ZRR3', 'c50d277a-5966-43f9-b179-629dc859f0b0', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CELIO SANTOS DE SOUZA', '02274128693', '', 'gdaianefreitassilva@gmail.com', 'RUA ELIANE VIEIRA GOMES, 49A - VILA ATLANTIDA, MONTES CLAROS/MG - CEP: 39400-864', '15990.00', '0.00', '48', '875.43', 'concluido', '2026-07-22 11:48:21.805+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-07-21 20:59:32.284535+00', '2026-07-22 11:48:23.0164+00', 'contracts/5a5403c0-5fa7-4e7f-a6ec-a82fa8a5e03e.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '875.43', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('de3a7e3d-9d6a-4ded-af26-60e2443b3d2f', 'CTR-MRQO46ME', 'aed57ead-223a-4416-86d3-39a84f200c17', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANTONIO ELIMARCIO DE MOURA E SILVA', '88759857668', '', 'eli_marciomoura@hotmail.com', 'RUA SALINAS, 76 - CENTRO, FRANCISCO DE SA/MG - CEP: 39580-000', '22590.00', '0.00', '1', '22590.00', 'concluido', '2026-07-21 13:59:22.907+00', 'Modelo: Contrato de Venda.  DOIS PIX
+UM DE 15.000,00
+OUTRO 7.590,00', '2026-07-18 17:56:00.901294+00', '2026-07-21 13:59:24.297989+00', 'contracts/de3a7e3d-9d6a-4ded-af26-60e2443b3d2f.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}');
+
+INSERT INTO public.contracts (id, contract_number, vehicle_id, reseller_id, store_id, buyer_name, buyer_cpf, buyer_phone, buyer_email, buyer_address, sale_price, down_payment, installments, installment_value, status, signed_at, notes, created_at, updated_at, signed_contract_url, template_id, contract_type, created_by, financing_bank, active_clause_ids, clause_variables, revision_number, payment_method, down_payment_pix, down_payment_cash, down_payment_card, down_payment_card_installments, financing_installments, financing_installment_value, lead_source, lead_source_detail, review_status, review_note, review_requested_by, review_requested_at, review_resolved_by, review_resolved_at, review_response, ad_id, campaign_name, sale_group_id, sale_channel, evidence_paths, external_data) VALUES
+  ('92003b9a-998b-4aee-b498-ca1cfe0f6705', 'CTR-MRQP8ES2', '14599a02-1333-4c27-b6d4-48914bb9c667', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ALEX FERREIRA MENDES', '09427010622', '', 'overboster@hotmail.com', 'RUA VINTE E NOVE, 77 - ALTO DO BOA VISTA, MONTES CLAROS/MG - CEP: 39402-584', '18990.00', '0.00', '1', '18990.00', 'concluido', '2026-07-21 14:01:24.756+00', 'Modelo: Contrato de Venda.', '2026-07-18 18:27:17.204791+00', '2026-07-21 14:01:26.129236+00', 'contracts/92003b9a-998b-4aee-b498-ca1cfe0f6705.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2a11564d-6308-4d4d-aa0e-9d5e50c8ecc9', 'CTR-MRW3WP6Y', '9e3d8ee0-a133-433d-9b58-1a7c24d2862d', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CFC MOOBI', '62085721000107', '(38) 99744-2213', 'cfcmoobi@gmail.com', 'RUA BARAO DO RIO BRANCO , 15 - CENTRO, MONTES CLAROS/MG - CEP: 39400-005', '14000.00', '0.00', '1', '14000.00', 'concluido', '2026-07-22 15:15:01.783+00', 'Modelo: Contrato de Venda.  VALOR PAGO EM PIX', '2026-07-22 13:16:55.419794+00', '2026-07-22 15:15:02.884657+00', 'contracts/2a11564d-6308-4d4d-aa0e-9d5e50c8ecc9.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0b63975e-c74e-44e0-a800-ae67c203af2a', 'CTR-MRXHDNIN', 'e38a4807-9a81-45d5-892f-0bcd64fc2cdf', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'THOMAZ VICTOR SOARES CORDEIRO BATISTA', '10433097647', '', 'ZEMAR2@HOTMAIL.COM', 'AVENIDA CASTELO BRANCO, 455 - CENTRO, VARZELÂNDIA/MG - CEP: 39450-000', '17500.00', '0.00', '1', '17500.00', 'concluido', '2026-07-23 12:21:50.705+00', 'Modelo: Contrato de Venda.', '2026-07-23 12:21:48.089374+00', '2026-07-23 12:21:50.976982+00', 'contracts/0b63975e-c74e-44e0-a800-ae67c203af2a.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('175c4449-de5e-45f3-ada9-464bd21f805f', 'CTR-MRXHH8DG', 'f4163442-34b4-4a6b-87d5-e50894be03f5', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'THOMAZ VICTOR SOARES CORDEIRO BATISTA', '10433097647', '', 'ZEMAR2@HOTMAIL.COM', 'AVENIDA CASTELO BRANCO, 455 - CENTRO, VARZELÂNDIA/MG - CEP: 39450-000', '12500.00', '0.00', '1', '12500.00', 'concluido', '2026-07-23 12:24:36.811+00', 'Modelo: Contrato de Venda.', '2026-07-23 12:24:35.06506+00', '2026-07-23 12:24:37.028772+00', 'contracts/175c4449-de5e-45f3-ada9-464bd21f805f.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('d8241569-101d-43a5-847b-7246d8f5e1d1', 'CTR-MRWG50AU', 'fe38ab28-fd81-4353-9a89-53796dbb1f28', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GILSON MARQUES DOS SANTOS', '00101701624', '', 'calebemaria879@gmail.com', 'RUA DA BIBLIA, 253 - ROCHA, MONTES CLAROS/MG - CEP: 39404-742', '19990.00', '0.00', '48', '954.00', 'concluido', '2026-07-22 18:59:20.325+00', 'Modelo: Contrato de Reserva. Financiamento bancário.', '2026-07-22 18:59:19.714421+00', '2026-07-23 19:42:11.243338+00', 'contracts/d8241569-101d-43a5-847b-7246d8f5e1d1.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'SANTADER', '{}', '{}', '1', 'financiamento', '0', '0', '0', '0', '48', '954', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7f7ecc93-c5d0-4574-9cd0-3178eec0df47', 'CTR-MRXP3LBG', '7193bffe-c4cb-4930-af1c-8a2dccabdd70', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DAVID MEDEIROS DA SILVA', '90220110620', '', 'davidmedeirosdasilva4@gmail.com', 'FAZENDA CANA BRAVA, 0 - ZONA RURAL, FRANCISCO DUMONT/MG - CEP: 39387-000', '19900.00', '0.00', '48', '890.74', 'concluido', '2026-07-23 16:55:14.274+00', 'Modelo: Contrato de Venda. Financiamento bancário. VALOR FINANCIADO 19.150
+750,00 BONUS
+ENTREGA INCLUSA', '2026-07-23 15:57:55.659354+00', '2026-07-23 16:55:14.736013+00', 'contracts/7f7ecc93-c5d0-4574-9cd0-3178eec0df47.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '890.74', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7a0e12ad-2824-48b7-9e29-67e0163b9e0c', 'CTR-MRXOP0HN', '5710d51a-704c-4e75-8761-399844032828', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'THIELLE CAROLINE DE OLIVEIRA SIMOES', '11462387624', '', 'thiellerodrigues1991@gmail.com', 'RUA ARTHUR FAGUNDES DE OLIVEIRA FILHO, 416 - DELFINO MAGALHAES, MONTES CLAROS/MG - CEP: 39402-823', '13500.00', '0.00', '1', '13500.00', 'concluido', '2026-07-23 16:53:10.379+00', 'Modelo: Contrato de Venda.  PIX', '2026-07-23 15:46:35.493087+00', '2026-07-23 16:53:10.840878+00', 'contracts/7a0e12ad-2824-48b7-9e29-67e0163b9e0c.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('4f9906a4-a7fb-4d19-aa43-2b2ae6ea73ac', 'CTR-MS4YUIOM', '142673b9-20f9-444d-9e08-eac6e90e5572', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSE DOS ANJOS GONÇALVES SOUTO', '03724691670', '(38) 99914-0222', 'cheylhinhaalmeida@gmail.com', 'lagoinha 2, 0 - lagoinha 2, japonvar/mg - CEP: 39335-000', '15990.00', '0.00', '48', '697.70', 'concluido', '2026-07-30 12:08:41.875+00', 'Modelo: Contrato de Venda. Financiamento bancário. EMPLACAMENTO E CAPACETE DE BRINDE', '2026-07-28 18:05:11.261401+00', '2026-07-30 12:08:42.037114+00', 'contracts/4f9906a4-a7fb-4d19-aa43-2b2ae6ea73ac.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '697.7', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('966b5f87-100f-4f5e-8305-d6a2b8545248', 'CTR-MS99DMSX', '4ecc59f9-43dc-4715-bd79-306f50053a0f', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DAIANE JUVENCIO SA', '17005545656', '(38) 99749-6728', 'DAIANESA1231@OUTLOOK.COM', 'RUA FRANCISCO VERSIANI ATHAYDE, 585 - FUNCIONARIOS , MONTES CLAROS/MG - CEP: 39401-039', '14000.00', '0.00', '1', '14000.00', 'pendente', NULL, 'Modelo: Contrato de Venda.  CAPACETE DE BRINDE', '2026-07-31 18:11:03.434116+00', '2026-07-31 18:11:04.901569+00', 'contracts/966b5f87-100f-4f5e-8305-d6a2b8545248.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('01a16ed1-48c4-4ef6-8f20-57904b5f14da', 'CTR-MS9HT6AF', 'edda6ef2-e99a-4afe-bbdc-a77a2a295bab', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LEIDIANE OLIVEIRA DO NASCIMENTO', '09617463601', '', 'leidydeb@outlook.com', 'RUA G, 70 - CENTRO, JANUARIA/MG - CEP: 39480-000', '18000.00', '6000.00', '48', '498.32', 'concluido', '2026-08-03 10:49:07.029+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-07-31 22:07:06.151507+00', '2026-08-03 10:49:08.385553+00', 'contracts/01a16ed1-48c4-4ef6-8f20-57904b5f14da.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '6000', '0', '0', NULL, '48', '498.32', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('02cfc6d9-1829-4004-9c7d-c783573b6c6b', 'CTR-MRZAG2VQ', 'f6072906-bc74-49f7-aaee-21ecec9b5c0d', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARCIA CARDOSO SOARES', '07909672608', '', 'almeidacleidimara985@gmail.com', 'RUA GERALDITO DE SOUZA LIMA, 90C - SAO JUDAS TADEU, MONTES CLAROS/MG - CEP: 39402-427', '13390.00', '0.00', '48', '765.29', 'concluido', '2026-07-30 12:05:39.359+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-07-24 18:43:16.085075+00', '2026-07-30 12:05:39.487691+00', 'contracts/02cfc6d9-1829-4004-9c7d-c783573b6c6b.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '765.29', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('3b811c69-dbcb-4275-a972-e52e63027979', 'CTR-MS4SFRUK', 'cb5e0b1c-fb72-4edf-a656-08fff49cbe69', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'BEATRIZ SILVA DE OLIVEIRA ALVES', '12569515604', '', 'nina24.thuca@gmail.com', 'RUA DOS PEQUIZEIROS, 87 - CABECEIRAS, MONTES CLAROS/MG - CEP: 39400-001', '13500.00', '0.00', '48', '732.71', 'concluido', '2026-07-30 12:07:19.328+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-07-28 15:05:46.857138+00', '2026-07-30 12:07:19.565564+00', 'contracts/3b811c69-dbcb-4275-a972-e52e63027979.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '732.71', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('66bd19c3-881a-4f6c-91c6-bb657d2f46bc', 'CTR-MS6BE6XI', '5623c1f1-2938-46d4-b91b-b19109d84889', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ADMILSON APARECIDO MENDES DE SOUZA', '03087365670', '', 'admilsonmendes1977@gmail.com', 'RUA SAO TIAGO, 116 - RIO NOVO, JANAUBA/MG - CEP: 39440-218', '23990.00', '0.00', '36', '1114.49', 'concluido', '2026-08-03 10:48:11+00', 'Modelo: Contrato de Venda. Financiamento bancário. BRINDES
+ENTREGA EM JANAUBA
+TANQUE CHEIO', '2026-07-29 16:44:10.806782+00', '2026-08-03 10:48:13.153711+00', 'contracts/66bd19c3-881a-4f6c-91c6-bb657d2f46bc.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '1114.49', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0179b49e-c3a2-4704-97e8-99bf45efc2f1', 'CTR-MS92WPYY', 'f5a15b2a-7b2e-4850-b03e-e58a6430681b', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARINA APARECIDA SUTANA', '38201950682', '', 'sutanathiago@hotmail.com', 'AV REINALDO ROCHA BRITO, 120 - IBITURUNA, MONTES CLAROS/MG - CEP: 39408-207', '18990.00', '0.00', '48', '991.69', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário. 590,00 BONUS LOJA', '2026-07-31 15:09:58.247056+00', '2026-07-31 15:10:00.159803+00', 'contracts/0179b49e-c3a2-4704-97e8-99bf45efc2f1.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '991.69', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('5dd053ba-4f7e-4be3-80c4-71531beb5b6c', 'CTR-MSET4OXO', '467c8ea1-1336-44bf-acc0-9cf25abd6ebb', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JULIZE MARIA DOS SANTOS', '06390968671', '', 'micasouza175@gmail.com', 'RUA JANUARIA , 141 - CENTRO, MONTES CLAROS/MG - CEP: 39400-077', '19900.00', '0.00', '48', '809.33', 'concluido', '2026-08-11 12:33:49.44+00', 'Modelo: Contrato de Venda. Financiamento bancário. EMPLACAMENTO', '2026-08-04 15:22:52.636711+00', '2026-08-11 12:33:51.889788+00', 'contracts/5dd053ba-4f7e-4be3-80c4-71531beb5b6c.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '809.33', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a598289f-3943-4d5d-8ba8-78773c97da65', 'CTR-MS7Y28GF', '13053744-378d-4aad-9696-2a85b43dba62', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSE AUGUSTO SILVEIRA', '36732532634', '(38) 99914-1802', '', 'RUA JOSE NARDEL ALVES DE ALMEIDA, 85 - EDGAR PEREIRA, MONTES CLAROS/MG - CEP: 39400-516', '25500.00', '0.00', '1', '25500.00', 'concluido', '2026-08-03 10:48:29.716+00', 'Modelo: Contrato de Venda.  PIX', '2026-07-30 20:06:31.12657+00', '2026-08-03 10:48:31.591482+00', 'contracts/a598289f-3943-4d5d-8ba8-78773c97da65.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes,emplacamento}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('8394fed8-6c07-4020-bbcf-cc0941db8b2c', 'CTR-MS980Z4P', 'f3d81c5f-f385-4c7a-9feb-e66a955690d0', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARCO ANTONIO MENDES', '06208020654', '', 'marco75amendes@gmail.com', 'RUA DA PRAINHA, 257 - VALE DO SOL, ALFENAS/MG - CEP: 37135-338', '15990.00', '0.00', '48', '829.27', 'concluido', '2026-08-03 10:48:53.918+00', 'Modelo: Contrato de Venda. Financiamento bancário. 15.500
+ENTREGA EM ALFENAS 490,00', '2026-07-31 17:33:15.244901+00', '2026-08-03 10:48:55.325152+00', 'contracts/8394fed8-6c07-4020-bbcf-cc0941db8b2c.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '829.27', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('364f01c3-58f7-42f4-befa-01811d13c464', 'CTR-MSG15SOO', 'f5a15b2a-7b2e-4850-b03e-e58a6430681b', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARINA APARECIDA SUTANA', '38201950682', '(38) 99132-2721', '', 'AV REINALDO R BRITO, 120 - IBITURUNA, MONTES CLAROS/MG - CEP: 39401-335', '18400.00', '0.00', '48', '991.69', 'concluido', '2026-08-11 12:35:27.835+00', 'Modelo: Contrato de Venda. Financiamento bancário. 18.990
+FINANCIADO 14.400
+BONUS 590,00', '2026-08-05 11:55:25.087316+00', '2026-08-11 12:35:30.275396+00', 'contracts/364f01c3-58f7-42f4-befa-01811d13c464.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '991.69', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('3372ecdc-7322-4e85-871e-18ebb9a63d90', 'CTR-MSGG7UX5', 'eaf8b5ac-e696-4a94-ba71-3fe8b123d8fd', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CLODOALDO APARECIDO ROCHA', '26630306864', '', 'clodoaldorocha607@gmail.com', 'RUA JOAO AVELINO NETO, 46 - CANELAS, MONTES CLAROS/MG - CEP: 39402-334', '23500.00', '0.00', '1', '23500.00', 'concluido', '2026-08-11 12:37:43.247+00', 'Modelo: Contrato de Venda.  8.000 PIX
+2.000 DINHEIRO
+13.500 CARTÃO', '2026-08-05 18:56:55.539665+00', '2026-08-11 12:37:45.70014+00', 'contracts/3372ecdc-7322-4e85-871e-18ebb9a63d90.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes,emplacamento}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e6119705-0c53-4f54-acfd-0c7912308bd7', 'CTR-MSEOMFCC', '985727d9-91e7-4e33-931e-53d0a029eb1e', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANTONIA GONCALVES DA SILVA', '95080341653', '', 'antoniagoncalves10@outlook.com', 'FAZENDA ACARI, 0 - ZONAL RURAL, PINTOPOLIS/MG - CEP: 39317-000', '22990.00', '0.00', '36', '1307.69', 'concluido', '2026-08-11 12:31:39.198+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-04 13:16:41.945791+00', '2026-08-11 12:31:41.649734+00', 'contracts/e6119705-0c53-4f54-acfd-0c7912308bd7.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '1307.69', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('1eb7f7bb-9b8b-4e03-91fe-295807f679df', 'CTR-MSKK2R7X', '11c675a4-8b2f-46bd-a8d7-a02793a08ef8', NULL, 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'AGDA MARIANE MELO DE MOURA', '09923327612', '(37) 99116-7160', 'agda.mariane@hotmail.com', 'RUA RIO BONITO, 131 - ALTO DO LAGO, CARMO DO CAJUR/MG - CEP: 35557-000', '19990.00', '0.00', '48', '827.76', 'concluido', '2026-08-08 15:56:02.309+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-08 15:56:00.459835+00', '2026-08-08 15:56:02.448201+00', 'contracts/1eb7f7bb-9b8b-4e03-91fe-295807f679df.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'SANTADER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '827.76', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('c90764f8-869b-4796-baed-3ab653590ede', 'CTR-MSGHWHI3', '2501f88d-f897-479d-b26f-8475c5feb1e4', '231d2314-873e-4d15-a577-3a994e65d1d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSE DO ROSARIO RAMOS PEREIRA', '64371689604', '', 'josedopeixe47@gmail.com', 'PROF MONTEIRO FONSECA, 1200 - VILA ANTONIO NARCISO, MONTES CLAROS/MG - CEP: 39400-804', '19000.00', '0.00', '48', '806.27', 'concluido', '2026-08-11 12:39:27.755+00', 'Modelo: Contrato de Venda. Financiamento bancário. 19.000 FINANCIADO SANTANDER', '2026-08-05 19:44:03.873101+00', '2026-08-11 12:39:30.211434+00', 'contracts/c90764f8-869b-4796-baed-3ab653590ede.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '806.27', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('5b898929-b274-4e6b-ab16-3eb07fefbbe8', 'CTR-MSKH908E', '56905d5e-8266-439d-b4c6-9a53b4e950e1', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Ananda cordeiro de souza', '08099696611', '(38) 98847-7558', 'anandacor@gmail.com', 'rua estados unidos , 97 - parque jardim morada do sol, montes claros /mg - CEP: 39403-286', '14990.00', '0.00', '1', '14990.00', 'concluido', '2026-08-12 18:07:39.959+00', 'Modelo: Contrato de Venda.  capacete de brinde e emplacamento', '2026-08-08 14:36:52.935359+00', '2026-08-12 18:07:41.623289+00', 'contracts/5b898929-b274-4e6b-ab16-3eb07fefbbe8.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{garantia,revisoes,emplacamento,clause_mr97xhf0}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0c81f201-6ee8-4310-8914-55fa3d788d54', 'CTR-MSORNK1T', '2be1d3bc-06f2-4a03-afe3-317dc9b88c5d', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GERALDO FRANCISCO DE JESUS', '42999391668', '(38) 99132-0288', 'diascassio233@gmail.com', 'AVENIDA BRASILIA DE MINAS , 56 - CANA BRAVA, CORAÇÃO DE JESUS/MG - CEP: 39340-000', '23000.00', '0.00', '1', '23000.00', 'concluido', '2026-08-12 18:10:34.649+00', 'Modelo: Contrato de Venda.  capacete de brinde 
+desconto 990,00', '2026-08-11 14:39:12.360355+00', '2026-08-12 18:10:36.318062+00', 'contracts/0c81f201-6ee8-4310-8914-55fa3d788d54.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('96185a4a-3a00-4199-b8c7-842cdb5d396e', 'CTR-MSQE9SVD', '3709dabc-aef8-44db-86de-f055f314cf37', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ALINE SANTOS RODRIGUES ', '01900499606', '(38) 99937-4898', 'alinesantosarthur2016@gmail.com', 'RUA ESPINOSA, 270 - BELA VISTA, MONTES CLAROS/MG - CEP: 39401-532', '13700.00', '1000.00', '36', '709.07', 'concluido', '2026-08-12 18:14:33.202+00', 'Modelo: Contrato de Venda. Financiamento bancário. 1.200 desconto', '2026-08-12 18:00:08.261571+00', '2026-08-12 18:14:34.866063+00', 'contracts/96185a4a-3a00-4199-b8c7-842cdb5d396e.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '1000', '0', '0', NULL, '36', '709.07', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2df0a3ab-a84d-4a09-bddf-d25757900d47', 'CTR-MSRPR2H5', 'a18f69c5-4193-4e00-8ae3-0292125c862d', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ELIELZA SOUSA SANTOS', '06470504639', '(38) 99861-6111', '', 'RUA EUGENIO MOREIRA MOTA, 285 - VILA SION, MONTES CLAROS/MG - CEP: 39402-797', '16900.00', '0.00', '24', '1105.64', 'concluido', '2026-08-15 13:52:41.077+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-13 16:09:15.117109+00', '2026-08-15 13:52:42.3302+00', 'contracts/2df0a3ab-a84d-4a09-bddf-d25757900d47.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '24', '1105.64', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('276f7952-79cf-44ea-bf23-147460422c3d', 'CTR-MSUHW0MT', '7a991e5e-6b5e-4510-8d36-4bfde14256a2', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSE MARIA FERREIRA', '73385433649', '', 'dayanefatima30@gmail.com', 'RUA LOURENÇO SOARES SALES, 55 - ALTO BOA VISTA, MONTES CLAROS/MG - CEP: 39400-000', '19900.00', '0.00', '48', '898.52', 'concluido', '2026-08-17 13:05:46.247+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-15 14:52:28.363979+00', '2026-08-17 13:05:48.672148+00', 'contracts/276f7952-79cf-44ea-bf23-147460422c3d.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '898.52', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('494f2ff4-ccb8-4672-9b05-ffc18ab492b4', 'CTR-MSRIL28A', '1386c4e0-ed2d-44ac-b18e-243153ea3111', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'EDSON ROSA DA SILVA', '03680638604', '(38) 99142-9216', '', 'ZONA RURAL, 0 - ZONA RURAL, ITACAMBIRA/MG - CEP: 39594-000', '28500.00', '0.00', '36', '1615.19', 'concluido', '2026-08-15 13:52:22.932+00', 'Modelo: Contrato de Venda. Financiamento bancário. CAPACETE DE BRINDE', '2026-08-13 12:48:38.579764+00', '2026-08-15 13:52:24.119085+00', 'contracts/494f2ff4-ccb8-4672-9b05-ffc18ab492b4.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '1615.19', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('76c314cd-870b-413f-b177-0a427b9a90fa', 'CTR-MST72WYB', '08d32269-7d89-4fe2-bc7f-a82e646b9d92', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SANDRA REGINA DIAS DA SILVA', '12733268651', '(38) 98425-9881', '', 'R 6 DE JANEIRO, 170 - BELA VISTA, MONTES CLAROS/MG - CEP: 39401-148', '19990.00', '3500.00', '48', '795.77', 'concluido', '2026-08-15 13:54:48.334+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-14 17:02:07.767068+00', '2026-08-15 13:54:49.518667+00', 'contracts/76c314cd-870b-413f-b177-0a427b9a90fa.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '3500', '0', '0', NULL, '48', '795.77', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('643f45e4-ba6f-49ae-887b-65ae2b473800', 'CTR-MSTAXZVC', '1c94c06a-b9fc-48fd-8546-d676f9528a8e', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GRACIELE PEREIRA DOS SANTOS', '11582433674', '', 'gracielep443@gmail.com', 'RUA B, 220 - VILA VIANA, MONTES CLAROS/MG - CEP: 39480-000', '18990.00', '0.00', '48', '999.52', 'concluido', '2026-08-15 13:56:04.739+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-14 18:50:16.765101+00', '2026-08-15 13:56:05.937483+00', 'contracts/643f45e4-ba6f-49ae-887b-65ae2b473800.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '999.52', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('99ba5529-311f-4b55-a5be-9f2339409263', 'CTR-MSTEH5GN', '478d58a9-8f00-4e0b-b458-3810a5554555', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LUCAS TIAGO MARQUES', '02196264644', '', 'lucastiago2313@gmail.com', 'Avenida Alameda das Américas, 1800 - ACACIAS, MONTES CLAROS/mg - CEP: 39406-619', '17890.00', '0.00', '48', '907.42', 'concluido', '2026-08-15 13:57:15.673+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-14 20:29:09.378641+00', '2026-08-15 13:57:16.857785+00', 'contracts/99ba5529-311f-4b55-a5be-9f2339409263.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '907.42', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('1a8fd9cc-dfe2-4661-b456-24d0d4833fe6', 'CTR-MT0J58RT', 'b7339c22-5554-4cb8-b427-3c7701879df2', NULL, 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'MAIRA CRISTINA DE ANDRADE RAMOS', '10614433614', '', 'MAIRACRISTINA93@GMAIL.COM', 'RUA ESPÍRITO SANTO, 297 - VILA BELO HORIZONTE, DIVINÓPOLIS/MG - CEP: 35500-030', '27990.00', '0.00', '48', '982.81', 'concluido', '2026-08-19 20:14:17.13+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-19 20:14:15.541588+00', '2026-08-20 11:27:59.4317+00', 'contracts/1a8fd9cc-dfe2-4661-b456-24d0d4833fe6.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '982.81', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('62f4d2b4-d652-483b-bc8e-a9f39f066c06', 'CTR-MT36ZWS9', '2ec5f4d7-6569-4da9-b221-3ed6a7f7f14f', NULL, 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'ANTONIO CARLOS SOARES', '71861211600', '', 'ANOTINIOCARLOS270565@GMAIL.COM', 'RUA QUIRINO QUADROS, 320 - SÃO JOSÉ DOS SALGADOS, CARMO DO CAJURU/MG - CEP: 35558-000', '18990.00', '2500.00', '48', '659.85', 'concluido', '2026-08-21 16:57:31.599+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-21 16:57:30.16422+00', '2026-08-21 16:57:39.476976+00', 'contracts/62f4d2b4-d652-483b-bc8e-a9f39f066c06.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '2500', '0', '0', NULL, '48', '659.85', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('bc71be85-fc2a-4152-a0c1-62052178347e', 'CTR-MTHLMFHD', '2d98f704-2be9-48f5-9ded-a7f0e798136a', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'WALDEMAER RIBEIRO GUIMARAES', '95650326800', '(38) 99864-5634', 'douglasfuny17@gmail.com', 'RUA MAURICIO RIBAS, 555 - JARDIM GRAZIELA , SÃO FRANCISCO/MG - CEP: 39300-000', '24759.90', '19500.00', '24', '374.93', 'concluido', '2026-09-01 18:06:18.891+00', 'Modelo: Contrato de Venda. Financiamento bancário. BANCO FONTECRED', '2026-08-31 18:55:41.448534+00', '2026-09-01 18:06:19.401976+00', 'contracts/bc71be85-fc2a-4152-a0c1-62052178347e.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '19500', '0', '0', NULL, '24', '374.93', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('af0774a6-0ec2-4ff8-9c59-793bfdcf21af', 'CTR-MT4F2L3Z', '5c131630-c38c-4ea9-a9f9-d1dc68acb06d', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'CARLOS EDUARDO PEREIRA DE OLIVEIRA', '11993137696', '(37) 99808-0583', 'TANARES332@GMAIL.COM', 'RUA JOÃO DE OLIVEIRA, 1274 - ICARAÍ, DIVINÓPOLIS/MG - CEP: 35502-261', '18990.00', '5500.00', '48', '676.87', 'concluido', '2026-08-22 23:27:13.377+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-22 13:31:17.709321+00', '2026-08-22 23:27:13.714615+00', 'contracts/af0774a6-0ec2-4ff8-9c59-793bfdcf21af.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '5500', '0', '0', NULL, '48', '676.87', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e393cb22-dee3-4df9-81fc-df62898e58f1', 'CTR-MT1U0191', '37293aa2-05b1-46f1-ae50-54451f7205c8', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'KARLA POLIANA SAMPAIO OLIVEIRA', '09978403663', '(38) 99261-4120', '', 'RUA 8, 270 - RECANTO DS AGUAS, MONTES CLAROS/MG - CEP: 39405-033', '19990.00', '3000.00', '36', '954.66', 'concluido', '2026-08-24 17:23:25.895+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-20 18:05:54.473675+00', '2026-08-24 17:23:27.137355+00', 'contracts/e393cb22-dee3-4df9-81fc-df62898e58f1.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '3000', '0', '0', NULL, '36', '954.66', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7db69aef-eced-4d18-96ae-a0623125eb4e', 'CTR-MT1ZOH15', 'c9e9de6d-0b1e-4ca6-8a5f-43d288591725', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JUNIO GUSMAO DA SILVA', '05133032609', '(38) 99119-8205', 'claragusmao73@gmail.com', 'RUA DO ATLETICO, 1235 - MARACANA, MONTES CLAROS/MG - CEP: 39403-071', '13990.00', '0.00', '36', '835.05', 'concluido', '2026-08-24 17:24:12.103+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-20 20:44:53.272936+00', '2026-08-24 17:24:13.329822+00', 'contracts/7db69aef-eced-4d18-96ae-a0623125eb4e.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '835.05', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('02cffe1a-d21a-4ef3-affd-53993868dcb0', 'CTR-MT8U26JT', '11442b3c-f07b-46ec-b490-5d188e63f601', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GUILHERME ONIVALDO LOPES ', '13306070661', '(38) 99726-9631', 'guilhermeeucracia2@gmail.com', 'RUA NECO DE SANTA MARIA, 664 - MAJOR PRATES, MONTES CLAROS/MG - CEP: 39403-212', '17000.00', '6000.00', '24', '828.32', 'concluido', '2026-08-26 11:31:18.397+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-25 15:41:57.756779+00', '2026-08-26 11:31:19.431167+00', 'contracts/02cffe1a-d21a-4ef3-affd-53993868dcb0.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '6000', '0', '0', NULL, '24', '828.32', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('1d28c9ee-28ec-4205-a398-9fb37737ce92', 'CTR-MT95947V', '8d8f492f-71ea-460a-bcd6-ebb7047da558', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'NATAN DE JESUS SILVA', '70390174661', '', 'natanjesusfecebook@gmail.com', 'RUA MIRTES MATOS GOMES, 115 - ITATIAIA, MONTES CLAROS/MG - CEP: 39403-343', '10990.00', '2000.00', '48', '420.77', 'concluido', '2026-08-26 11:33:49.752+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-25 20:55:17.543452+00', '2026-08-26 11:33:50.733729+00', 'contracts/1d28c9ee-28ec-4205-a398-9fb37737ce92.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '1100', '0', '900', '1', '48', '420.77', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('79972600-b0c0-4c9a-8018-ea61d86b9dd8', 'CTR-MT95CX0D', '7159aa13-3eb6-4b0f-8ddf-fe8cd78258f7', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'NILSON ALVES DE CARVALHO JUNIOR', '10587244607', '', 'blacksolucoesmoc@gmail.com', 'RUA 27, 12 - SANTO ANTONIO, MONTES CLAROS/MG - CEP: 39402-288', '26990.00', '0.00', '36', '1402.85', 'concluido', '2026-08-26 11:43:33.07+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-25 20:58:14.771581+00', '2026-08-26 11:43:34.05251+00', 'contracts/79972600-b0c0-4c9a-8018-ea61d86b9dd8.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PAN', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '1402.85', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2ce104b1-8786-402d-b35d-fae7eca08f35', 'CTR-MTHMI5YF', 'f4e71640-83e5-4837-bfd4-658ec4d3bbea', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOAO VICTOR PEREIRA DE SOUZA ', '15746753629', '(38) 99862-1081', 'joaovictorjvp6@gmail.com', 'RUA SANTIAGO PIACENZA, 153 - VILA IPIRANGA, MONTES CLAROS/MG - CEP: 39401-472', '23990.00', '4500.00', '36', '1054.24', 'concluido', '2026-09-01 18:07:52.456+00', 'Modelo: Contrato de Venda. Financiamento bancário. 500 REAIS DE DESCONTO', '2026-08-31 19:20:22.047893+00', '2026-09-01 18:07:52.990458+00', 'contracts/2ce104b1-8786-402d-b35d-fae7eca08f35.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '4500', '0', '0', NULL, '36', '1054.24', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('cf804b04-6f26-4beb-a9b2-9916979e2d9e', 'CTR-MTHOJ714', '63790915-c6f4-48d2-852c-9845215d1b44', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'NEURIANE APARECIDA DA SILVA', '10334333652', '(38) 99856-5486', '', 'RUA GREGORIO LESSA, 20 - CENTRO, ENGENHEIRO NAVARRO/MG - CEP: 39363-000', '18990.00', '5000.00', '48', '694.45', 'concluido', '2026-09-01 18:09:21.87+00', 'Modelo: Contrato de Venda. Financiamento bancário. ENTREGA INCLUSA NA PROPOSTA', '2026-08-31 20:17:09.828235+00', '2026-09-01 18:09:23.601573+00', 'contracts/cf804b04-6f26-4beb-a9b2-9916979e2d9e.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '5000', '0', '0', NULL, '48', '694.45', 'ANUNCIO_INSTAGRAM', 'VEIO PELO SITE OFICIAL', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('d368ae00-d2bd-4426-b1c4-4f915025a0cb', 'CTR-MT4I1KM0', 'd38ffb44-b16c-4bae-8ffe-e83951f280d6', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LOVEJOY SIMOES ANTUNES', '02496637675', '', 'joy.antunes007@gmail.com', 'RUA CAMPINAS , 244 - SUMARÉ, MONTES CLAROS/MG - CEP: 39402-321', '18990.00', '0.00', '1', '18990.00', 'concluido', '2026-09-03 11:54:03.454+00', 'Modelo: Contrato de Venda.  EMPLACADA', '2026-08-22 14:54:29.61599+00', '2026-09-03 11:54:04.862276+00', 'contracts/d368ae00-d2bd-4426-b1c4-4f915025a0cb.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes,emplacamento}', '{}', '1', 'avista', '0', '0', '0', NULL, NULL, NULL, NULL, NULL, 'ok', 'CONSTA COMO "avista" MAS NÃO FOI IDENTIFICADO A FORMA DE PAGAMENTO SE FOI PIX OU DINHEIRO.', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-09-01 18:01:01.626+00', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-09-03 11:53:37.696+00', NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('6c0b54f6-7fab-40e0-befd-92a55d850d41', 'CTR-MTHGQS3E', '19d81eae-35e6-4df8-83a0-11ff21f1bb60', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ILDON BARBOSA SILVA', '03999091681', '(38) 99854-1656', '', 'BECO PINGUIM, 2 - SANTOS REIS, MONTES CLAROS/MG - CEP: 39401-217', '17500.00', '2000.00', '1', '656.63', 'concluido', '2026-09-03 12:25:27.227+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-08-31 16:39:06.342+00', '2026-09-03 12:25:28.617651+00', 'contracts/6c0b54f6-7fab-40e0-befd-92a55d850d41.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '2000', '0', '0', NULL, '1', '656.63', 'ANUNCIO_WHATSAPP', NULL, 'ok', 'ERRO NA QUANTIDADE DE PARCELAS', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-09-01 18:11:16.774+00', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-09-03 12:25:18.231+00', NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('70b0e256-54b5-4f7e-89ad-8768a93a9ffd', 'CTR-MTA73A7W', 'e1434f95-8708-4e31-9cfd-2dca3c63c4ac', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GABRIELA SENA SANTOS', '15054761608', NULL, 'bysena1999@gmail.com', 'RUA INTERNA DEZOITO, 19A - JOSE CORREIA MACHADO, MONTES CLAROS/MG - CEP: 39403-144', '14990.00', NULL, '1', NULL, 'concluido', '2026-09-03 12:08:20.575+00', 'Modelo: Contrato de Venda.  EMPLACAMENTO
+CAPACETE
+TANQUE CHEIO
+200,00 COMISSAO INDICAÇÃO', '2026-08-26 14:34:32.238503+00', '2026-09-03 12:08:21.9597+00', 'contracts/70b0e256-54b5-4f7e-89ad-8768a93a9ffd.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes,emplacamento}', '{}', '1', 'avista', '14990', '0', '0', NULL, NULL, NULL, 'LOJA_PORTA', NULL, 'corrigida', 'CONSTA COMO "avista" PORÉM NÃO É INFORMADO A ORIGEM DO DINHEIRO SE FOI PIX OU DINHEIRO.', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-09-03 12:03:43.743+00', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-09-03 12:08:11.277+00', NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('761b52cb-6727-4a1c-b451-e2830918f0bb', 'CTR-MT1JVYRM', '5fc09314-b0d6-4f68-86ae-f54cbeec0b4b', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'THOMAZ VICTOR SOARES CORDEIRO BATISTA', '10433097647', '38992195423', 'postobrasilvarzelandia@gmail.com', 'AVENIDA CASTELO BRANCO , 505 - CENTRO , VARZELÂNDIA/MG - CEP: 39450-000', '14000.00', '2000.00', '4', '14000.00', 'concluido', '2026-09-03 12:03:57.723+00', 'Modelo: Contrato de Venda.', '2026-08-20 13:22:48.42141+00', '2026-09-03 12:03:59.097671+00', 'contracts/761b52cb-6727-4a1c-b451-e2830918f0bb.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'generico', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{garantia,revisoes}', '{}', '1', 'parcelado', '2000', '0', '0', NULL, NULL, NULL, 'LOJA_PORTA', NULL, 'ok', 'CONSTA COMO "Parcelado (cartão)" QUANTAS VEZES FOI DIVIDIDO E QUAL O VALOR COBRADO COM AS TAXAS', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-09-01 17:59:18.449+00', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-09-03 12:03:32.189+00', NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ce8492d9-26b2-4628-8183-4134fbfd41f9', 'CTR-MTIX0JS6', 'dedb0054-e5c5-4686-b5c3-dedb734353fe', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'EZEQUIAS MARCELINO DA SILVA ', '40643816453', '(38) 98848-0216', 'ezequias.marcelino@hotmail.com', 'RUA CUPIM, 19 - VILA CASTELO BRANCO, MONTES CLAROS/MG - CEP: 39404-726', '14990.00', '5000.00', '24', '771.54', 'concluido', '2026-09-08 11:50:54.829+00', 'Modelo: Contrato de Venda. Financiamento bancário. desconto de 990,00', '2026-09-01 17:02:22.007372+00', '2026-09-08 11:50:55.848596+00', 'contracts/ce8492d9-26b2-4628-8183-4134fbfd41f9.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '5000', '0', '0', NULL, '24', '771.54', NULL, NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('972ef775-ef54-4003-9d15-a3aa25b20973', 'CTR-MTVXNHP3', '107af688-8bae-408e-bab5-bbfce5b6affe', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOAO CARDOSO PEREIRA', '69223165687', '(31) 98543-1215', '', 'RUA CIRCULAR, 33 - MORRINHOS, MONTES CLAROS/MG - CEP: 39400-430', '9600.00', '0.00', '1', '9600.00', 'concluido', '2026-09-12 14:50:44.998+00', 'Modelo: Contrato de Venda.', '2026-09-10 19:41:13.259443+00', '2026-09-12 14:50:47.763383+00', 'contracts/972ef775-ef54-4003-9d15-a3aa25b20973.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '9600', '0', NULL, NULL, NULL, 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0defbef9-2aaa-49c4-a07e-ead72c782907', 'CTR-MTVZ03WF', 'deb0539b-5bb5-447e-9818-338f97186dd9', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JESSICA BRUNA VIEIRA ALVES', '09857093671', '(38) 99733-6891', '', 'RUA GARNEDIA, 266 - CIDADE NOVA, VÁRZEA DA PALMA/MG - CEP: 39260-000', '12500.00', '3500.00', '36', '634.79', 'concluido', '2026-09-12 14:53:09.739+00', 'Modelo: Contrato de Venda. Financiamento bancário. BANCO ALTIS PARA NEGATIVADOS', '2026-09-10 20:19:01.217734+00', '2026-09-12 14:53:12.439367+00', 'contracts/0defbef9-2aaa-49c4-a07e-ead72c782907.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '3500', '0', '0', NULL, '36', '634.79', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('44019514-99d8-41b2-b73a-9e1212e0db2d', 'CTR-MTWZVO87', '085721d9-a11e-467d-85f4-3dd610bd3a0a', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LARISSA JOSEFINA DE OLIVEIRA DIAS', '12896221670', '', 'oliveira.larissa96@yahoo.com', 'RUA TRINTA E CINCO, 820 - SANTO AMARO, MONTES CLAROS/MG - CEP: 39403-402', '13400.00', '0.00', '1', '13400.00', 'concluido', '2026-09-12 14:53:40.936+00', 'Modelo: Contrato de Venda.', '2026-09-11 13:31:20.817822+00', '2026-09-12 14:53:43.586127+00', 'contracts/44019514-99d8-41b2-b73a-9e1212e0db2d.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes,emplacamento}', '{}', '1', 'avista', '13400', '0', '0', NULL, NULL, NULL, 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}');
+
+INSERT INTO public.contracts (id, contract_number, vehicle_id, reseller_id, store_id, buyer_name, buyer_cpf, buyer_phone, buyer_email, buyer_address, sale_price, down_payment, installments, installment_value, status, signed_at, notes, created_at, updated_at, signed_contract_url, template_id, contract_type, created_by, financing_bank, active_clause_ids, clause_variables, revision_number, payment_method, down_payment_pix, down_payment_cash, down_payment_card, down_payment_card_installments, financing_installments, financing_installment_value, lead_source, lead_source_detail, review_status, review_note, review_requested_by, review_requested_at, review_resolved_by, review_resolved_at, review_response, ad_id, campaign_name, sale_group_id, sale_channel, evidence_paths, external_data) VALUES
+  ('a489c2ab-3f6e-4292-9596-edeb8c268d79', 'CTR-MTVU29SU', 'ca93d600-32e2-4791-834c-266467415ef2', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'UANDERSON RONEY DE CASTRO', '07278088690', '', 'uandersonroney@gmail.com', 'Não informado', '14990.00', '0.00', '24', '1060.67', 'concluido', '2026-09-12 14:55:38.441+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-10 18:00:44.521202+00', '2026-09-12 14:55:41.068012+00', 'contracts/a489c2ab-3f6e-4292-9596-edeb8c268d79.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'C6 BANK', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '24', '1060.67', 'ANUNCIO_INSTAGRAM', 'ZZ', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ZZ', NULL, 'interna', '{}', '{}'),
+  ('f338d9d7-9eed-4518-a2fa-ba8d1c4807c3', 'CTR-MU2PR95H', '03bd41ab-40a8-4203-9b8d-c01f1c93b02e', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CINARA CIBELE MEDEIROS', '74854933615', '(38) 99974-9048', '', 'RUA SANTARÉM, 589 - VILA IPIRANGA, MONTES CLAROS/MG - CEP: 39401-473', '15990.00', '882.00', '36', '833.46', 'concluido', '2026-09-15 16:14:01.131+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-15 13:34:36.122693+00', '2026-09-15 16:14:03.940285+00', 'contracts/f338d9d7-9eed-4518-a2fa-ba8d1c4807c3.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '882', '0', '0', NULL, '36', '833.46', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('3ca10be0-e762-46e8-96eb-566266fef423', 'CTR-MTU2R6LB', '874c2946-6ed2-4167-a15d-66d666b58713', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VALERIA SOUZA GUSMAO', '10988002655', '38992715677', 'valeriagusmao.18@gmail.com', ' ATENAS, 108 - SANTOS REIS, MONTES CLAROS/MG - CEP: 39401-227', '23000.00', '5000.00', '36', '880.51', 'concluido', '2026-09-12 14:46:24.904+00', 'Modelo: Contrato de Venda. Financiamento bancário. desconto 990,00', '2026-09-09 12:28:31.231216+00', '2026-09-12 14:46:27.543407+00', 'contracts/3ca10be0-e762-46e8-96eb-566266fef423.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '5000', '1', '36', '880.51', 'ANUNCIO_WHATSAPP', NULL, 'corrigida', 'ALTERAR ENTRADA', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-09-09 15:30:38.65+00', '6a031ece-6175-4965-b0a9-51e7d330d58f', '2026-09-09 15:33:50.403+00', NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('4d0deba3-0052-4ec4-b91f-ed44bbd1e389', 'CTR-MTUAJZXW', '7b3e3dfa-7353-4f6c-92f8-5d1f4c90fb4f', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'VALDECI RODRIGUES DE SOUZA', '18017019890', '(37) 99872-6946', 'valdecirodrigues.vr29@gmail.com', 'AVENIDA NORTE SUL, 1077 - CONCESSO ELIAS, NOVA SERRANA/MG - CEP: 35525-100', '18295.20', '0.00', '36', '970.50', 'concluido', '2026-09-12 14:47:50.636+00', 'Modelo: Contrato de Venda. Financiamento bancário. ENTREGAR EM NOVA SERRANA', '2026-09-09 16:06:52.901346+00', '2026-09-12 14:47:53.280373+00', 'contracts/4d0deba3-0052-4ec4-b91f-ed44bbd1e389.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '970.5', 'ANUNCIO_FACEBOOK', 'LEAD PELO FACEBOOK', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ca81d7f9-44c8-4cd4-8579-0984f2ec28d7', 'CTR-MTVO02A7', 'a8c27169-aec8-4235-9ec5-ce28ae2b6b4b', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DOMINGOS DOS SANTOS GONCALVES', '10119509440', '(38) 98404-6565', 'domingossantos140293@gmail.com', 'RUA JONAS ALMEIDA, 335 - MAJOR PRATES, MONTES CLAROS/MG - CEP: 39403-200', '23500.00', '0.00', '1', '23500.00', 'concluido', '2026-09-12 14:48:52.343+00', 'Modelo: Contrato de Venda.', '2026-09-10 15:11:03.762597+00', '2026-09-12 14:48:55.134388+00', 'contracts/ca81d7f9-44c8-4cd4-8579-0984f2ec28d7.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '23500', '0', NULL, NULL, NULL, 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('500a2c3c-d546-454d-b338-88fb234509a0', 'CTR-MU17R31U', '0961b28a-3109-40ce-9a11-853c53c3e86b', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'JULIO CESAR CRISOSTOMO DA SILVA', '01446319628', '(37) 99941-6209', '', 'Não informado', '24190.00', '0.00', '36', '1192.89', 'concluido', '2026-09-15 16:11:22.66+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-14 12:22:48.246317+00', '2026-09-15 16:11:25.471454+00', 'contracts/500a2c3c-d546-454d-b338-88fb234509a0.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '1192.89', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('319040ac-e6a7-485d-84c7-76bb672e2ba1', 'CTR-MU2QM3CN', '79bb282a-4810-482e-b2d6-9fafcfc8bd24', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LETICIA LISBOA  VALIM', '02833641656', '(38) 99738-0144', 'leticialisboa3846500@gmail.com', 'RUA MELO VIANA, 528 - MORRINHOS, MONTES CLAROS/MG - CEP: 39400-427', '14000.00', '0.00', '36', '774.28', 'concluido', '2026-09-15 16:15:14.235+00', 'Modelo: Contrato de Venda. Financiamento bancário. emplacamento e capacete', '2026-09-15 13:58:35.373703+00', '2026-09-15 16:15:17.049484+00', 'contracts/319040ac-e6a7-485d-84c7-76bb672e2ba1.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '774.28', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('59c385e6-b7e1-48f1-b26f-9a255e43591c', 'CTR-MU2QY14B', 'e7535191-05e5-4d97-b013-8c772223c2ed', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SARA EMANUELLE DOS SANTOS DIAS', '09838049662', '(38) 98804-2881', 'saraemanuelled@gmail.com', 'RUA PARAÍBA, 310 - CENTRO, MONTES CLAROS/MG - CEP: 39400-083', '14990.00', '5000.00', '48', '574.56', 'concluido', '2026-09-15 16:16:35.75+00', 'Modelo: Contrato de Venda. Financiamento bancário. BANCO MOTO DA GENTE
+990,00 DESCONTO', '2026-09-15 14:07:52.66739+00', '2026-09-15 16:16:38.542277+00', 'contracts/59c385e6-b7e1-48f1-b26f-9a255e43591c.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '5000', '0', NULL, '48', '574.56', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b7ce81f8-ff40-47ae-803a-136895335286', 'CTR-MU5QWZEN', '8e242f65-b03d-45c8-8995-1320f1e83c9f', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GABRIEL MADUREIRA PEREIRA ', '01923459660', '(38) 99730-0450', 'bielmadureira38@gmail.com', 'RUA QUINCAS SOARES, 211 - VILA BRASÍLIA, MONTES CLAROS/MG - CEP: 39400-148', '23990.00', '9596.00', '36', '960.39', 'concluido', '2026-09-22 14:17:26.028+00', 'Modelo: Contrato de Venda. Financiamento bancário. BANCO MOTO DA GENTE', '2026-09-17 16:30:21.150005+00', '2026-09-22 14:17:26.20105+00', 'contracts/b7ce81f8-ff40-47ae-803a-136895335286.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '9596', '0', '0', NULL, '36', '960.39', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('661156b7-a60d-4468-97da-09fc45318d19', 'CTR-MU5WM0FB', '82aa962c-9534-440f-98b0-42f7eb9d82ae', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'KECI JHONATA SOUZA MATOS', '14353832654', '(38) 99134-9086', '', 'RUA JACINTO ALVES SILVEIRA, 578 - ESPLANADA, MONTES CLAROS/MG - CEP: 39401-453', '19990.00', '7900.00', '48', '740.69', 'concluido', '2026-09-22 14:21:54.939+00', 'Modelo: Contrato de Venda. Financiamento bancário. MOTO DA GENTE', '2026-09-17 19:09:46.453319+00', '2026-09-22 14:21:55.299023+00', 'contracts/661156b7-a60d-4468-97da-09fc45318d19.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '7900', '0', '0', NULL, '48', '740.69', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('6c631e29-14aa-4cec-9ef5-e40b3b384a00', 'CTR-MU6ZOI2S', 'e2b01fb4-8cf4-4e4d-bdca-14c22559be72', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'PAULA VITORIA PEREIRA DE SOUZA', '70634361635', '(38) 99195-3863', 'vitoriapereira1722@gmail.com', 'RUA INGLATERRA, 610 - NOVA SUIÇA, MONTES CLAROS/MG - CEP: 39406-330', '14990.00', '5996.00', '24', '778.11', 'concluido', '2026-09-22 14:23:57.238+00', 'Modelo: Contrato de Venda. Financiamento bancário. BANCO MOTO DA GENTE', '2026-09-18 13:23:28.61607+00', '2026-09-22 14:23:57.493399+00', 'contracts/6c631e29-14aa-4cec-9ef5-e40b3b384a00.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '5996', '0', '0', NULL, '24', '778.11', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e548ea82-9b4f-4dbd-bd66-2cd337ddf658', 'CTR-MU72I6SP', '6e7b7ca1-53f1-4f62-8dd2-6f627c704d26', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'HEVERTON EVALDO OLIVEIRA SILVA', '01448690633', '(38) 99745-2108', 'tonparada22@gmail.com', 'RUA ANTONINHO DAS ALMAS, 31 - MARACANA, SALINAS/MG - CEP: 39560-000', '19000.00', '0.00', '1', '19000.00', 'concluido', '2026-09-22 14:26:39.852+00', 'Modelo: Contrato de Venda.  ENTREGAR EM SALINAS', '2026-09-18 14:42:32.390662+00', '2026-09-22 14:26:40.03575+00', 'contracts/e548ea82-9b4f-4dbd-bd66-2cd337ddf658.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '19000', '0', '0', NULL, NULL, NULL, 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('93f871b3-830a-43bb-9c60-16c0df53f1c4', 'CTR-MU76R8EJ', 'fa8e1380-2b29-4d88-871e-a7aa08551516', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'BRENO FELIPE SANTOS DOS REIS', '16414391654', '', 'bssantosrs@gmail.com', 'AVENIDA RUY DUARTE PINTO, 514 - BELVEDERE, MONTES CLAROS/MG - CEP: 39406-148', '14990.00', '3500.00', '48', '579.37', 'concluido', '2026-09-22 14:28:29.548+00', 'Modelo: Contrato de Venda. Financiamento bancário. MOTO DA GENTE 8.994,00 FINANCIADO
+3.500 ENTRADA', '2026-09-18 16:41:33.161298+00', '2026-09-22 14:28:29.981116+00', 'contracts/93f871b3-830a-43bb-9c60-16c0df53f1c4.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '3500', '0', '0', NULL, '48', '579.37', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('32bb6f24-919f-4aa6-9646-91d1c05ef3d4', 'CTR-MU7BRM5E', '9763ad9f-fdd9-46a3-a4ba-636a2fe54211', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JARBAS DIEGO DIAS OLIVEIRA', '09581131655', '(38) 99148-6251', 'jarbasdiegodias@gmail.com', 'RUA TRINTA, 10 - JARDIM OLÍMPICO, MONTES CLAROS/MG - CEP: 39406-501', '14990.00', '0.00', '48', '570.15', 'concluido', '2026-09-22 14:30:23.532+00', 'Modelo: Contrato de Venda. Financiamento bancário. emplacamento', '2026-09-18 19:01:49.282278+00', '2026-09-22 14:30:23.847485+00', 'contracts/32bb6f24-919f-4aa6-9646-91d1c05ef3d4.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '570.15', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('37241f86-b9e4-4117-ba9a-2ffff9233015', 'CTR-MU8FDKVM', 'e92b0d64-df24-4865-9d89-575d8960971e', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIANA RODRIGUES FERREIRA', '18596256652', '(38) 99243-3564', '', 'RUA FRANCELINO QUEIROZ, 365 - CENTRO, SÃO JOÃO DA PONTE/MG - CEP: 39430-000', '13000.00', '0.00', '1', '13000.00', 'concluido', '2026-09-22 14:31:40.331+00', 'Modelo: Contrato de Venda.  CARTÃO 6.000 12X
+CARTAO 1.1800 12X
+PIX 3.400', '2026-09-19 13:30:39.633437+00', '2026-09-22 14:31:40.579374+00', 'contracts/37241f86-b9e4-4117-ba9a-2ffff9233015.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '0', '13000', '0', NULL, NULL, NULL, 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7a4d6568-89f4-4844-ada2-215aaf4036ea', 'CTR-MU4F2M9W', 'cd150f42-aac7-4701-904b-7b48e630dcaf', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CLEONICE PEREIRA DA SILVA', '09271612655', '', 'trcleo26@icloud.com', 'RUA 6, 160 - LOTEAMENTO DOS CRISTAIS, MONTES CLAROS/MG - CEP: 39406-836', '13994.00', '5000.00', '36', '635.61', 'concluido', '2026-09-22 14:15:46.408+00', 'Modelo: Contrato de Venda. Financiamento bancário. 8.994,00 financiado banco da gente', '2026-09-16 18:11:03.029321+00', '2026-09-22 14:15:46.619865+00', 'contracts/7a4d6568-89f4-4844-ada2-215aaf4036ea.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '5000', '1', '36', '635.61', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('cf287744-c3bd-46f4-9c63-7ac4e9e61630', 'CTR-MUBG9Z5F', '5f2a6e09-4c89-49aa-8b4f-fe5f780d96df', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'TIAGO FERREIRA DE SOUSA', '40856989827', '(38) 99928-4872', '', 'RUA BUENOS AIRES, 165 - MARISTELA, CURRAL DE DENTRO/MG - CEP: 39569-000', '19990.00', '0.00', '48', '977.20', 'concluido', '2026-09-22 14:34:33.835+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-21 16:19:11.090911+00', '2026-09-22 14:34:34.490026+00', 'contracts/cf287744-c3bd-46f4-9c63-7ac4e9e61630.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '977.2', 'INDICACAO', 'GILSONEY', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('4a30bba5-e8e9-4af9-8284-854541313a89', 'CTR-MUBJAL1L', 'c810844a-02c4-4eba-a464-29dfc1b74ce2', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'GILSONEY DE SOUZA MACEDO', '22098736819', '(38) 99928-4872', '', 'RUA JOAQUIM RIBEIRO, 106 - MARISTELA, CURRAL DE DENTRO/MG - CEP: 39569-000', '22990.00', '0.00', '48', '979.26', 'concluido', '2026-09-22 14:36:37.015+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-21 17:43:38.342266+00', '2026-09-22 14:36:37.254451+00', 'contracts/4a30bba5-e8e9-4af9-8284-854541313a89.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '979.26', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e1a5c49e-f700-4d8f-a8ed-0469a3ffe5ff', 'CTR-MU8HLNZL', '8f87a9a4-caed-4153-bd07-ac9cea88fdb5', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'MÁRCIO ALLVES DE SOUSA', '06615619687', '(33) 99844-2013', 'marcioavesde@gmail.com', 'SANTA ELENA DE MINAS, 123 - CENTRO, SANTA HELENA DE MINAS/MG - CEP: 39874-000', '14500.00', '0.00', '48', '789.64', 'concluido', '2026-09-22 13:25:35.603+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-19 14:32:54.039076+00', '2026-09-22 13:25:35.790861+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '789.64', 'ANUNCIO_FACEBOOK', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('a462abf4-738d-414c-9080-278515207f9b', 'CTR-MUBHH3LG', 'ee024c1f-669b-4a95-ad0e-49fdf2ef6bec', '52fcf03e-7207-46d9-adf1-95532ba22706', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'IRINEIA APARECIDADE DA SILVA', '04886955622', '(37) 99182-6266', 'lane.lustosa@gmail.com', 'GETÚLIO VAGAS, 1048 - CAMPOSALTINHO, CAMPOS ALTOS/MG - CEP: 38970-000', '13064.00', '6000.00', '24', '479.22', 'concluido', '2026-09-22 13:27:28.818+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-21 16:52:39.530483+00', '2026-09-22 13:27:29.153737+00', 'contracts/a462abf4-738d-414c-9080-278515207f9b.jpeg', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', 'FONTECRED', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '6000', '0', '0', NULL, '24', '479.22', 'ANUNCIO_INSTAGRAM', 'INSTAGRAM', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'INSTAGRAM', NULL, 'interna', '{}', '{}'),
+  ('2a6d7c80-dcc2-4566-815c-9233094a9517', 'CTR-MUBOAA2R', 'ad6e71b3-17ed-4ab9-8cad-71626faf977c', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SOFIA BARBOSA TUPINAMBA', '04749694606', '(38) 99909-6445', 'sofiatupinamba082@gmail.com', 'RUA IMACULADA MARQUES AGUIAR, 255 - ESPLANADA, MONTES CLAROS/MG - CEP: 39400-835', '14990.00', '0.00', '36', '777.23', 'concluido', '2026-09-22 14:37:51.555+00', 'Modelo: Contrato de Venda. Financiamento bancário. emplacamento, capacete, tanque cheio', '2026-09-21 20:03:19.372721+00', '2026-09-22 14:37:51.856589+00', 'contracts/2a6d7c80-dcc2-4566-815c-9233094a9517.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'BANCO PAN', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '777.23', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('d676ab49-7c74-487e-9582-3dc01c9f6013', 'CTR-MUCPZOFB', '261e0a6e-dd46-4995-be41-631634165406', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RAISSA GUEDES BATISTA', '02026847681', '', 'raissaguedes.batista@gmail.com', 'RUA PRESIDENTE EPITÂCIO PESSOA, 30 - ALICE MAIA, MONTES CLAROS/MG - CEP: 39400-221', '14990.00', '0.00', '48', '755.14', 'concluido', '2026-09-22 14:39:49.698+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-22 13:38:50.33008+00', '2026-09-22 14:39:49.911651+00', 'contracts/d676ab49-7c74-487e-9582-3dc01c9f6013.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '755.14', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('c97da298-c746-4b49-aa04-244c27fab830', 'CTR-MUBGO0NZ', 'e91cbfc3-aac7-4394-93f1-ad0a17a95d45', '52fcf03e-7207-46d9-adf1-95532ba22706', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'FERNANDA APARECIDA RIBEIRO LEAL ARANTES', '09484932673', '(37) 99192-5638', 'Feharantes6@gmail.com', 'RUA SANTO HILÁRIO, 177 - VILA SOUZA E SILVA, FORMIGA/MG - CEP: 35577-244', '14500.00', '0.00', '21', '799.02', 'concluido', '2026-09-22 13:17:35.297+00', 'Modelo: Contrato de Venda.', '2026-09-21 16:30:02.721692+00', '2026-09-22 13:17:35.44131+00', 'contracts/c97da298-c746-4b49-aa04-244c27fab830.jpeg', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', NULL, '{garantia,revisoes}', '{}', '1', 'parcelado', '0', '0', '0', NULL, NULL, NULL, 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('5ebfa663-94cf-4ad4-b921-9c77ff49eb6c', 'CTR-MUBGU4W1', 'd859485d-63ec-4b84-95c1-4a3a8bef5479', '52fcf03e-7207-46d9-adf1-95532ba22706', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'ALAN RICHARD GONTIJO', '08196860692', '(37) 99870-6856', 'alanrichardgontijo@gmail.com', 'RUA PROFESSOR RONAN DE OLIVEIRA, 60 - NITERÓI, DIVINÓPOLIS/MG - CEP: 35500-233', '23990.00', '0.00', '48', '1010.46', 'concluido', '2026-09-22 13:26:27.376+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-21 16:34:48.129986+00', '2026-09-22 13:26:27.525647+00', 'contracts/5ebfa663-94cf-4ad4-b921-9c77ff49eb6c.jpeg', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '1010.46', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7450fe73-c0db-4f4d-ba7a-67acb528ba65', 'CTR-MUBNOBY1', 'b384c184-ce43-41e8-9dad-b5d56cee7513', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'JANEIDE GOMES FERREIRA', '12385857600', '(37) 99825-2663', 'Janeideee@gmail.com', 'AV NOSSA SENHORA APARECIDA, 184 - NOSSA SENHORA APARECIDA, CARMO DO CAJURU/MG - CEP: 35557-000', '10000.00', '0.00', '48', '714.70', 'concluido', '2026-09-22 13:28:10.991+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-21 19:46:14.722315+00', '2026-09-22 13:28:11.326996+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '714.7', 'ANUNCIO_INSTAGRAM', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('2611c77e-ff8f-4617-93f5-646312ed55f1', 'CTR-MUBY6XPX', '1fc1da3f-bdda-492c-a0fd-040e457d79fb', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'MARIA JOSÉ AUXILIADORA REZENDE SILVA', '85650196672', '(37) 99197-8971', 'mariaauxiliadora@gmail.com', 'RUA 49, 49 - CIDADE NOVA, IGUATAMA/MG - CEP: 38910-000', '18990.00', '2000.00', '48', '968.00', 'concluido', '2026-09-22 13:48:01.944+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-22 00:40:45.327936+00', '2026-09-22 13:48:02.180123+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '2000', '0', '0', NULL, '48', '968', 'ANUNCIO_INSTAGRAM', 'CAMPANHA', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA', NULL, 'externa', '{2611c77e-ff8f-4617-93f5-646312ed55f1/print-1-1790037646728.jpeg}', '{"notes": "", "buyer_city": "mg", "buyer_phone": "(37) 99197-8971", "ad_description": "", "delivery_method": "Entrega no endereço do comprador", "contact_platform": "Marketplace", "conversation_link": ""}'),
+  ('75f3fca3-e762-4029-bcf1-2d27c1866c02', 'CTR-MUB83328', '2d57b836-d4c4-4698-af77-c098f17e1074', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'THIAGO MOURA LOPES FARIA', '12668811660', '', 'thii.moura56@gmail.com', 'RUA COLOMBIA, 206 - INDEPENDÊNCIA, MONTES CLAROS/MG - CEP: 39404-292', '23990.00', '0.00', '48', '915.41', 'concluido', '2026-09-22 14:33:21.639+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-21 12:29:52.488865+00', '2026-09-22 14:33:21.856375+00', 'contracts/75f3fca3-e762-4029-bcf1-2d27c1866c02.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '915.41', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('72b92673-c766-431a-a5f3-b6381a5e50a6', 'CTR-MUCR702W', 'c47aea20-4541-4644-b988-08471841a484', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LEONARDO SIMOES DE SOUZA', '03008295665', '(38) 99742-4454', 'leo.simoes.oficina@hotmail.com', 'AVENIDA RUY DUARTE PINTO, 514 - BELVEDERE, MONTES CLAROS/MG - CEP: 39406-148', '14500.00', '4000.00', '36', '622.29', 'concluido', '2026-09-22 14:45:31.93+00', 'Modelo: Contrato de Venda. Financiamento bancário. financiado 8.700
+entrada de 4.000
+valor final 12.700', '2026-09-22 14:12:31.643326+00', '2026-09-22 14:45:32.373153+00', 'contracts/72b92673-c766-431a-a5f3-b6381a5e50a6.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '4000', '0', '0', NULL, '36', '622.29', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ab403fd8-fb3a-43e0-977d-6881f91dc0c7', 'CTR-MUFGC01E', '420b6e34-b6de-48ba-b1da-e4c58b469d07', '52fcf03e-7207-46d9-adf1-95532ba22706', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'NILDA VALADARES GOMES ', '48462861691', '(37) 99663-0393', 'rafaelcoimbra912@gmail.com', 'RUA MOSCOU, 1203 - SANTA ROSA, DIVINÓPOLIS/MG - CEP: 35500-538', '17800.00', '1000.00', '48', '886.97', 'concluido', '2026-09-24 11:38:18.981+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-24 11:31:46.862381+00', '2026-09-24 11:38:20.190738+00', 'contracts/ab403fd8-fb3a-43e0-977d-6881f91dc0c7.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '1000', '0', '0', NULL, '48', '886.97', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e74e196a-3c1c-4037-b248-633446ba88fc', 'CTR-MUCSBM1I', 'eef1aa1e-1350-4d18-8816-9add7890d801', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'HUDSON MENDES LEAL', '15981228601', '(38) 99750-0052', 'hudsomendes2755@gmail.com', 'RUA SEIS, 31 - RESIDENCIAL SUL IPÊS, MONTES CLAROS/MG - CEP: 39407-036', '23990.00', '9000.00', '1', '869.75', 'concluido', '2026-09-22 20:39:47.492+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-22 14:44:06.363193+00', '2026-09-22 20:39:48.37586+00', 'contracts/e74e196a-3c1c-4037-b248-633446ba88fc.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '9000', '0', '0', NULL, '1', '869.75', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('45cfe12a-b9f5-4c53-b5ae-b8955dfa9227', 'CTR-MUCYH8JS', '5158be0e-71a8-4c95-a4db-ce2552aaccfa', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'CAIO VINICIUS LEITE SAMPAIO', '09884227608', '(38) 98853-7449', '', 'AVENIDA MESTRA FININHA, 1900 - FUNCIONÁRIOS, MONTES CLAROS/MG - CEP: 39400-776', '32890.00', '0.00', '1', '32890.00', 'concluido', '2026-09-22 21:03:37.458+00', 'Modelo: Contrato de Venda.', '2026-09-22 17:36:26.641294+00', '2026-09-22 21:03:38.008501+00', 'contracts/45cfe12a-b9f5-4c53-b5ae-b8955dfa9227.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '32890', '0', '0', NULL, NULL, NULL, 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7a5111cb-57ef-4ce6-b2c4-5675ee111f2e', 'CTR-MUE2G5EG', '71e37b94-4611-40d9-9b83-e72bfcb36144', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'CARLA DA SILVA SOUSA', '01442606622', '(37) 99832-5081', '', 'RUA IBITURUNA, 671 - PLANALTO, DIVINÓPOLIS/MG - CEP: 35501-195', '13994.00', '5600.00', '36', '604.12', 'concluido', '2026-09-23 12:29:35.453+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-23 12:15:19.801709+00', '2026-09-23 12:29:36.507887+00', 'contracts/7a5111cb-57ef-4ce6-b2c4-5675ee111f2e.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '5600', '0', '0', NULL, '36', '604.12', 'OUTRO', 'VEIO POR MIM', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e53c7e08-a9d9-4811-a0ce-83ef5f613bfe', 'CTR-MUMMRJIY', 'fa6d2da5-7a40-4ae5-8f5c-cca1d0d4ead5', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'MARCOS HENRIQUE DA SILVA PEDROSA', '05697936109', '(37) 98426-8404', '', 'Não informado', '22800.00', '0.00', '1', '22800.00', 'concluido', '2026-10-01 12:13:40.715+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda.', '2026-09-29 12:06:12.949368+00', '2026-10-01 12:13:40.842773+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '22800', '0', '0', NULL, NULL, NULL, 'OUTRO', 'MEU CLIENTE', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('d96a0d8d-69fa-4cc3-b8e1-e13a8958af18', 'CTR-MUE3AHC1', 'f47f307f-356a-4171-86f8-5ab16382b447', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'EDNA OLIVEIRA DA SILVA', '00742372502', '(37) 97398-2105', '', 'Não informado', '23990.00', '7197.00', '48', '1065.01', 'concluido', '2026-09-24 11:33:57.462+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-23 12:38:55.035209+00', '2026-09-24 11:33:58.656529+00', 'contracts/d96a0d8d-69fa-4cc3-b8e1-e13a8958af18.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '7197', '0', '0', NULL, '48', '1065.01', 'ANUNCIO_INSTAGRAM', 'CAMPANHA JOAO', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA JOAO', NULL, 'interna', '{}', '{}'),
+  ('d4403767-9418-407e-904b-f943eb17df3b', 'CTR-MUEC8R07', '5df6d2d9-7cc0-478c-9203-4598e7363e6d', '52fcf03e-7207-46d9-adf1-95532ba22706', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHIRLEY FARIA DE CASTRO ', '01399158694', '(37) 98833-9531', 'shirleyfarac@gmail.com', 'RUA SÃO PAULO, 881 - CENTRO, DIVINÓPOLIS/MG - CEP: 35500-006', '23990.00', '0.00', '48', '909.38', 'concluido', '2026-09-24 11:36:04.066+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-23 16:49:30.916151+00', '2026-09-24 11:36:05.514546+00', 'contracts/d4403767-9418-407e-904b-f943eb17df3b.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '909.38', 'ANUNCIO_INSTAGRAM', 'ANUNCIO NO INSTAGRAN', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ANUNCIO NO INSTAGRAN', NULL, 'interna', '{}', '{}'),
+  ('0f0adbe3-7834-4fc8-a0e3-0b0121803af3', 'CTR-MUNZSHRQ', '65af520b-b185-4fbd-8f44-bceb209ff8e3', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'LOURIVAL MESSIAS DE SOUSA', '57278555604', '(37) 99989-1628', '', 'Não informado', '19990.00', '7996.00', '36', '817.81', 'concluido', '2026-10-01 12:17:50.814+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-30 10:58:38.327496+00', '2026-10-01 12:17:50.947698+00', 'contracts/0f0adbe3-7834-4fc8-a0e3-0b0121803af3.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'ALTIS', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '7996', '0', '0', NULL, '36', '817.81', 'ANUNCIO_INSTAGRAM', 'JOAO', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'JOAO', NULL, 'interna', '{}', '{}'),
+  ('a3603243-dd04-4822-b564-f4a2b3afbc36', 'CTR-MUO4WHYH', '138124ae-9169-4aa5-a4c5-4b387349f976', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RAYSSA VICTORIA MESQUITA ASSUNCAO', '02040910638', '(35) 99901-8013', '', 'RUA JACUÍ, 106 - SÃO FRANCISCO, PASSOS/MG - CEP: 37902-006', '10990.00', '4400.00', '36', '492.82', 'concluido', '2026-10-01 11:53:18.415+00', 'Modelo: Contrato de Venda. Financiamento bancário. FINANCIADO 6593,07
+ENTRADA 4.400
+ENTREGAR EM PASSOS', '2026-09-30 13:21:44.684221+00', '2026-10-01 11:53:18.559603+00', 'contracts/a3603243-dd04-4822-b564-f4a2b3afbc36.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '4400', '0', '0', NULL, '36', '492.82', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('edd06d90-ad72-4c8a-8f16-2816cbc9c913', 'CTR-MUO6SGTH', '2aee1096-1de3-42a0-97a2-b8f51b57da91', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DAIANE GONCALVES DO NASCIMENTO', '11395081727', '32999507164', 'daianeazevezo1288@gmail.com', 'RUA ANTÔNIO CANDIAN, 161 - SÃO DOMINGOS, UBÁ/MG - CEP: 36504-016', '18990.00', '7000.00', '36', '800.35', 'concluido', '2026-10-01 11:55:11.42+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-30 14:14:35.807727+00', '2026-10-01 11:55:11.524059+00', 'contracts/edd06d90-ad72-4c8a-8f16-2816cbc9c913.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '7000', '0', '0', NULL, '36', '800.35', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('80210a51-5d91-4eea-867e-450e4ab2230a', 'CTR-MUO8YFPX', '7cfac19b-5266-4cf7-b37f-4dff506fd850', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'THALISSA MICHAELLY PEREIRA SANTOS', '70174080638', '(11) 92041-4644', 'thalissamichaelly830@gmail.com', 'RUA D, 122 - SÃO GERALDO II, MONTES CLAROS/MG - CEP: 39407-444', '14740.00', '5000.00', '36', '658.56', 'concluido', '2026-10-01 11:56:35.966+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-30 15:15:13.600201+00', '2026-10-01 11:56:36.083747+00', 'contracts/80210a51-5d91-4eea-867e-450e4ab2230a.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '5000', '0', '0', NULL, '36', '658.56', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('7e40bb68-8c7b-4be6-899d-e95fc1e82c28', 'CTR-MUODRWYG', '43d51f8e-691d-4d9b-b884-80c32423404f', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'UILTON CHAVES DE ARAUJO', '01357302606', '(31) 98263-7324', 'araujoengenharia2008@gmail.com', 'FLAUZIDIO PEREIRA LUZ, 78 - RECREIO DA VISTA, ÁGUAS VERMELHAS/MG - CEP: 39990-000', '23990.00', '10000.00', '48', '833.72', 'concluido', '2026-10-01 12:02:02.552+00', 'Modelo: Contrato de Venda. Financiamento bancário. entrega em aguas vermelhas mg', '2026-09-30 17:30:09.243372+00', '2026-10-01 12:02:02.742905+00', 'contracts/7e40bb68-8c7b-4be6-899d-e95fc1e82c28.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '10000', '0', '0', NULL, '48', '833.72', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e80320fc-66b6-4a94-834b-73cacc7cf151', 'CTR-MUOHP93U', 'ea4c42eb-02b1-4e94-8abc-6dc30282d3d7', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'LUCIENE APARECIDA DE MENDONCA', '01421009609', '(37) 98835-3595', '', 'Não informado', '22800.00', '0.00', '1', '22800.00', 'pre_venda', NULL, '[VENDA REVENDEDOR] Modelo: Contrato de Venda.', '2026-09-30 19:20:00.310526+00', '2026-09-30 19:20:01.756534+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '22800', '0', '0', NULL, NULL, NULL, 'OUTRO', 'MEU CLIENTE', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('24c0a444-0a22-469f-881b-bcd5e2d27cca', 'CTR-MUIIFYRI', '3bee908f-a505-49ec-a5c2-78e695854b24', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOAO VITOR DE OLIVEIRA', '16924298680', '(38) 99108-5908', 'oliverjoao94@gmail.com', 'ALAMEDA BELVEDERE, 110 - BELVEDERE, MONTES CLAROS/MG - CEP: 39406-230', '26000.00', '10400.00', '36', '1032.00', 'concluido', '2026-10-01 11:43:36.285+00', 'Modelo: Contrato de Venda. Financiamento bancário. desconto 
+deu a moto na entrada no valor de 10.400', '2026-09-26 14:54:10.664359+00', '2026-10-01 11:43:36.41207+00', 'contracts/24c0a444-0a22-469f-881b-bcd5e2d27cca.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '10400', '0', NULL, '36', '1032', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('48a21a5b-1bca-42b7-b95f-d2ee176e894d', 'CTR-MULM3HMQ', '10aae368-d4c9-4807-9e7f-2e796fde10e3', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOSIELY QUEIROZ DE ALMEIDA', '10022846603', '(38) 99949-5035', '', 'R SÃO ROMAO, 155 - CENTRO, ICARAÍ DE MINAS/MG - CEP: 39318-000', '14990.00', '0.00', '36', '821.76', 'concluido', '2026-10-01 11:44:59.347+00', 'Modelo: Contrato de Venda. Financiamento bancário. ENTREGA DA MOTO', '2026-09-28 18:59:45.175324+00', '2026-10-01 11:44:59.454645+00', 'contracts/48a21a5b-1bca-42b7-b95f-d2ee176e894d.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '821.76', 'ANUNCIO_INSTAGRAM', '..', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, '..', NULL, 'interna', '{}', '{}'),
+  ('ec0a38df-9a17-452d-b026-ec81fd1d4882', 'CTR-MUMQNR24', '0c897ea2-13c2-4234-bd81-bd7986fa7062', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DJAVAN LOPES DE OLIVEIRA', '05174749648', '(33) 9153-1280', 'djavanlopes@yahoo.com.br', 'JOAO MOURA , 102 - JOAO VIEIRA , MINAS NOVAS/MG - CEP: 39650-000', '19990.00', '7500.00', '12', '1577.10', 'concluido', '2026-10-01 11:46:37.674+00', 'Modelo: Contrato de Venda. Financiamento bancário. desconto de 490,00', '2026-09-29 13:55:14.663983+00', '2026-10-01 11:46:37.785109+00', 'contracts/ec0a38df-9a17-452d-b026-ec81fd1d4882.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '7500', '0', '0', NULL, '12', '1577.1', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('88e72b8a-7e6c-438a-8af4-da190ad9cc8e', 'CTR-MUN11UHI', '0cd3a6db-6ee1-4e9f-a3b0-a166251fd60f', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LETICIA TATIANE MENDES LOURENCO', '41459388879', '(38) 99187-3924', '', 'RUA PADRE AUGUSTO, 414 - CENTRO, MONTES CLAROS/MG - CEP: 39400-053', '14740.00', '5000.00', '36', '658.53', 'concluido', '2026-10-01 11:52:04.677+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-29 18:46:08.203157+00', '2026-10-01 11:52:04.841192+00', 'contracts/88e72b8a-7e6c-438a-8af4-da190ad9cc8e.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '5000', '0', '0', NULL, '36', '658.53', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('739b0457-2fef-45eb-9680-22444373990e', 'CTR-MUMTQE52', 'a9d6c1c7-1fd4-4384-b8e9-56f66cece722', '52fcf03e-7207-46d9-adf1-95532ba22706', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'MARIA LUISA GARCIA MORAIS', '15344488610', '(37) 99664-4488', 'mariagarciauklondon7@gmail.com', 'JOSE MARIA DA COSTA, 286 - CAMPOS ALTINHOS , CAMPOS ALTOS/MG - CEP: 38970-000', '14297.80', '8000.00', '48', '297.77', 'concluido', '2026-10-01 12:16:01.85+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-09-29 15:21:16.593976+00', '2026-10-01 12:16:02.028724+00', 'contracts/739b0457-2fef-45eb-9680-22444373990e.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', 'FONTECRED', '{garantia,revisoes}', '{}', '1', 'financiamento', '8000', '0', '0', NULL, '48', '297.77', 'INDICACAO', 'INDICAÇÃO DE CLIENTE QUE COMPROU COMIGO ( DANIEL ALVES VENDEDOR )', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('8024cfce-7c71-4c60-8d5c-5e50928636ae', 'CTR-MUPLT0CD', 'bc54076b-5f7d-4e94-9618-5ebdc26fbf0b', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'RODRIGO VICTOR DE MOURA', '06286246622', '(31) 7361-3036', 'ubercitybh13@gmail.com', 'Não informado', '23330.00', '9332.00', '48', '843.86', 'concluido', '2026-10-01 20:13:09.471+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda. Financiamento bancário. Rua da olaria 600
+Bairro Granja de Freitas
+BH MG
+Bloco 10 Apt 401
+Cep. 30285230', '2026-10-01 14:02:40.193626+00', '2026-10-01 20:13:10.257042+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '9332', '0', '0', NULL, '48', '843.86', 'ANUNCIO_INSTAGRAM', 'JOAO', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'JOAO', NULL, 'interna', '{}', '{}'),
+  ('4ae14dfb-ff9e-480a-a963-41504a5665c4', 'CTR-MUVFB34C', 'bd8ea256-971e-410e-a1ab-73505bad4257', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ADRIELLE ANTUNES DA SILVA', '11381878601', '', 'adrieleantunes1234@gmail.com', 'RUA GORUTUBA, 837 - GAMELEIRA, JANAÚBA/MG - CEP: 39442-135', '23990.00', '9600.00', '36', '990.82', 'concluido', '2026-10-13 19:04:22.3+00', 'Modelo: Contrato de Venda. Financiamento bancário. ENTREGAR EM JANAUBA', '2026-10-05 15:47:23.75196+00', '2026-10-13 19:04:22.523975+00', 'contracts/4ae14dfb-ff9e-480a-a963-41504a5665c4.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '9600', '0', '0', NULL, '36', '990.82', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ebfa109c-e232-4864-9878-e88b49498e7c', 'CTR-MUWZ4E7V', '852a6f9e-8674-499b-ba66-33ff740d323b', '52fcf03e-7207-46d9-adf1-95532ba22706', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'GABRIEL DE CASTRO RIBEIRO', '16198911667', '(37) 99928-7706', 'decastroribeirog3@gmail.com', 'RUA SÃO PAULO, 881 - CENTRO, DIVINÓPOLIS/MG - CEP: 35500-006', '28990.00', '3000.00', '48', '1091.48', 'concluido', '2026-10-13 11:35:24.542+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-06 17:49:49.498272+00', '2026-10-13 11:35:26.139764+00', 'contracts/ebfa109c-e232-4864-9878-e88b49498e7c.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', 'BRADESCO', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '3000', '0', '0', NULL, '48', '1091.48', 'CLIENTE_RECORRENTE', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('822effe4-e6a0-4a0a-8c70-ce87d948b5b5', 'CTR-MUX0B2H8', 'f39eb576-2e9c-487e-af4a-25c70d93ae2a', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'DAIANE ALVES', '04402325544', '(71) 98887-1069', 'alvesdaiane13@gmail.com', 'RUA BRUNO NETO, 25 - MANDACARU, JEQUIÉ/BA - CEP: 45210-092', '10000.00', '0.00', '48', '538.26', 'concluido', '2026-10-13 11:35:41.879+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-06 18:23:01.542208+00', '2026-10-13 11:35:43.481361+00', 'contracts/822effe4-e6a0-4a0a-8c70-ce87d948b5b5.jpeg', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '538.26', 'ANUNCIO_MARKETPLACE', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'externa', '{822effe4-e6a0-4a0a-8c70-ce87d948b5b5/print-1-1791310983134.jpeg}', '{"notes": "", "buyer_city": "ba ", "buyer_phone": "(71) 98887-1069", "ad_description": "", "delivery_method": "Entrega no endereço do comprador", "contact_platform": "WhatsApp", "conversation_link": ""}');
+
+INSERT INTO public.contracts (id, contract_number, vehicle_id, reseller_id, store_id, buyer_name, buyer_cpf, buyer_phone, buyer_email, buyer_address, sale_price, down_payment, installments, installment_value, status, signed_at, notes, created_at, updated_at, signed_contract_url, template_id, contract_type, created_by, financing_bank, active_clause_ids, clause_variables, revision_number, payment_method, down_payment_pix, down_payment_cash, down_payment_card, down_payment_card_installments, financing_installments, financing_installment_value, lead_source, lead_source_detail, review_status, review_note, review_requested_by, review_requested_at, review_resolved_by, review_resolved_at, review_response, ad_id, campaign_name, sale_group_id, sale_channel, evidence_paths, external_data) VALUES
+  ('5a523665-59e0-472a-8c78-f686fb0790eb', 'CTR-MUWSN77V', '23fc516c-32f6-4840-ade7-a873b1570d8d', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LUCAS DANIEL ALVES PEDERNEIRA', '16276289671', '(38) 99838-2945', '', 'COMUNIDADE MULUNGU, 0 - ZONA RURAL, PORTEIRINHA/MG - CEP: 39520-000', '19000.00', '0.00', '1', '19000.00', 'concluido', '2026-10-13 19:06:31.192+00', 'Modelo: Contrato de Venda.  + 200,00 FRETE PAGO VIA TED', '2026-10-06 14:48:29.98298+00', '2026-10-13 19:06:31.790429+00', 'contracts/5a523665-59e0-472a-8c78-f686fb0790eb.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '19000', '0', '0', NULL, NULL, NULL, 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('e9acccd2-b6c0-4df7-a094-eed3d060437e', 'CTR-MUY72UNV', '601e269a-a470-47e2-81b2-322ea260cf5f', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DIOGO SOUZA DINIZ', '08819322641', '(38) 99152-3655', '', 'AVENIDA CIDADE DO VATICANO, 40 - IBITURUNA, MONTES CLAROS/MG - CEP: 39401-332', '19990.00', '6000.00', '45', '652.68', 'concluido', '2026-10-13 19:07:51.747+00', 'Modelo: Contrato de Venda. Financiamento bancário. 400,00 BONUS
+FINANCIADO 13.590
+ENTRADA PAGA VIA PIX 07/10', '2026-10-07 14:20:22.421588+00', '2026-10-13 19:07:51.999319+00', 'contracts/e9acccd2-b6c0-4df7-a094-eed3d060437e.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '6000', '0', '0', NULL, '45', '652.68', 'LOJA_PASSAGEM', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('39b2ce89-404a-4aa1-a66a-334b0e9e562b', 'CTR-MUYKECCU', 'd2c73d9f-6835-4120-9236-f44be45ba556', '52fcf03e-7207-46d9-adf1-95532ba22706', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'JOSE CELIO NUNES', '77483731672', '(37) 99121-3100', 'thuliotetinho@gmail.com', 'RUA JOSÉ GOMES DA SILVA, 511 - MARIA PEÇANHA, DIVINÓPOLIS/MG - CEP: 35501-138', '23990.00', '0.00', '48', '1000.74', 'concluido', '2026-10-13 11:36:59.812+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-07 20:33:12.22488+00', '2026-10-13 11:37:01.416674+00', 'contracts/39b2ce89-404a-4aa1-a66a-334b0e9e562b.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '08581b57-bbaf-4147-a92c-83aab9a80240', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '1000.74', 'INDICACAO', 'CLIENTE WILLIAN SBM 400SS', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('55185f75-372a-4a05-9061-fcc9ce6ee37a', 'CTR-MUSFCRL2', 'db066c86-59eb-4697-a618-19a43a0fe196', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SAULO ALMEIDA OLIVEIRA', '07991512622', '(16) 98872-5720', 'sauloalemao29@gmail.com', 'RUA MARIA ABADIA AMARAL MALAGUTI, S/N - VILA FORMOSA, SÃO SEBASTIÃO DO PARAÍSO/MG - CEP: 37955-146', '19000.00', '7500.00', '48', '659.00', 'concluido', '2026-10-13 11:34:34.264+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-03 13:25:24.050799+00', '2026-10-13 11:34:35.861401+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '7500', '0', '0', NULL, '48', '659', 'ANUNCIO_INSTAGRAM', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('9a62a43e-e345-495c-b901-b4185366cb5d', 'CTR-MUSGKONY', 'b8b03c8c-19db-424b-bc14-02e17ad07bc0', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'EMANUELLE GOMES DE OLIVEIRA', '02592393560', '(73) 98123-1114', 'emanuellegomesoliveira@gmail.com', 'RUA OTONIEL PINHO LIMA, 196 - JAÇANÃ, ITABUNA/BA - CEP: 45608-445', '14990.00', '0.00', '48', '753.50', 'concluido', '2026-10-13 11:34:46.9+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-03 13:59:33.323885+00', '2026-10-13 11:34:48.491036+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '753.5', 'ANUNCIO_INSTAGRAM', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('0640adf6-1ef7-40ac-8b13-3a28faa7cb70', 'CTR-MUR3EMFD', 'a0eaf50e-d075-4335-b65b-a8448514a3b7', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOMAR FERREIRA SANTOS', '12371604640', '(38) 99146-4780', 'joao.25pazemdeus@gmail.com', 'TRAVESSA AMORIM, 55 - VILA ATLÂNTIDA, MONTES CLAROS/MG - CEP: 39400-854', '14020.00', '5200.00', '36', '667.92', 'concluido', '2026-10-13 19:02:37.996+00', 'Modelo: Contrato de Venda. Financiamento bancário. 500,00 boleto dia 20/11', '2026-10-02 15:03:09.290988+00', '2026-10-13 19:02:38.254344+00', 'contracts/0640adf6-1ef7-40ac-8b13-3a28faa7cb70.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '4100', '1100', '0', NULL, '36', '667.92', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('eb61f700-4334-414e-9d2e-d524bb64e0f8', 'CTR-MURHFMAE', '075e9ff5-36f2-4dcf-b942-1eb7bce68b5b', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'LORENA PAULA DE OLIVEIRA', '09652987603', '(37) 99672-3005', 'paulaoliveiraloren2025@gmail.com', 'RUA ESTER RODRIGUES DE ABREU, 269 - JOSÉ RODRIGUES DA COSTA, NOVA SERRANA/MG - CEP: 35526-512', '13900.00', '0.00', '36', '839.32', 'concluido', '2026-10-13 11:34:16.931+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-02 21:35:50.591071+00', '2026-10-13 11:34:18.53932+00', 'contracts/eb61f700-4334-414e-9d2e-d524bb64e0f8.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '839.32', 'ANUNCIO_INSTAGRAM', 'GG CAMPANHA', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'GG CAMPANHA', NULL, 'externa', '{eb61f700-4334-414e-9d2e-d524bb64e0f8/print-1-1790976952306.pdf}', '{"notes": "", "buyer_city": "MG", "buyer_phone": "(37) 99672-3005", "ad_description": "", "delivery_method": "Entrega no endereço do comprador", "contact_platform": "Marketplace", "conversation_link": ""}'),
+  ('de74b37f-b2af-4816-b908-4ef98acc7e22', 'CTR-MV9THVCV', 'c47a17ad-12d0-4c88-89d1-996a6477195f', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'HUGO RICARDO RABELO DOS SANTOS ', '07760508697', '(38) 98415-6505', 'hugorrssantos05@gmail.com', 'RUA ARTUR LOBO, 25 - CENTRO, MONTES CLAROS/MG - CEP: 39400-007', '17990.00', '7196.00', '48', '684.60', 'concluido', '2026-10-16 13:37:17.131+00', 'Modelo: Contrato de Venda. Financiamento bancário. 2.196 de entrada no pix
+uma fan 125 2009 
+valor 5.000', '2026-10-15 17:33:20.925098+00', '2026-10-16 13:37:16.504746+00', 'contracts/de74b37f-b2af-4816-b908-4ef98acc7e22.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '2196', '5000', '0', NULL, '48', '684.6', 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('cc5c7992-3bf8-4cf3-a6b4-87f751126cda', 'CTR-MV71M8TW', 'b72fdf53-0684-4ac7-ab02-c43880e461a5', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANDRE PEREIRA ALVES', '03348617642', '(38) 99130-9336', '', 'RUA DOUTOR OSMAR PERES CALDEIRA, 20 - SANTA LUCIA 2, MONTES CLAROS/MG - CEP: 39400-000', '17990.00', '0.00', '1', '17990.00', 'concluido', '2026-10-13 19:29:34.813+00', 'Modelo: Contrato de Venda.  PAGAMENTO DE 9.000 VIA PIX 13/10/2026
+RESTANTE DO PAGAMENTO 8.990,00 QUANDO CHEGAR A MOTO', '2026-10-13 18:57:23.953986+00', '2026-10-13 19:29:35.13104+00', 'contracts/cc5c7992-3bf8-4cf3-a6b4-87f751126cda.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '17990', '0', '0', NULL, NULL, NULL, 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a88f1819-5c0c-493d-ac7e-e33b5f837dcd', 'CTR-MV8GI6QW', 'ae960d0c-2437-4737-b385-4f7658562614', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'EDMAR RODRIGUES DE OLIVEIRA', '09471396646', '(37) 93300-8076', 'edmarcaiomartins@gmail.com', 'RUA JOÃO BATISTA GUIMARÃES, 1541 - SÃO GERALDO II, NOVA SERRANA/MG - CEP: 35520-302', '15000.00', '6000.00', '48', '588.21', 'concluido', '2026-10-14 23:42:57.974+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-14 18:41:54.704663+00', '2026-10-14 23:42:59.451947+00', 'contracts/a88f1819-5c0c-493d-ac7e-e33b5f837dcd.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '6000', '1', '48', '588.21', 'ANUNCIO_INSTAGRAM', 'JOAO', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'JOAO', NULL, 'interna', '{}', '{}'),
+  ('57f404b2-e541-4c5c-b904-d38fdd06a4a8', 'CTR-MV6P34WA', '243476b3-58da-45d1-b478-04a55e121572', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'MARCELO FERREIRA PACHECO JUNIOR', '12470497604', '(37) 98808-6171', 'marcelo123@gmail.com', 'RUA PALMAS, 200 - JOÃO PAULO II, DIVINÓPOLIS/MG - CEP: 35501-600', '14000.00', '3000.00', '48', '585.19', 'concluido', '2026-10-14 16:08:33.409+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-13 13:06:36.421557+00', '2026-10-14 16:08:34.272974+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '3000', '0', '0', NULL, '48', '585.19', 'ANUNCIO_MARKETPLACE', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('caf521b1-c0b2-4224-a5a6-e5c8e3454cc2', 'CTR-MV8LQ7HM', '0c4e0dbe-f96d-4662-96cc-e55826dc7286', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JULIANO SERGIO FREIRE', '04971009671', '', 'julianofreire601@gmail.com', 'RUA DOUTOR CARVALHO, 684 - CENTRO, PASSOS/MG - CEP: 37900-100', '25000.00', '0.00', '1', '25000.00', 'concluido', '2026-10-16 13:35:03.094+00', 'Modelo: Contrato de Venda.  SINAL 
+PIX DE 3.000 14/10
+RESTANTE NA ENTREGA', '2026-10-14 21:08:08.018395+00', '2026-10-16 13:35:02.484531+00', 'contracts/caf521b1-c0b2-4224-a5a6-e5c8e3454cc2.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '25000', '0', '0', NULL, NULL, NULL, 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('33a37517-d4f4-439c-8ec2-944e0f1a3390', 'CTR-MVBFDRMY', '17adae21-d06b-4235-bb42-21fabfedbead', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'EMILIA DOURADA FRAGA ', '86743279668', '(38) 99215-7391', 'emiliadouradofraga@hotmail.com', 'JANUARIA, 483 - JK, MANGA/MG - CEP: 39460-000', '14990.00', '3000.00', '36', '595.95', 'concluido', '2026-10-26 12:51:36.89+00', 'Modelo: Contrato de Venda. Financiamento bancário. DESCONTO DE 800,00 
+CAPACETE', '2026-10-16 20:33:47.533619+00', '2026-10-26 12:51:38.743191+00', 'contracts/33a37517-d4f4-439c-8ec2-944e0f1a3390.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '3000', '0', '0', NULL, '36', '595.95', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a22748e6-c9a5-41a8-83e1-7861139699b0', 'CTR-MVFAAK0D', 'f74391c7-c542-4aae-8166-32e3010d6043', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'OVISMAR ROSA DA SILVA', '11646964675', '(37) 99114-2728', 'KiKobikas@hotmail.com', 'RUA MAURÍCIO SILVA, 724 - FAUSTO PINTO DA FONSECA II, NOVA SERRANA/MG - CEP: 35523-270', '23000.00', '0.00', '48', '915.65', 'concluido', '2026-10-26 12:46:09.97+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-19 13:22:24.484767+00', '2026-10-26 12:46:12.102948+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '915.65', 'ANUNCIO_MARKETPLACE', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('5823b883-9a57-4b2a-b245-48fa9597b836', 'CTR-MVJYABWR', 'e950a0a4-4671-4858-8cd8-9ebdb6026b92', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'MARIA DAS GRAÇAS CARDOSO SANTOS', '62864548615', '(37) 99856-4184', 'mariadasgraças@gmail.com', 'RUA JAIR LUIZ ELIAS, 86 - PADRE LIBÉRIO, PARÁ DE MINAS/MG - CEP: 35660-434', '18500.00', '0.00', '48', '969.59', 'concluido', '2026-10-26 12:46:32.466+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-22 19:45:09.632509+00', '2026-10-26 12:46:34.28624+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '969.59', 'ANUNCIO_MARKETPLACE', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('a30c3437-5abe-4be1-9c06-ba36bdbcfcc3', 'CTR-MVL9FAZT', '131c0c0b-7254-4aa6-9ecd-7cc6196aa1dd', NULL, 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'WEBERSON APARECIDO ESTEVAO SILVA', '04380960617', '', 'webersonestevao@hotmail.com', 'RUA JOSÉ NOGUEIRA DE SOUZA, 355 - NOSSA SENHORA APARECIDA, PASSOS/MG - CEP: 37901-800', '28990.00', '11856.00', '24', '1376.97', 'concluido', '2026-10-26 12:47:53.177+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-23 17:44:44.408887+00', '2026-10-26 12:47:54.984173+00', 'contracts/a30c3437-5abe-4be1-9c06-ba36bdbcfcc3.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '11856', '0', '0', NULL, '24', '1376.97', 'ANUNCIO_INSTAGRAM', 'ZZ', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ZZ', NULL, 'interna', '{}', '{}'),
+  ('54dd112e-81a2-45b3-8a8b-b96eaee317f6', 'CTR-MVJPRUYO', '6145867c-cf46-4242-aa90-cc0555c8b623', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIA LUISA SANTOS NOBRE', '16604416682', '', 'nobre.maria2005@gmail.com', 'TRAVESSA FERREIRA LEAL, 619 - CENTRO, CORAÇÃO DE JESUS/MG - CEP: 39340-000', '19990.00', '5000.00', '48', '763.68', 'concluido', '2026-10-26 12:56:47.156+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-22 15:46:52.632187+00', '2026-10-26 12:56:48.976981+00', 'contracts/54dd112e-81a2-45b3-8a8b-b96eaee317f6.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '5000', '0', '0', NULL, '48', '763.68', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('64a2451a-7b6a-4e5d-bedf-e34e84dae396', 'CTR-MVCFI63V', 'e0f0ec08-7dbc-444a-9a80-a2fafbae5cdd', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RONALD DE JESUS TEIXEIRA', '12263440623', '38984143883', 'ronaldtteixeira@gmail.com', 'RUA DEZ, 296 - CONJUNTO CHIQUINHO GUIMARÃES, MONTES CLAROS/MG - CEP: 39403-117', '18990.00', '5000.00', '36', '722.63', 'concluido', '2026-10-26 12:52:14.417+00', 'Modelo: Contrato de Venda. Financiamento bancário. BONUS DE 697,00', '2026-10-17 13:24:59.449275+00', '2026-10-26 12:52:16.264632+00', 'contracts/64a2451a-7b6a-4e5d-bedf-e34e84dae396.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BRADESCO', '{garantia,revisoes}', '{}', '1', 'financiamento', '5000', '0', '0', NULL, '36', '722.63', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('ab3459ca-f8ce-45f3-915d-8f6a94abb12f', 'CTR-MVKZJIPW', '1aad2958-7b70-465e-aeb1-491ed19abe93', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'PAMELLA DUANY RODRIGUES ALVES', '15142570685', '', 'pamelladuanyr@gmail.com', 'RUA CÍCERO ROMÃO BATISTA, 1051 - JARDIM PRIMAVERA, MONTES CLAROS/MG - CEP: 39404-158', '14990.00', '5000.00', '48', '581.76', 'concluido', '2026-10-26 12:57:27.711+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-23 13:08:04.72949+00', '2026-10-26 12:57:29.530823+00', 'contracts/ab3459ca-f8ce-45f3-915d-8f6a94abb12f.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '5000', '0', '0', NULL, '48', '581.76', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('4502fb16-9f2b-4d23-87e9-06f320db6d89', 'CTR-MW9TENJ8', 'fa61dd2a-406e-4390-ba25-8c4298c2cf6c', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'WALMOR MARTINS DOS SANTOS', '09495551692', '(18) 99710-8039', 'walmorsantos42@gmail.com', 'RIACHO DAS VARZEAS, 0 - PACIÊNCIA, PORTEIRINHA/MG - CEP: 39524-972', '27990.00', '2799.00', '36', '1233.79', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-09 22:10:33.171325+00', '2026-11-09 22:10:35.290545+00', 'contracts/4502fb16-9f2b-4d23-87e9-06f320db6d89.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '2799', '0', '0', NULL, '36', '1233.79', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('37351645-8290-4980-8f6a-311fcc325b83', 'CTR-MVFHTQEK', '9b7d0fe8-0d42-408c-8cb2-7df93d59a95d', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'IGOR ANDRE GOMES GONCALVES', '08787924650', '(61) 98639-7279', '', 'RUA HELENA PRATES, 126 - MAJOR PRATES, MONTES CLAROS/MG - CEP: 39403-201', '19990.00', '0.00', '1', '19990.00', 'concluido', '2026-10-26 12:52:44.344+00', 'Modelo: Contrato de Venda.  4.000 pix
+15.990 no cartão em 21x', '2026-10-19 16:53:19.76409+00', '2026-10-26 12:52:46.18237+00', 'contracts/37351645-8290-4980-8f6a-311fcc325b83.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', NULL, '{garantia,revisoes,emplacamento}', '{}', '1', 'avista', '19990', '0', '0', NULL, NULL, NULL, 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('622b0c84-3b0c-4c71-936f-c41a0faab5ee', 'CTR-MVH2HAI8', '4be56996-2047-4c1b-980c-62d7be8d08c8', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANA VITORA DA SILVA MAIA', '70651089611', '(38) 99261-5942', '', 'RUA DO CRISTAL, 461 - MONTE CARMELO, MONTES CLAROS/MG - CEP: 39402-022', '18372.64', '0.00', '48', '977.06', 'concluido', '2026-10-26 12:56:09.115+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-20 19:19:13.824978+00', '2026-10-26 12:56:11.266851+00', 'contracts/622b0c84-3b0c-4c71-936f-c41a0faab5ee.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '977.06', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('b8ff7669-5949-434f-9365-33336b862115', 'CTR-MVCFPXTJ', 'f6a26a8b-78b3-47c8-8ecc-f04961bcb6f7', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'GUT LOC LOCADORA DE VEICULOS E MOTOS', '53190882000161', '(37) 99876-6880', 'adm.gutloclocadora@hotmail.com', 'Não informado', '18500.00', '0.00', '1', '18500.00', 'concluido', '2026-10-26 12:45:36.682+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda.', '2026-10-17 13:31:01.35411+00', '2026-10-26 12:45:39.147725+00', 'contracts/b8ff7669-5949-434f-9365-33336b862115.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '18500', '0', '0', NULL, NULL, NULL, 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2d02257d-919f-4c19-b753-115d37b0c19d', 'CTR-MVCFUHHL', '701b5a24-7b07-4949-81d9-822c58cf4cac', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'ANGELICA DE LIRIO ALVES', '05455610511', '(37) 99991-9264', 'Angelicadelirio@gmail.com', 'RUA CAMPO DO MEIO, 810 - SÃO JOSÉ, DIVINÓPOLIS/MG - CEP: 35501-237', '13900.00', '0.00', '48', '556.46', 'concluido', '2026-10-26 12:45:47.053+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-17 13:34:33.217784+00', '2026-10-26 12:45:48.870132+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '556.46', 'ANUNCIO_INSTAGRAM', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('1890973f-4967-4274-a338-b3a7b75bd1a6', 'CTR-MVP9Y0GP', '458e487e-62cf-4eca-906f-73c7c54ac248', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'RYAN RAMOS MESQUITA SANTOS', '10636726606', '(37) 99131-2308', '', 'Não informado', '27000.00', '11000.00', '36', '1064.82', 'concluido', '2026-10-26 20:28:01.688+00', '[VENDA REVENDEDOR] Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-26 13:10:20.873911+00', '2026-10-26 20:28:04.851476+00', 'contracts/1890973f-4967-4274-a338-b3a7b75bd1a6.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '11000', '0', NULL, '36', '1064.82', 'OUTRO', 'CLIENTE LILIAN', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('71e7bc7d-a19e-428f-9ea5-9b697422a3d1', 'CTR-MVPAI9NK', '706ddb73-c7e1-4ec8-b6d5-4ffb2655bce6', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'BRENO RICHARD PEREIRA DE SA', '13451606666', '(38) 98427-8273', 'rbreno362@gmail.com', 'RUA IMACULADA MARQUES AGUIAR, 91 - ESPLANADA, MONTES CLAROS/MG - CEP: 39400-835', '14815.00', '5000.00', '48', '582.25', 'concluido', '2026-10-30 13:24:43.382+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-26 13:26:10.154526+00', '2026-10-30 13:24:43.545429+00', 'contracts/71e7bc7d-a19e-428f-9ea5-9b697422a3d1.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '5000', '0', '0', NULL, '48', '582.25', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('0a3d2c4c-8d01-4aa3-b744-f62ca4a6cb51', 'CTR-MVLEB0QN', '464e8920-6255-47ed-9066-1235ca1627c6', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'PAULO ROBERTO V S MOTA', '09667663698', '(31) 99314-5065', 'paulorobertovsdamotam@gmail.com', 'RUA HIRARA, 40 - SÃO VICENTE, SETE LAGOAS/MG - CEP: 35701-076', '18500.00', '1500.00', '48', '883.28', 'concluido', '2026-10-26 12:47:56.519+00', 'Modelo: Contrato de Venda. Financiamento bancário. ALIENACAO FIDUCIÁRIA A QI TECH SOCIEDADE DE CREDITOS DIRETO S.A', '2026-10-23 20:01:21.572877+00', '2026-10-26 12:47:58.325699+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '1500', '0', '0', NULL, '48', '883.28', 'ANUNCIO_MARKETPLACE', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('a10db5de-82b8-4051-a950-be399b4167ff', 'CTR-MVLGFWGA', '97d2c20e-7dcd-4cc1-9e70-121a8144725e', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ROSILENE PEREIRA LOPES BARBOSA', '11841821675', '', 'rosileneperreira359@gmail.com', 'RUA J, 80 - NOVA AMÉRICA, MONTES CLAROS/MG - CEP: 39404-115', '14990.00', '5200.00', '1', '657.06', 'concluido', '2026-10-26 12:58:02.182+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-23 21:01:09.514405+00', '2026-10-26 12:58:04.148266+00', 'contracts/a10db5de-82b8-4051-a950-be399b4167ff.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '5200', '0', '0', NULL, '1', '657.06', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('bb141c82-16c7-4a43-baee-397f124c7f3f', 'CTR-MVTN34BR', '512e24f7-67ed-44e8-a1f8-b7563dc9f313', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'BIANCA PEREIRA DOS REIS', '19150739603', '(38) 99915-1033', 'reisbianca811@gmail.com', 'AVENIDA CORAÇÃO DE JESUS, 214 - SÃO GERALDO, MONTES CLAROS/MG - CEP: 39403-170', '12992.00', '1000.00', '36', '676.72', 'concluido', '2026-10-30 13:36:01.883+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-29 14:29:19.706629+00', '2026-10-30 13:36:02.011822+00', 'contracts/bb141c82-16c7-4a43-baee-397f124c7f3f.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '1000', '0', '0', NULL, '36', '676.72', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('5d07f8a1-455d-4291-9cf5-23ff1df251e3', 'CTR-MVTTV2Z2', 'ca6c6f8a-fb83-4353-82cd-1685babbf7be', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ANGEL ALVES RIBEIRO', '12566671613', '', 'angelalves1006@gmail.com', 'RUA PROFESSOR GUTIERREZ, 129 - VILA SION, MONTES CLAROS/MG - CEP: 39402-464', '14000.00', '0.00', '36', '771.42', 'concluido', '2026-10-30 13:37:22.418+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-29 17:39:02.774995+00', '2026-10-30 13:37:22.553803+00', 'contracts/5d07f8a1-455d-4291-9cf5-23ff1df251e3.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '771.42', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('02335d78-072e-4b32-83d0-422283f1abf7', 'CTR-MVPERM2M', '58636b43-1be6-4f31-b016-1bba714d7ede', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'MARCELO LUCAS DOS SANTOS SIMAO', '14442109630', '37991763480', NULL, 'RUA BOSTON, 390 - PADRE EUSTÁQUIO, DIVINÓPOLIS/MG - CEP: 35500-548', '23990.00', NULL, '48', '961.90', 'concluido', '2026-10-26 20:29:50.52+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-26 15:25:20.366111+00', '2026-10-26 20:29:53.374971+00', 'contracts/02335d78-072e-4b32-83d0-422283f1abf7.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '938.15', 'INDICACAO', 'MEU CLIENTE', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('dda6437a-2e11-4061-a271-e7a0f59edd28', 'CTR-MVPRNIT6', '2764c74f-f9a9-40db-b6a6-2817acbe1aa6', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'BRUNO AUGUSTO DA SILVA', '04454958637', '(37) 99966-7072', 'brunoaugustosilva.motorista@gmail.com', 'RUA DURCELINA DE MORAIS, 51 - RESIDENCIAL SÃO FREI GALVÃO, DIVINÓPOLIS/MG - CEP: 35502-888', '18500.00', '0.00', '48', '732.94', 'pre_venda', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-26 21:26:04.114597+00', '2026-10-26 21:26:06.083505+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '732.94', 'ANUNCIO_MARKETPLACE', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('bbac0b33-bf21-4926-82b9-d6dca1d9a7a3', 'CTR-MVS4I8LV', '6f9f07b9-91ac-4794-97f6-792d6eaa66de', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'WESLEY CESAR SILVA ADAO', '10107530619', '(37) 99957-8390', 'Wesleywst@gmail.com', 'LUIZA PARREIRA, 73 - JK, PIMENTA/MG - CEP: 35585-000', '19000.00', '0.00', '48', '941.97', 'pre_venda', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-28 13:01:27.248683+00', '2026-10-28 13:01:29.107381+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '941.97', 'ANUNCIO_MARKETPLACE', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('b29132d7-b270-475b-bf33-2dc0b40592c2', 'CTR-MVMIZXFN', '09848ba3-6b8c-4e84-9da7-befb0468f6c3', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIA EDUARDA RIEIRO DE OLIVEIRA', '14818061654', '', 'ddudaribeiro10@gmail.com', 'RUA ZULMA ANTUNES PEREIRA, 85 - VILA ANTÔNIO NARCISO, MONTES CLAROS/MG - CEP: 39401-147', '19990.00', '800.00', '36', '970.04', 'concluido', '2026-10-30 13:22:29.981+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-24 15:00:30.327146+00', '2026-10-30 13:22:30.128859+00', 'contracts/b29132d7-b270-475b-bf33-2dc0b40592c2.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '800', '0', '0', NULL, '36', '970.04', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('38b7b571-48ef-44af-a65c-7197b60b4cf9', 'CTR-MVTHMB5Z', '97aa9ae0-2212-4e31-8e30-c31034d6184f', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'ADEMIR JOSE DA SILVA', '05429659681', '(35) 99823-7154', 'ademir2021josesilva@gmail.com', 'RUA TURQUESA, 1669 - ACLIMAÇÃO, PASSOS/MG - CEP: 37901-702', '27693.00', '8100.00', '48', '911.35', 'concluido', '2026-10-30 13:34:53.706+00', 'Modelo: Contrato de Venda. Financiamento bancário. 27.693
+FINANCIADO 19.593,00 + 8.100
+
+ENTREGAR EM PASSOS
+INDICAÇÃO JULIANO 500,00', '2026-10-29 11:56:17.257521+00', '2026-10-30 13:34:53.843457+00', 'contracts/38b7b571-48ef-44af-a65c-7197b60b4cf9.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '8100', '0', '0', NULL, '48', '911.35', 'INDICACAO', 'JULIANO SBM 250S PASSOS', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('6df95705-fb90-4390-8548-e5e47586c343', 'CTR-MVV1GLEI', 'be107eb3-267f-44e2-aec6-e3a898b0fb1e', '9b10d862-26b6-417e-b608-ce56951cd0f0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'MARIA DE FATIMA RIBEIRO DE OLIVEIRA', '05275630646', '(31) 97101-7253', '', 'RUA ALÍPIO ASSUNÇÃO COTTA, 221 - TEOTÔNIO BATISTA DE FREITAS, PEDRO LEOPOLDO/MG - CEP: 33254-150', '23000.00', '4000.00', '24', '1211.25', 'concluido', '2026-10-30 14:18:54.608+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-30 13:59:28.145285+00', '2026-10-30 14:18:55.316383+00', NULL, '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '4000', '0', '0', NULL, '24', '1211.25', 'ANUNCIO_MARKETPLACE', 'CAMPANHA GG', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'CAMPANHA GG', NULL, 'interna', '{}', '{}'),
+  ('424293b7-a3c9-4d20-83f5-fe587471f49a', 'CTR-MVVDRIAJ', 'cdeb6a6b-d469-4a86-9995-3b4877fa6043', NULL, 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SARA GLENY ALVES', '02013447698', '(37) 99660-5604', '', 'RUA JOSÉ AUGUSTO MENDES, 241 - PARAÍSO, DIVINÓPOLIS/MG - CEP: 35500-517', '13500.00', '0.00', '48', '695.08', 'concluido', '2026-10-30 19:43:54.572+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-30 19:43:52.610707+00', '2026-10-30 19:51:55.35136+00', 'contracts/424293b7-a3c9-4d20-83f5-fe587471f49a.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '695.08', 'ANUNCIO_INSTAGRAM', 'MKT', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'MKT', NULL, 'interna', '{}', '{}'),
+  ('79e678ab-f68f-44c6-ba06-ab77acd702f6', 'CTR-MW0QWLC6', '643979ee-90c4-4d64-a3ef-e6b35fe1e3de', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'REGINALDO ALVES DOS SANTOS', '68008139668', '(38) 98817-3616', 'alvesregi72@gmail.com', 'RUA JOSÉ DIVINO LOPES, 97 - SANTOS REIS, MONTES CLAROS/MG - CEP: 39401-212', '19990.00', '2500.00', '48', '799.85', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-03 13:50:36.166156+00', '2026-11-03 13:50:38.406043+00', 'contracts/79e678ab-f68f-44c6-ba06-ab77acd702f6.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '2500', '0', '0', NULL, '48', '799.85', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('a362c54e-2f5d-410f-93ac-001a00f9612b', 'CTR-MW11P21V', '74f635d2-d619-46f2-b721-0bd5a55ecdcc', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LUAN LINCOLN FERREIRA SANTOS', '70046486640', '', 'luanlncln@gmail.com', 'ALAMEDA BEIJA-FLOR, 538 - JARDIM PRIMAVERA, MONTES CLAROS/MG - CEP: 39404-161', '12990.00', '0.00', '48', '642.92', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-03 18:52:40.155293+00', '2026-11-03 18:52:42.623899+00', 'contracts/a362c54e-2f5d-410f-93ac-001a00f9612b.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes,emplacamento}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '642.92', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('82254f2c-ce3c-4677-bbcb-91473be1cb8a', 'CTR-MW1307M7', 'e0aaea3d-6dc6-4db6-b430-4095d83c951e', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MIRIAN DO CARMO COSTA PEREIRA', '01683856600', '(38) 99172-2119', '', 'RUA DOMINGOS GONÇALVES FREITAS, 422 - SANTA CECÍLIA, MONTES CLAROS/MG - CEP: 39404-508', '19000.00', '0.00', '48', '989.67', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-03 19:29:20.513593+00', '2026-11-03 19:29:23.251989+00', 'contracts/82254f2c-ce3c-4677-bbcb-91473be1cb8a.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '989.67', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('692ed81d-179c-4af2-a02c-021c9e3a159b', 'CTR-MW13WXWE', 'cdc323b9-6f33-4c22-b26d-2cff671d308c', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LARAH BEATRIZ DE OLIVEIRA SILVA', '18250244648', '', 'larahbeatrizofc@gmail.com', 'RUA DOM PEDRO II, 747 - CENTRO, MONTES CLAROS/MG - CEP: 39400-058', '15990.00', '0.00', '48', '823.71', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-03 19:54:47.701103+00', '2026-11-03 19:54:50.434662+00', 'contracts/692ed81d-179c-4af2-a02c-021c9e3a159b.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '823.71', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('c5c62166-4731-4067-af8c-d2dd5c4aa746', 'CTR-MVV7KP1H', '7e3e5cd4-2d50-49f1-a3c1-8e42af2ec875', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'CHRISTIANO XAVIER DE SOUZA', '08831762621', '(37) 99106-5321', 'christianoskilo@gmail.com', 'JOSE FRANCISCO DE ASSIS, 161 - CAPAO, NOVA SERANA/MG - CEP: 35519-000', '17000.00', '6800.00', '48', '652.69', 'concluido', '2026-11-04 14:29:44.638+00', 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-10-30 16:50:37.413645+00', '2026-11-04 14:29:45.606827+00', 'contracts/c5c62166-4731-4067-af8c-d2dd5c4aa746.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '6800', '0', NULL, '48', '652.69', 'ANUNCIO_INSTAGRAM', 'JOAO', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'JOAO', NULL, 'interna', '{}', '{}'),
+  ('55d57b30-0fb4-4a75-a6dd-1cdab654599d', 'CTR-MW2F0EKX', '8a2e16e7-b606-4a23-a89e-4f3775bea51d', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DIEGO CRISTIAN RIBEIRO', '06519747637', '(38) 99154-5493', 'diegocristianr@gmail.com', 'RUA ANTÔNIO AUGUSTO TUPYNAMBA, 258 - TODOS OS SANTOS, MONTES CLAROS/MG - CEP: 39400-510', '23500.00', '0.00', '1', '23500.00', 'pendente', NULL, 'Modelo: Contrato de Venda.  emplacamento de brinde', '2026-11-04 17:53:10.738684+00', '2026-11-04 17:53:13.6371+00', 'contracts/55d57b30-0fb4-4a75-a6dd-1cdab654599d.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', NULL, '{garantia,revisoes}', '{}', '1', 'avista', '23500', '0', '0', NULL, NULL, NULL, 'LOJA_PORTA', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('59e2e65e-76ec-4c38-aa2f-1509e481cc73', 'CTR-MW40GG7S', '9ee7c84f-fd55-4805-a129-d0aef5b5dd19', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'HEBERTON RODRIGUES PAMPLONA', '07744180607', '(38) 9911-2985', 'hebertonrp85@gmail.com', 'LAGOA SÃO LUIZ, 133 - CARMELO, MONTES CLAROS/MG - CEP: 39402-684', '18000.00', '909.00', '48', '779.90', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-05 20:41:17.581748+00', '2026-11-05 20:41:19.671307+00', 'contracts/59e2e65e-76ec-4c38-aa2f-1509e481cc73.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'SANTANDER', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '909', '1', '48', '779.9', 'LOJA_PASSAGEM', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('6ec29007-bbf1-41ca-b4e4-ac07426af49d', 'CTR-MW4W1QV4', 'f6aab255-75cf-47c9-91fd-27da6bad1f61', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'FLAVIA ALVES DOS SANTOS RODRIGUES ', '08960415650', '(38) 99743-7404', 'flaviaalvessantos509@gmail.com', 'RUA DOIS, 592 - SANTA CECÍLIA, MONTES CLAROS/MG - CEP: 39404-506', '14990.00', '0.00', '36', '771.48', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário. 500,00 desconto
+capacete de brinde', '2026-11-06 11:25:39.475405+00', '2026-11-06 11:25:41.817151+00', 'contracts/6ec29007-bbf1-41ca-b4e4-ac07426af49d.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '36', '771.48', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('4600bbdd-ed1e-4a90-888c-35c11c2a0196', 'CTR-MW5CGS8V', '100012a1-e433-42b7-8ea2-89f6cd9dab1c', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'EDINEIA DOS SANTOS REIS', '96383356534', '(37) 99867-1258', '', 'RUA SUÍÇA, 261 - PADRE EUSTÁQUIO, DIVINÓPOLIS/MG - CEP: 35500-558', '10990.00', '1000.00', '36', '581.57', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-06 19:05:14.422162+00', '2026-11-06 19:05:16.228125+00', 'contracts/4600bbdd-ed1e-4a90-888c-35c11c2a0196.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'MOTRIX', '{garantia,revisoes}', '{}', '1', 'financiamento', '1000', '0', '0', NULL, '36', '581.57', 'OUTRO', 'MEU CLIENTE', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('15569143-5603-4a4b-8fb4-2d41cf20b183', 'CTR-MW6C15AN', '6cafa0ca-b040-4574-8c15-61a5a29aed10', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'DIENE KELLY DOS SANTOS BARBOSA', '14675202683', '', 'madeinsitio267@gmail.com', 'PADRE MARTINS, 536 - SAGRADA FAMILIA, SÃO FRANCISCO/MG - CEP: 39300-000', '18727.01', '5500.00', '48', '794.70', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-07 11:40:52.439202+00', '2026-11-07 11:40:54.065053+00', 'contracts/15569143-5603-4a4b-8fb4-2d41cf20b183.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '4000', '1500', '0', NULL, '48', '794.7', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}'),
+  ('2ef760ae-2d5c-434e-8303-21f14f759e56', 'CTR-MW6HKDEC', 'aa0161be-2dcc-4b08-8538-d9d99c8df82e', '8235ab59-b28c-4732-980f-c902356054aa', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'EUSTANIA MONIQUE MARQUES', '08236576639', '(37) 9921-4712', '', 'UBERABA , 545 - CAPELINHA, CLÁUDIO/MG - CEP: 35530-000', '14990.00', '0.00', '48', '744.25', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-07 14:15:46.377267+00', '2026-11-07 14:15:48.70249+00', 'contracts/2ef760ae-2d5c-434e-8303-21f14f759e56.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'BANCO PAN', '{garantia,revisoes}', '{}', '1', 'financiamento', '0', '0', '0', NULL, '48', '744.25', 'ANUNCIO_INSTAGRAM', 'JOAO', 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'JOAO', NULL, 'interna', '{}', '{}'),
+  ('cc52ad7c-9172-4e0d-9f87-8745adeb9996', 'CTR-MW9DCHEO', '0c709913-8412-4ab6-9fc5-57bf29f56e05', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'LAURA SUELZ DIAS RUAS', '06757010666', '(38) 99856-6030', '', 'RUA ROSÁRIO CAMARA, 322 - VILLAGE DO LAGO I, MONTES CLAROS/MG - CEP: 39404-746', '10990.00', '4300.00', '48', '445.00', 'pendente', NULL, 'Modelo: Contrato de Venda. Financiamento bancário.', '2026-11-09 14:40:58.397686+00', '2026-11-09 14:41:01.831895+00', 'contracts/cc52ad7c-9172-4e0d-9f87-8745adeb9996.pdf', '8f7897d4-5400-4ee8-a5d3-1c21919d9368', 'venda', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'ALTIS', '{garantia,revisoes}', '{}', '1', 'financiamento', '4300', '0', '0', NULL, '48', '445', 'ANUNCIO_WHATSAPP', NULL, 'ok', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'interna', '{}', '{}');
+
+
+
+--
+-- Data for Name: custom_roles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.custom_roles (id, name, description, color, data_scope, system_key, base_role, is_active, created_by, created_at, updated_at) VALUES
+  ('bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'Gerente', 'Gestão completa da loja', 'primary', 'all', 'gerente', 'gerente', 't', NULL, '2026-09-28 00:31:46.354226+00', '2026-09-28 00:31:46.354226+00'),
+  ('d1b80739-020e-46f0-aeef-f3bb009b10d8', 'Vendedor', 'Vende o estoque da loja', 'neutral', 'own', 'vendedor', 'vendedor', 't', NULL, '2026-09-28 00:31:46.354226+00', '2026-09-28 00:31:46.354226+00'),
+  ('2a2198df-78d5-40f0-b349-2ed83a7f5818', 'Vendedor +', 'Vende e cadastra veículos', 'primary', 'own', 'vendedor_plus', 'vendedor_plus', 't', NULL, '2026-09-28 00:31:46.354226+00', '2026-09-28 00:31:46.354226+00'),
+  ('3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'Vendedor ++', 'Vendas internas e externas', 'warning', 'own', 'vendedor_externo', 'vendedor_externo', 't', NULL, '2026-09-28 00:31:46.354226+00', '2026-09-28 00:31:46.354226+00'),
+  ('c070a737-3982-4df4-bcaf-5bf458f60510', 'Revendedor', 'Parceiro externo com estoque próprio', 'warning', 'own', 'revendedor', 'revendedor', 't', NULL, '2026-09-28 00:31:46.354226+00', '2026-09-28 00:31:46.354226+00'),
+  ('540fad35-ac0b-46f3-bdcc-ca3ef9ab3cc0', 'Visualizador', 'Apenas consulta', 'neutral', 'store', 'visualizador', 'visualizador', 't', NULL, '2026-09-28 00:31:46.354226+00', '2026-09-28 00:31:46.354226+00');
+
+
+
+--
+-- Data for Name: employees; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.employees (id, profile_id, store_id, full_name, cpf, role, "position", base_salary, commission_rate, hire_date, phone, email, pix_key, bank_info, is_active, notes, created_by, created_at, updated_at, commission_tiers, commission_type, manager_commission_rate, transport_allowance, meal_allowance, other_allowance, salary_additions) VALUES
+  ('dd9dc8d4-0106-438b-81f7-9bc0733cfdcb', NULL, 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'VINICIOS HENRIQUE SILVESTE OLIVEIRA', NULL, 'mecanico', 'AUXILIAR DE MECANICO', '1621', '0', '2026-10-22', NULL, NULL, NULL, NULL, 't', 'Cargo e salário conforme recibo de agosto/2026 (30D). Recebe montagens.', NULL, '2026-09-15 15:58:10.520958+00', '2026-10-22 02:59:46.084794+00', '[]', 'tiered', '0', '0', '0', '0', '[{"id": "__folha_meta__", "meta": {"optanteVT": 0, "dependentes": 0, "__folha_meta": true, "calcularFGTS": 0, "cargaHoraria": 220, "departamento": "MECANICA", "tipoContrato": "CLT", "cnpjPrestador": "", "descontarINSS": 0, "descontarIRRF": 0, "pagarDSRComissao": 0, "grauInsalubridade": "NENHUM", "temPericulosidade": 0, "descontoPlanoSaude": 0, "custoPassagemMensal": 0, "descontoValeRefeicao": 0, "razaoSocialPrestador": "", "modeloComissaoVendedor": "PADRAO"}, "name": "__folha_meta__", "type": "fixed", "value": 0}]'),
+  ('845e16ba-3e29-4306-ab23-a8827c66c499', NULL, 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'DANIEL ALVES DE MOURA', '12882009607', 'vendedor', 'VENDEDOR', '2050', '0', '2026-08-08', NULL, NULL, NULL, NULL, 't', 'Cargo conforme recibo de agosto/2026 (23D trabalhados). Salário base a confirmar.', NULL, '2026-09-15 15:58:10.520958+00', '2026-10-22 02:58:30.12821+00', '[{"max_qty": 5, "min_qty": 1, "value_per_sale": 50}, {"max_qty": 10, "min_qty": 6, "value_per_sale": 100}, {"max_qty": 15, "min_qty": 11, "value_per_sale": 150}, {"max_qty": 20, "min_qty": 16, "value_per_sale": 200}, {"max_qty": 25, "min_qty": 21, "value_per_sale": 250}, {"max_qty": 30, "min_qty": 26, "value_per_sale": 300}]', 'tiered', '0', '0', '0', '0', '[{"id": "__folha_meta__", "meta": {"optanteVT": 0, "dependentes": 0, "__folha_meta": true, "calcularFGTS": 0, "cargaHoraria": 220, "departamento": "VENDAS", "tipoContrato": "CLT", "cnpjPrestador": "", "descontarINSS": 0, "descontarIRRF": 0, "pagarDSRComissao": 0, "grauInsalubridade": "NENHUM", "temPericulosidade": 0, "descontoPlanoSaude": 0, "custoPassagemMensal": 0, "descontoValeRefeicao": 0, "razaoSocialPrestador": "", "modeloComissaoVendedor": "PADRAO"}, "name": "__folha_meta__", "type": "fixed", "value": 0}]'),
+  ('0ce9be1d-ce73-498d-8c1a-87bb2eaac3da', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'NATAN', NULL, 'vendedor', 'VENDEDOR', '1621', '0', NULL, NULL, NULL, NULL, NULL, 't', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-06-01 20:00:10.170067+00', '2026-06-01 20:02:21.528431+00', '[{"max_qty": 5, "min_qty": 1, "value_per_sale": 30}, {"max_qty": 10, "min_qty": 5, "value_per_sale": 60}, {"max_qty": 15, "min_qty": 10, "value_per_sale": 90}, {"max_qty": 20, "min_qty": 15, "value_per_sale": 120}, {"max_qty": 25, "min_qty": 20, "value_per_sale": 150}, {"max_qty": 30, "min_qty": 25, "value_per_sale": 180}]', 'percentage', '0', '213', '150', '0', '[]'),
+  ('8ec22a0e-226c-488c-88b8-e8cf01e37d7a', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'JOAO PEDRO', NULL, 'mecanico', 'AUXILIAR DE MECANICO', '1621', '0', NULL, NULL, NULL, NULL, NULL, 't', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-06-01 20:08:43.050271+00', '2026-06-01 20:08:43.050271+00', '[]', 'percentage', '0', '0', '0', '0', '[]'),
+  ('d8c5b5dd-6a88-4c03-95ee-b12cbb432e21', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'HERIQUE RENAN', NULL, 'mecanico', 'AUXILIAR DE MECANICO', '0', '0', NULL, NULL, NULL, NULL, NULL, 't', 'Cargo conforme recibo de agosto/2026 (3D trabalhados). Salário base a confirmar.', NULL, '2026-09-15 15:58:10.520958+00', '2026-09-15 15:58:10.520958+00', '[]', 'percentage', '0', '0', '0', '0', '[]'),
+  ('e9d8d277-3698-4a6e-bed2-cbba3823bc1d', NULL, 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'BRENO LAURENTINO TAVARES', '11616098490', 'vendedor', 'VENDEDOR', '3000', '0', '2026-02-01', '(38) 99932-3791', 'laurentinobreno08@gmail.com', '11616098490', NULL, 't', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-05-15 11:08:31.621152+00', '2026-10-22 02:59:00.820448+00', '[]', 'tiered', '0', '0', '0', '0', '[{"id": "1f647b01-160f-4ef9-b271-0c016324d037", "name": "AJUDA DE CUSTOS", "type": "fixed", "value": 300, "is_discount": false}, {"id": "__folha_meta__", "meta": {"optanteVT": 0, "dependentes": 0, "__folha_meta": true, "calcularFGTS": 0, "cargaHoraria": 220, "departamento": "VENDAS", "tipoContrato": "CLT", "cnpjPrestador": "", "descontarINSS": 0, "descontarIRRF": 0, "pagarDSRComissao": 0, "grauInsalubridade": "NENHUM", "temPericulosidade": 0, "descontoPlanoSaude": 0, "custoPassagemMensal": 0, "descontoValeRefeicao": 0, "razaoSocialPrestador": "", "modeloComissaoVendedor": "PADRAO"}, "name": "__folha_meta__", "type": "fixed", "value": 0}]'),
+  ('286e1fbc-57ef-4e0f-aa3e-b56880f52751', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'MARIANA SABINO', NULL, 'vendedor', 'VENDEDORA', '2000', '0', NULL, NULL, NULL, NULL, NULL, 't', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-05-29 01:14:54.756795+00', '2026-09-15 15:58:10.520958+00', '[{"max_qty": 5, "min_qty": 1, "value_per_sale": 50}, {"max_qty": 10, "min_qty": 5, "value_per_sale": 100}, {"max_qty": 15, "min_qty": 10, "value_per_sale": 150}, {"max_qty": 20, "min_qty": 15, "value_per_sale": 200}, {"max_qty": 25, "min_qty": 20, "value_per_sale": 250}, {"max_qty": 30, "min_qty": 25, "value_per_sale": 300}]', 'tiered', '0', '0', '0', '0', '[]'),
+  ('1b3f9d1d-86b4-4211-8f72-aee8e662beb3', NULL, 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'LILIAN ROSSIANE MACHADO AMORIM', NULL, 'vendedor', 'VENDEDOR', '2050', '0', '2026-10-22', NULL, NULL, NULL, NULL, 't', 'Cargo conforme recibo de agosto/2026 (19D). Recebe comissões e comissão consórcio. Salário base a confirmar.', NULL, '2026-09-15 15:58:10.520958+00', '2026-10-22 02:59:30.097236+00', '[{"max_qty": 5, "min_qty": 1, "value_per_sale": 50}, {"max_qty": 10, "min_qty": 6, "value_per_sale": 100}, {"max_qty": 15, "min_qty": 11, "value_per_sale": 150}, {"max_qty": 20, "min_qty": 16, "value_per_sale": 200}, {"max_qty": 25, "min_qty": 21, "value_per_sale": 250}, {"max_qty": 30, "min_qty": 26, "value_per_sale": 300}]', 'tiered', '0', '0', '0', '0', '[{"id": "__folha_meta__", "meta": {"optanteVT": 0, "dependentes": 0, "__folha_meta": true, "calcularFGTS": 0, "cargaHoraria": 220, "departamento": "VENDAS", "tipoContrato": "CLT", "cnpjPrestador": "", "descontarINSS": 0, "descontarIRRF": 0, "pagarDSRComissao": 0, "grauInsalubridade": "NENHUM", "temPericulosidade": 0, "descontoPlanoSaude": 0, "custoPassagemMensal": 0, "descontoValeRefeicao": 0, "razaoSocialPrestador": "", "modeloComissaoVendedor": "PADRAO"}, "name": "__folha_meta__", "type": "fixed", "value": 0}]');
+
+
+
+--
+-- Data for Name: eula_acceptances; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.eula_acceptances (id, user_id, version, accepted_at, accepted_ip, user_agent, full_name_typed, created_at) VALUES
+  ('3936d218-cd45-4c29-8690-b760553c0912', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '1.0', '2026-08-03 11:00:54.668517+00', NULL, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36', 'Breno', '2026-08-03 11:00:54.668517+00'),
+  ('a5d8bd3f-40ac-49b4-9847-841b5d05cb95', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', '1.0', '2026-08-03 16:11:39.272329+00', NULL, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36', 'Mariana', '2026-08-03 16:11:39.272329+00'),
+  ('4dbb77dd-9430-4eb9-8c27-ef0127878c07', '6a031ece-6175-4965-b0a9-51e7d330d58f', '1.0', '2026-08-08 14:29:08.266264+00', NULL, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', 'Natan', '2026-08-08 14:29:08.266264+00'),
+  ('006bbde9-136b-497a-a558-5bbe388b8312', '08581b57-bbaf-4147-a92c-83aab9a80240', '1.0', '2026-08-11 19:53:32.047424+00', NULL, 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36', 'Daniel', '2026-08-11 19:53:32.047424+00'),
+  ('42e81e11-715b-48b1-a46d-8cbc821f0cc2', '71622fd8-0930-4c98-bec2-17f53d92ca75', '1.0', '2026-08-22 13:20:03.44949+00', NULL, 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36', 'Lilian', '2026-08-22 13:20:03.44949+00'),
+  ('b4a75b5a-f3e1-4e70-8ba4-07645c40af0a', '4bfa9ccd-7131-449b-898b-a355878c64ea', '1.0', '2026-09-18 14:01:28.844363+00', NULL, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0', 'Geibriel', '2026-09-18 14:01:28.844363+00');
+
+
+
+--
+-- Data for Name: financing_banks; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.financing_banks (id, name, is_active, sort_order, created_by, created_at, updated_at, lien_holder) VALUES
+  ('0586e87e-158c-4420-a460-beb3e2ce8e3e', 'SANTANDER', 't', '2', NULL, '2026-08-12 18:24:28.492971+00', '2026-08-12 18:24:28.492971+00', NULL),
+  ('6689b577-4639-4cdf-b0cb-8785cafdafd7', 'BV FINANCEIRA', 't', '3', NULL, '2026-08-12 18:24:28.492971+00', '2026-08-12 18:24:28.492971+00', NULL),
+  ('9a57064a-6f77-4ac4-bf7b-910bd34d1813', 'BRADESCO', 't', '4', NULL, '2026-08-12 18:24:28.492971+00', '2026-08-12 18:24:28.492971+00', NULL),
+  ('caa19383-261f-4ea2-a949-359ced0ceb45', 'OMNI BANCO', 't', '5', NULL, '2026-08-12 18:24:28.492971+00', '2026-08-12 18:24:28.492971+00', NULL),
+  ('b0560163-cbb7-4db0-9ce6-5e6216d6fa61', 'BANCO PAN', 't', '6', NULL, '2026-08-12 18:24:28.492971+00', '2026-08-12 18:24:28.492971+00', NULL),
+  ('879f30c8-4ca7-4596-b088-d9c72218e4bf', 'BANCO ITAÚ', 'f', '1', NULL, '2026-08-12 18:24:28.492971+00', '2026-08-12 19:06:10.639886+00', NULL),
+  ('e9ad5f52-249e-40e1-b8a1-d8f7fa41fc0f', 'SAFRA', 'f', '7', NULL, '2026-08-12 18:24:28.492971+00', '2026-08-12 19:06:20.476201+00', NULL),
+  ('4e61d29b-42cd-4b70-a24b-c05b3b06080c', 'CAIXA ECONÔMICA', 'f', '8', NULL, '2026-08-12 18:24:28.492971+00', '2026-08-12 19:06:21.837001+00', NULL),
+  ('d56576f8-2eb9-42d8-8f4f-2c967bd9d75c', 'FONTECRED', 't', '9', NULL, '2026-09-08 14:26:38.819843+00', '2026-09-08 14:26:38.819843+00', NULL),
+  ('ee7708b5-3198-4089-90ad-c91fc02a167d', 'C6 BANK', 't', '11', NULL, '2026-09-08 14:27:23.133446+00', '2026-09-08 14:27:23.133446+00', NULL),
+  ('093e4434-b644-4af0-bfea-5206aa6b8456', 'ALTIS', 't', '12', NULL, '2026-09-19 14:10:53.861332+00', '2026-09-19 14:10:53.861332+00', NULL),
+  ('2d83a996-e884-410f-9f7f-b53a3ae05a7a', 'MOTRIX', 't', '10', NULL, '2026-09-08 14:26:54.750265+00', '2026-10-22 02:43:58.811107+00', 'QI TECH SOCIEDADE DE CREDITO DIRETO S.A');
+
+
+
+--
+-- Data for Name: financing_simulations; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: invoices; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: payroll_batches; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.payroll_batches (id, month, year, status, total_bruto, total_liquido, total_encargos, employee_count, closed_at, closed_by, created_by, created_at, updated_at) VALUES
+  ('d69e90bb-4351-44a9-aa8b-f8e01104a813', '10', '2026', 'rascunho', '10226.00', '9422.17', '1569.04', '8', NULL, NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-10-02 11:26:59.27629+00', '2026-10-02 11:27:01.164053+00');
+
+
+
+--
+-- Data for Name: payroll_settings; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: payslips; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.payslips (id, payslip_number, employee_id, store_id, reference_month, reference_year, base_salary, commission_amount, commission_sales_total, bonus, overtime, inss_discount, irrf_discount, other_discounts, net_total, payment_date, payment_method, status, notes, created_by, created_at, updated_at, transport_allowance, meal_allowance, other_allowance, manager_commission, additions, batch_id, breakdown, sent_email_at, sent_whatsapp_at) VALUES
+  ('783b09cd-cac9-45d9-83f7-a6cc5da20833', 'CC-MPU75QHB', 'e9d8d277-3698-4a6e-bed2-cbba3823bc1d', 'e8254a81-d669-464b-9806-457ba25ce7f0', '5', '2026', '3000', '0', '0', '0', '0', '0', '0', '0', '3300', NULL, NULL, 'pago', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-05-31 19:52:59.476888+00', '2026-05-31 19:52:59.476888+00', '0', '0', '0', '0', '[{"id": "1f647b01-160f-4ef9-b271-0c016324d037", "name": "AJUDA DE CUSTOS", "type": "fixed", "amount": 300, "is_discount": false}]', NULL, '{}', NULL, NULL),
+  ('a732ff75-c004-4f51-8319-8b1be1cd4bb8', 'CC-MUQW74OI', '845e16ba-3e29-4306-ab23-a8827c66c499', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', '10', '2026', '2000', '600', '0', '0', '0', '0', '0', '0', '2600', '2026-10-02', 'PIX', 'pendente', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', '2026-10-02 11:41:22.301553+00', '2026-10-02 11:41:22.301553+00', '0', '0', '0', '0', '[]', NULL, '{}', NULL, NULL);
+
+
+
+--
+-- Data for Name: profiles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.profiles (id, full_name, email, phone, avatar_url, created_at, updated_at, must_change_password) VALUES
+  ('54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'Breno', 'admbreno@index.com', NULL, NULL, '2025-12-18 22:28:11.168211+00', '2026-03-02 23:51:26.443683+00', 'f'),
+  ('61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'Mariana', 'shineraymoc@user.com', NULL, NULL, '2026-03-25 13:49:15.974331+00', '2026-03-30 00:35:04.775201+00', 'f'),
+  ('63f4c11a-7675-4209-bcc5-770bd7e514a3', 'João', 'shineraymocj@gestor.com', NULL, NULL, '2026-03-30 00:39:35.379208+00', '2026-03-30 00:39:35.379208+00', 'f'),
+  ('6a031ece-6175-4965-b0a9-51e7d330d58f', 'Natan', 'shineraymocn@user.com', NULL, NULL, '2026-05-26 20:35:17.384091+00', '2026-05-26 20:35:17.384091+00', 'f'),
+  ('308366d4-3b96-47a0-9658-d53ec88c92b0', 'Elias', 'shineraydive@user.com', NULL, NULL, '2026-07-16 14:28:45.827054+00', '2026-08-10 13:56:25.741531+00', 'f'),
+  ('71622fd8-0930-4c98-bec2-17f53d92ca75', 'Lilian', 'shineraydivl@user.com', NULL, NULL, '2026-08-20 11:25:25.566607+00', '2026-08-20 11:25:25.566607+00', 'f'),
+  ('4bfa9ccd-7131-449b-898b-a355878c64ea', 'Geibriel', 'shineraydivg@user.com', NULL, NULL, '2026-09-15 12:38:17.120709+00', '2026-09-30 19:49:59.311792+00', 'f');
+
+
+
+--
+-- Data for Name: reseller_consignment_contracts; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: resellers; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.resellers (id, user_id, store_id, full_name, cpf, phone, email, commission_rate, is_active, created_at, updated_at, partner_type) VALUES
+  ('af9b80b2-01b4-4a94-bf3c-3b9dd19f2a02', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'AVENIDA VEICULOS', NULL, '38998681285', 'CONTATO@LOJA.COM', '0.00', 'f', '2025-12-19 23:12:53.516337+00', '2026-03-27 19:25:24.634117+00', 'parceiro_externo'),
+  ('bb8faec1-fdd5-4aac-8836-dfe767c9c1fb', NULL, 'e8254a81-d669-464b-9806-457ba25ce7f0', 'RIO PARDO', NULL, '38999999999', 'CONTATO@LOJA.COM', '0.00', 'f', '2026-01-24 13:56:36.385488+00', '2026-03-27 19:25:50.151385+00', 'parceiro_externo'),
+  ('bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Mariana', NULL, NULL, 'shineraymoc@user.com', '0.00', 't', '2026-03-30 00:34:46.759689+00', '2026-08-05 13:15:45.410973+00', 'interno'),
+  ('231d2314-873e-4d15-a577-3a994e65d1d8', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Natan', NULL, NULL, 'shineraymocn@user.com', '0.00', 't', '2026-05-26 20:35:17.79984+00', '2026-08-05 13:15:45.410973+00', 'interno'),
+  ('8235ab59-b28c-4732-980f-c902356054aa', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'Lilian', NULL, NULL, 'shineraydivl@user.com', '0.00', 't', '2026-08-20 11:25:26.089198+00', '2026-08-20 11:25:26.089198+00', 'parceiro_externo'),
+  ('9b10d862-26b6-417e-b608-ce56951cd0f0', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'Geibriel', NULL, NULL, 'shineraydivg@user.com', '0.00', 't', '2026-09-16 11:25:44.983915+00', '2026-09-16 11:25:44.983915+00', 'parceiro_externo'),
+  ('c0e6fd9a-2828-465c-a5f9-2347680a29bf', '308366d4-3b96-47a0-9658-d53ec88c92b0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'Elias', NULL, NULL, 'shineraydive@user.com', '0.00', 'f', '2026-07-16 14:28:46.970445+00', '2026-09-29 18:57:13.467742+00', 'interno'),
+  ('52fcf03e-7207-46d9-adf1-95532ba22706', '08581b57-bbaf-4147-a92c-83aab9a80240', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'Daniel', NULL, NULL, 'shineraydivd@user.com', '0.00', 'f', '2026-08-10 13:56:57.876705+00', '2026-10-29 13:46:03.648176+00', 'parceiro_externo');
+
+
+
+--
+-- Data for Name: role_permissions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.role_permissions (id, role_id, permission, created_at) VALUES
+  ('a64378f8-a994-4762-81b1-4f439ce6c0b5', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.dashboard', '2026-09-28 00:31:46.354226+00'),
+  ('52c1ef65-b34e-4324-87ba-9c3243622a16', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.vehicles', '2026-09-28 00:31:46.354226+00'),
+  ('3125d562-5d15-4f96-b5a5-4cc4fd69f738', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.sales', '2026-09-28 00:31:46.354226+00'),
+  ('2c70dc20-936e-4798-ba4d-0bfef4899fe6', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.external_sales', '2026-09-28 00:31:46.354226+00'),
+  ('df4375f4-576a-411f-9f65-82f6704ceb5f', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.financing', '2026-09-28 00:31:46.354226+00'),
+  ('7c3e281b-72ad-48eb-9c06-e4dfbd13e9ee', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.contracts', '2026-09-28 00:31:46.354226+00'),
+  ('2788bd53-6a7b-4d60-8214-ad36a3021429', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.consignments', '2026-09-28 00:31:46.354226+00'),
+  ('ca0edf13-e717-412c-9add-45a0b89108d9', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.moto_invoices', '2026-09-28 00:31:46.354226+00'),
+  ('2cbb0a85-5968-4643-9f21-691a8334f367', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.organization', '2026-09-28 00:31:46.354226+00'),
+  ('98e26a0c-3737-4e3c-9a79-fad9e10ef80a', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.payroll', '2026-09-28 00:31:46.354226+00'),
+  ('491aeed2-5548-4de2-8a94-f8b0781ae952', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.ads', '2026-09-28 00:31:46.354226+00'),
+  ('4cc888f9-c2b3-48aa-b1a6-b2046f7ba326', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.reports', '2026-09-28 00:31:46.354226+00'),
+  ('0b485a21-9908-41ff-a725-78f5d1fe9b77', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'page.settings', '2026-09-28 00:31:46.354226+00'),
+  ('5b9a8093-b233-4743-bb7b-43549a519a7b', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'sales.create', '2026-09-28 00:31:46.354226+00'),
+  ('ea2f1b00-477c-46ae-bcf9-b57f44bc9238', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'sales.edit', '2026-09-28 00:31:46.354226+00'),
+  ('b3034e72-9be1-4151-a7de-e96d4c61b519', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'sales.delete', '2026-09-28 00:31:46.354226+00'),
+  ('9903713c-ca01-4ce1-8861-925b4826e2a8', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'vehicles.create', '2026-09-28 00:31:46.354226+00'),
+  ('1e68029e-e73d-454e-bed2-6be108e77b19', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'vehicles.edit', '2026-09-28 00:31:46.354226+00'),
+  ('3c25147d-264d-40a9-964f-a7cbf73e4d89', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'vehicles.delete', '2026-09-28 00:31:46.354226+00'),
+  ('b8048a24-5a9f-4270-89bb-9811aa4a75b1', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'vehicles.unlock_all', '2026-09-28 00:31:46.354226+00'),
+  ('e92126fb-e88b-4fe3-801e-312fd042f9e0', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'finance.view_margins', '2026-09-28 00:31:46.354226+00'),
+  ('3e3fa219-3681-4086-9365-a837ea28fe51', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'data.export', '2026-09-28 00:31:46.354226+00'),
+  ('56f3ea12-acb6-4fae-b0d9-d0b935840516', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'contracts.manage', '2026-09-28 00:31:46.354226+00'),
+  ('96804775-d545-4c6f-8efc-e41acbe12f2e', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'payroll.manage', '2026-09-28 00:31:46.354226+00'),
+  ('d1df356c-0272-4260-8c97-725284e101c7', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af', 'access.elevated', '2026-09-28 00:31:46.354226+00'),
+  ('90687819-a73f-4d71-86b2-51b964556f10', '2a2198df-78d5-40f0-b349-2ed83a7f5818', 'page.dashboard', '2026-09-28 00:31:46.354226+00'),
+  ('5c41adc8-a24f-4807-bb8b-2a8098f7b1b0', '2a2198df-78d5-40f0-b349-2ed83a7f5818', 'page.vehicles', '2026-09-28 00:31:46.354226+00'),
+  ('e90f6be7-e110-4dc5-a776-dc8c66f1fe45', '2a2198df-78d5-40f0-b349-2ed83a7f5818', 'page.sales', '2026-09-28 00:31:46.354226+00'),
+  ('5a0bbed0-2066-4f24-be79-f73db95cbf8e', '2a2198df-78d5-40f0-b349-2ed83a7f5818', 'page.financing', '2026-09-28 00:31:46.354226+00'),
+  ('da5ab40e-ae7a-4ef6-8642-bc84fe4b66cf', '2a2198df-78d5-40f0-b349-2ed83a7f5818', 'page.settings', '2026-09-28 00:31:46.354226+00'),
+  ('73df663a-65c5-415d-b23f-a7680d0c2851', '2a2198df-78d5-40f0-b349-2ed83a7f5818', 'sales.create', '2026-09-28 00:31:46.354226+00'),
+  ('a28c23a4-6207-4856-ae92-402398e9acb6', '2a2198df-78d5-40f0-b349-2ed83a7f5818', 'vehicles.create', '2026-09-28 00:31:46.354226+00'),
+  ('07c906ae-0f16-403d-8ec6-5e0736030589', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'page.dashboard', '2026-09-28 00:31:46.354226+00'),
+  ('c8684017-4eb5-412a-85d9-3f3525468dbd', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'page.vehicles', '2026-09-28 00:31:46.354226+00'),
+  ('f13d0ee6-889f-4188-8c7d-6bb54edc9dca', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'page.sales', '2026-09-28 00:31:46.354226+00'),
+  ('235a7853-0eac-4b30-980b-f589825cebd1', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'page.external_sales', '2026-09-28 00:31:46.354226+00'),
+  ('65007ba6-4864-473c-bf7d-431567f66dfe', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'page.financing', '2026-09-28 00:31:46.354226+00'),
+  ('ddd61395-72b8-42f7-9747-fcb6793044a2', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'page.settings', '2026-09-28 00:31:46.354226+00'),
+  ('87be7016-eded-4ee9-8339-6a9c397c3be3', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'sales.create', '2026-09-28 00:31:46.354226+00'),
+  ('faa75469-aba1-4c56-9293-6768e806cf49', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'vehicles.create', '2026-09-28 00:31:46.354226+00'),
+  ('a0d3d65c-7d97-4942-bf8e-47d84725454e', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27', 'vehicles.unlock_year', '2026-09-28 00:31:46.354226+00'),
+  ('a27e55c6-222b-4375-a307-78820f002e38', 'c070a737-3982-4df4-bcaf-5bf458f60510', 'page.dashboard', '2026-09-28 00:31:46.354226+00'),
+  ('2148e032-f3a2-431e-ba9a-98a9f5693f22', 'c070a737-3982-4df4-bcaf-5bf458f60510', 'page.vehicles', '2026-09-28 00:31:46.354226+00'),
+  ('543229fa-37b5-45ab-8785-c61517ab0590', 'c070a737-3982-4df4-bcaf-5bf458f60510', 'page.settings', '2026-09-28 00:31:46.354226+00'),
+  ('68854b96-50db-4b7f-95b1-60c0df146e14', '540fad35-ac0b-46f3-bdcc-ca3ef9ab3cc0', 'page.dashboard', '2026-09-28 00:31:46.354226+00'),
+  ('c40b14d2-3baf-46f7-875f-adc316f89894', '540fad35-ac0b-46f3-bdcc-ca3ef9ab3cc0', 'page.vehicles', '2026-09-28 00:31:46.354226+00'),
+  ('ee909830-6875-46c4-9df9-c34b14418559', '540fad35-ac0b-46f3-bdcc-ca3ef9ab3cc0', 'page.settings', '2026-09-28 00:31:46.354226+00'),
+  ('ef70e971-1594-42ac-a0ba-0b54cbb4c6af', '2a2198df-78d5-40f0-b349-2ed83a7f5818', 'sales.edit', '2026-10-06 14:40:26.54248+00'),
+  ('494ff87a-8268-46fe-9438-ee51fb1c57f9', '2a2198df-78d5-40f0-b349-2ed83a7f5818', 'sales.delete', '2026-10-06 14:40:26.54248+00'),
+  ('f3431305-8491-46e4-9b2d-7ca68a1ed07e', 'd1b80739-020e-46f0-aeef-f3bb009b10d8', 'page.dashboard', '2026-10-07 01:43:19.208874+00');
+
+INSERT INTO public.role_permissions (id, role_id, permission, created_at) VALUES
+  ('1f844bd4-4aac-452b-a74c-4ff0e8635482', 'd1b80739-020e-46f0-aeef-f3bb009b10d8', 'page.vehicles', '2026-10-07 01:43:19.208874+00'),
+  ('162db371-d8e8-4612-8ed3-0410f425c4cd', 'd1b80739-020e-46f0-aeef-f3bb009b10d8', 'page.sales', '2026-10-07 01:43:19.208874+00'),
+  ('a517e997-e054-45e4-b42c-dae246ea5883', 'd1b80739-020e-46f0-aeef-f3bb009b10d8', 'page.settings', '2026-10-07 01:43:19.208874+00'),
+  ('1c3ec8d9-9d21-4849-8f2c-3e0431fc87ec', 'd1b80739-020e-46f0-aeef-f3bb009b10d8', 'sales.create', '2026-10-07 01:43:19.208874+00'),
+  ('3d4f63fa-089c-44e3-85c2-f95909829211', 'd1b80739-020e-46f0-aeef-f3bb009b10d8', 'sales.edit', '2026-10-07 01:43:19.208874+00'),
+  ('329a2d2f-73c3-4961-844a-b52248f59515', 'd1b80739-020e-46f0-aeef-f3bb009b10d8', 'vehicles.create', '2026-10-07 01:43:19.208874+00');
+
+
+
+--
+-- Data for Name: sales_targets; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: stock_sync_config; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.stock_sync_config (id, spreadsheet_id, sheet_name, enabled, function_url, function_token, last_pushed_at, last_pulled_at, last_error, created_at, updated_at) VALUES
+  ('42fbf4f6-3df9-4dc0-830a-a47495801456', '1CxrPZ7dZwhAbGTrSxGXF89oNAg8fKN4BoPvWO8bq1CA', 'Estoque', 't', 'https://xktihtajunjmzbltqmrz.supabase.co/functions/v1/sync-stock-sheet', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrdGlodGFqdW5qbXpibHRxbXJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwNzU5MTgsImV4cCI6MjA4MTY1MTkxOH0.7E-hxdRSVrOlkYf2HSH2Sm7zCiqetk7OC8LSdTveXr4', '2026-11-11 11:45:12.711+00', '2026-06-22 15:00:28.876+00', NULL, '2026-06-19 20:18:50.680038+00', '2026-11-11 11:45:13.179517+00');
+
+
+
+--
+-- Data for Name: stock_transfers; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: store_ads; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: stores; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.stores (id, name, address, city, state, phone, email, manager_id, is_active, created_at, updated_at, cnpj, instagram_handle) VALUES
+  ('e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS', 'AV. JOAO XXIII, Nº 990', 'MONTES CLAROS', 'MG', '(38) 99938-1522', 'ADMBRENO@INDEX.COM', NULL, 't', '2025-12-19 03:10:45.910097+00', '2026-07-16 14:35:25.209591+00', NULL, NULL),
+  ('ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS', 'RUA ESPIRITO SANTOS 307, VIA BELO HORIZONTE', 'DIVINOPOLIS', 'MG', '(37) 99843-9319', 'shineraydivinopolisoficial@gmail.com', NULL, 't', '2026-07-16 14:37:49.167068+00', '2026-07-16 14:38:01.353737+00', NULL, NULL);
+
+
+
+--
+-- Data for Name: user_roles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.user_roles (id, user_id, role, created_at, custom_role_id) VALUES
+  ('908f210e-eb09-467f-af93-0fd78b91234c', '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'admin', '2026-03-02 23:50:34.140119+00', NULL),
+  ('bf24af78-c8e2-418e-b5bd-84a46240c9d2', '63f4c11a-7675-4209-bcc5-770bd7e514a3', 'gerente', '2026-03-30 00:39:35.608569+00', 'bfa574f5-ff8e-4e55-a2b5-6630d732c0af'),
+  ('83e06af2-3408-4c32-8278-dde9c8df486c', '6a031ece-6175-4965-b0a9-51e7d330d58f', 'vendedor', '2026-05-26 20:35:17.606604+00', 'd1b80739-020e-46f0-aeef-f3bb009b10d8'),
+  ('9adf8ab7-9e68-4f07-9eb4-6cd4659af57b', '308366d4-3b96-47a0-9658-d53ec88c92b0', 'vendedor', '2026-07-16 14:28:46.416354+00', 'd1b80739-020e-46f0-aeef-f3bb009b10d8'),
+  ('a2a82af2-6342-497a-bb92-d34773cd221e', '71622fd8-0930-4c98-bec2-17f53d92ca75', 'vendedor', '2026-08-20 11:25:25.825607+00', 'd1b80739-020e-46f0-aeef-f3bb009b10d8'),
+  ('61c7c7ba-f328-44d4-8fad-acfc1941ed3c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'vendedor_plus', '2026-03-25 13:51:00.499864+00', '2a2198df-78d5-40f0-b349-2ed83a7f5818'),
+  ('28fcf34b-f3cf-43f0-adda-924802704bd3', '4bfa9ccd-7131-449b-898b-a355878c64ea', 'vendedor_externo', '2026-09-15 12:38:17.369178+00', '3ffe1ff9-0457-4247-b8ad-d70f0ee26d27');
+
+
+
+--
+-- Data for Name: vehicle_colors; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.vehicle_colors (id, name, hex, vehicle_model_id, is_active, created_by, created_at, updated_at, hex_secondary, vehicle_model_ids, model_scope) VALUES
+  ('6fde5292-4526-4b8c-bfcf-f924803b1664', 'B/MARROM', '#ffffff', NULL, 't', NULL, '2026-09-17 12:55:00.169345+00', '2026-09-17 12:55:00.169345+00', '#754e2f', '{5f6d38aa-1d10-45b5-bb8b-c73f6d733290,7be7a067-2723-4a72-b481-0366d6d783ef,66fb9c09-7674-4a61-8a22-4c10f0ea9186,e54fe8cb-e277-4909-b71c-6437ba716813,da94a733-bf40-488e-95ba-cf47042ed922}', 'apenas'),
+  ('e33d7a12-4650-4e80-8acf-e52cb9c241a5', 'P/MARROM', '#000000', NULL, 't', NULL, '2026-09-17 12:55:42.481676+00', '2026-09-17 12:55:49.186813+00', '#7d5836', '{5f6d38aa-1d10-45b5-bb8b-c73f6d733290,7be7a067-2723-4a72-b481-0366d6d783ef,66fb9c09-7674-4a61-8a22-4c10f0ea9186,e54fe8cb-e277-4909-b71c-6437ba716813,da94a733-bf40-488e-95ba-cf47042ed922}', 'apenas'),
+  ('d3d3ba05-15bf-4b26-a52f-151e2ba60175', 'B/VINHO', '#ffffff', NULL, 't', NULL, '2026-09-17 12:56:23.855539+00', '2026-09-17 12:56:23.855539+00', '#972060', '{7be7a067-2723-4a72-b481-0366d6d783ef,5f6d38aa-1d10-45b5-bb8b-c73f6d733290,66fb9c09-7674-4a61-8a22-4c10f0ea9186,e54fe8cb-e277-4909-b71c-6437ba716813,da94a733-bf40-488e-95ba-cf47042ed922}', 'apenas'),
+  ('c53c5a0d-4326-4579-bca6-59d5bdb62183', 'P/VINHO', '#000000', NULL, 't', NULL, '2026-09-17 12:57:34.412138+00', '2026-09-17 12:57:39.816308+00', '#c9227b', '{5f6d38aa-1d10-45b5-bb8b-c73f6d733290,7be7a067-2723-4a72-b481-0366d6d783ef,66fb9c09-7674-4a61-8a22-4c10f0ea9186,e54fe8cb-e277-4909-b71c-6437ba716813,da94a733-bf40-488e-95ba-cf47042ed922}', 'apenas'),
+  ('6a7bcf24-3a24-4f02-bbbb-73e55d96e741', 'B/AZUL', '#ffffff', NULL, 't', NULL, '2026-09-17 12:58:24.827681+00', '2026-09-17 12:58:24.827681+00', '#2c3cb5', '{5f6d38aa-1d10-45b5-bb8b-c73f6d733290,7be7a067-2723-4a72-b481-0366d6d783ef,66fb9c09-7674-4a61-8a22-4c10f0ea9186,e54fe8cb-e277-4909-b71c-6437ba716813,da94a733-bf40-488e-95ba-cf47042ed922}', 'apenas'),
+  ('15ee8da1-f469-4a11-a7e7-bc15b78192d6', 'P/AZUL', '#000000', NULL, 't', NULL, '2026-09-17 13:01:02.856116+00', '2026-09-17 13:01:09.588478+00', '#2b35bf', '{5f6d38aa-1d10-45b5-bb8b-c73f6d733290,7be7a067-2723-4a72-b481-0366d6d783ef,66fb9c09-7674-4a61-8a22-4c10f0ea9186,e54fe8cb-e277-4909-b71c-6437ba716813,da94a733-bf40-488e-95ba-cf47042ed922}', 'apenas');
+
+
+
+--
+-- Data for Name: vehicle_models; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.vehicle_models (id, brand, model, vehicle_type, engine_cc, fuel_type, transmission, warranty_months, revision_period_months, revision_period_km, is_active, created_by, created_at, updated_at, default_purchase_price, default_sale_price, promo_price, promo_active, promo_label, promo_ends_on) VALUES
+  ('8d9f35db-56c5-47e2-a135-d1296a75b3cc', 'SHINERAY', 'SBM 400ss', 'moto', '400', 'gasolina', 'manual', '36', NULL, NULL, 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-08-10 01:24:52.080541+00', NULL, NULL, NULL, 'f', NULL, NULL),
+  ('b474855e-f88e-4bcf-98f7-dd51f76b9a64', 'SHINERAY', 'SBM 400S', 'moto', '400', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:27:22.095842+00', NULL, '36990', NULL, 'f', NULL, NULL),
+  ('b8b529f2-c65d-440a-b4ce-cab9a4ab59b5', 'SHINERAY', 'SCRAMBLER 400', 'moto', '400', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:27:30.726834+00', NULL, '26990', NULL, 'f', NULL, NULL),
+  ('e4a46bee-a16d-4e36-8bf0-427dcfd97aa6', 'SHINERAY', 'SHI 175', 'moto', '175', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:27:36.320951+00', NULL, '17990', NULL, 'f', NULL, NULL),
+  ('fadddcee-3d3f-44b4-98c0-fe6a67b7952c', 'SHINERAY', 'SHI 175 EFI', 'moto', '175', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:27:41.508485+00', NULL, '19990', NULL, 'f', NULL, NULL),
+  ('a94bdfc8-e48f-445a-9440-0b64c46d8118', 'SHINERAY', 'SHI 250', 'moto', '250', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:24:14.64759+00', NULL, '22990', '22990', 't', NULL, NULL),
+  ('b008ab3f-a204-4a9d-aa52-76e5af727502', 'SHINERAY', 'ATV 200', 'moto', '200', 'gasolina', 'cvt', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:24:14.64759+00', NULL, '25990', '25990', 't', NULL, NULL),
+  ('8572ce9a-2ddf-4e1b-9b2e-0016499a3595', 'SHINERAY', 'JEF 150', 'moto', '150', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:24:14.64759+00', NULL, '15990', '15990', 't', NULL, NULL),
+  ('da94a733-bf40-488e-95ba-cf47042ed922', 'SHINERAY', 'RIO 125', 'moto', '125', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:24:14.64759+00', NULL, '13990', '13990', 't', NULL, NULL),
+  ('d324a8ab-b27b-4210-a28f-61cf86954c74', 'SHINERAY', 'DENVER 250', 'moto', '250', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:25:44.842511+00', NULL, '28990', NULL, 'f', NULL, NULL),
+  ('d5563336-a777-4b3e-9fa5-91427bffe5a7', 'SHINERAY', 'FLASH 250', 'moto', '250', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:25:50.746773+00', NULL, '23990', NULL, 'f', NULL, NULL),
+  ('c3b5dc3b-59a1-4cd0-93c8-194f6c477b58', 'SHINERAY', 'FREE 150', 'moto', '150', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:26:05.098853+00', NULL, '15990', '13990', 't', NULL, NULL),
+  ('f537f75b-1386-4cee-9ff8-e86c4b6f4de6', 'SHINERAY', 'IRON 250', 'moto', '250', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:26:12.913587+00', NULL, '25990', NULL, 'f', NULL, NULL),
+  ('5f6d38aa-1d10-45b5-bb8b-c73f6d733290', 'SHINERAY', 'JET 125', 'moto', '125', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:26:18.676889+00', NULL, '13990', NULL, 'f', NULL, NULL),
+  ('1bdea6c6-a01d-4cfe-b863-3e03a9ee1e55', 'SHINERAY', 'STORM 200', 'moto', '200', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:27:48.059169+00', NULL, '23990', NULL, 'f', NULL, NULL),
+  ('c0683492-f6c6-4cc6-98a5-f637bd1fd5d9', 'SHINERAY', 'TITANIUM 250', 'moto', '250', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:27:53.448259+00', NULL, '27990', NULL, 'f', NULL, NULL),
+  ('4e7fe8f5-0773-4de5-904f-8a6852682f80', 'SHINERAY', 'URBAN 150', 'moto', '150', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:27:58.455368+00', NULL, '22990', NULL, 'f', NULL, NULL),
+  ('0df96ba5-2d13-499f-95ef-d0ae5817f406', 'SHINERAY', 'URBAN LITE 150', 'moto', '150', 'gasolina', 'cvt', '12', '3', '3000', 't', NULL, '2026-09-17 13:25:25.899734+00', '2026-09-17 13:28:08.104913+00', NULL, '17990', NULL, 'f', NULL, NULL),
+  ('ffa9b97b-8dcc-4c5b-819f-1f23042fb06c', 'SHINERAY', 'DENVER 400', 'moto', '400', 'gasolina', 'manual', '36', '3', '3000', 't', NULL, '2026-09-22 17:30:12.752226+00', '2026-09-22 17:30:12.752226+00', NULL, NULL, NULL, 'f', NULL, NULL),
+  ('b68bb9dd-2b00-48b8-b257-3124f5c48ad1', 'BULL', 'BMT 180', 'moto', '180', 'gasolina', 'manual', NULL, NULL, NULL, 't', NULL, '2026-10-16 12:01:27.619296+00', '2026-10-16 12:01:27.619296+00', '19000', NULL, NULL, 'f', NULL, NULL),
+  ('b6cccac0-6b9d-47b3-80d1-a8cff7e11186', 'SHINERAY', 'NEW JEF 170', 'moto', '170', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-10-30 16:03:05.09304+00', '2026-10-30 16:03:05.09304+00', NULL, '17990', NULL, 'f', NULL, NULL),
+  ('66d33d91-2f81-4c37-9b05-e3ae804762a5', 'SHINERAY', 'KART CROSS 200', 'moto', '200', 'gasolina', 'cvt', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:10:01.139721+00', NULL, NULL, NULL, 'f', NULL, NULL),
+  ('7be7a067-2723-4a72-b481-0366d6d783ef', 'SHINERAY', 'JET 50', 'moto', '50', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:26:27.216147+00', NULL, '12990', NULL, 'f', NULL, NULL),
+  ('89bc454f-d529-4beb-bf98-775466cbe133', 'SHINERAY', 'NEW FREE 170', 'moto', '170', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:26:34.31254+00', NULL, '15990', NULL, 'f', NULL, NULL),
+  ('6b5f96df-ce93-452e-bc6c-0975e1f6f4e8', 'SHINERAY', 'NEW JEF 150', 'moto', '150', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:26:41.983329+00', NULL, '17990', NULL, 'f', NULL, NULL),
+  ('66fb9c09-7674-4a61-8a22-4c10f0ea9186', 'SHINERAY', 'NEW JET 125', 'moto', '125', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:26:47.688124+00', NULL, '14990', NULL, 'f', NULL, NULL),
+  ('9492b093-2085-470c-b90a-8e3b6976baa7', 'SHINERAY', 'NEW SHI 175', 'moto', '175', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:26:52.970352+00', NULL, '18990', NULL, 'f', NULL, NULL),
+  ('e54fe8cb-e277-4909-b71c-6437ba716813', 'SHINERAY', 'PHOENIX 50', 'moto', '50', 'gasolina', 'manual', '12', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:27:00.289043+00', NULL, '9990', NULL, 'f', NULL, NULL),
+  ('b623bf59-8167-45d0-8e49-59fbf6acf874', 'SHINERAY', 'SBM 250 T 6B', 'moto', '250', 'gasolina', 'manual', '36', '3', '3000', 't', NULL, '2026-08-10 01:24:52.080541+00', '2026-09-17 13:27:10.186574+00', NULL, '26990', NULL, 'f', NULL, NULL),
+  ('ed08abda-e253-4f55-b8dc-7f4b49794e6c', 'SHINERAY', 'SBM 250S', 'moto', '250', 'gasolina', 'manual', '36', '3', '3000', 't', NULL, '2026-08-22 12:55:15.855837+00', '2026-09-17 13:27:15.702531+00', NULL, '26990', NULL, 'f', NULL, NULL);
+
+
+
+--
+-- Data for Name: vehicle_reservations; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.vehicle_reservations (id, reservation_number, vehicle_id, store_id, reseller_id, created_by, buyer_name, buyer_cpf, buyer_phone, buyer_email, buyer_address, vehicle_price, reservation_amount, payment_method, reservation_date, expires_at, status, converted_contract_id, signed_contract_url, template_id, notes, created_at, updated_at) VALUES
+  ('38c28f82-bc83-4731-b53e-36e6e33ec2d8', 'RES-MQJK37WJ', '8e967500-638c-4e65-8815-86059f539129', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'bceb4673-b2c0-46e2-91f9-0c3ba5107a2c', '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'PEDRO NOBRE PINHEIRO', '14282361638', NULL, 'pedroownp@hotmail.com', NULL, '14500', '0', 'cartao_credito', '2026-06-18', '2026-06-19', 'ativa', NULL, NULL, NULL, NULL, '2026-06-18 13:49:11.714797+00', '2026-06-18 13:49:11.714797+00'),
+  ('35be02f1-403e-48d9-9248-c1ab80c0730d', 'RES-MRP99RJB', '517add29-74d0-4e8c-82c5-ab552286959a', 'e8254a81-d669-464b-9806-457ba25ce7f0', NULL, '54db7881-ce90-42d4-baff-0e0ec2cb9eeb', 'KELLY DE BRITO FERREIRA TEXEIRA MARTINS', '06788352682', NULL, NULL, NULL, '39490', '45588.6', 'cartao_credito', '2026-07-17', NULL, 'ativa', NULL, NULL, NULL, NULL, '2026-07-17 18:12:40.937501+00', '2026-07-17 18:12:40.937501+00'),
+  ('36626745-93c7-4a2f-8426-09befabde006', 'RES-MURFX6VG', 'a44e0267-0c98-4447-b0dc-a8de28135328', 'e8254a81-d669-464b-9806-457ba25ce7f0', NULL, '61c7c7ba-f328-44d4-8fad-acfc1941ed3c', 'VINICIUS EDUARDO DA SILVA GONCALVES', '11298526604', NULL, 'viniciuseduardo31948@gmail.com', NULL, '23990', '1000', 'pix', '2026-10-02', NULL, 'ativa', NULL, NULL, NULL, NULL, '2026-10-02 20:53:32.047191+00', '2026-10-02 20:53:32.047191+00');
+
+
+
+--
+-- Data for Name: vehicles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.vehicles (id, store_id, brand, model, year, color, plate, chassis, renavam, mileage, fuel_type, transmission, purchase_price, sale_price, status, images, notes, created_at, updated_at, vehicle_type, engine_cc, reseller_id, warranty_months, revision_period_months, revision_period_km, manufacture_year) VALUES
+  ('aa393680-94aa-4251-a06b-39a0da70c19a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Marrom', NULL, '99HJTS125TS030038', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 14:59:52.893053+00', '2026-05-22 11:39:10.740148+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('7352afa2-b898-4b61-83df-25aac3eaf71b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'Jet', '2026', 'B/Marrom', NULL, '99HJTS125TS014187', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-22 16:35:19.406806+00', '2025-12-22 17:00:35.832643+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('15f8664d-c54c-4eb9-ad31-865f2bf0ea9f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'Jet', '2026', 'B/Marrom', NULL, '99HJTS125TS018510', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-22 18:24:04.521813+00', '2025-12-22 18:40:55.495243+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('c7c9ad3a-b986-4320-8f3b-1758e7637cfa', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'B/AZUL', NULL, '99HJTS125TS021113', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 06:52:40.065243+00', '2026-03-04 16:33:16.947305+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('5f557c54-0602-49aa-a45f-9deec79db636', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shinerya', 'Shi 175 EFI', '2026', 'Azul', NULL, '99HSHF175TS010164', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-24 11:29:45.319087+00', '2025-12-24 11:39:28.1146+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('38c77d88-7575-4408-8d9a-cbf7710ef833', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'AZUL', NULL, '99HJTS125TS000001', NULL, '0', 'gasolina', 'manual', '15800.00', '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-19 23:06:06.701042+00', '2025-12-19 23:31:16.694886+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('d8a65d81-ccbc-40d1-adcb-29df9db6810c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'AZUL', NULL, '99HJTS125TS000000', NULL, '0', 'gasolina', 'manual', '15800.00', '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-19 23:32:56.565527+00', '2025-12-19 23:34:02.300098+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('d944f50f-6f7a-4dd7-9e18-449243286efa', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'AZUL', NULL, '99HJTS125TS000002', NULL, '0', 'gasolina', 'manual', '15800.00', '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-19 23:34:45.156602+00', '2025-12-19 23:38:54.444526+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('8cc29de9-110a-4d22-b012-99b29b4eecde', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SBM 250S', '2026', 'Vermelho', NULL, '99HSB3250VS000323', NULL, '0', 'gasolina', 'manual', NULL, '26990.00', 'disponivel', NULL, NULL, '2026-10-03 12:27:12.740247+00', '2026-10-03 12:27:12.740247+00', 'moto', '250', NULL, '36', '3', '3000', '2026'),
+  ('332a8565-57ab-4969-acfa-859ea3a70d38', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'TITANIUM 250', '2025', 'BRANCA', NULL, '99httf250ts000750', NULL, '0', 'gasolina', 'manual', NULL, '26000.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-26 12:51:59.987004+00', '2025-12-26 12:57:36.811326+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('1c9b1622-4eca-4818-af6b-465e2ca2715f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Vinho', NULL, '99HJTS125TS031559', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:28:32.344828+00', '2026-05-27 12:15:40.961874+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('ea769ce5-d1e4-48a0-9032-c48ad07e3390', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'AZUL', NULL, '99HJTS125TS000003', NULL, '0', 'gasolina', 'manual', '15800.00', '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-19 23:45:52.258228+00', '2026-04-01 14:06:34.150266+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('e921abb8-c3d6-44b6-b098-bbb2a08c0ad1', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'Shi 250 EFI', '2026', 'P/AMARELA', NULL, '99HSHF250TS001098', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-29 13:49:36.093752+00', '2025-12-29 13:54:42.698679+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('d8b2ca13-8b9b-43e4-9a36-29cbc6e2a3f2', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Preta', NULL, '99HSHF175TS018540', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:17:28.988436+00', '2026-05-27 12:15:50.864276+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('dcec4a49-fc22-44c7-8451-601e826a3708', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125 ', '2026', 'B/Vinho', NULL, '99HJTS125TS031557', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 14:52:28.784752+00', '2026-06-06 11:45:52.210068+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('c50d277a-5966-43f9-b179-629dc859f0b0', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JEF 150', '2026', 'Azul', NULL, '99HJF1150TS008640', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 14:45:39.69655+00', '2026-07-22 11:48:23.490759+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('601e269a-a470-47e2-81b2-322ea260cf5f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Azul', NULL, '99HSHF175VS003320', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-10-07 14:13:37.527624+00', '2026-10-13 19:07:52.548945+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('8d599bd9-ab84-4ba7-9e53-cbc4b6494b11', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'Shi 250', '2026', 'P/AMARELA', NULL, '99HSHF250Ts001098', NULL, '0', 'gasolina', 'manual', NULL, '26990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-30 16:01:37.371771+00', '2025-12-30 16:06:34.303494+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('6f8af9ae-494f-4e8c-bf9a-2479dafa3907', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'Shi 175 EFI', '2026', 'AZUL', NULL, '99HSHF175TS010161', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-23 16:21:47.861408+00', '2026-01-23 16:33:59.650412+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('c3c6d482-f1cd-49c6-909f-27c45793dacf', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS018242', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-31 12:54:03.888736+00', '2025-12-31 13:02:48.227002+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('5fb22ba4-e503-4e37-a8c8-f02f5ab0293d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'ATV 200', '2026', 'MILITAR', NULL, '99HATV200TS000109', NULL, '0', 'gasolina', 'automatico', NULL, '26990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-19 14:00:51.475798+00', '2026-01-19 15:14:45.804204+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('e88c5ca6-774f-49d2-af4c-590c0cf94d38', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS019174', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-05 17:51:32.053182+00', '2026-01-05 18:54:29.642835+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('1a3f640a-a8b2-4c37-919d-02e9772a1cc4', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Vermelha ', NULL, '99HJTS125TS017318', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:41:21.671703+00', '2026-06-20 12:33:20.411527+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('3feda227-c8e9-4634-8b91-85f0a19a53ea', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shinerya', 'JET 125', '2026', 'B/MARROM', NULL, '99hjts125ts027005', NULL, '0', 'gasolina', 'manual', NULL, '11500.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-14 14:42:01.328952+00', '2026-01-14 15:12:16.639312+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('0ecf579e-90a6-4293-9932-11f2fff09c1c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS018498', NULL, '0', 'gasolina', 'manual', NULL, '11790.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-16 20:56:30.90847+00', '2026-01-23 15:53:18.03844+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('c9eded1b-b256-4572-a683-a891d6b20ca8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'Shi 175 EFI', '2026', 'PRETO', NULL, '99HSHF175TS007411', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-23 16:38:04.83564+00', '2026-01-23 16:41:46.965532+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('57ed8114-70ca-473f-9b9f-253776e241ce', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS026927', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-23 15:54:04.001949+00', '2026-01-23 16:20:40.301934+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('c62e2972-0172-46c7-bb59-7e180ef3514c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Cinza', NULL, '99hnj1125vs010391', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'disponivel', NULL, NULL, '2026-10-22 20:34:45.715342+00', '2026-10-22 20:34:45.715342+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('2a1a68f1-a632-4ba1-8d58-e61b447ad484', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'STORM', '2026', 'AMARELO', NULL, '99HSTF200TS002402', NULL, '0', 'gasolina', 'manual', NULL, '22990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-23 16:49:26.903702+00', '2026-01-23 16:55:46.616355+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('b2d96131-b2d9-494e-920e-e7fba26ddb9a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'JET 125', '2026', 'CINZA', NULL, '99HJTS125TS026758', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-23 18:47:31.702342+00', '2026-01-28 12:23:59.265882+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('39e1871f-e42c-4cc5-a4b2-c62443c64192', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'STORM 200', '2026', 'Cinza', NULL, '99HSTF200TS003007', NULL, '0', 'gasolina', 'manual', NULL, '23900.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 17:52:10.673447+00', '2026-04-02 17:37:29.153203+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('ede270b7-33ec-4a0b-839f-5278d5426ad7', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'SHI 175 EFI', '2026', 'Preto', NULL, '99HSHF175TS004295', NULL, '0', 'gasolina', 'manual', NULL, '19000.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 05:37:01.647793+00', '2026-02-06 15:51:47.563896+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('ac10ae03-3d51-4dac-b4ab-78144ab51197', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'Kart Cross 200', '2026', 'Vermelho', NULL, '99HKCS200TS000054', NULL, '0', 'gasolina', 'automatico', NULL, '25990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-02-25 15:49:37.819006+00', '2026-02-25 15:53:37.321284+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('09848ba3-6b8c-4e84-9da7-befb0468f6c3', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Cinza', NULL, '99HSHF175VS003555', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-10-15 18:49:25.968521+00', '2026-10-30 13:22:30.750535+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('af47d944-e10c-4fd6-a6a8-766ef25bbbd8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175', '2026', 'Branca', NULL, '99HSHT175TS005973', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:21:57.630719+00', '2026-03-20 20:34:38.224267+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('c61d5641-0ef3-40fe-aa13-2e809a4a92f5', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Vermelha ', NULL, '99HSHF175TS017376', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:57:21.662901+00', '2026-03-25 14:00:19.391167+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('0261ed05-30ce-4fbb-aebc-ece295360cec', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Azul', NULL, '99HSHF175TS017955', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:48:35.051168+00', '2026-03-25 20:30:15.652159+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('2b59cf89-bd75-4303-abd8-91e1c6046b64', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'PHOENIX 50', '2025', 'Cinza', NULL, '99HPHS060TS001793', NULL, '0', 'gasolina', 'manual', NULL, '10990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:34:13.046135+00', '2026-03-27 16:55:45.734775+00', 'moto', '50', NULL, NULL, NULL, NULL, NULL),
+  ('553e4cfc-6e4d-4592-9c9e-7b126e5fd8a7', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175', '2026', 'Branca', NULL, '99HSHT175TS005971', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:42:19.755457+00', '2026-03-25 20:45:35.446351+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('a9a994b1-9d74-4108-bcb6-e4984d08568b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'FLASH 250', '2026', 'VERMELHO', NULL, '99HFLF250TS002336', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 16:49:39.05735+00', '2026-03-28 13:10:01.597225+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('8c75c2ac-51dd-4c42-b541-2d7c4cd32c86', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'PRETO', NULL, '99HSHF175TS007417', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 06:30:43.159771+00', '2026-04-01 14:06:44.765114+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('37d0d8d4-2be2-48d1-be89-6e7468fe1f62', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Marrom', NULL, '99HJTS125TS030049', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:19:43.598149+00', '2026-04-07 12:33:33.780853+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('567edd96-96e6-4c4b-a977-232136355c99', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'DENVER 250', '2026', 'Preta', NULL, '99HDVF250TS001529', NULL, '0', 'gasolina', 'manual', NULL, '28990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 18:05:17.813405+00', '2026-04-15 13:31:59.697032+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('5e076ff7-4b7e-4362-b515-724009b48d07', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175', '2026', 'Vermelha ', NULL, '99HSHT175TS006861', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 17:48:45.905085+00', '2026-04-24 18:30:04.191733+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('ea25ce91-2a32-4dd2-a742-733c54ee7d30', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'Cin', NULL, '99HJTS125TS026757', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:15:34.148608+00', '2026-05-05 19:55:35.812468+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('bfe1b0a2-c0ac-4bc0-afc0-622312ab3af9', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175', '2026', 'Preta', NULL, '99HSHT175TS006398', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 18:01:24.130389+00', '2026-05-22 11:39:14.501178+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('cea57f99-ee65-41d9-8049-4457d8fb6224', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JEF 150', '2026', 'Azul', NULL, '99HJF1150TS008642', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:37:55.229461+00', '2026-05-26 17:16:12.873678+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('1e52566c-0818-47c5-8539-a9af044c59de', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Vinho', NULL, '99HJTS125TS031566', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:29:28.381883+00', '2026-05-28 18:59:33.212031+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('8fde8f57-63bb-40fc-bc42-406c76890697', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'P/Marrom', NULL, '99HJTS125TS021193', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:10:41.13643+00', '2026-06-10 18:12:28.656873+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('be2ca838-0f20-4e52-8549-bc1e8d565902', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Vinho', NULL, '99HJTS125TS031564', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 14:53:29.906142+00', '2026-06-06 14:27:58.754343+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL);
+
+INSERT INTO public.vehicles (id, store_id, brand, model, year, color, plate, chassis, renavam, mileage, fuel_type, transmission, purchase_price, sale_price, status, images, notes, created_at, updated_at, vehicle_type, engine_cc, reseller_id, warranty_months, revision_period_months, revision_period_km, manufacture_year) VALUES
+  ('54faf041-dd99-41d2-aa4f-9a8d3b33a2fc', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Marrom', NULL, '99HJTS125TS031010', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:02:13.157789+00', '2026-06-10 18:08:15.315949+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('0062cfe0-c0d6-4ecc-9ac7-2786be7a092f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Vermelha ', NULL, '99HSHF175TS017377', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:58:09.088679+00', '2026-06-20 12:33:20.245774+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('a20d516b-edd4-4adf-90f5-9527a31d4dca', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'IRON 250', '2026', 'Vermelho ', NULL, '99HARF250TS001353', NULL, '0', 'gasolina', 'manual', NULL, '24990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 18:03:51.101929+00', '2026-06-17 18:16:16.164939+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('ab3ee18d-5bf5-43d8-a43c-ae1f5e5952d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JEF 150', '2026', 'Preta', NULL, '99HJF1150TS006416', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:05:56.731589+00', '2026-07-17 14:52:00.836215+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('be6a7ac4-aad1-4e0e-b2cc-2ab17cb619a9', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY ', 'TITANIUM 250', '2026', 'Branca', NULL, '99HTTF250TS001006', NULL, '0', 'gasolina', 'manual', NULL, '27990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 18:02:58.460068+00', '2026-09-17 13:32:13.661763+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('7193bffe-c4cb-4930-af1c-8a2dccabdd70', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'BEGE', NULL, '99HSHF175TS023188', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-07-23 15:52:08.951512+00', '2026-07-23 16:55:14.991411+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('f6072906-bc74-49f7-aaee-21ecec9b5c0d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'RIO 125', '2026', 'B/Marrom', NULL, '99HR1C125TS004481', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:44:31.689288+00', '2026-07-30 12:05:40.08509+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('517add29-74d0-4e8c-82c5-ab552286959a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SBM 400ss', '2026', 'B/VERDE', NULL, '99HSBT400TS000271', NULL, '0', 'gasolina', 'manual', NULL, '39490.00', 'vendido', NULL, NULL, '2026-07-17 18:10:33.655988+00', '2026-07-30 12:05:33.40537+00', 'moto', '400', NULL, '36', NULL, NULL, NULL),
+  ('13053744-378d-4aad-9696-2a85b43dba62', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SBM 250 T 6b', '2026', 'PRETO', NULL, '99HST1250TS000845', NULL, '0', 'gasolina', 'manual', NULL, '27990.00', 'vendido', NULL, NULL, '2026-07-30 19:54:45.503318+00', '2026-08-03 10:48:32.807641+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('874c2946-6ed2-4167-a15d-66d666b58713', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2027', 'Cinza', NULL, '99HSTF200VS000280', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'vendido', NULL, NULL, '2026-09-09 12:20:47.051554+00', '2026-09-12 14:46:27.88811+00', 'moto', '200', NULL, '36', NULL, '3000', '2026'),
+  ('43bbcf03-0301-4ba5-b225-4f408de619db', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'PRETO', NULL, '99HSHF175TS010504', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 06:40:52.555886+00', '2026-02-02 17:32:54.287688+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('f76ab658-5745-4a5c-aab8-471d9f70ef8f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175', '2026', 'VERMELHO', NULL, '99HSHT175TS004786', NULL, '0', 'gasolina', 'manual', NULL, '16990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 06:55:33.108261+00', '2026-02-11 20:49:04.548874+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('243476b3-58da-45d1-b478-04a55e121572', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'Branco', NULL, '99HNJ1125VS008968', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-10-03 12:38:55.091581+00', '2026-10-14 16:08:34.509616+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('d2c73d9f-6835-4120-9236-f44be45ba556', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'STORM 200', '2026', 'Cinza', NULL, '99HSTF200VS000961', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'vendido', NULL, NULL, '2026-10-07 20:10:58.93438+00', '2026-10-13 11:37:01.635242+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('23fc5962-0d99-4b18-a4e0-66dce12d0b4b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175TS017378', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-05 18:56:26.127753+00', '2026-03-05 19:03:39.989871+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('fe206598-aeeb-4c09-bd9a-b010eac7300d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'FLASH 250', '2026', 'PRETO', NULL, '99HFLF250TS000723', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 06:43:57.14646+00', '2026-03-06 20:43:15.098601+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('aad27605-75af-48a3-9515-90c61ce6b246', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175VS005122', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'disponivel', NULL, NULL, '2026-10-22 20:43:15.632862+00', '2026-10-22 20:43:15.632862+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('458e487e-62cf-4eca-906f-73c7c54ac248', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SBM 250T B', '2026', 'Vermelho', NULL, '99HST1250TS000471', NULL, '0', 'gasolina', NULL, NULL, '27990.00', 'vendido', NULL, NULL, '2026-10-19 16:51:07.658342+00', '2026-10-26 20:28:05.092953+00', 'moto', '250', NULL, '36', '3', '3000', '2025'),
+  ('2a319f97-ed35-4e08-9543-0aa720cb7e6a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175VS005102', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'disponivel', NULL, NULL, '2026-10-22 20:53:08.554606+00', '2026-10-22 20:53:08.554606+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('5deaac92-f339-41e8-bd8f-5408e92f7162', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2026', 'B/MARROM', NULL, '99HR1C125TS004497', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 06:51:29.530866+00', '2026-01-28 12:27:08.086664+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('24df8b63-86a6-49d5-ba5c-92bb60d8a2e6', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'AZUL', NULL, '99HSHF175TS010157', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 06:38:07.311708+00', '2026-01-31 14:42:15.019865+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('afbfe6e8-82f5-49be-bfa3-235a80d5b196', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2026', 'B/MARROM', NULL, '99HR1C125TS004480', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:02:02.971301+00', '2026-01-31 13:11:23.013032+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('035efeb5-8289-440d-b35c-0eabb4ea24e9', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'CINZA', NULL, '99HSHF175TS009168', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 06:35:20.632497+00', '2026-02-02 12:33:38.334892+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('72e53a75-7624-403c-9f6d-ce4b03558a26', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'VERMELHO', NULL, '99HSHF175TS018535', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-25 19:34:37.608916+00', '2026-03-25 20:41:18.290716+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('d8777b37-6072-4722-bed3-04f1c7e4d7dc', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'TITANIUM 250', '2026', 'BRANCA', NULL, '99HTTF250TS000783', NULL, '0', 'gasolina', 'manual', NULL, '27990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-25 19:28:27.327975+00', '2026-03-25 20:32:32.821285+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('19434496-439c-4b12-b0c8-e5be9647637d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JEF 150', '2026', 'Branca', NULL, '99HJF1150TS008789', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:35:07.677153+00', '2026-04-09 19:11:32.749947+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('15bb0c90-5371-4e20-8937-499d34ec7695', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Marrom', NULL, '99HJTS125TS030043', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:11:58.752553+00', '2026-03-27 22:35:59.920584+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('ab41ed50-c0e0-418a-8b8a-9df4f77f2d03', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'ATV 200', '2026', 'Militar', NULL, '99HATV200TS000183', NULL, '0', 'gasolina', 'manual', NULL, '25990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:22:57.364633+00', '2026-04-15 13:31:56.567739+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('1357e11e-1a0c-458a-81ed-b095b679c135', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JEF 150', '2026', 'Vermelha ', NULL, '99HJF1150TS006061', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:38:53.222707+00', '2026-04-15 13:32:02.636413+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('f7efd1db-2fda-445f-9318-aa7a1eb0e616', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Azul', NULL, '99HSHT175TS017957', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:03:10.235983+00', '2026-04-28 23:28:11.186082+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('361dce70-92ac-44c9-b05c-91904666109f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Marrom', NULL, '99HJTS125TS031012', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:20:34.220256+00', '2026-04-27 19:24:02.714952+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('d5060a90-f1ae-4d11-97d0-0c251d43fc3f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'FLASH 250', '2026', 'Preta ', NULL, '99HFLF250TS002306', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 18:00:15.565449+00', '2026-05-14 13:20:51.288159+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('0b12595f-eb82-4f6d-a2ee-354520bf9e24', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'Cinza', NULL, '99HJTS125TS031286', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:19:02.710578+00', '2026-05-26 17:07:05.062852+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('45d3645a-a2a1-4673-8576-6c3cd2fe2e91', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175', '2026', 'Vermelha ', NULL, '99HSHT175TS006856', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 17:49:36.0817+00', '2026-06-01 01:09:28.088181+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('8ed1788a-cd96-48ca-bb88-357b67fc1a03', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Vinho', NULL, '99HJTS125TS031561', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 14:54:31.043551+00', '2026-06-18 19:58:16.772812+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('107af688-8bae-408e-bab5-bbfce5b6affe', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'PHOENIX 50', '2026', 'B/Marrom', NULL, '99HPHS050TS004253', NULL, '0', 'gasolina', 'manual', NULL, '10990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 17:55:21.67844+00', '2026-09-12 14:50:48.30596+00', 'moto', '50', NULL, NULL, NULL, NULL, NULL),
+  ('672f5334-3533-4a0e-ba41-e520b9cf64f1', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Azul', NULL, '99HSHF175TS017956', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 14:47:56.254101+00', '2026-07-09 12:10:52.085451+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('04b35a16-6a31-4493-b1e1-4a2e86710837', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JEF 150', '2026', 'Preta', NULL, '99HJF1150TS006418', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:07:04.798096+00', '2026-06-27 15:06:55.941809+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('8d0c9ece-ac84-4443-9ddf-3ce4e1fada73', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Vermelha ', NULL, '99HJTS125TS017380', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:49:09.8449+00', '2026-06-20 12:33:19.061945+00', 'moto', NULL, NULL, NULL, NULL, NULL, NULL),
+  ('43e8f9e5-7ef0-4cd2-9234-105c8b2c339e', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY ', 'ATV 200', '2026', 'Militar ', NULL, '99HATV200TS000176', NULL, '0', 'gasolina', 'manual', NULL, '25990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:00:31.136866+00', '2026-09-17 13:35:53.174872+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('c48d0e5a-07b4-4295-8513-9735ef00a887', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS027002', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:16:10.442092+00', '2026-02-06 19:25:27.670247+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('ea33b7d4-0f15-4951-9294-3da94dceacde', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175', '2026', 'PRETO', NULL, '99HSHT175TS005214', NULL, '0', 'gasolina', 'manual', NULL, '16990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:05:20.786927+00', '2026-02-12 18:14:35.717603+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('722072b2-76fc-4894-9a4e-aae2cae1b6b4', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'IRON 250', '2026', 'VERMELHO', NULL, '99HARF250TS001061', NULL, '0', 'gasolina', 'manual', NULL, '24990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-02-13 17:28:25.79636+00', '2026-02-14 11:41:48.030179+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('e6e75d4d-e167-4a59-9fbb-e77a9d492e31', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS031008', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-06 19:18:46.828702+00', '2026-03-06 19:46:26.76377+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('632d9ba5-187f-4134-8eaa-185680e698de', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125 ', '2026', 'B/MARROM', NULL, '99HJTS125TS030030', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-10 19:13:13.813754+00', '2026-03-10 19:16:19.899454+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('1fc6eb57-0a1d-47d8-8d71-02ff57d49f5f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS021197', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:13:02.018429+00', '2026-03-11 13:19:30.095241+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('078e0522-b700-4e28-bb76-2de3b8002e29', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'CINZA', NULL, '99HJTS125TS026759', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:21:29.020611+00', '2026-03-18 12:01:26.866237+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('61cd13c8-1643-4f3b-a990-a1f07570b5a9', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS025376', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:18:04.062778+00', '2026-01-31 12:55:08.972899+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('07a8788e-77a0-4714-a627-2d5e81e98b59', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS026929', NULL, '0', 'gasolina', 'manual', NULL, '11200.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:17:14.004011+00', '2026-01-30 12:47:22.370663+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('d6de8a4b-4bc7-4437-901a-d22f17b906e2', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'VERMELHO', NULL, '99HJTS125TS024993', NULL, '0', 'gasolina', 'manual', NULL, '11200.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:23:28.699371+00', '2026-01-30 12:47:20.977008+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL);
+
+INSERT INTO public.vehicles (id, store_id, brand, model, year, color, plate, chassis, renavam, mileage, fuel_type, transmission, purchase_price, sale_price, status, images, notes, created_at, updated_at, vehicle_type, engine_cc, reseller_id, warranty_months, revision_period_months, revision_period_km, manufacture_year) VALUES
+  ('0d9aebdb-ac2d-40b3-9883-ec161028f9e0', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Marrom', NULL, '99HJTS125TS030042', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:30:40.132195+00', '2026-03-20 18:02:41.782872+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('b7bc83fc-f077-459f-84a5-94993a530e1a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'VERMELHO', NULL, '99HSHF175TS018536', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-25 19:30:55.487927+00', '2026-03-25 20:36:08.224855+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('f406aedd-c0d5-46f8-9c33-c2f2389ab2be', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'STORM 200', '2026', 'Amarela', NULL, '99HSTF200TS002672', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:20:18.20174+00', '2026-04-01 12:39:59.359821+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('e10230f9-e249-4f83-9262-11ac4eeb0b66', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'Free 150', '2026', 'Preta', NULL, '99HFRF150TS000331', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:40:15.408839+00', '2026-04-02 15:02:43.2987+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('f61f5fb0-b695-4a0f-9de7-e56744d391cc', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'Preta', NULL, '99HJTS125TS031818', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:16:58.731223+00', '2026-04-07 12:33:36.362041+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('9c258aa6-d69a-40e8-9392-8f833aaea59a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Vinho', NULL, '99HJTS125TS031562', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:27:26.266685+00', '2026-04-09 13:13:43.366095+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('a3f39898-803f-4a26-8280-9b22bfeae995', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Marrom', NULL, '99HJTS125TS030029', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 14:55:22.653685+00', '2026-04-28 23:27:42.714618+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('1c13d61c-dc44-41fb-899c-afe44115a2d5', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JEF 150', '2026', 'Vermelha ', NULL, '99HJF1150TS006585', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:02:26.411037+00', '2026-04-28 23:28:07.222834+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('d1a79971-79a6-4e58-83b8-d2c53c23fb94', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'Cinza', NULL, '99HJTS125TS031290', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:21:21.995722+00', '2026-05-14 13:20:03.158626+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('0c00e20e-c7b4-4d3a-badb-f8eecb9d757c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 50', '2026', 'B/Marrom', NULL, '99HJTS050TS015975', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:12:45.675334+00', '2026-05-14 18:26:48.342608+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('fef57e31-db20-4ed4-b814-1b7d306dd215', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175', '2026', 'PRETA', NULL, '99HSHT175TS006396', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 17:46:50.311096+00', '2026-05-22 11:39:07.7511+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('424e91aa-5224-4c78-8b88-65d78ce843fe', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Vinho', NULL, '99HJTS125TS031560', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:45:21.638897+00', '2026-05-27 12:07:32.465411+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('ecf40c97-494c-4546-988c-cdee3f0305f8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Preta', NULL, '99HSHF175TS018537', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:04:29.002014+00', '2026-05-30 13:50:48.314516+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('0578c904-e713-4391-b956-f93891a8daaa', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Azul', NULL, '99HSHF175TS017958', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 14:49:02.23664+00', '2026-06-05 11:20:31.42014+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('82073910-afad-4c67-8dc5-57dbc307716b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'Kart Cross 200', '2026', 'Vermelho ', NULL, '99hkCS200Ts000054', NULL, '0', 'gasolina', 'manual', NULL, '16990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:38:51.398524+00', '2026-06-20 12:33:20.577156+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('228d4bd3-d948-415e-ab6a-8129defee0b8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001479', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'disponivel', NULL, NULL, '2026-07-15 13:40:15.550051+00', '2026-07-15 13:40:15.550051+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('5710d51a-704c-4e75-8761-399844032828', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001468', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:42:07.588652+00', '2026-07-23 16:53:11.085651+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('0cd3a6db-6ee1-4e9f-a3b0-a166251fd60f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001475', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:38:24.016882+00', '2026-10-01 11:52:05.083653+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('5fc09314-b0d6-4f68-86ae-f54cbeec0b4b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001472', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:43:36.002269+00', '2026-09-03 12:03:59.702274+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('10aae368-d4c9-4807-9e7f-2e796fde10e3', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'BEGE', NULL, '99HNJ1125VS000997', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:34:15.037134+00', '2026-10-01 11:44:59.691006+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('b1ef82dd-6d0a-4411-b335-f94311d9ed00', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS026993', NULL, '0', 'gasolina', 'manual', NULL, '11990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:07:46.754781+00', '2026-03-14 14:03:39.585074+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('7111d772-b817-44ee-9493-0f98664733ff', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS030039', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-02-20 12:36:00.969124+00', '2026-02-20 12:39:54.098246+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('f245df8c-ce4c-464f-a865-2a6493ae3fa2', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'NULL', NULL, '99HJTS125TS021111', NULL, '0', 'gasolina', 'manual', NULL, '11200.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-01-24 07:26:57.25027+00', '2026-01-30 12:47:19.61768+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('9b7d0fe8-0d42-408c-8cb2-7df93d59a95d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Preto', NULL, '99hshf175vs002435', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-10-19 15:59:47.689297+00', '2026-10-26 12:52:46.463002+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('a8e295ae-e44e-4b45-9da6-69f69155f68d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'PRETA', NULL, '99HJTS125TS030343', NULL, '0', NULL, 'manual', NULL, '13189.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-16 17:05:11.528805+00', '2026-03-16 17:12:30.618554+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('a82e11c2-f586-4493-ae1e-dd84e3b92b54', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'Kart Cross 200', '2025', 'Vermelho', NULL, '99hkCS200ts000054', NULL, '0', 'gasolina', 'cvt', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-02-26 15:32:29.661224+00', '2026-02-27 11:30:12.350919+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('947afeb4-0b35-44bc-94a6-1722f7a95c9a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'SHI 175 EFI', '2026', 'AZUL', NULL, '99HSHF175TS017948', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-05 19:33:56.765529+00', '2026-03-05 19:36:39.561581+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('f20144c6-94dd-4db4-a69c-2ad4d04c418a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Azul', NULL, '99HJTS125TS021112', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:14:50.152767+00', '2026-04-07 12:33:39.412739+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('571766cc-bbbd-41cf-afc2-57fe38befb8e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'PRETA', NULL, '99HJTS125TS031820', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-12 17:21:15.228882+00', '2026-03-12 17:24:31.252387+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('b5c9f5e5-294c-4ced-8324-717a92d3a4c5', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'PHOENIX 50', '2026', 'P/Marrom', NULL, '99HPHS050TS003737', NULL, '0', 'gasolina', 'manual', NULL, '10990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:32:10.291227+00', '2026-03-19 16:32:10.291227+00', 'moto', '50', NULL, NULL, NULL, NULL, NULL),
+  ('e8f639bf-09a8-4817-8602-0e31840eae9d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Vermelha', NULL, '99HSHF175TS017380', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-23 14:05:15.47669+00', '2026-03-23 14:08:31.943975+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('b67a6254-3ec0-4bd6-8764-bb6efcdea68e', NULL, 'SHINERAY', 'SHI 175 EFI', '2026', 'VERMELHO', NULL, '99HSHF175TS017379', NULL, '0', 'gasolina', 'manual', NULL, '19900.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-09 21:22:20.925872+00', '2026-04-06 12:54:02.010497+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('0381926d-1260-4909-a9a1-3f669773c07f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'AZUL', NULL, '99HSHT175TS004185', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 16:48:24.761493+00', '2026-03-28 13:14:09.939212+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('cdeb6a6b-d469-4a86-9995-3b4877fa6043', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'RIO 125', '2027', 'B/MARROM', NULL, '99HR1F125VS000399', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, NULL, '2026-10-03 12:44:53.47343+00', '2026-10-30 19:43:55.254268+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('257771a5-0774-4a3f-9cec-4e1527d689aa', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Marrom', NULL, '99HJTS125TS030026', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:28:25.621149+00', '2026-04-01 11:33:06.268703+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('1c7e4cb4-2a15-4e05-9c45-6bc8309704e4', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'Free 150', '2026', 'Cinza', NULL, '99HFRF150TS000305', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:09:23.452642+00', '2026-04-13 18:32:48.144333+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('8809becb-a8f0-4e4a-93bf-4575f8784b41', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175', '2026', 'PRETA', NULL, '99HSHT175TS006402', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 17:50:43.847059+00', '2026-05-14 13:20:00.170628+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('daa21bdd-1eeb-4723-92f5-6927b1c8418c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'URBAN 150', '2026', 'Vermelha ', NULL, '99HURF150TS000853', NULL, '0', 'gasolina', 'manual', NULL, '21990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:21:09.274503+00', '2026-04-23 15:45:11.015929+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('a458eb05-520b-41d9-8676-19498fa36708', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175', '2026', 'PRETA', NULL, '99HSHT175TS006392', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 17:47:44.628336+00', '2026-04-27 19:21:46.712802+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('821265fd-badd-4e99-a612-cd07e26b532b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Vermelha ', NULL, '99HSHF175TS017375', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:47:24.354752+00', '2026-05-07 18:16:52.080676+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('304538ea-a84c-467c-977e-327ba3037a2f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'Cinza', NULL, '99HJTS125TS031288', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:27:43.842231+00', '2026-05-26 17:07:02.156183+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('7edc83b3-2470-4295-a4d5-68963107fb64', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'SHI 175 EFI', '2026', 'Azul', NULL, '99HSHF175TS017953', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:13:00.703155+00', '2026-05-27 12:15:38.372054+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('8e967500-638c-4e65-8815-86059f539129', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'FREE 150', '2026', 'Vermelha ', NULL, '99HFRF150TS000393', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:41:06.84234+00', '2026-07-02 19:33:13.636223+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('56905d5e-8266-439d-b4c6-9a53b4e950e1', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001478', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:37:03.605325+00', '2026-08-12 18:07:41.865048+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('4ecc59f9-43dc-4715-bd79-306f50053a0f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001477', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'disponivel', NULL, NULL, '2026-07-15 13:39:32.623261+00', '2026-07-15 13:39:32.623261+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('f3d81c5f-f385-4c7a-9feb-e66a955690d0', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JEF 150', '2026', 'Pre', NULL, '99HJF1150TS006015', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:36:50.515051+00', '2026-08-03 10:48:55.937812+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('cb5e0b1c-fb72-4edf-a656-08fff49cbe69', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'FREE 150', '2026', 'Preta', NULL, '99HFRF150TS000334', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:03:34.816208+00', '2026-07-30 12:07:19.906641+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('09567175-650b-4c91-b803-c86155dd1f33', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'VERMELHO', NULL, '99HNJ1125VS001606', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'disponivel', NULL, NULL, '2026-07-15 13:46:04.768198+00', '2026-07-15 13:46:04.768198+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('3709dabc-aef8-44db-86de-f055f314cf37', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001470', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:42:59.404707+00', '2026-08-12 18:14:35.084836+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('e1434f95-8708-4e31-9cfd-2dca3c63c4ac', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001473', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:41:09.182935+00', '2026-09-03 12:08:22.313614+00', 'moto', '125', NULL, '12', '3', '3000', NULL);
+
+INSERT INTO public.vehicles (id, store_id, brand, model, year, color, plate, chassis, renavam, mileage, fuel_type, transmission, purchase_price, sale_price, status, images, notes, created_at, updated_at, vehicle_type, engine_cc, reseller_id, warranty_months, revision_period_months, revision_period_km, manufacture_year) VALUES
+  ('dedb0054-e5c5-4686-b5c3-dedb734353fe', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'CINZA', NULL, '99HNJ1125VS000861', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:44:38.125154+00', '2026-09-08 11:50:56.347069+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('7c3d57a9-1739-4d87-b98e-0351fcbd228c', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'STORM 200', '2027', 'Vermelho', NULL, '99HSTF200VS004675', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'disponivel', NULL, NULL, '2026-10-03 12:49:08.279878+00', '2026-10-03 12:49:08.279878+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('72608e1a-5841-489d-b8b3-0880cbc71cca', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/Azul', NULL, '99HJTS125TS021109', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 15:54:39.406776+00', '2026-03-27 20:01:58.205454+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('2a8b6151-e630-45fd-a8fb-8208202dc9d6', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JEF 150', '2026', 'Verme', NULL, '99HJF1150TS006581', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:36:06.651923+00', '2026-03-27 22:20:04.04608+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('06d23720-ecc1-4a9d-a608-8e751df3b0d4', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'STORM 200', '2026', 'Vermelha ', NULL, '99HSTF200TS003032', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 17:57:06.020322+00', '2026-03-28 13:06:24.543141+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('bf7a5559-cf0a-47e6-87ca-fda340c63426', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'AZUL', NULL, '99HJTS125TS000004', NULL, '0', 'gasolina', 'manual', '15800.00', '18990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2025-12-19 23:46:52.084941+00', '2026-04-01 14:06:34.150266+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('71f88ece-80d6-4fe5-9c40-d19facddda7e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/AZUL', NULL, '99HJTS125TS021501', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-06 16:36:16.437063+00', '2026-04-08 20:33:05.870277+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('05106a6a-2fdc-4ceb-b52c-9cc7c9c601c3', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'COR', NULL, '99HSHF175TS021622', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 18:53:50.370419+00', '2026-04-23 15:45:16.170869+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('30a707c8-5d02-49cc-a679-524d2be9fe1e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Não identificado', 'A definir', '2026', 'A definir', NULL, 'WY14FML17E27322', NULL, '0', 'gasolina', NULL, NULL, NULL, 'disponivel', NULL, 'Motor: WY164FML17627322', '2026-10-09 15:00:21.392717+00', '2026-10-09 15:00:21.392717+00', 'moto', NULL, NULL, NULL, NULL, NULL, NULL),
+  ('23fc516c-32f6-4840-ade7-a873b1570d8d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'COR', NULL, '99HSHF175TS017381', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 18:41:59.491483+00', '2026-10-13 19:06:32.365152+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('f6a26a8b-78b3-47c8-8ecc-f04961bcb6f7', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175VS002315', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-09-17 13:07:26.661114+00', '2026-10-26 12:45:40.169356+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('0fcde3a0-855e-4ac9-96ed-ce23708b4cf8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'COR', NULL, '99HSHF175TS020065', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 18:59:40.330559+00', '2026-06-25 19:07:36.033109+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('f0f87665-a670-476d-bc70-a783ecf0731d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'Preto', NULL, '99HJTS125VS001003', NULL, '0', 'gasolina', NULL, NULL, '13990.00', 'disponivel', NULL, NULL, '2026-10-22 20:45:38.91056+00', '2026-10-22 20:45:38.91056+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('263c9d54-3983-49a3-a718-f3d41972d70e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Cinza', NULL, '99hnj1125vs010390', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'disponivel', NULL, NULL, '2026-10-22 21:00:06.30573+00', '2026-10-22 21:00:06.30573+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('c6afaf27-c701-4a37-9e9f-209b0b01858c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS030041', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-06 13:44:20.424982+00', '2026-04-20 16:48:44.1334+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('394b23ed-2a0d-4141-a0ca-27c00e6ffdd3', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'BULL', 'BMT 180', '2026', 'Branc', NULL, 'LHJYJLLA5TB474699', NULL, '0', 'gasolina', 'manual', '19000.00', '19000.00', 'disponivel', NULL, NULL, '2026-10-16 12:02:08.129894+00', '2026-10-26 12:43:44.722475+00', 'moto', '180', NULL, '0', '0', '0', '2026'),
+  ('4be56996-2047-4c1b-980c-62d7be8d08c8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2026', 'Vermelho', NULL, '99HNS1175VS002635', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'vendido', NULL, NULL, '2026-10-20 15:52:27.107503+00', '2026-10-26 12:56:11.502953+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('d75ea398-b9fc-4f9f-b357-57b3be2c28f5', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'VERMELHO', NULL, '99HSTF200TS004087', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-23 20:14:34.948054+00', '2026-05-05 19:58:02.543399+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('8048f753-e979-49a4-b255-7e6003f44ff6', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SBM 400s', '2026', 'PRETA', NULL, '99HSB1400TS001208', NULL, '0', 'gasolina', 'manual', NULL, '35990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-23 20:13:57.199057+00', '2026-05-07 17:32:06.964447+00', 'moto', '400', NULL, NULL, NULL, NULL, NULL),
+  ('3765afa8-679f-40ad-95d0-add6f013e505', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'VERMELHO', NULL, '99hstf200ts004089', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-23 20:16:38.437325+00', '2026-05-12 12:05:21.463142+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('38271ab9-7177-414e-b819-f5a72c02d87b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175', '2026', 'COR', NULL, '99HSHT175TS006691', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 18:55:47.1037+00', '2026-05-12 12:05:25.854578+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('b3701312-2aeb-4c90-be12-16f7d2c17766', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/MARROM', NULL, '99HNJ1125TS004572', NULL, '0', 'gasolina', 'manual', NULL, '14400.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 18:49:31.870819+00', '2026-05-20 11:18:38.810815+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('7e5f28d6-8d40-4b89-97a4-673d1dbb4218', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/MARROM', NULL, '99HNJ1125TS003900', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 19:01:06.007713+00', '2026-05-28 18:59:36.768591+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('9d3b0899-b53e-44d2-8a04-e876761e2646', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'COR', NULL, '99HSHF175TS020776', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 18:52:50.808722+00', '2026-06-05 11:20:28.478617+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('10f5f313-f08a-43e5-a86c-c2726a7ded5b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JEF 150', '2026', 'VERMELHO', NULL, '99HNJ1125TS002402', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 18:56:38.185236+00', '2026-06-01 01:09:24.947331+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('9905aad6-ac15-43a7-8ec8-c7c7dc01cebb', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'COR', NULL, '99HSHF175TS020795', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 18:57:27.568214+00', '2026-06-10 18:14:28.218791+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('f7a01078-60a6-49ba-9c18-1cba161049e5', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175', '2026', 'COR', NULL, '99HSHT175TS006689', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 19:03:19.582674+00', '2026-06-15 14:51:35.003901+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('3e62d156-e7e4-45df-a7fc-b333edf0d227', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175', '2026', 'BRANCA', NULL, '99HSHT175TS006708', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 19:04:08.36575+00', '2026-07-06 15:06:31.78996+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('37293aa2-05b1-46f1-ae50-54451f7205c8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'COR', NULL, '99HSHF175TS020063', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 18:47:16.85186+00', '2026-08-24 17:23:27.357419+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('0c709913-8412-4ab6-9fc5-57bf29f56e05', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'PHOENIX 50', '2026', 'Cinza', NULL, '99Hphs050vs001547', NULL, '0', 'gasolina', NULL, NULL, '9990.00', 'reservado', NULL, NULL, '2026-10-22 20:54:43.616343+00', '2026-11-09 14:40:59.335599+00', 'moto', '50', NULL, '12', '3', '3000', '2026'),
+  ('5dbc23a7-84c6-4e2c-9949-e009f9c3db73', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JEF 170', '2026', 'Preto', NULL, '99hjf1170vs006461', NULL, '0', 'gasolina', NULL, NULL, '17990.00', 'disponivel', NULL, NULL, '2026-11-10 19:45:09.985986+00', '2026-11-10 19:45:09.985986+00', 'moto', '170', NULL, '12', '3', '3000', '2026'),
+  ('e4a58205-1f1b-4d61-a3d3-face7af6054d', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'FLASH 250', '2026', 'PRETO', NULL, '99HFLF250TS001347', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-23 20:17:08.312038+00', '2026-09-17 13:33:21.399817+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('a44e0267-0c98-4447-b0dc-a8de28135328', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'FLASH 250', '2026', 'PRETO', NULL, '99HFLF250TS001345', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'reservado', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-23 20:17:43.068339+00', '2026-10-02 20:53:32.338872+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('1fd5b824-4fbb-4d38-85fb-d2fa1819a420', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2026', 'PRETO', NULL, '99HNS1175TS001116', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:48:42.68216+00', '2026-07-16 12:00:20.417378+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('36f27228-74a6-40cd-a78b-5c890f1fefb9', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'CINZA', NULL, '99HSTF200TS003995', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-23 20:15:39.467903+00', '2026-04-24 18:30:16.701995+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('ca93d600-32e2-4791-834c-266467415ef2', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'RIO 125', '2026', 'B/MARROM', NULL, '99HR1C125TS005572', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:50:09.06731+00', '2026-09-12 14:55:41.702204+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('e1a1a1ca-4095-4153-a0a5-9c0241c37c76', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'DENVER 250', '2026', 'PRETA', NULL, '99HDVF250TS002289', NULL, '0', 'gasolina', 'manual', NULL, '28990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-28 20:56:26.388948+00', '2026-05-01 14:27:54.537762+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('6b676547-8f81-4b41-861a-253d517edf63', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'DENVER 250', '2026', 'PRETA', NULL, '99HDVF250TS002290', NULL, '0', 'gasolina', 'manual', NULL, '28990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-28 20:57:01.592885+00', '2026-05-01 14:27:57.215863+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('0173baa3-02fe-4660-a2b6-ef967d46844a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'VERMELHO', NULL, '99HSHF175TS022160', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-23 20:18:56.305078+00', '2026-05-14 19:45:09.349075+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('68b1a988-c488-42b8-960d-32a1a4579101', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'PRETO', NULL, '99HSTF200TS004318', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-05-27 19:41:59.111264+00', '2026-05-28 18:59:40.045063+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('6abca7c2-a9c6-4148-8701-8d8d6b99ccad', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 250', '2026', 'PRETO', 'TXZ6E17', '99HSHF250TS000979', NULL, '2276', 'gasolina', 'manual', NULL, '23500.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-05-29 14:28:39.831608+00', '2026-05-30 13:50:51.089273+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('2cb6f1a7-d934-414e-81f0-27dced51a339', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'VERMELHO', NULL, '99HSHF175TS022167', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-23 20:19:41.328521+00', '2026-06-06 12:01:27.178658+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('228487a6-7744-48d0-9958-88af2ef14621', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'JET 125', '2027', 'P/MARROM', NULL, '99HJTS125VS001005', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'disponivel', NULL, NULL, '2026-10-22 13:56:54.643062+00', '2026-10-22 13:56:54.643062+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('c4be6e07-f3bd-4904-8816-94b7c57f7520', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2026', 'B/MARROM', NULL, '99HR1C125TS005576', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:52:25.902331+00', '2026-06-09 14:52:25.902331+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('12b0235b-5f96-4e49-9e31-7bcd81edf99c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'VERMELHA', NULL, '99HSTF200TS004544', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:39:15.323064+00', '2026-07-01 17:18:13.421211+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('e06a977f-5595-4406-bb47-c9b245542e60', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/MARROM', NULL, '99HNJ1125TS008143', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:45:19.937287+00', '2026-06-16 15:48:56.752765+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('5623c1f1-2938-46d4-b91b-b19109d84889', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'CINZA', NULL, '99HSTF200TS004573', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:40:37.001345+00', '2026-08-03 10:48:13.676729+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('985727d9-91e7-4e33-931e-53d0a029eb1e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 250', '2026', 'P/BRANCO', NULL, '99HSHF250TS002329', NULL, '0', 'gasolina', 'manual', NULL, '24990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:39:53.302558+00', '2026-08-11 12:31:41.872309+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('5c3402c7-3d13-460a-83e0-d6562dba9799', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/MARROM', NULL, '99HNJ1125TS008148', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:43:56.188013+00', '2026-06-27 15:01:29.44863+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('57e548a3-46f1-4ece-ab33-e5804965fb39', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/MARROM', NULL, '99HNJ1125TS008147', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:46:04.168091+00', '2026-07-22 20:40:03.040256+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL);
+
+INSERT INTO public.vehicles (id, store_id, brand, model, year, color, plate, chassis, renavam, mileage, fuel_type, transmission, purchase_price, sale_price, status, images, notes, created_at, updated_at, vehicle_type, engine_cc, reseller_id, warranty_months, revision_period_months, revision_period_km, manufacture_year) VALUES
+  ('c261f3ff-3a24-4c19-9f1a-0eed24f65469', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2026', 'PRETO', NULL, '99HNS1175TS001118', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:49:30.783692+00', '2026-06-25 19:06:54.325802+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('c997cec0-cf2b-4beb-b87a-9c42e6191e25', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/MARROM', NULL, '99HNJ1125TS008144', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:46:41.353403+00', '2026-07-22 20:39:57.992941+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('e2590664-3ffd-41dc-ba33-23f8d68498fd', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/MARROM', NULL, '99HNJ1125TS008136', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:44:34.509574+00', '2026-06-19 20:06:01.770221+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('3f616267-eb46-467a-a51a-6fbd0198c0ee', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'VERMELHO', NULL, '99HSHF175TS022151', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-23 20:18:12.603384+00', '2026-07-16 12:00:15.658606+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('aed57ead-223a-4416-86d3-39a84f200c17', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 250', '2026', 'P/BRANCO', NULL, '99HSHF250TS002332', NULL, '0', 'gasolina', 'manual', NULL, '24990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:37:33.282256+00', '2026-07-21 13:59:24.580549+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('a419f67a-7941-41e5-b61a-932c622ea242', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/VINHO', NULL, '99HNJ1125TS005269', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-04-17 19:05:30.992143+00', '2026-07-16 13:05:50.995797+00', 'moto', '150', NULL, NULL, NULL, NULL, NULL),
+  ('9e3d8ee0-a133-433d-9b58-1a7c24d2862d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/MARROM', NULL, '99HNJ1125TS008145', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:47:20.274261+00', '2026-07-22 15:15:03.131299+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('e38a4807-9a81-45d5-892f-0bcd64fc2cdf', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2026', 'BEJE', NULL, '99HNS1175TS000747', NULL, '0', 'gasolina', 'manual', NULL, '17990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:48:02.443214+00', '2026-07-23 12:21:51.240396+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('eaf8b5ac-e696-4a94-ba71-3fe8b123d8fd', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'VERMELHA', NULL, '99HSTF200TS004411', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:38:33.329493+00', '2026-08-11 12:37:45.911888+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('c9e9de6d-0b1e-4ca6-8a5f-43d288591725', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2026', 'B/MARROM', NULL, '99HR1C125TS005585', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:51:46.27879+00', '2026-08-24 17:24:13.549753+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('8d8f492f-71ea-460a-bcd6-ebb7047da558', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'PHOENIX 50', '2026', 'CINZA', NULL, '99HPHS050TS005103', NULL, '0', 'gasolina', 'manual', NULL, '10990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:42:52.947855+00', '2026-08-26 11:33:50.952715+00', 'moto', '50', NULL, NULL, NULL, NULL, NULL),
+  ('b384c184-ce43-41e8-9dad-b5d56cee7513', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'PHOENIX 50', '2026', 'B/MARROM', NULL, '99HPHS050TS005118', NULL, '0', 'gasolina', 'manual', NULL, '10990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:42:08.092526+00', '2026-09-22 13:28:11.711267+00', 'moto', '50', NULL, NULL, NULL, NULL, NULL),
+  ('5d98d993-5a1a-4c7f-9ce1-910477f9691e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'CINZA', NULL, '99HSTF200TS004575', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:41:09.671578+00', '2026-06-10 18:10:43.401879+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('2501f88d-f897-479d-b26f-8475c5feb1e4', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'PRETO', NULL, '99HSHF175TS024139', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 15:08:48.918727+00', '2026-08-11 12:39:30.432499+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('2be1d3bc-06f2-4a03-afe3-317dc9b88c5d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'PRETO', NULL, '99HSTF200TS004598', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 15:07:09.448962+00', '2026-08-12 18:10:36.535425+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('902c26d5-ced1-47d9-a3ed-7175f1eb6abf', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'PRETO', NULL, '99HSTF200TS004592', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 15:07:43.184992+00', '2026-06-23 13:22:01.930637+00', 'moto', '200', NULL, NULL, NULL, NULL, NULL),
+  ('ae960d0c-2437-4737-b385-4f7658562614', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW FREE 170', '2026', 'P/VERMELHO', NULL, '99HCS2170TS000794', NULL, '0', 'gasolina', 'manual', NULL, '16990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 15:05:35.943909+00', '2026-10-14 23:42:59.810416+00', 'moto', '170', NULL, NULL, NULL, NULL, NULL),
+  ('f965a451-4455-49ef-adf2-61a70f5313ca', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'IRON 250', '2026', 'PRETO', NULL, '99HARF250TS001530', NULL, '0', 'gasolina', 'manual', NULL, '24990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-19 20:13:49.689105+00', '2026-07-01 15:42:26.419322+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('701b5a24-7b07-4949-81d9-822c58cf4cac', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'B/VINHO', NULL, '99HNJ1125VS001080', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-16 14:42:50.346591+00', '2026-10-26 12:45:49.430471+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('b72fdf53-0684-4ac7-ab02-c43880e461a5', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JEF 150', '2026', 'Preto', NULL, '99hnjf1150vs00000', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, NULL, '2026-10-13 18:45:19.256582+00', '2026-10-13 19:29:35.498055+00', 'moto', '150', NULL, '12', '3', '3000', NULL),
+  ('512e24f7-67ed-44e8-a1f8-b7563dc9f313', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2027', 'Branco', NULL, '99hr1f125vs000336', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, NULL, '2026-10-29 14:26:50.493019+00', '2026-10-30 13:36:02.247445+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('dfb593b4-9df3-4ece-b15b-777fae30218f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'B/MARROM', NULL, '99HJTS125TS019171', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-19 19:52:34.845021+00', '2026-06-27 15:06:53.0852+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('e5f4fbfe-2403-4674-aa39-5961845d7dd6', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SCRAMBLER 400', '2026', 'PRETA', NULL, '99HSW1400TS000397', NULL, '0', 'gasolina', 'manual', NULL, '27990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 15:06:30.265275+00', '2026-06-27 15:06:59.737847+00', 'moto', '400', NULL, NULL, NULL, NULL, NULL),
+  ('ee306ce7-3f87-45d9-8526-6f7c1f7c75b4', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'B/VINHO', NULL, '99HNJ1125TS008125', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-19 20:05:55.818561+00', '2026-07-01 14:24:25.782212+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('7ef25ce7-4530-4a0c-8551-277c6f4b7200', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 250', '2026', 'P/VERMELHO', NULL, '99HSHF250TS002882', NULL, '0', 'gasolina', 'manual', NULL, '24990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:53:44.514723+00', '2026-07-18 12:06:12.408545+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('c51a760d-a336-4b3f-80cf-692f42764f90', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW FREE 170', '2026', 'P/VERMELHO', NULL, '99HCS2170TS000796', NULL, '0', 'gasolina', 'manual', NULL, '16990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 15:04:49.546153+00', '2026-10-26 12:46:04.562004+00', 'moto', '170', NULL, NULL, NULL, NULL, NULL),
+  ('f4163442-34b4-4a6b-87d5-e50894be03f5', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2026', 'B/MARROM', NULL, '99HR1C125TS005574', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:53:00.669046+00', '2026-07-23 12:24:37.252896+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('142673b9-20f9-444d-9e08-eac6e90e5572', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW FREE 170', '2026', 'PRETO', NULL, '99HCS2170TS000874', NULL, '0', 'gasolina', 'manual', NULL, '16990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 14:56:24.176873+00', '2026-07-30 12:08:42.470016+00', 'moto', '170', NULL, NULL, NULL, NULL, NULL),
+  ('464e8920-6255-47ed-9066-1235ca1627c6', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2027', 'Preto', NULL, '99HNS1175VS002089', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-10-23 19:54:44.178477+00', '2026-10-26 12:47:58.550871+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('643979ee-90c4-4d64-a3ef-e6b35fe1e3de', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Azul', NULL, '99HSHF175VS003314', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'reservado', NULL, NULL, '2026-11-03 13:43:12.62586+00', '2026-11-03 13:50:36.870281+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('b28c676e-6fdd-4583-9dbb-3597f5c47377', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 50', '2026', 'B/MARROM', NULL, '99HJTS050TS015977', NULL, '0', 'gasolina', 'manual', NULL, '12990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 14:50:28.455148+00', '2026-10-20 11:26:18.954019+00', 'moto', '50', NULL, NULL, NULL, NULL, NULL),
+  ('11c675a4-8b2f-46bd-a8d7-a02793a08ef8', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 175 EFI', '2026', 'PRETO', NULL, '99HSHF175TS024130', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 15:09:18.116621+00', '2026-08-08 15:56:02.685543+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('467c8ea1-1336-44bf-acc0-9cf25abd6ebb', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'PRETA', NULL, '99HSHF175TS024138', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-06-09 15:08:17.71078+00', '2026-08-11 12:33:52.101401+00', 'moto', '175', NULL, NULL, NULL, NULL, NULL),
+  ('ed30f42b-3003-4536-9844-9317b334f030', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99hnj1125vs008459', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'disponivel', NULL, NULL, '2026-10-22 15:33:53.660131+00', '2026-10-22 15:33:53.660131+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('74eacd46-83b5-4140-95ee-06efe186d6ed', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99HNJ1125VS008575', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'disponivel', NULL, NULL, '2026-10-22 20:47:05.664653+00', '2026-10-22 20:47:05.664653+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('17adae21-d06b-4235-bb42-21fabfedbead', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99hnj1125vs008457', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-10-16 19:58:37.552801+00', '2026-10-26 12:51:39.055828+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('206aab93-8479-4cfa-b09c-bc660f344ab4', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Cinza', NULL, '99hnj1125vs010388', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'disponivel', NULL, NULL, '2026-10-22 21:01:02.596741+00', '2026-10-22 21:01:02.596741+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('cdc323b9-6f33-4c22-b26d-2cff671d308c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW FREE 170', '2026', 'Azul', NULL, '99hcs2170vs000494', NULL, '0', 'gasolina', NULL, NULL, '15990.00', 'reservado', NULL, NULL, '2026-11-03 19:43:23.946233+00', '2026-11-03 19:54:48.566561+00', 'moto', '170', NULL, '12', '3', '3000', '2026'),
+  ('f6aab255-75cf-47c9-91fd-27da6bad1f61', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99hnj1125vs009797', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'reservado', NULL, NULL, '2026-10-22 20:55:44.323698+00', '2026-11-06 11:25:39.961327+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('58636b43-1be6-4f31-b016-1bba714d7ede', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'STORM 200', '2026', 'Vermelho', NULL, '99HSTF200VS000946', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'vendido', NULL, NULL, '2026-10-26 15:18:51.322016+00', '2026-10-26 20:29:53.608432+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('100012a1-e433-42b7-8ea2-89f6cd9dab1c', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'PHOENIX 50', '2026', 'Cinza', NULL, '99HPHS050VS001839', NULL, '0', 'gasolina', NULL, NULL, '9990.00', 'reservado', NULL, NULL, '2026-11-06 18:53:21.943637+00', '2026-11-06 19:05:14.765659+00', 'moto', '50', NULL, '12', '3', '3000', '2026'),
+  ('3228d62b-5f34-4731-9da0-35e87c085887', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2027', 'VERMELHO', NULL, '99HNS1175VS000162', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'disponivel', NULL, NULL, '2026-07-15 13:50:38.645336+00', '2026-07-15 13:50:38.645336+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('6d03cd6f-d5a7-44ad-9f00-f7eb72c9421b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2027', 'VERMELHO', NULL, '99HNS1175VS000164', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'disponivel', NULL, NULL, '2026-07-15 13:51:08.89591+00', '2026-07-15 13:51:08.89591+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('ac41928b-e4d3-4c4e-8849-0ff371e6f6d8', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SCRAMBLER 400', '2026', 'PRETO', NULL, '99HSW1400TS000511', NULL, '0', 'gasolina', 'manual', NULL, '25990.00', 'disponivel', NULL, NULL, '2026-07-15 13:51:49.568623+00', '2026-07-15 13:51:49.568623+00', 'moto', '400', NULL, '12', '3', '3000', NULL),
+  ('35fef21a-1e9e-4568-97d3-004c2e3b623a', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'BEJE', NULL, '99HNJ1125VS002070', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'disponivel', NULL, NULL, '2026-07-16 14:39:38.915359+00', '2026-07-16 14:39:38.915359+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('eecc6d22-d43d-4154-aba4-7084f27eb59f', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001926', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'disponivel', NULL, NULL, '2026-07-16 14:43:40.705382+00', '2026-07-16 14:43:40.705382+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('d80da7eb-db85-4316-b807-21ddb1be7bbc', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2027', 'PRETO', NULL, '99HNS1175VS000569', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'disponivel', NULL, NULL, '2026-07-16 14:49:32.582628+00', '2026-07-16 14:49:32.582628+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('bd8ea256-971e-410e-a1ab-73505bad4257', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'Cinza', NULL, '99hstf200vs000907', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'vendido', NULL, NULL, '2026-10-05 15:44:49.405347+00', '2026-10-13 19:04:22.763594+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('bb7ba0c5-690d-4e5a-965b-97a488933460', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SCRAMBLER 400', '2027', 'PRETO', NULL, '99HSW1400VS000095', NULL, '0', 'gasolina', 'manual', NULL, '25990.00', 'disponivel', NULL, NULL, '2026-07-16 14:54:45.410341+00', '2026-07-16 14:54:45.410341+00', 'moto', '400', NULL, '12', '3', '300', NULL),
+  ('b8b03c8c-19db-424b-bc14-02e17ad07bc0', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'VERMELHO', NULL, '99HNJ1125VS000939', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-16 14:47:30.021979+00', '2026-10-13 11:34:48.705529+00', 'moto', '125', NULL, '12', '3', '3000', NULL);
+
+INSERT INTO public.vehicles (id, store_id, brand, model, year, color, plate, chassis, renavam, mileage, fuel_type, transmission, purchase_price, sale_price, status, images, notes, created_at, updated_at, vehicle_type, engine_cc, reseller_id, warranty_months, revision_period_months, revision_period_km, manufacture_year) VALUES
+  ('8f62c174-1af3-4160-8ae5-5d13a8ad3439', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'RIO 125', '2026', 'P/MARROM', NULL, '99HR1C125TS006218', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'disponivel', NULL, NULL, '2026-07-16 14:59:16.016876+00', '2026-07-16 14:59:16.016876+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('7695d4e6-7e3b-4980-9f97-445881789084', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY ', 'JET 125', '2026', 'Vermelha ', NULL, '99HJTS125TS024995', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-19 16:17:37.725902+00', '2026-07-17 19:18:54.495805+00', 'moto', '125', NULL, NULL, NULL, NULL, NULL),
+  ('14599a02-1333-4c27-b6d4-48914bb9c667', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2027', 'VERMELHO', NULL, '99HNS1175VS000122', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-07-15 13:50:10.141245+00', '2026-07-21 14:01:26.368469+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('fe38ab28-fd81-4353-9a89-53796dbb1f28', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'BEGE', NULL, '99HSHF175TS023181', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, NULL, '2026-07-22 17:48:11.200741+00', '2026-07-22 18:59:21.85753+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('e91cbfc3-aac7-4394-93f1-ad0a17a95d45', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'CINZA', NULL, '99HNJ1125VS001263', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-16 14:45:58.976701+00', '2026-09-22 13:17:35.839605+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('edda6ef2-e99a-4afe-bbdc-a77a2a295bab', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2027', 'VERMELHO', NULL, '99HNS1175VS000119', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-07-15 13:48:25.360767+00', '2026-08-03 10:49:08.621312+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('d72ab1e2-4a97-4073-8028-e2a1f85ca642', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'TITANIUM 250', '2027', 'Preto', NULL, '99HTTF250VS000034', NULL, '0', 'gasolina', 'manual', NULL, '27990.00', 'disponivel', NULL, NULL, '2026-08-11 11:19:21.803219+00', '2026-08-11 11:19:21.803219+00', 'moto', '250', NULL, '12', '3', '3000', '2026'),
+  ('f5a15b2a-7b2e-4850-b03e-e58a6430681b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2027', 'VERMELHO', NULL, '99HNS1175VS000118', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-07-15 13:49:03.817657+00', '2026-08-11 12:35:30.494801+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('1386c4e0-ed2d-44ac-b18e-243153ea3111', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SBM 250 T 6b', '2026', 'Vermelho', NULL, '99HST1250TS000842', NULL, '0', 'gasolina', 'manual', NULL, '28500.00', 'vendido', NULL, NULL, '2026-08-12 13:09:06.542123+00', '2026-08-15 13:52:24.3816+00', 'moto', '250', NULL, '36', '3', '3000', NULL),
+  ('a18f69c5-4193-4e00-8ae3-0292125c862d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW FREE 170', '2026', 'Preto', NULL, '99HCS2170TS000732', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, NULL, '2026-08-13 15:20:34.001357+00', '2026-08-15 13:52:42.707013+00', 'moto', '170', NULL, '12', '3', '3000', '2026'),
+  ('08d32269-7d89-4fe2-bc7f-a82e646b9d92', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175VS001055', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, NULL, '2026-08-14 16:56:42.374836+00', '2026-08-15 13:54:49.767213+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('1c94c06a-b9fc-48fd-8546-d676f9528a8e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Preto', NULL, '99HSHF175VS000712', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, NULL, '2026-08-14 17:55:37.702058+00', '2026-08-15 13:56:06.168901+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('478d58a9-8f00-4e0b-b458-3810a5554555', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2027', 'VERMELHO', NULL, '99HNS1175VS000120', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-07-15 13:49:33.137432+00', '2026-08-15 13:57:17.098953+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('7a991e5e-6b5e-4510-8d36-4bfde14256a2', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Preto', NULL, '99HSHF175VS000924', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, NULL, '2026-08-15 14:19:13.179076+00', '2026-08-17 13:05:48.918026+00', 'moto', '175', NULL, '12', '3', '3000', '2025'),
+  ('2ec5f4d7-6569-4da9-b221-3ed6a7f7f14f', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2026', 'PRETO', NULL, '99HNS1175VS000567', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-07-16 14:51:05.908013+00', '2026-08-21 16:57:31.851494+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('b7339c22-5554-4cb8-b427-3c7701879df2', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SBM 250T B', '2025', 'Vermelho', NULL, '99hst1250ts000474', NULL, '0', 'gasolina', 'manual', NULL, '27990.00', 'vendido', NULL, NULL, '2026-08-19 20:06:54.06583+00', '2026-08-19 20:14:17.930075+00', 'moto', '250', NULL, '36', '3', '3000', '2024'),
+  ('ad6e71b3-17ed-4ab9-8cad-71626faf977c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'CINZA', NULL, '99HNJ1125VS000854', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:45:19.380258+00', '2026-09-22 14:37:52.387272+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('5c131630-c38c-4ea9-a9f9-d1dc68acb06d', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2027', 'PRETO', NULL, '99HNS1175VS000572', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-07-16 14:50:17.384727+00', '2026-08-22 23:27:14.012025+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('7159aa13-3eb6-4b0f-8ddf-fe8cd78258f7', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SBM 250S', '2026', 'Vermelho', NULL, '99HSB1250TS000983', NULL, '0', 'gasolina', 'manual', NULL, '27990.00', 'vendido', NULL, NULL, '2026-08-22 12:56:35.917052+00', '2026-08-26 11:43:34.27043+00', 'moto', '250', NULL, '36', '3', '3000', '2026'),
+  ('d38ffb44-b16c-4bae-8ffe-e83951f280d6', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2027', 'BRANCA', NULL, '99HNS1175VS000499', NULL, '0', 'gasolina', 'manual', NULL, '18999.00', 'vendido', NULL, NULL, '2026-07-16 14:48:28.227253+00', '2026-09-03 11:54:05.238802+00', 'moto', '175', NULL, '12', '3', '3000', NULL),
+  ('f4e71640-83e5-4837-bfd4-658ec4d3bbea', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2027', 'VERMELHO', NULL, '99HSTF200VS000115', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, NULL, '2026-07-16 14:56:40.402711+00', '2026-09-01 18:07:53.36101+00', 'moto', '200', NULL, '12', '3', '3000', NULL),
+  ('79bb282a-4810-482e-b2d6-9fafcfc8bd24', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'VERMELHO', NULL, '99HNJ1125VS001608', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-15 13:46:46.023558+00', '2026-09-15 16:15:17.409863+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('87a39b3f-a464-424f-989a-fa1f2b2dd3f1', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'IRON 250', '2026', 'VERMELHO', NULL, '99HARF250TS001371', NULL, '0', 'gasolina', 'manual', NULL, '25990.00', 'disponivel', NULL, NULL, '2026-07-16 14:52:04.638044+00', '2026-09-17 13:32:41.376866+00', 'moto', '250', NULL, '12', '3', '3000', NULL),
+  ('8f87a9a4-caed-4153-bd07-ac9cea88fdb5', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'RIO 125', '2026', 'B/AZUL', NULL, '99HR1C125TS006244', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, NULL, '2026-07-16 14:58:12.452529+00', '2026-09-22 13:25:36.397348+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('d859485d-63ec-4b84-95c1-4a3a8bef5479', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'STORM 200', '2027', 'VERMELHO', NULL, '99HSTF200VS000117', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, NULL, '2026-07-16 14:57:13.668442+00', '2026-09-22 13:26:27.853681+00', 'moto', '200', NULL, '12', '3', '3000', NULL),
+  ('fa8e1380-2b29-4d88-871e-a7aa08551516', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'Branco', NULL, '99HJTS125VS000473', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, NULL, '2026-08-13 12:03:13.280251+00', '2026-09-22 14:28:30.488266+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('ee024c1f-669b-4a95-ad0e-49fdf2ef6bec', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001928', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-16 14:44:27.317388+00', '2026-09-22 13:27:29.619448+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('71e37b94-4611-40d9-9b83-e72bfcb36144', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'B/MARROM', NULL, '99HNJ1125VS001931', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'vendido', NULL, NULL, '2026-07-16 14:45:13.793396+00', '2026-09-23 12:29:36.731853+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('cf77b301-97f7-425d-bd24-8ed5d066181f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'Vermelho', NULL, '99HjTS125VS001767', NULL, '0', 'gasolina', NULL, NULL, '13990.00', 'disponivel', NULL, NULL, '2026-10-22 20:48:22.827185+00', '2026-10-22 20:48:22.827185+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('11442b3c-f07b-46ec-b490-5d188e63f601', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JEF 150', '2026', 'Preto', NULL, '99HJF1150TS006414', NULL, '0', 'gasolina', 'manual', NULL, '15990.00', 'vendido', NULL, NULL, '2026-08-25 15:36:39.402045+00', '2026-08-26 11:31:19.77356+00', 'moto', '150', NULL, '12', '3', '3000', '2025'),
+  ('2d98f704-2be9-48f5-9ded-a7f0e798136a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'Shineray', 'SHI 250 EFI', '2027', 'Preto', NULL, '99HSHF250VS000531', NULL, '0', 'gasolina', 'manual', NULL, '25990.00', 'vendido', NULL, NULL, '2026-08-31 18:48:15.763846+00', '2026-09-01 18:06:19.671499+00', 'moto', '250', NULL, '12', NULL, '3000', '2026'),
+  ('63790915-c6f4-48d2-852c-9845215d1b44', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2027', 'Preto', NULL, '99HNS1175VS001973', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-08-31 20:11:51.530759+00', '2026-09-01 18:09:23.880458+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('19d81eae-35e6-4df8-83a0-11ff21f1bb60', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175', '2027', 'Vermelho', NULL, '99hns1175vs001126', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-08-31 16:34:25.895484+00', '2026-09-03 12:25:28.887975+00', 'moto', '175', NULL, '12', NULL, '3000', '2026'),
+  ('0961b28a-3109-40ce-9a11-853c53c3e86b', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SBM 250 T 6b', '2026', 'Vermelho', NULL, '99HST1250TS000645', NULL, '0', 'gasolina', 'manual', NULL, '27990.00', 'vendido', NULL, NULL, '2026-08-31 17:18:35.368989+00', '2026-09-15 16:11:25.734978+00', 'moto', '250', NULL, '36', '3', '3000', '2026'),
+  ('852a6f9e-8674-499b-ba66-33ff740d323b', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'DENVER 250', '2026', 'Preto', NULL, '99HDVF250VS000185', NULL, '0', 'gasolina', NULL, NULL, '28990.00', 'vendido', NULL, NULL, '2026-10-06 17:22:21.609784+00', '2026-10-13 11:35:26.382736+00', 'moto', '250', NULL, '12', '3', '3000', '2026'),
+  ('69d5de59-7f80-42f3-804b-64c51549ccc1', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'Vermelho', NULL, '99HJTS125VS001764', NULL, '0', 'gasolina', NULL, NULL, '13990.00', 'disponivel', NULL, NULL, '2026-10-22 20:49:45.983682+00', '2026-10-22 20:49:45.983682+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('a3ca0697-f5ec-4380-81f7-985e9725defc', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2026', 'Branco', NULL, '99hr1f125vs000340', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'disponivel', NULL, NULL, '2026-10-22 20:58:14.694285+00', '2026-10-22 20:58:14.694285+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('8208facb-91e7-4f83-a77f-51d3bcfc75cb', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 250', '2026', 'Vermelho', NULL, '99hshf250vs001178', NULL, '0', 'gasolina', NULL, NULL, '22990.00', 'disponivel', NULL, NULL, '2026-10-22 21:03:06.079521+00', '2026-10-22 21:03:06.079521+00', 'moto', '250', NULL, '12', '3', '3000', '2026'),
+  ('ad72e3e4-9edc-420d-962d-a328b055f988', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'CINZA', NULL, '99HNJ1125VS001260', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'disponivel', NULL, NULL, '2026-07-16 14:46:33.722997+00', '2026-10-26 12:43:28.499083+00', 'moto', '125', NULL, '12', '3', '3000', NULL),
+  ('131c0c0b-7254-4aa6-9ecd-7cc6196aa1dd', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'DENVER 250', '2027', 'Preto', NULL, '99HDVF250VS000373', NULL, '0', 'gasolina', 'manual', NULL, '28990.00', 'vendido', NULL, NULL, '2026-10-23 15:54:37.337895+00', '2026-10-26 12:47:55.386288+00', 'moto', '250', NULL, '12', '3', '3000', '2026'),
+  ('e0f0ec08-7dbc-444a-9a80-a2fafbae5cdd', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2026', 'Preto', NULL, '99hns1175vs002595', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'vendido', NULL, NULL, '2026-10-17 13:16:58.98234+00', '2026-10-26 12:52:16.931387+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('6145867c-cf46-4242-aa90-cc0555c8b623', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Preto', NULL, '99hshf175vs003446', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-10-22 15:43:09.178822+00', '2026-10-26 12:56:49.19295+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('2764c74f-f9a9-40db-b6a6-2817acbe1aa6', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2027', 'Preto', NULL, '99HNS1175VS002098', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'reservado', NULL, NULL, '2026-10-26 21:03:07.146456+00', '2026-10-26 21:26:06.855297+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('ca6c6f8a-fb83-4353-82cd-1685babbf7be', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99hnj1125vs008978', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-10-29 17:25:46.625512+00', '2026-10-30 13:37:22.796747+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('74f635d2-d619-46f2-b721-0bd5a55ecdcc', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2027', 'Branco', NULL, '99hr1f125vs000334', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'reservado', NULL, NULL, '2026-11-03 18:44:27.863248+00', '2026-11-03 18:52:40.505521+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('8a2e16e7-b606-4a23-a89e-4f3775bea51d', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'Vermelho', NULL, '99hstf200vs000944', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'reservado', NULL, NULL, '2026-10-09 15:02:13.482257+00', '2026-11-04 17:53:11.465561+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('6cafa0ca-b040-4574-8c15-61a5a29aed10', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2026', 'Preto', NULL, '99hns1175vs002567', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'reservado', NULL, NULL, '2026-10-15 21:50:32.288329+00', '2026-11-07 11:40:52.703642+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('aa0161be-2dcc-4b08-8538-d9d99c8df82e', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'Branco', NULL, '99HNJ1125VS010500', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'reservado', NULL, NULL, '2026-11-07 13:48:40.111338+00', '2026-11-07 14:15:46.821463+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('7b3e3dfa-7353-4f6c-92f8-5d1f4c90fb4f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2027', 'Preto', NULL, '99HNS1175VS001975', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'vendido', NULL, NULL, '2026-09-09 15:54:01.029539+00', '2026-09-12 14:47:53.862909+00', 'moto', '175', NULL, '12', NULL, '3000', '2026'),
+  ('a8c27169-aec8-4235-9ec5-ce28ae2b6b4b', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 250', '2027', 'Branco', NULL, '99HSHF250VS000439', NULL, '0', 'gasolina', NULL, NULL, '25990.00', 'vendido', NULL, NULL, '2026-09-10 15:06:03.754076+00', '2026-09-12 14:48:55.567487+00', 'moto', '250', NULL, '12', NULL, '3000', '2026');
+
+INSERT INTO public.vehicles (id, store_id, brand, model, year, color, plate, chassis, renavam, mileage, fuel_type, transmission, purchase_price, sale_price, status, images, notes, created_at, updated_at, vehicle_type, engine_cc, reseller_id, warranty_months, revision_period_months, revision_period_km, manufacture_year) VALUES
+  ('deb0539b-5bb5-447e-9818-338f97186dd9', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2027', 'Vermelho', NULL, '99HJTS125VS000395', NULL, '0', 'gasolina', NULL, NULL, '13990.00', 'vendido', NULL, NULL, '2026-09-10 20:15:26.192339+00', '2026-09-12 14:53:12.948072+00', 'moto', '125', NULL, '12', NULL, '3000', '2026'),
+  ('085721d9-a11e-467d-85f4-3dd610bd3a0a', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2027', 'Cinza', NULL, '99hr1c125vs000264', NULL, '0', 'gasolina', NULL, NULL, '13990.00', 'vendido', NULL, NULL, '2026-09-11 13:28:32.832672+00', '2026-09-12 14:53:44.204245+00', 'moto', '125', NULL, '12', NULL, '3000', '2025'),
+  ('c47aea20-4541-4644-b988-08471841a484', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'Preto', NULL, '99hjts125vs000464', NULL, '0', 'gasolina', NULL, NULL, '13990.00', 'vendido', NULL, NULL, '2026-09-22 14:09:07.55339+00', '2026-09-22 14:45:32.813442+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('03bd41ab-40a8-4203-9b8d-c01f1c93b02e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW FREE 170', '2026', 'Preto', NULL, '99hcs2170ts000993', NULL, '0', 'gasolina', NULL, NULL, '15990.00', 'vendido', NULL, NULL, '2026-09-15 13:29:39.970347+00', '2026-09-15 16:14:04.443344+00', 'moto', '170', NULL, '12', NULL, '3000', '2026'),
+  ('e7535191-05e5-4d97-b013-8c772223c2ed', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'Branco', NULL, '99hnj1125vs007426', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-09-14 14:23:02.934575+00', '2026-09-15 16:16:38.789666+00', 'moto', '125', NULL, '12', NULL, '3000', '2025'),
+  ('6e7b7ca1-53f1-4f62-8dd2-6f627c704d26', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2027', 'Preto', NULL, '99hshf175vs002596', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-09-18 14:35:42.894528+00', '2026-09-22 14:26:40.439451+00', 'moto', '175', NULL, '12', NULL, '3000', '2026'),
+  ('12e38126-92fd-4b47-9cd1-7b34dc2ec62c', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175VS024619', NULL, '0', 'gasolina', NULL, NULL, '0.00', 'disponivel', NULL, NULL, '2026-09-17 13:15:14.940477+00', '2026-09-17 13:15:14.940477+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('4e9cde3b-3a62-4a0d-9608-04ceba3ed32f', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 175 EFI', '2026', 'Preto', NULL, '99HSHF175VS002449', NULL, '0', 'gasolina', NULL, NULL, '0.00', 'disponivel', NULL, NULL, '2026-09-17 13:16:31.431189+00', '2026-09-17 13:16:31.431189+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('1550df0a-60c5-4a8b-be0e-6dc493785644', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'URBAN LITE 150', '2026', 'Preto', NULL, '99HULF150TS000553', NULL, '0', 'gasolina', NULL, NULL, '17990.00', 'disponivel', NULL, NULL, '2026-09-17 13:29:14.276994+00', '2026-09-17 13:29:14.276994+00', 'moto', '150', NULL, '12', '3', '3000', '2025'),
+  ('6ea60891-87c3-4dbe-8272-46e4a091bc4f', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SBM 400s', '2026', 'Preto', NULL, '99HSB1400TS000579', NULL, '0', 'gasolina', 'manual', NULL, '36990.00', 'disponivel', NULL, NULL, '2026-09-17 13:30:58.639693+00', '2026-09-17 13:30:58.639693+00', 'moto', '400', NULL, NULL, NULL, NULL, '2025'),
+  ('387a3f6b-8aeb-4346-ba79-72edcbe0d560', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 175 EFI', '2026', 'Preto', NULL, '99HSHF175VS002444', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'disponivel', NULL, NULL, '2026-09-17 13:35:34.823264+00', '2026-09-17 13:35:34.823264+00', 'moto', '175', NULL, '12', '3', '3000', '2025'),
+  ('9763ad9f-fdd9-46a3-a4ba-636a2fe54211', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'Branco', NULL, '99hnj1125vs007335', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-09-18 18:55:03.901139+00', '2026-09-22 14:30:24.461417+00', 'moto', '125', NULL, '12', NULL, '3000', '2026'),
+  ('e92b0d64-df24-4865-9d89-575d8960971e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'RIO 125', '2027', 'Cinza', NULL, '99HR1C125VS000266', NULL, '0', 'gasolina', NULL, NULL, '13990.00', 'disponivel', NULL, NULL, '2026-09-15 23:01:23.262478+00', '2026-10-06 11:59:43.969474+00', 'moto', '125', NULL, '12', NULL, '3000', '2026'),
+  ('2d57b836-d4c4-4698-af77-c098f17e1074', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'Preto', NULL, '99HSTF200VS000860', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'vendido', NULL, NULL, '2026-09-21 12:21:08.943309+00', '2026-09-22 14:33:22.259225+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('c597e13f-7145-462e-babc-bfa6effc9a53', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2026', 'Vermelho', NULL, '99HNS1175VS001942', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'disponivel', NULL, NULL, '2026-09-19 14:57:10.390089+00', '2026-09-19 14:57:10.390089+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('eef1aa1e-1350-4d18-8816-9add7890d801', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'Cinza', NULL, '99HSTF200VS000285', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'vendido', NULL, NULL, '2026-09-22 14:40:53.580134+00', '2026-09-22 20:39:48.611916+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('5158be0e-71a8-4c95-a4db-ce2552aaccfa', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'DENVER 400', '2026', 'Preto', NULL, '99HSB4400VS000224', NULL, '0', 'gasolina', NULL, NULL, '0.01', 'vendido', NULL, NULL, '2026-09-22 17:33:00.644562+00', '2026-09-22 21:03:38.251909+00', 'moto', '400', NULL, '36', '3', '3000', '2026'),
+  ('1fc1da3f-bdda-492c-a0fd-040e457d79fb', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2026', 'Preto', NULL, '99HNS1175VS002573', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'vendido', NULL, NULL, '2026-09-17 13:34:36.890083+00', '2026-09-22 13:48:02.780681+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('5f2a6e09-4c89-49aa-8b4f-fe5f780d96df', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175VS001056', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-09-21 16:16:50.224029+00', '2026-09-22 14:34:35.070056+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('5df6d2d9-7cc0-478c-9203-4598e7363e6d', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'STORM 200', '2026', 'Vermelho', NULL, '99HSTF200TS004557', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'vendido', NULL, NULL, '2026-09-17 13:30:12.338176+00', '2026-09-24 11:36:06.029259+00', 'moto', '200', NULL, '12', '3', '3000', '2025'),
+  ('cd150f42-aac7-4701-904b-7b48e630dcaf', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'Branco', NULL, '99HNJ1125VS007342', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-09-16 18:08:43.906865+00', '2026-09-22 14:15:46.929859+00', 'moto', '125', NULL, '12', NULL, '3000', '2026'),
+  ('8e242f65-b03d-45c8-8995-1320f1e83c9f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2027', 'Cinza', NULL, '99hstf200vs000278', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'vendido', NULL, NULL, '2026-09-17 16:20:06.877705+00', '2026-09-22 14:17:26.593149+00', 'moto', '200', NULL, '12', NULL, '3000', '2026'),
+  ('82aa962c-9534-440f-98b0-42f7eb9d82ae', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2027', 'Azul', NULL, '99hshf175vs003312', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-09-17 19:07:19.614911+00', '2026-09-22 14:21:55.781348+00', 'moto', '175', NULL, '12', NULL, '3000', '2026'),
+  ('e2b01fb4-8cf4-4e4d-bdca-14c22559be72', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2027', 'Branco', NULL, '99hnj1125vs008966', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-09-18 13:16:39.176036+00', '2026-09-22 14:23:57.836852+00', 'moto', '125', NULL, '12', NULL, '3000', '2026'),
+  ('c810844a-02c4-4eba-a464-29dfc1b74ce2', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 250', '2026', 'Preto', NULL, '99hshf250vs000533', NULL, '0', 'gasolina', NULL, NULL, '22990.00', 'vendido', NULL, NULL, '2026-09-21 16:21:39.981959+00', '2026-09-22 14:36:37.492978+00', 'moto', '250', NULL, '12', '3', '3000', '2026'),
+  ('261e0a6e-dd46-4995-be41-631634165406', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99HNJ1125VS008967', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-09-22 13:34:25.215132+00', '2026-09-22 14:39:50.34563+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('0a284879-97a1-46af-b33f-0f2f0548898d', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SBM 250T B', '2026', 'Cinza', NULL, '99HST1250TS000494', NULL, '0', 'gasolina', NULL, NULL, '26990.00', 'disponivel', NULL, NULL, '2026-09-23 12:20:04.688933+00', '2026-10-01 12:10:33.878393+00', 'moto', '250', NULL, '36', '3', '3000', '2025'),
+  ('420b6e34-b6de-48ba-b1da-e4c58b469d07', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2027', 'Preto', NULL, '99HNS1175VS002571', NULL, '0', 'gasolina', 'manual', NULL, '18990.00', 'vendido', NULL, NULL, '2026-09-24 11:23:53.988304+00', '2026-09-24 11:38:20.434894+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('361975a2-bcf2-4599-a88c-7f3228410375', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175VS002317', NULL, '0', 'gasolina', NULL, NULL, '0.00', 'disponivel', NULL, NULL, '2026-09-17 13:15:55.022959+00', '2026-10-06 11:59:33.292616+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('f47f307f-356a-4171-86f8-5ab16382b447', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 250', '2027', 'Branco', NULL, '99HSHF250VS000187', NULL, '0', 'gasolina', 'manual', NULL, '26990.00', 'vendido', NULL, NULL, '2026-09-17 11:55:13.284518+00', '2026-09-24 11:33:58.891121+00', 'moto', '250', NULL, '12', '3', '3000', '2026'),
+  ('0c897ea2-13c2-4234-bd81-bd7986fa7062', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Preto', NULL, '99hshf175vs002597', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'vendido', NULL, NULL, '2026-09-29 13:38:17.301616+00', '2026-10-01 11:46:38.24805+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('63083a24-444e-4993-a94f-1af20a3805b6', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY ', 'DENVER 250', '2026', 'Cinza', NULL, '99HDVF250TS001724', NULL, '0', 'gasolina', 'manual', NULL, '28990.00', 'disponivel', NULL, '[CLÁUSULA FIXA] O emplacamento do veículo é de responsabilidade do cliente.', '2026-03-27 17:58:54.129866+00', '2026-10-06 17:22:50.3574+00', 'moto', '250', NULL, NULL, NULL, NULL, NULL),
+  ('2aee1096-1de3-42a0-97a2-b8f51b57da91', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2026', 'Bege', NULL, '99HNS1175VS002687', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'vendido', NULL, NULL, '2026-09-23 15:02:45.987614+00', '2026-10-01 11:55:11.757876+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('fa6d2da5-7a40-4ae5-8f5c-cca1d0d4ead5', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'STORM 200', '2027', 'Preto', NULL, '99HSTF200VS000844', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'vendido', NULL, NULL, '2026-09-28 17:54:45.542956+00', '2026-10-01 12:13:41.240686+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('3bee908f-a505-49ec-a5c2-78e695854b24', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SBM 250 T 6B', '2027', 'Vermelho', NULL, '99hsh250vs0000000', NULL, '0', 'gasolina', 'manual', NULL, '26990.00', 'vendido', NULL, NULL, '2026-09-26 14:43:48.278756+00', '2026-10-01 11:43:36.690176+00', 'moto', '250', NULL, '36', '3', '3000', '2026'),
+  ('c47a17ad-12d0-4c88-89d1-996a6477195f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JEF 150', '2026', 'Vermelho', NULL, '99hnj1150ts000433', NULL, '0', 'gasolina', 'manual', '0.00', '17990.00', 'vendido', NULL, NULL, '2026-10-14 21:00:24.67903+00', '2026-10-17 13:42:16.19058+00', 'moto', '250', NULL, '36', '3', '3000', '2026'),
+  ('be107eb3-267f-44e2-aec6-e3a898b0fb1e', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 250', '2026', 'Preto', NULL, '99HSHF250VS000445', NULL, '0', 'gasolina', NULL, NULL, '22990.00', 'vendido', NULL, NULL, '2026-09-23 12:19:21.524942+00', '2026-10-30 14:18:55.606815+00', 'moto', '250', NULL, '12', '3', '3000', '2027'),
+  ('e0aaea3d-6dc6-4db6-b430-4095d83c951e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Azul', NULL, '99hshf175vs003316', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'reservado', NULL, NULL, '2026-11-03 19:25:40.191503+00', '2026-11-03 19:29:21.163021+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('c830685a-539b-4afa-8059-609667f98dc2', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JET 125', '2027', 'Branco', NULL, '99HNJ1125VS008964', NULL, '0', 'gasolina', 'manual', NULL, '14990.00', 'disponivel', NULL, NULL, '2026-10-03 12:40:33.07973+00', '2026-10-26 12:43:07.217952+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('f74391c7-c542-4aae-8166-32e3010d6043', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 250', '2026', 'Preto', NULL, '99HSHF250VS000969', NULL, '0', 'gasolina', NULL, NULL, '22990.00', 'vendido', NULL, NULL, '2026-10-19 13:17:31.621153+00', '2026-10-26 12:46:12.650282+00', 'moto', '250', NULL, '12', '3', '3000', '2026'),
+  ('e950a0a4-4671-4858-8cd8-9ebdb6026b92', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2026', 'Vermelho', NULL, '99HNS1175VS002630', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'vendido', NULL, NULL, '2026-10-03 12:33:11.759001+00', '2026-10-26 12:46:35.08332+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('ea4c42eb-02b1-4e94-8abc-6dc30282d3d7', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'STORM 200', '2026', 'Vermelho', NULL, '99HSTF200TS004675', NULL, '0', 'gasolina', 'manual', NULL, '23990.00', 'reservado', NULL, NULL, '2026-09-30 19:12:10.663662+00', '2026-09-30 19:20:02.968974+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('138124ae-9169-4aa5-a4c5-4b387349f976', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'PHOENIX 50', '2026', 'Cinza', NULL, '99hphs050vs001550', NULL, '0', 'gasolina', NULL, NULL, '9990.00', 'vendido', NULL, NULL, '2026-09-30 13:11:23.677293+00', '2026-10-01 11:53:19.17027+00', 'moto', '50', NULL, '12', '3', '3000', '2026'),
+  ('7cfac19b-5266-4cf7-b37f-4dff506fd850', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99hnj1125vs008981', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-09-30 15:10:47.633499+00', '2026-10-01 11:56:36.32424+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('43d51f8e-691d-4d9b-b884-80c32423404f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'STORM 200', '2026', 'Preto', NULL, '99hstf200vs000856', NULL, '0', 'gasolina', NULL, NULL, '23990.00', 'vendido', NULL, NULL, '2026-09-30 17:21:46.945859+00', '2026-10-01 12:02:03.459946+00', 'moto', '200', NULL, '12', '3', '3000', '2026'),
+  ('a9d6c1c7-1fd4-4384-b8e9-56f66cece722', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'RIO 125', '2026', 'Branco', NULL, '99HR1C125VS000415', NULL, '0', 'gasolina', NULL, NULL, '13990.00', 'vendido', NULL, NULL, '2026-09-29 14:18:32.835584+00', '2026-10-01 12:16:02.818914+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('65af520b-b185-4fbd-8f44-bceb209ff8e3', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175TS024619', NULL, '0', 'gasolina', 'manual', NULL, '19990.00', 'vendido', NULL, NULL, '2026-09-29 17:55:38.405592+00', '2026-10-01 12:17:51.181176+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('1aad2958-7b70-465e-aeb1-491ed19abe93', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99HNJ1125VS009799', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-10-23 12:50:05.4567+00', '2026-10-26 12:57:30.135583+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('075e9ff5-36f2-4dcf-b942-1eb7bce68b5b', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'RIO 125', '2026', 'B/MARROM', NULL, '99HR1F125VS000402', NULL, '0', 'gasolina', 'manual', NULL, '13990.00', 'vendido', NULL, NULL, '2026-10-02 14:50:40.55549+00', '2026-10-13 11:34:18.797141+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('db066c86-59eb-4697-a618-19a43a0fe196', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW SHI 175', '2026', 'Vermelho', NULL, '99HNS1175VS002628', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'vendido', NULL, NULL, '2026-10-02 13:04:53.737656+00', '2026-10-13 11:34:36.074631+00', 'moto', '175', NULL, '12', '3', '3000', '2026');
+
+INSERT INTO public.vehicles (id, store_id, brand, model, year, color, plate, chassis, renavam, mileage, fuel_type, transmission, purchase_price, sale_price, status, images, notes, created_at, updated_at, vehicle_type, engine_cc, reseller_id, warranty_months, revision_period_months, revision_period_km, manufacture_year) VALUES
+  ('bc54076b-5f7d-4e94-9618-5ebdc26fbf0b', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 250', '2026', 'Preto', NULL, '99HSHF250VS001222', NULL, '0', 'gasolina', 'manual', NULL, '22990.00', 'vendido', NULL, NULL, '2026-10-01 13:36:29.992181+00', '2026-10-01 20:13:10.764474+00', 'moto', '250', NULL, '12', '3', '3000', '2026'),
+  ('97d2c20e-7dcd-4cc1-9e70-121a8144725e', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99hnj1125vs008976', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-10-22 20:58:26.376028+00', '2026-10-26 12:58:04.709127+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('f39eb576-2e9c-487e-af4a-25c70d93ae2a', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'PHOENIX 50', '2026', 'B/MARROM', NULL, '99HPHS050VS001704', NULL, '0', 'gasolina', NULL, NULL, '9990.00', 'vendido', NULL, NULL, '2026-10-06 17:50:19.385779+00', '2026-10-13 11:35:43.721496+00', 'moto', '50', NULL, '12', '3', '3000', '2026'),
+  ('a0eaf50e-d075-4335-b65b-a8448514a3b7', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW JET 125', '2026', 'Branco', NULL, '99hnj1125vs008979', NULL, '0', 'gasolina', NULL, NULL, '14990.00', 'vendido', NULL, NULL, '2026-10-02 14:47:53.915237+00', '2026-10-13 19:02:38.551042+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('7e3e5cd4-2d50-49f1-a3c1-8e42af2ec875', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'NEW JEF 170', '2026', 'Vermelho', NULL, '99hjf1170vs002011', NULL, '0', 'gasolina', NULL, NULL, '17990.00', 'vendido', NULL, NULL, '2026-10-30 16:04:49.314913+00', '2026-11-04 14:29:45.875619+00', 'moto', '170', NULL, '12', '3', '3000', '2026'),
+  ('0c4e0dbe-f96d-4662-96cc-e55826dc7286', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SBM 250S', '2027', 'Vermelho', NULL, '99hsb3250vs000322', NULL, '0', 'gasolina', 'manual', NULL, '26990.00', 'vendido', NULL, NULL, '2026-10-14 21:01:53.684956+00', '2026-10-16 13:35:02.730452+00', 'moto', '250', NULL, '36', '3', '3000', '2026'),
+  ('9ee7c84f-fd55-4805-a129-d0aef5b5dd19', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'NEW SHI 175', '2026', 'Vermelho', NULL, '99hns1175vs002637', NULL, '0', 'gasolina', NULL, NULL, '18990.00', 'reservado', NULL, NULL, '2026-11-05 20:30:23.589633+00', '2026-11-05 20:41:18.036848+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('6f9f07b9-91ac-4794-97f6-792d6eaa66de', 'ccf8e097-09d7-4305-8077-5c16fc8b5634', 'SHINERAY', 'SHI 175 EFI', '2026', 'Cinza', NULL, '99hshf175vs003560', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'reservado', NULL, NULL, '2026-10-01 18:06:43.763022+00', '2026-10-28 13:01:29.638278+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('fa61dd2a-406e-4390-ba25-8c4298c2cf6c', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SBM 250T B', '2026', 'Cinza', NULL, '99hst1250ts000494', NULL, '0', 'gasolina', NULL, NULL, '27990.00', 'reservado', NULL, NULL, '2026-11-09 21:59:54.57715+00', '2026-11-09 22:10:33.81109+00', 'moto', '250', NULL, '36', '3', '3000', '2025'),
+  ('61df00de-e128-4764-b573-6ecb0d356326', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SHI 175 EFI', '2026', 'Vermelho', NULL, '99HSHF175VS005100', NULL, '0', 'gasolina', NULL, NULL, '19990.00', 'disponivel', NULL, NULL, '2026-10-22 20:52:12.536825+00', '2026-10-22 20:52:12.536825+00', 'moto', '175', NULL, '12', '3', '3000', '2026'),
+  ('706ddb73-c7e1-4ec8-b6d5-4ffb2655bce6', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'JET 125', '2026', 'Preto', NULL, '99hjts125vs001005', NULL, '0', 'gasolina', NULL, NULL, '13990.00', 'vendido', NULL, NULL, '2026-10-26 13:15:17.60761+00', '2026-10-30 13:24:43.80346+00', 'moto', '125', NULL, '12', '3', '3000', '2026'),
+  ('97aa9ae0-2212-4e31-8e30-c31034d6184f', 'e8254a81-d669-464b-9806-457ba25ce7f0', 'SHINERAY', 'SBM 250S', '2027', 'Vermelho', NULL, '99hsb3250vs000323', NULL, '0', 'gasolina', 'manual', NULL, '26990.00', 'vendido', NULL, NULL, '2026-10-29 11:45:57.54186+00', '2026-10-30 13:34:54.083083+00', 'moto', '250', NULL, '36', '3', '3000', '2026');
+
+
+
+--
+-- Name: activity_logs activity_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.activity_logs
+    ADD CONSTRAINT activity_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: api_keys api_keys_key_hash_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT api_keys_key_hash_key UNIQUE (key_hash);
+
+
+--
+-- Name: api_keys api_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT api_keys_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bank_credentials bank_credentials_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bank_credentials
+    ADD CONSTRAINT bank_credentials_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bank_credentials bank_credentials_store_id_bank_code_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.bank_credentials
+    ADD CONSTRAINT bank_credentials_store_id_bank_code_key UNIQUE (store_id, bank_code);
+
+
+--
+-- Name: chassis_patterns chassis_patterns_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chassis_patterns
+    ADD CONSTRAINT chassis_patterns_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chassis_year_codes chassis_year_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.chassis_year_codes
+    ADD CONSTRAINT chassis_year_codes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: contract_acceptances contract_acceptances_acceptance_token_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_acceptances
+    ADD CONSTRAINT contract_acceptances_acceptance_token_key UNIQUE (acceptance_token);
+
+
+--
+-- Name: contract_acceptances contract_acceptances_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_acceptances
+    ADD CONSTRAINT contract_acceptances_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: contract_revisions contract_revisions_contract_id_revision_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_revisions
+    ADD CONSTRAINT contract_revisions_contract_id_revision_number_key UNIQUE (contract_id, revision_number);
+
+
+--
+-- Name: contract_revisions contract_revisions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_revisions
+    ADD CONSTRAINT contract_revisions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: contract_templates contract_templates_name_template_type_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_templates
+    ADD CONSTRAINT contract_templates_name_template_type_key UNIQUE (name, template_type);
+
+
+--
+-- Name: contract_templates contract_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_templates
+    ADD CONSTRAINT contract_templates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: contracts contracts_contract_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contracts
+    ADD CONSTRAINT contracts_contract_number_key UNIQUE (contract_number);
+
+
+--
+-- Name: contracts contracts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contracts
+    ADD CONSTRAINT contracts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: custom_roles custom_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.custom_roles
+    ADD CONSTRAINT custom_roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: custom_roles custom_roles_system_key_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.custom_roles
+    ADD CONSTRAINT custom_roles_system_key_key UNIQUE (system_key);
+
+
+--
+-- Name: employees employees_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.employees
+    ADD CONSTRAINT employees_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: eula_acceptances eula_acceptances_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eula_acceptances
+    ADD CONSTRAINT eula_acceptances_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: eula_acceptances eula_acceptances_user_id_version_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eula_acceptances
+    ADD CONSTRAINT eula_acceptances_user_id_version_key UNIQUE (user_id, version);
+
+
+--
+-- Name: financing_banks financing_banks_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.financing_banks
+    ADD CONSTRAINT financing_banks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: financing_simulations financing_simulations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.financing_simulations
+    ADD CONSTRAINT financing_simulations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: invoices invoices_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.invoices
+    ADD CONSTRAINT invoices_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payroll_batches payroll_batches_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payroll_batches
+    ADD CONSTRAINT payroll_batches_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payroll_batches payroll_batches_year_month_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payroll_batches
+    ADD CONSTRAINT payroll_batches_year_month_key UNIQUE (year, month);
+
+
+--
+-- Name: payroll_settings payroll_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payroll_settings
+    ADD CONSTRAINT payroll_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payslips payslips_employee_id_reference_month_reference_year_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payslips
+    ADD CONSTRAINT payslips_employee_id_reference_month_reference_year_key UNIQUE (employee_id, reference_month, reference_year);
+
+
+--
+-- Name: payslips payslips_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payslips
+    ADD CONSTRAINT payslips_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: reseller_consignment_contracts reseller_consignment_contracts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.reseller_consignment_contracts
+    ADD CONSTRAINT reseller_consignment_contracts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: resellers resellers_cpf_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.resellers
+    ADD CONSTRAINT resellers_cpf_key UNIQUE (cpf);
+
+
+--
+-- Name: resellers resellers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.resellers
+    ADD CONSTRAINT resellers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: role_permissions role_permissions_role_id_permission_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_role_id_permission_key UNIQUE (role_id, permission);
+
+
+--
+-- Name: sales_targets sales_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sales_targets
+    ADD CONSTRAINT sales_targets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_sync_config stock_sync_config_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stock_sync_config
+    ADD CONSTRAINT stock_sync_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_transfers stock_transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stock_transfers
+    ADD CONSTRAINT stock_transfers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: store_ads store_ads_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.store_ads
+    ADD CONSTRAINT store_ads_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stores stores_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stores
+    ADD CONSTRAINT stores_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_roles user_roles_user_id_role_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_user_id_role_key UNIQUE (user_id, role);
+
+
+--
+-- Name: vehicle_colors vehicle_colors_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicle_colors
+    ADD CONSTRAINT vehicle_colors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: vehicle_models vehicle_models_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicle_models
+    ADD CONSTRAINT vehicle_models_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: vehicle_reservations vehicle_reservations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicle_reservations
+    ADD CONSTRAINT vehicle_reservations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: vehicle_reservations vehicle_reservations_reservation_number_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicle_reservations
+    ADD CONSTRAINT vehicle_reservations_reservation_number_key UNIQUE (reservation_number);
+
+
+--
+-- Name: vehicles vehicles_chassis_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicles
+    ADD CONSTRAINT vehicles_chassis_key UNIQUE (chassis);
+
+
+--
+-- Name: vehicles vehicles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicles
+    ADD CONSTRAINT vehicles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: vehicles vehicles_plate_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicles
+    ADD CONSTRAINT vehicles_plate_key UNIQUE (plate);
+
+
+--
+-- Name: chassis_year_codes_code_brand_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX chassis_year_codes_code_brand_idx ON public.chassis_year_codes USING btree (upper(year_code), COALESCE(upper(brand), ''::text));
+
+
+--
+-- Name: contract_acceptances_contract_id_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX contract_acceptances_contract_id_idx ON public.contract_acceptances USING btree (contract_id);
+
+
+--
+-- Name: contracts_sale_channel_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX contracts_sale_channel_idx ON public.contracts USING btree (sale_channel);
+
+
+--
+-- Name: contracts_sale_group_id_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX contracts_sale_group_id_idx ON public.contracts USING btree (sale_group_id);
+
+
+--
+-- Name: employees_profile_id_unique; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX employees_profile_id_unique ON public.employees USING btree (profile_id) WHERE (profile_id IS NOT NULL);
+
+
+--
+-- Name: financing_banks_name_key; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX financing_banks_name_key ON public.financing_banks USING btree (upper(name));
+
+
+--
+-- Name: idx_activity_logs_created_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_activity_logs_created_at ON public.activity_logs USING btree (created_at DESC);
+
+
+--
+-- Name: idx_activity_logs_entity; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_activity_logs_entity ON public.activity_logs USING btree (entity_type, entity_id);
+
+
+--
+-- Name: idx_contracts_ad; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_contracts_ad ON public.contracts USING btree (ad_id);
+
+
+--
+-- Name: idx_contracts_review_status; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_contracts_review_status ON public.contracts USING btree (review_status);
+
+
+--
+-- Name: idx_payslips_batch; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_payslips_batch ON public.payslips USING btree (batch_id);
+
+
+--
+-- Name: idx_store_ads_store; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_store_ads_store ON public.store_ads USING btree (store_id, status);
+
+
+--
+-- Name: idx_vehicles_reseller_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_vehicles_reseller_id ON public.vehicles USING btree (reseller_id);
+
+
+--
+-- Name: vehicle_colors_unique_name; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX vehicle_colors_unique_name ON public.vehicle_colors USING btree (upper(name), COALESCE(vehicle_model_id, '00000000-0000-0000-0000-000000000000'::uuid));
+
+
+--
+-- Name: vehicle_models_unique_idx; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX vehicle_models_unique_idx ON public.vehicle_models USING btree (lower(brand), lower(model), vehicle_type);
+
+
+--
+-- Name: api_keys api_keys_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER api_keys_updated_at BEFORE UPDATE ON public.api_keys FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: bank_credentials bank_credentials_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER bank_credentials_updated_at BEFORE UPDATE ON public.bank_credentials FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: chassis_year_codes chassis_year_codes_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER chassis_year_codes_updated_at BEFORE UPDATE ON public.chassis_year_codes FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: custom_roles custom_roles_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER custom_roles_updated_at BEFORE UPDATE ON public.custom_roles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: financing_banks financing_banks_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER financing_banks_updated_at BEFORE UPDATE ON public.financing_banks FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: financing_simulations financing_simulations_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER financing_simulations_updated_at BEFORE UPDATE ON public.financing_simulations FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: contracts normalize_contract_payment_values_before_write; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER normalize_contract_payment_values_before_write BEFORE INSERT OR UPDATE ON public.contracts FOR EACH ROW EXECUTE FUNCTION public.normalize_contract_payment_values();
+
+
+--
+-- Name: payroll_batches payroll_batches_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER payroll_batches_updated_at BEFORE UPDATE ON public.payroll_batches FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: payroll_settings payroll_settings_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER payroll_settings_updated_at BEFORE UPDATE ON public.payroll_settings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: store_ads store_ads_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER store_ads_updated_at BEFORE UPDATE ON public.store_ads FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: stock_transfers trg_apply_stock_transfer_ins; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trg_apply_stock_transfer_ins AFTER INSERT ON public.stock_transfers FOR EACH ROW EXECUTE FUNCTION public.apply_stock_transfer();
+
+
+--
+-- Name: stock_transfers trg_apply_stock_transfer_upd; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trg_apply_stock_transfer_upd AFTER UPDATE ON public.stock_transfers FOR EACH ROW EXECUTE FUNCTION public.apply_stock_transfer();
+
+
+--
+-- Name: stock_sync_config trg_stock_sync_config_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trg_stock_sync_config_updated_at BEFORE UPDATE ON public.stock_sync_config FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: vehicle_reservations trg_sync_vehicle_status_from_reservation_ins; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trg_sync_vehicle_status_from_reservation_ins AFTER INSERT ON public.vehicle_reservations FOR EACH ROW EXECUTE FUNCTION public.sync_vehicle_status_from_reservation();
+
+
+--
+-- Name: vehicle_reservations trg_sync_vehicle_status_from_reservation_upd; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trg_sync_vehicle_status_from_reservation_upd AFTER UPDATE ON public.vehicle_reservations FOR EACH ROW EXECUTE FUNCTION public.sync_vehicle_status_from_reservation();
+
+
+--
+-- Name: chassis_patterns update_chassis_patterns_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_chassis_patterns_updated_at BEFORE UPDATE ON public.chassis_patterns FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: contract_templates update_contract_templates_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_contract_templates_updated_at BEFORE UPDATE ON public.contract_templates FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: contracts update_contracts_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_contracts_updated_at BEFORE UPDATE ON public.contracts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: employees update_employees_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_employees_updated_at BEFORE UPDATE ON public.employees FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: invoices update_invoices_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON public.invoices FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: payslips update_payslips_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_payslips_updated_at BEFORE UPDATE ON public.payslips FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: profiles update_profiles_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: reseller_consignment_contracts update_reseller_consignment_contracts_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_reseller_consignment_contracts_updated_at BEFORE UPDATE ON public.reseller_consignment_contracts FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: resellers update_resellers_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_resellers_updated_at BEFORE UPDATE ON public.resellers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: sales_targets update_sales_targets_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_sales_targets_updated_at BEFORE UPDATE ON public.sales_targets FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: stock_transfers update_stock_transfers_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_stock_transfers_updated_at BEFORE UPDATE ON public.stock_transfers FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: stores update_stores_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_stores_updated_at BEFORE UPDATE ON public.stores FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: vehicle_reservations update_vehicle_reservations_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_vehicle_reservations_updated_at BEFORE UPDATE ON public.vehicle_reservations FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: vehicles update_vehicles_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER update_vehicles_updated_at BEFORE UPDATE ON public.vehicles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: vehicle_colors vehicle_colors_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER vehicle_colors_updated_at BEFORE UPDATE ON public.vehicle_colors FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: vehicle_models vehicle_models_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER vehicle_models_updated_at BEFORE UPDATE ON public.vehicle_models FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: activity_logs activity_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.activity_logs
+    ADD CONSTRAINT activity_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: contract_acceptances contract_acceptances_contract_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_acceptances
+    ADD CONSTRAINT contract_acceptances_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES public.contracts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: contract_acceptances contract_acceptances_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_acceptances
+    ADD CONSTRAINT contract_acceptances_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: contract_revisions contract_revisions_changed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_revisions
+    ADD CONSTRAINT contract_revisions_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: contract_revisions contract_revisions_contract_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_revisions
+    ADD CONSTRAINT contract_revisions_contract_id_fkey FOREIGN KEY (contract_id) REFERENCES public.contracts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: contract_templates contract_templates_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_templates
+    ADD CONSTRAINT contract_templates_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: contract_templates contract_templates_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_templates
+    ADD CONSTRAINT contract_templates_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE SET NULL;
+
+
+--
+-- Name: contract_templates contract_templates_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contract_templates
+    ADD CONSTRAINT contract_templates_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: contracts contracts_ad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contracts
+    ADD CONSTRAINT contracts_ad_id_fkey FOREIGN KEY (ad_id) REFERENCES public.store_ads(id) ON DELETE SET NULL;
+
+
+--
+-- Name: contracts contracts_reseller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contracts
+    ADD CONSTRAINT contracts_reseller_id_fkey FOREIGN KEY (reseller_id) REFERENCES public.resellers(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: contracts contracts_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contracts
+    ADD CONSTRAINT contracts_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: contracts contracts_template_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contracts
+    ADD CONSTRAINT contracts_template_id_fkey FOREIGN KEY (template_id) REFERENCES public.contract_templates(id);
+
+
+--
+-- Name: contracts contracts_vehicle_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.contracts
+    ADD CONSTRAINT contracts_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES public.vehicles(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: employees employees_profile_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.employees
+    ADD CONSTRAINT employees_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: employees employees_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.employees
+    ADD CONSTRAINT employees_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE SET NULL;
+
+
+--
+-- Name: eula_acceptances eula_acceptances_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.eula_acceptances
+    ADD CONSTRAINT eula_acceptances_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payroll_batches payroll_batches_closed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payroll_batches
+    ADD CONSTRAINT payroll_batches_closed_by_fkey FOREIGN KEY (closed_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: payroll_batches payroll_batches_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payroll_batches
+    ADD CONSTRAINT payroll_batches_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: payslips payslips_batch_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payslips
+    ADD CONSTRAINT payslips_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.payroll_batches(id) ON DELETE SET NULL;
+
+
+--
+-- Name: payslips payslips_employee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payslips
+    ADD CONSTRAINT payslips_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.employees(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payslips payslips_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.payslips
+    ADD CONSTRAINT payslips_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE SET NULL;
+
+
+--
+-- Name: profiles profiles_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reseller_consignment_contracts reseller_consignment_contracts_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.reseller_consignment_contracts
+    ADD CONSTRAINT reseller_consignment_contracts_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: reseller_consignment_contracts reseller_consignment_contracts_reseller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.reseller_consignment_contracts
+    ADD CONSTRAINT reseller_consignment_contracts_reseller_id_fkey FOREIGN KEY (reseller_id) REFERENCES public.resellers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reseller_consignment_contracts reseller_consignment_contracts_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.reseller_consignment_contracts
+    ADD CONSTRAINT reseller_consignment_contracts_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reseller_consignment_contracts reseller_consignment_contracts_vehicle_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.reseller_consignment_contracts
+    ADD CONSTRAINT reseller_consignment_contracts_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES public.vehicles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: resellers resellers_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.resellers
+    ADD CONSTRAINT resellers_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE SET NULL;
+
+
+--
+-- Name: resellers resellers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.resellers
+    ADD CONSTRAINT resellers_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id);
+
+
+--
+-- Name: role_permissions role_permissions_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.custom_roles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sales_targets sales_targets_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.sales_targets
+    ADD CONSTRAINT sales_targets_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE CASCADE;
+
+
+--
+-- Name: stock_transfers stock_transfers_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stock_transfers
+    ADD CONSTRAINT stock_transfers_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: stock_transfers stock_transfers_from_reseller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stock_transfers
+    ADD CONSTRAINT stock_transfers_from_reseller_id_fkey FOREIGN KEY (from_reseller_id) REFERENCES public.resellers(id);
+
+
+--
+-- Name: stock_transfers stock_transfers_from_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stock_transfers
+    ADD CONSTRAINT stock_transfers_from_store_id_fkey FOREIGN KEY (from_store_id) REFERENCES public.stores(id);
+
+
+--
+-- Name: stock_transfers stock_transfers_to_reseller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stock_transfers
+    ADD CONSTRAINT stock_transfers_to_reseller_id_fkey FOREIGN KEY (to_reseller_id) REFERENCES public.resellers(id);
+
+
+--
+-- Name: stock_transfers stock_transfers_to_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stock_transfers
+    ADD CONSTRAINT stock_transfers_to_store_id_fkey FOREIGN KEY (to_store_id) REFERENCES public.stores(id);
+
+
+--
+-- Name: stock_transfers stock_transfers_vehicle_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stock_transfers
+    ADD CONSTRAINT stock_transfers_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES public.vehicles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: store_ads store_ads_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.store_ads
+    ADD CONSTRAINT store_ads_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE CASCADE;
+
+
+--
+-- Name: stores stores_manager_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.stores
+    ADD CONSTRAINT stores_manager_id_fkey FOREIGN KEY (manager_id) REFERENCES auth.users(id);
+
+
+--
+-- Name: user_roles user_roles_custom_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_custom_role_id_fkey FOREIGN KEY (custom_role_id) REFERENCES public.custom_roles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: user_roles user_roles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: vehicle_colors vehicle_colors_vehicle_model_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicle_colors
+    ADD CONSTRAINT vehicle_colors_vehicle_model_id_fkey FOREIGN KEY (vehicle_model_id) REFERENCES public.vehicle_models(id) ON DELETE CASCADE;
+
+
+--
+-- Name: vehicles vehicles_reseller_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicles
+    ADD CONSTRAINT vehicles_reseller_id_fkey FOREIGN KEY (reseller_id) REFERENCES public.resellers(id) ON DELETE SET NULL;
+
+
+--
+-- Name: vehicles vehicles_store_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.vehicles
+    ADD CONSTRAINT vehicles_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE SET NULL;
+
+
+--
+-- Name: resellers Admins and managers can manage resellers; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins and managers can manage resellers" ON public.resellers TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: vehicles Admins and managers can manage vehicles; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins and managers can manage vehicles" ON public.vehicles TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: contracts Admins and sellers can update contracts; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins and sellers can update contracts" ON public.contracts FOR UPDATE TO authenticated USING ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid()))) WITH CHECK ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid())));
+
+
+--
+-- Name: payroll_batches Admins can delete batches; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can delete batches" ON public.payroll_batches FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: vehicle_reservations Admins can delete reservations; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can delete reservations" ON public.vehicle_reservations FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: user_roles Admins can delete roles; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can delete roles" ON public.user_roles FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: profiles Admins can insert profiles; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can insert profiles" ON public.profiles FOR INSERT TO authenticated WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: user_roles Admins can insert roles; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can insert roles" ON public.user_roles FOR INSERT TO authenticated WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: chassis_patterns Admins can manage patterns; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can manage patterns" ON public.chassis_patterns TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: stores Admins can manage stores; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can manage stores" ON public.stores TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: user_roles Admins can update roles; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can update roles" ON public.user_roles FOR UPDATE TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: activity_logs Admins can view all logs; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can view all logs" ON public.activity_logs FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: user_roles Admins can view all roles; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins can view all roles" ON public.user_roles FOR SELECT TO authenticated USING ((public.has_role(auth.uid(), 'admin'::public.app_role) OR (user_id = auth.uid())));
+
+
+--
+-- Name: api_keys Admins manage api keys; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins manage api keys" ON public.api_keys TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: role_permissions Admins manage perms; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins manage perms" ON public.role_permissions TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: custom_roles Admins manage roles; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins manage roles" ON public.custom_roles TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role)) WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: contracts Admins or permitted owners can delete contracts; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Admins or permitted owners can delete contracts" ON public.contracts FOR DELETE TO authenticated USING ((public.has_role(auth.uid(), 'admin'::public.app_role) OR ((created_by = auth.uid()) AND (public.has_permission(auth.uid(), 'sales.delete'::text) OR (EXISTS ( SELECT 1
+   FROM public.user_roles
+  WHERE ((user_roles.user_id = auth.uid()) AND (user_roles.custom_role_id IS NULL) AND ((user_roles.role)::text = 'vendedor_plus'::text))))))));
+
+
+--
+-- Name: contract_templates Anyone can view active templates; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Anyone can view active templates" ON public.contract_templates FOR SELECT TO authenticated USING (((is_active = true) OR public.has_elevated_access(auth.uid())));
+
+
+--
+-- Name: vehicle_colors Authenticated can view colors; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Authenticated can view colors" ON public.vehicle_colors FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: financing_banks Authenticated can view financing banks; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Authenticated can view financing banks" ON public.financing_banks FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: store_ads Authenticated can view store ads; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Authenticated can view store ads" ON public.store_ads FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: vehicle_models Authenticated can view vehicle models; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Authenticated can view vehicle models" ON public.vehicle_models FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: chassis_year_codes Authenticated can view year codes; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Authenticated can view year codes" ON public.chassis_year_codes FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: role_permissions Authenticated read perms; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Authenticated read perms" ON public.role_permissions FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: custom_roles Authenticated read roles; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Authenticated read roles" ON public.custom_roles FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: stores Authenticated users can view active stores; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Authenticated users can view active stores" ON public.stores FOR SELECT TO authenticated USING (((is_active = true) OR public.has_elevated_access(auth.uid())));
+
+
+--
+-- Name: chassis_patterns Authenticated users can view patterns; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Authenticated users can view patterns" ON public.chassis_patterns FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: contract_acceptances Create acceptance tokens for own contracts; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Create acceptance tokens for own contracts" ON public.contract_acceptances FOR INSERT TO authenticated WITH CHECK (((created_by = auth.uid()) AND (contract_id IN ( SELECT c.id
+   FROM public.contracts c
+  WHERE (public.has_elevated_access(auth.uid()) OR (c.created_by = auth.uid()))))));
+
+
+--
+-- Name: contracts Create contracts; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Create contracts" ON public.contracts FOR INSERT TO authenticated WITH CHECK ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid()) OR (reseller_id IN ( SELECT r.id
+   FROM public.resellers r
+  WHERE (r.user_id = auth.uid())))));
+
+
+--
+-- Name: vehicle_reservations Create reservations; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Create reservations" ON public.vehicle_reservations FOR INSERT TO authenticated WITH CHECK ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid()) OR (reseller_id IN ( SELECT r.id
+   FROM public.resellers r
+  WHERE (r.user_id = auth.uid())))));
+
+
+--
+-- Name: contract_revisions Create revisions for own contracts; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Create revisions for own contracts" ON public.contract_revisions FOR INSERT TO authenticated WITH CHECK (((changed_by = auth.uid()) AND (contract_id IN ( SELECT c.id
+   FROM public.contracts c
+  WHERE (public.has_elevated_access(auth.uid()) OR (c.created_by = auth.uid()))))));
+
+
+--
+-- Name: financing_simulations Create simulations; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Create simulations" ON public.financing_simulations FOR INSERT TO authenticated WITH CHECK ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid())));
+
+
+--
+-- Name: vehicle_colors Elevated can delete colors; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can delete colors" ON public.vehicle_colors FOR DELETE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: financing_banks Elevated can delete financing banks; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can delete financing banks" ON public.financing_banks FOR DELETE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: store_ads Elevated can delete store ads; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can delete store ads" ON public.store_ads FOR DELETE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: vehicle_models Elevated can delete vehicle models; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can delete vehicle models" ON public.vehicle_models FOR DELETE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: chassis_year_codes Elevated can delete year codes; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can delete year codes" ON public.chassis_year_codes FOR DELETE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: payroll_batches Elevated can insert batches; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can insert batches" ON public.payroll_batches FOR INSERT TO authenticated WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: vehicle_colors Elevated can insert colors; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can insert colors" ON public.vehicle_colors FOR INSERT TO authenticated WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: financing_banks Elevated can insert financing banks; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can insert financing banks" ON public.financing_banks FOR INSERT TO authenticated WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: store_ads Elevated can insert store ads; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can insert store ads" ON public.store_ads FOR INSERT TO authenticated WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: vehicle_models Elevated can insert vehicle models; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can insert vehicle models" ON public.vehicle_models FOR INSERT TO authenticated WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: chassis_year_codes Elevated can insert year codes; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can insert year codes" ON public.chassis_year_codes FOR INSERT TO authenticated WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: payroll_batches Elevated can update batches; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can update batches" ON public.payroll_batches FOR UPDATE TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: vehicle_colors Elevated can update colors; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can update colors" ON public.vehicle_colors FOR UPDATE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: financing_banks Elevated can update financing banks; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can update financing banks" ON public.financing_banks FOR UPDATE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: store_ads Elevated can update store ads; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can update store ads" ON public.store_ads FOR UPDATE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: vehicle_models Elevated can update vehicle models; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can update vehicle models" ON public.vehicle_models FOR UPDATE TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: chassis_year_codes Elevated can update year codes; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can update year codes" ON public.chassis_year_codes FOR UPDATE TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: payroll_batches Elevated can view batches; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated can view batches" ON public.payroll_batches FOR SELECT TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: financing_simulations Elevated delete simulations; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated delete simulations" ON public.financing_simulations FOR DELETE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: payroll_settings Elevated manage payroll settings; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated manage payroll settings" ON public.payroll_settings TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: financing_simulations Elevated update simulations; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated update simulations" ON public.financing_simulations FOR UPDATE TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: contract_templates Elevated users can create templates; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated users can create templates" ON public.contract_templates FOR INSERT TO authenticated WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: contract_templates Elevated users can delete templates; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated users can delete templates" ON public.contract_templates FOR DELETE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: reseller_consignment_contracts Elevated users can manage consignment contracts; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated users can manage consignment contracts" ON public.reseller_consignment_contracts USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: employees Elevated users can manage employees; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated users can manage employees" ON public.employees TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: invoices Elevated users can manage invoices; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated users can manage invoices" ON public.invoices TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: payslips Elevated users can manage payslips; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated users can manage payslips" ON public.payslips TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: contract_templates Elevated users can update templates; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated users can update templates" ON public.contract_templates FOR UPDATE TO authenticated USING (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: bank_credentials Elevated users manage bank credentials; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated users manage bank credentials" ON public.bank_credentials TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: stock_transfers Elevated users manage transfers; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Elevated users manage transfers" ON public.stock_transfers TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: payslips Employees can view own payslips; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Employees can view own payslips" ON public.payslips FOR SELECT TO authenticated USING ((public.has_elevated_access(auth.uid()) OR (employee_id IN ( SELECT employees.id
+   FROM public.employees
+  WHERE (employees.profile_id = auth.uid())))));
+
+
+--
+-- Name: employees Employees can view own record; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Employees can view own record" ON public.employees FOR SELECT TO authenticated USING ((public.has_elevated_access(auth.uid()) OR (profile_id = auth.uid())));
+
+
+--
+-- Name: vehicles Sales roles can update vehicles of their store; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Sales roles can update vehicles of their store" ON public.vehicles FOR UPDATE TO authenticated USING ((public.can_create_sales(auth.uid()) AND (public.has_elevated_access(auth.uid()) OR (store_id = public.get_user_store_id(auth.uid()))))) WITH CHECK ((public.can_create_sales(auth.uid()) AND (public.has_elevated_access(auth.uid()) OR (store_id = public.get_user_store_id(auth.uid())))));
+
+
+--
+-- Name: activity_logs System can insert logs; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "System can insert logs" ON public.activity_logs FOR INSERT TO authenticated WITH CHECK (true);
+
+
+--
+-- Name: vehicle_reservations Update reservations based on role; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Update reservations based on role" ON public.vehicle_reservations FOR UPDATE TO authenticated USING ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid()))) WITH CHECK ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid())));
+
+
+--
+-- Name: profiles Users can update own profile; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE TO authenticated USING ((id = auth.uid()));
+
+
+--
+-- Name: profiles Users can view profiles based on role; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Users can view profiles based on role" ON public.profiles FOR SELECT TO authenticated USING (((id = auth.uid()) OR public.has_elevated_access(auth.uid())));
+
+
+--
+-- Name: stock_transfers Users view transfers of their store; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Users view transfers of their store" ON public.stock_transfers FOR SELECT TO authenticated USING (((from_store_id = public.get_user_store_id(auth.uid())) OR (to_store_id = public.get_user_store_id(auth.uid()))));
+
+
+--
+-- Name: vehicles Vendedor plus can register vehicles; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "Vendedor plus can register vehicles" ON public.vehicles FOR INSERT TO authenticated WITH CHECK ((public.can_register_vehicles(auth.uid()) AND (public.has_elevated_access(auth.uid()) OR (store_id = public.get_user_store_id(auth.uid())))));
+
+
+--
+-- Name: contract_acceptances View acceptances of accessible contracts; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "View acceptances of accessible contracts" ON public.contract_acceptances FOR SELECT TO authenticated USING ((contract_id IN ( SELECT c.id
+   FROM public.contracts c
+  WHERE (public.has_elevated_access(auth.uid()) OR (c.created_by = auth.uid()) OR (c.reseller_id IN ( SELECT r.id
+           FROM public.resellers r
+          WHERE (r.user_id = auth.uid())))))));
+
+
+--
+-- Name: reseller_consignment_contracts View consignment contracts based on role; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "View consignment contracts based on role" ON public.reseller_consignment_contracts FOR SELECT USING ((public.has_elevated_access(auth.uid()) OR (reseller_id IN ( SELECT resellers.id
+   FROM public.resellers
+  WHERE (resellers.user_id = auth.uid()))) OR (store_id = public.get_user_store_id(auth.uid()))));
+
+
+--
+-- Name: contracts View contracts based on role; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "View contracts based on role" ON public.contracts FOR SELECT TO authenticated USING ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid()) OR (reseller_id IN ( SELECT r.id
+   FROM public.resellers r
+  WHERE (r.user_id = auth.uid())))));
+
+
+--
+-- Name: contracts View contracts by role scope; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "View contracts by role scope" ON public.contracts FOR SELECT TO authenticated USING (((public.user_data_scope(auth.uid()) = 'all'::text) OR ((public.user_data_scope(auth.uid()) = 'store'::text) AND (store_id = public.get_user_store_id(auth.uid())))));
+
+
+--
+-- Name: resellers View resellers based on role; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "View resellers based on role" ON public.resellers FOR SELECT TO authenticated USING ((public.has_elevated_access(auth.uid()) OR (user_id = auth.uid()) OR (store_id = public.get_user_store_id(auth.uid()))));
+
+
+--
+-- Name: vehicle_reservations View reservations based on role; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "View reservations based on role" ON public.vehicle_reservations FOR SELECT TO authenticated USING ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid()) OR (reseller_id IN ( SELECT r.id
+   FROM public.resellers r
+  WHERE (r.user_id = auth.uid())))));
+
+
+--
+-- Name: contract_revisions View revisions of accessible contracts; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "View revisions of accessible contracts" ON public.contract_revisions FOR SELECT TO authenticated USING ((contract_id IN ( SELECT c.id
+   FROM public.contracts c
+  WHERE (public.has_elevated_access(auth.uid()) OR (c.created_by = auth.uid()) OR (c.reseller_id IN ( SELECT r.id
+           FROM public.resellers r
+          WHERE (r.user_id = auth.uid())))))));
+
+
+--
+-- Name: financing_simulations View simulations by role; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "View simulations by role" ON public.financing_simulations FOR SELECT TO authenticated USING ((public.has_elevated_access(auth.uid()) OR (created_by = auth.uid())));
+
+
+--
+-- Name: vehicles View vehicles based on role; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY "View vehicles based on role" ON public.vehicles FOR SELECT TO authenticated USING ((public.has_elevated_access(auth.uid()) OR (store_id = public.get_user_store_id(auth.uid())) OR (reseller_id IN ( SELECT r.id
+   FROM public.resellers r
+  WHERE (r.user_id = auth.uid())))));
+
+
+--
+-- Name: activity_logs; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: api_keys; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: bank_credentials; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.bank_credentials ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: chassis_patterns; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.chassis_patterns ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: chassis_year_codes; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.chassis_year_codes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: contract_acceptances; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.contract_acceptances ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: contract_revisions; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.contract_revisions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: contract_templates; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.contract_templates ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: contracts; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.contracts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: custom_roles; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.custom_roles ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: employees; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: eula_acceptances; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.eula_acceptances ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: eula_acceptances eula_insert_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY eula_insert_own ON public.eula_acceptances FOR INSERT TO authenticated WITH CHECK ((user_id = auth.uid()));
+
+
+--
+-- Name: eula_acceptances eula_select_own; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY eula_select_own ON public.eula_acceptances FOR SELECT TO authenticated USING (((user_id = auth.uid()) OR public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: financing_banks; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.financing_banks ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: financing_simulations; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.financing_simulations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: invoices; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: payroll_batches; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.payroll_batches ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: payroll_settings; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.payroll_settings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: payslips; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.payslips ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: reseller_consignment_contracts; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.reseller_consignment_contracts ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: resellers; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.resellers ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: role_permissions; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sales_targets; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.sales_targets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: stock_sync_config; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.stock_sync_config ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: stock_sync_config stock_sync_config_manage; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY stock_sync_config_manage ON public.stock_sync_config TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: stock_sync_config stock_sync_config_select; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY stock_sync_config_select ON public.stock_sync_config FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: stock_transfers; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.stock_transfers ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: store_ads; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.store_ads ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: stores; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.stores ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sales_targets targets_manage_elevated; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY targets_manage_elevated ON public.sales_targets TO authenticated USING (public.has_elevated_access(auth.uid())) WITH CHECK (public.has_elevated_access(auth.uid()));
+
+
+--
+-- Name: sales_targets targets_select_authenticated; Type: POLICY; Schema: public; Owner: postgres
+--
+
+CREATE POLICY targets_select_authenticated ON public.sales_targets FOR SELECT TO authenticated USING (true);
+
+
+--
+-- Name: user_roles; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: vehicle_colors; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.vehicle_colors ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: vehicle_models; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.vehicle_models ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: vehicle_reservations; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.vehicle_reservations ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: vehicles; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: FUNCTION apply_stock_transfer(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.apply_stock_transfer() TO anon;
+GRANT ALL ON FUNCTION public.apply_stock_transfer() TO authenticated;
+GRANT ALL ON FUNCTION public.apply_stock_transfer() TO service_role;
+
+
+--
+-- Name: FUNCTION can_create_sales(_user_id uuid); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.can_create_sales(_user_id uuid) TO anon;
+GRANT ALL ON FUNCTION public.can_create_sales(_user_id uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.can_create_sales(_user_id uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION can_register_vehicles(_user_id uuid); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.can_register_vehicles(_user_id uuid) TO anon;
+GRANT ALL ON FUNCTION public.can_register_vehicles(_user_id uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.can_register_vehicles(_user_id uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION get_user_store_id(_user_id uuid); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.get_user_store_id(_user_id uuid) TO anon;
+GRANT ALL ON FUNCTION public.get_user_store_id(_user_id uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.get_user_store_id(_user_id uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION handle_new_user(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.handle_new_user() TO anon;
+GRANT ALL ON FUNCTION public.handle_new_user() TO authenticated;
+GRANT ALL ON FUNCTION public.handle_new_user() TO service_role;
+
+
+--
+-- Name: FUNCTION has_elevated_access(_user_id uuid); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.has_elevated_access(_user_id uuid) TO anon;
+GRANT ALL ON FUNCTION public.has_elevated_access(_user_id uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.has_elevated_access(_user_id uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION has_permission(_user_id uuid, _perm text); Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON FUNCTION public.has_permission(_user_id uuid, _perm text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.has_permission(_user_id uuid, _perm text) TO authenticated;
+GRANT ALL ON FUNCTION public.has_permission(_user_id uuid, _perm text) TO service_role;
+
+
+--
+-- Name: FUNCTION has_role(_user_id uuid, _role public.app_role); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.has_role(_user_id uuid, _role public.app_role) TO anon;
+GRANT ALL ON FUNCTION public.has_role(_user_id uuid, _role public.app_role) TO authenticated;
+GRANT ALL ON FUNCTION public.has_role(_user_id uuid, _role public.app_role) TO service_role;
+
+
+--
+-- Name: FUNCTION is_external_seller(_user_id uuid); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.is_external_seller(_user_id uuid) TO anon;
+GRANT ALL ON FUNCTION public.is_external_seller(_user_id uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.is_external_seller(_user_id uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION normalize_contract_payment_values(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.normalize_contract_payment_values() TO anon;
+GRANT ALL ON FUNCTION public.normalize_contract_payment_values() TO authenticated;
+GRANT ALL ON FUNCTION public.normalize_contract_payment_values() TO service_role;
+
+
+--
+-- Name: FUNCTION notify_stock_sync(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.notify_stock_sync() TO anon;
+GRANT ALL ON FUNCTION public.notify_stock_sync() TO authenticated;
+GRANT ALL ON FUNCTION public.notify_stock_sync() TO service_role;
+
+
+--
+-- Name: FUNCTION sync_vehicle_status_from_reservation(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.sync_vehicle_status_from_reservation() TO anon;
+GRANT ALL ON FUNCTION public.sync_vehicle_status_from_reservation() TO authenticated;
+GRANT ALL ON FUNCTION public.sync_vehicle_status_from_reservation() TO service_role;
+
+
+--
+-- Name: FUNCTION update_updated_at_column(); Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO anon;
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO authenticated;
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO service_role;
+
+
+--
+-- Name: FUNCTION user_data_scope(_user_id uuid); Type: ACL; Schema: public; Owner: postgres
+--
+
+REVOKE ALL ON FUNCTION public.user_data_scope(_user_id uuid) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.user_data_scope(_user_id uuid) TO authenticated;
+GRANT ALL ON FUNCTION public.user_data_scope(_user_id uuid) TO service_role;
+
+
+--
+-- Name: TABLE activity_logs; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.activity_logs TO anon;
+GRANT ALL ON TABLE public.activity_logs TO authenticated;
+GRANT ALL ON TABLE public.activity_logs TO service_role;
+
+
+--
+-- Name: TABLE api_keys; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.api_keys TO anon;
+GRANT ALL ON TABLE public.api_keys TO authenticated;
+GRANT ALL ON TABLE public.api_keys TO service_role;
+
+
+--
+-- Name: TABLE bank_credentials; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.bank_credentials TO anon;
+GRANT ALL ON TABLE public.bank_credentials TO authenticated;
+GRANT ALL ON TABLE public.bank_credentials TO service_role;
+
+
+--
+-- Name: TABLE chassis_patterns; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.chassis_patterns TO anon;
+GRANT ALL ON TABLE public.chassis_patterns TO authenticated;
+GRANT ALL ON TABLE public.chassis_patterns TO service_role;
+
+
+--
+-- Name: TABLE chassis_year_codes; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.chassis_year_codes TO anon;
+GRANT ALL ON TABLE public.chassis_year_codes TO authenticated;
+GRANT ALL ON TABLE public.chassis_year_codes TO service_role;
+
+
+--
+-- Name: TABLE contract_acceptances; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.contract_acceptances TO anon;
+GRANT ALL ON TABLE public.contract_acceptances TO authenticated;
+GRANT ALL ON TABLE public.contract_acceptances TO service_role;
+
+
+--
+-- Name: TABLE contract_revisions; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.contract_revisions TO anon;
+GRANT ALL ON TABLE public.contract_revisions TO authenticated;
+GRANT ALL ON TABLE public.contract_revisions TO service_role;
+
+
+--
+-- Name: TABLE contract_templates; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.contract_templates TO anon;
+GRANT ALL ON TABLE public.contract_templates TO authenticated;
+GRANT ALL ON TABLE public.contract_templates TO service_role;
+
+
+--
+-- Name: TABLE contracts; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.contracts TO anon;
+GRANT ALL ON TABLE public.contracts TO authenticated;
+GRANT ALL ON TABLE public.contracts TO service_role;
+
+
+--
+-- Name: TABLE custom_roles; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.custom_roles TO anon;
+GRANT ALL ON TABLE public.custom_roles TO authenticated;
+GRANT ALL ON TABLE public.custom_roles TO service_role;
+
+
+--
+-- Name: TABLE employees; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.employees TO anon;
+GRANT ALL ON TABLE public.employees TO authenticated;
+GRANT ALL ON TABLE public.employees TO service_role;
+
+
+--
+-- Name: TABLE eula_acceptances; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.eula_acceptances TO anon;
+GRANT ALL ON TABLE public.eula_acceptances TO authenticated;
+GRANT ALL ON TABLE public.eula_acceptances TO service_role;
+
+
+--
+-- Name: TABLE financing_banks; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.financing_banks TO anon;
+GRANT ALL ON TABLE public.financing_banks TO authenticated;
+GRANT ALL ON TABLE public.financing_banks TO service_role;
+
+
+--
+-- Name: TABLE financing_simulations; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.financing_simulations TO anon;
+GRANT ALL ON TABLE public.financing_simulations TO authenticated;
+GRANT ALL ON TABLE public.financing_simulations TO service_role;
+
+
+--
+-- Name: TABLE invoices; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.invoices TO anon;
+GRANT ALL ON TABLE public.invoices TO authenticated;
+GRANT ALL ON TABLE public.invoices TO service_role;
+
+
+--
+-- Name: TABLE payroll_batches; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.payroll_batches TO anon;
+GRANT ALL ON TABLE public.payroll_batches TO authenticated;
+GRANT ALL ON TABLE public.payroll_batches TO service_role;
+
+
+--
+-- Name: TABLE payroll_settings; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.payroll_settings TO anon;
+GRANT ALL ON TABLE public.payroll_settings TO authenticated;
+GRANT ALL ON TABLE public.payroll_settings TO service_role;
+
+
+--
+-- Name: TABLE payslips; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.payslips TO anon;
+GRANT ALL ON TABLE public.payslips TO authenticated;
+GRANT ALL ON TABLE public.payslips TO service_role;
+
+
+--
+-- Name: TABLE profiles; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.profiles TO anon;
+GRANT ALL ON TABLE public.profiles TO authenticated;
+GRANT ALL ON TABLE public.profiles TO service_role;
+
+
+--
+-- Name: TABLE reseller_consignment_contracts; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.reseller_consignment_contracts TO anon;
+GRANT ALL ON TABLE public.reseller_consignment_contracts TO authenticated;
+GRANT ALL ON TABLE public.reseller_consignment_contracts TO service_role;
+
+
+--
+-- Name: TABLE resellers; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.resellers TO anon;
+GRANT ALL ON TABLE public.resellers TO authenticated;
+GRANT ALL ON TABLE public.resellers TO service_role;
+
+
+--
+-- Name: TABLE role_permissions; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.role_permissions TO anon;
+GRANT ALL ON TABLE public.role_permissions TO authenticated;
+GRANT ALL ON TABLE public.role_permissions TO service_role;
+
+
+--
+-- Name: TABLE sales_targets; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.sales_targets TO anon;
+GRANT ALL ON TABLE public.sales_targets TO authenticated;
+GRANT ALL ON TABLE public.sales_targets TO service_role;
+
+
+--
+-- Name: TABLE stock_sync_config; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.stock_sync_config TO anon;
+GRANT ALL ON TABLE public.stock_sync_config TO authenticated;
+GRANT ALL ON TABLE public.stock_sync_config TO service_role;
+
+
+--
+-- Name: TABLE stock_transfers; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.stock_transfers TO anon;
+GRANT ALL ON TABLE public.stock_transfers TO authenticated;
+GRANT ALL ON TABLE public.stock_transfers TO service_role;
+
+
+--
+-- Name: TABLE store_ads; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.store_ads TO anon;
+GRANT ALL ON TABLE public.store_ads TO authenticated;
+GRANT ALL ON TABLE public.store_ads TO service_role;
+
+
+--
+-- Name: TABLE stores; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.stores TO anon;
+GRANT ALL ON TABLE public.stores TO authenticated;
+GRANT ALL ON TABLE public.stores TO service_role;
+
+
+--
+-- Name: TABLE user_roles; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.user_roles TO anon;
+GRANT ALL ON TABLE public.user_roles TO authenticated;
+GRANT ALL ON TABLE public.user_roles TO service_role;
+
+
+--
+-- Name: TABLE vehicle_colors; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.vehicle_colors TO anon;
+GRANT ALL ON TABLE public.vehicle_colors TO authenticated;
+GRANT ALL ON TABLE public.vehicle_colors TO service_role;
+
+
+--
+-- Name: TABLE vehicle_models; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.vehicle_models TO anon;
+GRANT ALL ON TABLE public.vehicle_models TO authenticated;
+GRANT ALL ON TABLE public.vehicle_models TO service_role;
+
+
+--
+-- Name: TABLE vehicle_reservations; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.vehicle_reservations TO anon;
+GRANT ALL ON TABLE public.vehicle_reservations TO authenticated;
+GRANT ALL ON TABLE public.vehicle_reservations TO service_role;
+
+
+--
+-- Name: TABLE vehicles; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.vehicles TO anon;
+GRANT ALL ON TABLE public.vehicles TO authenticated;
+GRANT ALL ON TABLE public.vehicles TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
+--
+
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
+--
+
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO service_role;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
+--
+
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+
