@@ -22,6 +22,7 @@ import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
 import { resolveSaleStore } from '@/lib/storeResolution';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDateFilter } from '@/contexts/DateFilterContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { maskCPF } from '@/lib/masks';
@@ -166,7 +167,13 @@ export default function Sales() {
   const [search, setSearch] = useState('');
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [resellerFilter, setResellerFilter] = useState<string>('all');
-  const [periodFilter, setPeriodFilter] = useState<string>('month');
+  const {
+    periodFilter,
+    setPeriodFilter,
+    isDateInPeriod,
+    defaultMonthKey,
+    resetToActiveMonth,
+  } = useDateFilter();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
   // Modais de Vendas
@@ -334,43 +341,12 @@ export default function Sales() {
 
       let matchesPeriod = true;
       if (periodFilter !== 'all' && (sale as any).review_status !== 'questionada') {
-        const saleDate = new Date(sale.signed_at || sale.created_at);
-        if (isNaN(saleDate.getTime())) {
-          matchesPeriod = true;
-        } else if (periodFilter === 'month') {
-          // Filtro automático do mês atual
-          matchesPeriod =
-            saleDate.getMonth() === currentMonth &&
-            saleDate.getFullYear() === currentYear;
-        } else if (periodFilter === 'today') {
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          matchesPeriod = saleDate >= today;
-        } else if (periodFilter === '7d') {
-          matchesPeriod = saleDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        } else if (periodFilter === '30d') {
-          matchesPeriod = saleDate >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        } else if (periodFilter === 'lastmonth') {
-          const lm = currentMonth === 0 ? 11 : currentMonth - 1;
-          const ly = currentMonth === 0 ? currentYear - 1 : currentYear;
-          matchesPeriod = saleDate.getMonth() === lm && saleDate.getFullYear() === ly;
-        } else if (periodFilter === '90d') {
-          matchesPeriod = saleDate >= new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        } else if (periodFilter === '365d') {
-          matchesPeriod = saleDate.getFullYear() === currentYear;
-        } else if (periodFilter.includes('-')) {
-          // Filtro por competência específica (Ex: '2026-10', '2026-09')
-          const parts = periodFilter.split('-');
-          const targetYear = parseInt(parts[0], 10);
-          const targetMonth = parseInt(parts[1], 10);
-          matchesPeriod =
-            saleDate.getFullYear() === targetYear &&
-            saleDate.getMonth() === targetMonth - 1;
-        }
+        matchesPeriod = isDateInPeriod(sale.signed_at || sale.created_at);
       }
 
       return matchesSearch && matchesStore && matchesReseller && matchesPeriod;
     });
-  }, [allSales, search, storeFilter, resellerFilter, periodFilter]);
+  }, [allSales, search, storeFilter, resellerFilter, periodFilter, isDateInPeriod]);
 
   // Contadores oficiais das abas e métricas baseadas no escopo atual
   const completedSales = useMemo(() => {
@@ -645,7 +621,7 @@ export default function Sales() {
             </SelectContent>
           </Select>
 
-          {(search || storeFilter !== 'all' || resellerFilter !== 'all' || statusFilter !== 'all' || periodFilter !== 'month') && (
+          {(search || storeFilter !== 'all' || resellerFilter !== 'all' || statusFilter !== 'all' || periodFilter !== defaultMonthKey) && (
             <Button
               variant="ghost"
               size="sm"
@@ -654,7 +630,7 @@ export default function Sales() {
                 setStoreFilter('all');
                 setResellerFilter('all');
                 setStatusFilter('all');
-                setPeriodFilter('month');
+                resetToActiveMonth();
               }}
               className="h-10 text-xs px-2.5 text-muted-foreground hover:text-foreground"
             >

@@ -4,6 +4,7 @@ import { useContracts } from '@/hooks/useContracts';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDateFilter } from '@/contexts/DateFilterContext';
 import { useSalesTargets, useSaveSalesTarget, useDeleteSalesTarget, useProfilesList } from '@/hooks/useSalesTargets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ function MetricCard({ title, value, subtitle, icon: Icon }: { title: string; val
 
 export default function Reports() {
   const { profile, isAdmin, hasElevatedAccess } = useAuth();
+  const { isDateInPeriod, activePeriodLabel } = useDateFilter();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -66,13 +68,12 @@ export default function Reports() {
 
   const monthSales = useMemo(() => {
     return (contracts || []).filter(c => {
-      const d = new Date(c.created_at);
-      const okDate = d.getFullYear() === year && d.getMonth() + 1 === month;
+      const okDate = isDateInPeriod(c.signed_at || c.created_at);
       const okStore = storeFilter === 'all' || c.store_id === storeFilter;
       const okStatus = c.status === 'concluido' || c.status === 'assinado';
       return okDate && okStore && okStatus;
     });
-  }, [contracts, year, month, storeFilter]);
+  }, [contracts, isDateInPeriod, storeFilter]);
 
   const financials = useMemo(() => {
     let revenue = 0;

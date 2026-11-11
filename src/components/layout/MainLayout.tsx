@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApprovalRequests } from '@/hooks/useApprovalRequests';
 import { ApprovalCenterDialog } from '@/components/approvals/ApprovalCenterDialog';
 import { AeroBladeMark } from '@/components/brand/PixelLoomLogo';
+import { GlobalPeriodSelector } from '@/components/filters/GlobalPeriodSelector';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -95,6 +96,11 @@ export function MainLayout({ children }: MainLayoutProps) {
             <span className="truncate max-w-[140px] lg:max-w-[200px]">
               {userStore?.name || (isAdmin ? 'Todas as Unidades' : 'Unidade Matriz')}
             </span>
+          </div>
+
+          {/* Seletor Global de Período / Mês */}
+          <div className="hidden sm:flex items-center">
+            <GlobalPeriodSelector />
           </div>
         </div>
 

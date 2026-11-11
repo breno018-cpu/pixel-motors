@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useStores } from '@/hooks/useStores';
 import { useContracts } from '@/hooks/useContracts';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDateFilter } from '@/contexts/DateFilterContext';
 import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDialog';
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 
@@ -31,6 +32,7 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
   const { data: stores } = useStores();
   const { data: allContracts = [] } = useContracts();
   const { hasElevatedAccess } = useAuth();
+  const { isDateInPeriod, activePeriodLabel } = useDateFilter();
 
   const { data: sellersRaw, isLoading, refetch } = useQuery({
     queryKey: ['sellers-list'],
@@ -72,7 +74,9 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
       const firstName = (p.full_name || '').split(' ')[0].toLowerCase();
       const sellerContracts = allContracts.filter(c => {
         const cb = (c.created_by || '').toLowerCase();
-        return cb === p.id.toLowerCase() || (firstName && cb.includes(firstName));
+        const matchesSeller = cb === p.id.toLowerCase() || (firstName && cb.includes(firstName));
+        if (!matchesSeller) return false;
+        return isDateInPeriod(c.signed_at || c.created_at);
       });
 
       return {
@@ -84,7 +88,7 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
         pendingMonth: sellerContracts.filter(c => c.status === 'pendente').length,
       };
     });
-  }, [sellersRaw, allContracts]);
+  }, [sellersRaw, allContracts, isDateInPeriod]);
 
   const filtered = useMemo(() => {
     return (sellers || []).filter(s => {

@@ -73,6 +73,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDateFilter } from '@/contexts/DateFilterContext';
 import { exportToXLSX, exportDealershipWorksheetMultiStore } from '@/lib/export';
 import { useStores } from '@/hooks/useStores';
 import { TabTransition } from '@/components/ui/TabTransition';
@@ -130,7 +131,22 @@ export function CloudMonthlySpreadsheet({
 
   // Modos de Visualização & Organização
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [selectedMonth, setSelectedMonth] = useState<string>('2026-10');
+  const { periodFilter, setPeriodFilter, defaultMonthKey } = useDateFilter();
+  const [selectedMonth, setSelectedMonthState] = useState<string>(() => {
+    if (periodFilter && periodFilter.includes('-')) return periodFilter;
+    return defaultMonthKey || '2026-10';
+  });
+
+  const setSelectedMonth = (m: string) => {
+    setSelectedMonthState(m);
+    setPeriodFilter(m);
+  };
+
+  useEffect(() => {
+    if (periodFilter && periodFilter.includes('-') && periodFilter !== selectedMonth) {
+      setSelectedMonthState(periodFilter);
+    }
+  }, [periodFilter, selectedMonth]);
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSellerFilter, setSelectedSellerFilter] = useState<string>('all');

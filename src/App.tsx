@@ -31,6 +31,7 @@ import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { ConcurrentSessionModal } from "@/components/security/ConcurrentSessionModal";
 import { ConfirmationProvider } from "@/contexts/ConfirmationContext";
+import { DateFilterProvider } from "@/contexts/DateFilterContext";
 import { queryClient } from "@/lib/queryClient";
 
 const App = () => (
@@ -39,10 +40,11 @@ const App = () => (
       <AuthProvider>
         <TooltipProvider>
           <ConfirmationProvider>
-            <Toaster />
-            <Sonner />
-            <ConcurrentSessionModal />
-            <BrowserRouter>
+            <DateFilterProvider>
+              <Toaster />
+              <Sonner />
+              <ConcurrentSessionModal />
+              <BrowserRouter>
               <ErrorBoundary
                 fallbackTitle="Erro na aplicação"
                 fallbackDescription="Ocorreu um erro ao carregar esta página. Você pode tentar recarregar sem perder a sessão."
@@ -243,6 +245,7 @@ const App = () => (
             </Routes>
           </ErrorBoundary>
         </BrowserRouter>
+            </DateFilterProvider>
           </ConfirmationProvider>
         </TooltipProvider>
       </AuthProvider>

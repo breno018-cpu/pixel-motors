@@ -61,6 +61,7 @@ import {
   Line,
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDateFilter } from '@/contexts/DateFilterContext';
 import { useVehicles, useVehicleStats } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
 import { useContracts } from '@/hooks/useContracts';
@@ -100,8 +101,13 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { profile, canCreateSales } = useAuth();
 
-  // Filtros Globais
-  const [periodFilter, setPeriodFilter] = useState<string>('all');
+  // Filtros Globais (Período Unificado com Todas as Abas)
+  const {
+    periodFilter,
+    setPeriodFilter,
+    isDateInPeriod,
+    availablePeriods: globalAvailablePeriods,
+  } = useDateFilter();
   const [sellerFilter, setSellerFilter] = useState<string>('all');
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<'all' | 'moto' | 'carro'>('all');
@@ -472,29 +478,8 @@ export default function Dashboard() {
     const now = new Date();
 
     return consolidatedSales.filter((s) => {
-      // 1. Filtro de Período e Competência Contábil
-      if (periodFilter === 'all') {
-        // Todo o histórico mantido
-      } else if (periodFilter === '365d' || periodFilter === 'year-2026') {
-        if (s.date.getFullYear() !== 2026) return false;
-      } else if (periodFilter === '7d') {
-        const cutoff = new Date(now.getTime() - 7 * 86400000);
-        if (s.date < cutoff) return false;
-      } else if (periodFilter === '30d') {
-        const cutoff = new Date(now.getTime() - 30 * 86400000);
-        if (s.date < cutoff) return false;
-      } else if (periodFilter === '90d') {
-        const cutoff = new Date(now.getTime() - 90 * 86400000);
-        if (s.date < cutoff) return false;
-      } else if (periodFilter.includes('-')) {
-        // Formato YYYY-MM (Ex: '2026-10')
-        const parts = periodFilter.split('-');
-        const targetYear = parseInt(parts[0], 10);
-        const targetMonth = parseInt(parts[1], 10);
-        if (s.date.getFullYear() !== targetYear || s.date.getMonth() !== targetMonth - 1) {
-          return false;
-        }
-      }
+      // 1. Filtro de Período e Competência Contábil Rigoroso (Unificado)
+      if (!isDateInPeriod(s.date)) return false;
 
       // 2. Filtro rigoroso de loja
       if (storeFilter !== 'all') {
@@ -521,7 +506,7 @@ export default function Dashboard() {
 
       return true;
     });
-  }, [consolidatedSales, periodFilter, storeFilter, sellerFilter, vehicleTypeFilter]);
+  }, [consolidatedSales, isDateInPeriod, storeFilter, sellerFilter, vehicleTypeFilter]);
 
   // Contratos Filtrados pelo Contexto de Loja e Vendedor
   const filteredContracts = useMemo(() => {
@@ -979,6 +964,7 @@ export default function Dashboard() {
                   {p.label} ({p.count} {p.count === 1 ? 'venda' : 'vendas'})
                 </SelectItem>
               ))}
+              <SelectItem value="month">Este Mês (Atual)</SelectItem>
               <SelectItem value="year-2026">Ano de 2026 Completo</SelectItem>
               <SelectItem value="30d">Últimos 30 dias</SelectItem>
               <SelectItem value="7d">Últimos 7 dias</SelectItem>
