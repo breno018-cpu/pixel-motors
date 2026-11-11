@@ -486,7 +486,7 @@ export default function Vehicles() {
     <div className="space-y-6 pb-8">
       <PageHeader
         title="Estoque de Veículos"
-        description="Controle de pátio, disponibilidade e vendas."
+        description="Gestão de disponibilidade, giro de pátio e precificação de vendas."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -1047,8 +1047,8 @@ export default function Vehicles() {
             </PanelCard>
           ) : (
             /* VISÃO AGRUPADA POR MODELO COM EXPANSÃO INLINE */
-            <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-2xs">
-              <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3.5">
+            <div className="overflow-x-auto rounded-xl border border-border/70 bg-card shadow-2xs">
+              <div className="flex min-w-[760px] items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3.5">
                 <div>
                   <h2 className="font-display text-sm font-semibold text-foreground">
                     Modelos no Estoque
@@ -1068,7 +1068,7 @@ export default function Vehicles() {
                   const isExpanded = expandedModels.has(group.key);
                   return (
                     <div key={group.key} className="transition-colors">
-                      <div className="group grid gap-4 px-5 py-3.5 hover:bg-muted/20 lg:grid-cols-[minmax(220px,1.2fr)_minmax(220px,1.2fr)_160px_110px_170px] lg:items-center">
+                      <div className="group grid min-w-[760px] gap-4 px-5 py-3.5 hover:bg-muted/20 lg:grid-cols-[minmax(200px,1.2fr)_minmax(180px,1.2fr)_140px_100px_160px] lg:items-center">
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
@@ -1329,8 +1329,8 @@ function UnitList({
   onCopy: (label: string, text?: string | null) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-2xs">
-      <div className="flex flex-col gap-3 border-b border-border/60 bg-muted/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="overflow-x-auto rounded-xl border border-border/70 bg-card shadow-2xs">
+      <div className="flex min-w-[760px] flex-col gap-3 border-b border-border/60 bg-muted/20 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar aos modelos">
             <ArrowLeft className="h-4 w-4" />
@@ -1373,7 +1373,7 @@ function UnitList({
           return (
             <div
               key={vehicle.id}
-              className="grid gap-3 px-5 py-3.5 transition-colors hover:bg-muted/20 md:grid-cols-[minmax(200px,1.2fr)_1.2fr_120px_140px_auto] md:items-center"
+              className="grid min-w-[760px] gap-3 px-5 py-3.5 transition-colors hover:bg-muted/20 md:grid-cols-[minmax(200px,1.2fr)_1.2fr_120px_140px_auto] md:items-center"
             >
               <div>
                 <div className="flex items-center gap-2">

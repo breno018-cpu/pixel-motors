@@ -65,7 +65,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div
-      className={`min-h-screen bg-background flex flex-col antialiased overflow-x-hidden w-full max-w-full transition-[padding] duration-200 ${
+      className={`min-h-screen bg-background flex flex-col antialiased w-full transition-[padding] duration-200 ${
         isMobile ? 'pl-0' : collapsed ? 'pl-16' : 'pl-56'
       }`}
     >
@@ -177,15 +177,15 @@ export function MainLayout({ children }: MainLayoutProps) {
         </div>
       </header>
       
-      <main className="mt-14 flex-1 p-3 sm:p-5 lg:p-6 pb-20 md:pb-6 overflow-x-hidden min-w-0 w-full max-w-full">
-        <div className="w-full max-w-[1540px] mx-auto min-w-0 animate-fade-in">
+      <main className="mt-14 flex-1 p-3 sm:p-5 lg:p-6 pb-20 md:pb-6 min-w-0 w-full">
+        <div className="w-full min-w-0 animate-fade-in">
           {children}
         </div>
       </main>
       
       {/* Footer Executivo */}
-      <footer className="py-3 px-4 sm:px-6 pb-20 md:pb-3 border-t border-border/70 bg-background/50 overflow-hidden w-full max-w-full">
-        <div className="w-full max-w-[1540px] mx-auto flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground/70 gap-2">
+      <footer className="py-3 px-4 sm:px-6 pb-20 md:pb-3 border-t border-border/70 bg-background/50 w-full">
+        <div className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground/70 gap-2">
           <p>
             <span className="font-extrabold text-foreground/90 tracking-wide font-display">PIXEL MOTORS</span> OS • Plataforma Operacional de Gestão de Concessionárias
           </p>
