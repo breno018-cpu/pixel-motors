@@ -138,11 +138,7 @@ export default function GestaoFuncionarios({
     email: '',
     cargoId: defaultCargoRegra.id,
     cargo: defaultCargoRegra.titulo,
-    departamento: defaultCargoRegra.departamento as
-      | 'VENDAS'
-      | 'MECANICA'
-      | 'ADMINISTRATIVO'
-      | 'GERENCIA',
+    departamento: defaultCargoRegra.departamento,
     salarioBase: defaultCargoRegra.salarioBasePadrao,
     cargaHoraria: defaultCargoRegra.cargaHorariaPadrao || 220,
     dataAdmissao: new Date().toISOString().split('T')[0],

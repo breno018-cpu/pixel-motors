@@ -576,8 +576,8 @@ export function useEmpresaFolhaConfig(selectedStoreId?: string) {
   }, [stores, selectedStoreId]);
 
   const empresa = useMemo<EmpresaFolhaConfig>(() => {
-    const savedGlobal = configsByStore.global || {};
-    const savedStore = storeKey !== 'global' ? configsByStore[storeKey] || {} : {};
+    const savedGlobal: Partial<EmpresaFolhaConfig> = configsByStore.global || {};
+    const savedStore: Partial<EmpresaFolhaConfig> = storeKey !== 'global' ? configsByStore[storeKey] || {} : {};
     const saved: Partial<EmpresaFolhaConfig> = {
       ...savedGlobal,
       ...savedStore,
@@ -827,8 +827,8 @@ export function useEmpresaFolhaConfig(selectedStoreId?: string) {
   const obterConfigParaLoja = useCallback(
     (storeId?: string | null): EmpresaFolhaConfig => {
       const key = storeId && storeId !== 'all' ? storeId : 'global';
-      const savedGlobal = configsByStore.global || {};
-      const savedStore = key !== 'global' ? configsByStore[key] || {} : {};
+      const savedGlobal: Partial<EmpresaFolhaConfig> = configsByStore.global || {};
+      const savedStore: Partial<EmpresaFolhaConfig> = key !== 'global' ? configsByStore[key] || {} : {};
       const saved: Partial<EmpresaFolhaConfig> = {
         ...savedGlobal,
         ...savedStore,

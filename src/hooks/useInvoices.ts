@@ -27,7 +27,7 @@ export interface Invoice {
   status: 'emitida' | 'cancelada';
   notes: string | null;
   created_at: string;
-  store?: { id: string; name: string } | null;
+  store?: { id: string; name: string; cnpj?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
 }
 
 export function useInvoices() {
@@ -36,7 +36,7 @@ export function useInvoices() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('invoices')
-        .select('*, store:stores(id, name)')
+        .select('*, store:stores(id, name, cnpj, address, city, state)')
         .order('issue_date', { ascending: false });
       if (error) throw error;
       return (data || []) as Invoice[];

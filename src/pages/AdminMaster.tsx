@@ -113,6 +113,14 @@ export default function AdminMaster() {
         .select('user_id, role');
       if (rolesError) throw rolesError;
 
+      const { data: employees, error: employeesError } = await supabase
+        .from('employees').select('profile_id, store_id, cpf, is_active');
+      if (employeesError) throw employeesError;
+      const { data: resellers, error: resellersError } = await supabase
+        .from('resellers').select('user_id, store_id, cpf, is_active');
+      if (resellersError) throw resellersError;
+      const employeeMap = new Map((employees || []).map((e) => [e.profile_id, e]));
+      const resellerMap = new Map((resellers || []).map((r) => [r.user_id, r]));
       const roleMap = new Map(userRoles.map((r) => [r.user_id, r.role]));
       const storeMap = new Map((stores || []).map((s) => [s.id, s.name]));
 
@@ -120,11 +128,11 @@ export default function AdminMaster() {
         id: p.id,
         email: p.email,
         full_name: p.full_name || 'Sem nome',
-        cpf: p.cpf || undefined,
+        cpf: employeeMap.get(p.id)?.cpf || resellerMap.get(p.id)?.cpf || undefined,
         role: roleMap.get(p.id) || 'vendedor',
-        store_id: p.store_id || undefined,
-        store_name: p.store_id ? storeMap.get(p.store_id) || 'Loja Desconhecida' : 'Todas as Lojas / Matriz',
-        is_active: p.is_active ?? true,
+        store_id: employeeMap.get(p.id)?.store_id || resellerMap.get(p.id)?.store_id || undefined,
+        store_name: storeMap.get(employeeMap.get(p.id)?.store_id || resellerMap.get(p.id)?.store_id || '') || 'Sem loja vinculada',
+        is_active: employeeMap.get(p.id)?.is_active ?? resellerMap.get(p.id)?.is_active ?? true,
         created_at: p.created_at,
       })) as UserWithRole[];
     },
@@ -144,13 +152,13 @@ export default function AdminMaster() {
 
       // Total de vendas registradas
       const { count: salesCount } = await supabase
-        .from('sales')
+        .from('contracts')
         .select('*', { count: 'exact', head: true });
 
       // Logs de auditoria nas últimas 24 horas
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { count: recentLogsCount } = await supabase
-        .from('audit_logs')
+        .from('activity_logs')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', yesterday);
 
@@ -166,11 +174,12 @@ export default function AdminMaster() {
   // Alternar ativação de usuário
   const toggleUserActiveMutation = useMutation({
     mutationFn: async ({ userId, currentState }: { userId: string; currentState: boolean }) => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: !currentState })
-        .eq('id', userId);
+      if (!currentState) throw new Error('A reativação de acesso ainda não está disponível neste painel.');
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { action: 'delete_user', user_id: userId },
+      });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: (_, { currentState }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-master-users'] });
@@ -706,7 +715,9 @@ export default function AdminMaster() {
         <TempPasswordDialog
           open={!!tempPasswordData}
           onOpenChange={(open) => !open && setTempPasswordData(null)}
-          data={tempPasswordData}
+          tempPassword={tempPasswordData.password}
+          userName={tempPasswordData.name}
+          userEmail={tempPasswordData.email}
         />
       )}
 
@@ -714,8 +725,7 @@ export default function AdminMaster() {
         <SellerPerformanceDialog
           open={!!performanceUser}
           onOpenChange={(open) => !open && setPerformanceUser(null)}
-          sellerId={performanceUser.id}
-          sellerName={performanceUser.full_name}
+          user={performanceUser}
         />
       )}
 

@@ -984,7 +984,7 @@ export function MonthlyCitySalesMap({
                     const map = leafletMapRef.current;
                     if (!map || cityStats.length === 0) return;
                     const pts = cityStats.map((c) => L.latLng(c.lat, c.lng));
-                    visibleHubs.forEach((h) => pts.push(L.latLng(h.lat, h.lng)));
+                    DEALERSHIP_HUBS.filter((h) => activeStoreFilter === 'all' || h.id === activeStoreFilter).forEach((h) => pts.push(L.latLng(h.lat, h.lng)));
                     map.flyToBounds(L.latLngBounds(pts), { padding: [50, 50], maxZoom: 10, duration: 0.8 });
                   }}
                   className="h-6 text-[11px] rounded-md px-2 font-semibold text-primary hover:bg-primary/10 gap-1 border border-primary/20"

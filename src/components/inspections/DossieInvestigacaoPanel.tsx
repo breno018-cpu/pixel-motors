@@ -35,6 +35,7 @@ import { formatPlate } from '@/lib/vehicleCatalog';
 import { OFFICIAL_FREE_PORTALS, STATE_DETRANS } from '@/lib/officialLinks';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { useInspections } from '@/hooks/useInspections';
+import type { TheftStatus, RenajudStatus, AuctionStatus } from '@/types/inspection';
 import { cn } from '@/lib/utils';
 
 interface InvestigationResult {
@@ -47,9 +48,9 @@ interface InvestigationResult {
   color: string;
   ownerName: string;
   ownerCpfMasked: string;
-  theftStatus: 'nada_consta' | 'alerta_furto' | 'recuperado';
-  renajudStatus: 'nada_consta' | 'bloqueio_judicial' | 'penhora';
-  auctionStatus: 'sem_passagem' | 'leilao_financeira' | 'sinistro_seguradora';
+  theftStatus: TheftStatus;
+  renajudStatus: RenajudStatus;
+  auctionStatus: AuctionStatus;
   gravameStatus: 'quitado' | 'alienacao_fiduciaria' | 'reserva_dominio';
   debts: Array<{ id: string; description: string; amount: number; type: string; dueDate: string }>;
   riskScore: number; // 0 (risco total) a 100 (100% blindado)

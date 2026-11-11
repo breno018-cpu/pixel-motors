@@ -37,7 +37,7 @@ export function FinancialDREPanel() {
     queryFn: async () => {
       // 1. Vendas
       let query = supabase
-        .from('sales')
+        .from('contracts')
         .select(`
           id,
           sale_price,

@@ -35,9 +35,8 @@ export default function Inspections() {
     <div className="space-y-6 pb-12">
       {/* Top Header */}
       <PageHeader
-        eyebrow="Due Diligence Jurídica, Cautelar & PDI"
         title="Investigação, Laudos & Procedência Veicular"
-        subtitle="Dossiê investigativo de antecedentes, bloqueios judiciais RENAJUD, histórico de leilão/sinistro, vistoria presencial e portais oficiais."
+        description="Dossiê investigativo de antecedentes, bloqueios judiciais RENAJUD, histórico de leilão/sinistro, vistoria presencial e portais oficiais."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button

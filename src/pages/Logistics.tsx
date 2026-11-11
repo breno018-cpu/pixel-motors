@@ -32,9 +32,11 @@ import { AuthorizedEntryDeliveryTermModal } from '@/components/logistics/Authori
 import { TRANSPORT_LOGISTICS_METHODS } from '@/lib/transportLogistics';
 import { exportToXLSX } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Logistics() {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [poloFilter, setPoloFilter] = useState<string>('all');
@@ -125,7 +127,14 @@ export default function Logistics() {
       DataVenda: d.dataVenda,
     }));
 
-    exportToXLSX(exportData, `Logistica_Entregas_${new Date().toISOString().slice(0, 10)}`);
+    void exportToXLSX({
+      title: `Logistica_Entregas_${new Date().toISOString().slice(0, 10)}`,
+      module: 'sales',
+      filters: { status: statusFilter, polo: poloFilter, transporte: methodFilter },
+      columns: Object.keys(exportData[0] || {}).map((key) => ({ key, label: key })),
+      data: exportData,
+      userName: profile?.full_name || '',
+    });
     toast({
       title: 'Relatório exportado!',
       description: 'A planilha de logística e entregas foi baixada.',

@@ -557,7 +557,7 @@ export function InboundBarcodeScanner({
             <AlertCircle className="w-10 h-10 text-amber-500 mb-2" />
             <p className="text-sm font-semibold text-foreground mb-1">Câmera não iniciada</p>
             <p className="text-xs text-muted-foreground mb-4 max-w-sm">{cameraError}</p>
-            <Button size="sm" onClick={startCamera} variant="outline" className="gap-2">
+            <Button size="sm" onClick={() => startCamera()} variant="outline" className="gap-2">
               <RefreshCw className="w-3.5 h-3.5" /> Tentar Novamente
             </Button>
           </div>

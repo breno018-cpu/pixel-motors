@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
+  DEFAULT_EMPRESA_FOLHA_CONFIG,
   DEFAULT_REGRAS_POR_CARGO,
   EmpresaFolhaConfig,
   FaixaComissaoMoto,
@@ -146,7 +147,7 @@ export const ConfigComissoesCargoTab: React.FC<Props> = ({
   useEffect(() => {
     return () => {
       if (isDirtyRef.current) {
-        onSalvarConfig({ regrasPorCargo: regrasMap }, false).catch(() => {});
+        Promise.resolve(onSalvarConfig({ regrasPorCargo: regrasMap }, false)).catch(() => {});
       }
     };
   }, [regrasMap, onSalvarConfig]);

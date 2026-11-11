@@ -47,7 +47,7 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email, phone, store_id')
+        .select('id, full_name, email, phone')
         .in('id', ids);
 
       const { data: employees } = await supabase

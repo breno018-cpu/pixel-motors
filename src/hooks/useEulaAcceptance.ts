@@ -51,12 +51,12 @@ export function useEulaAcceptance() {
       if (active) setIsChecking(false);
     }, 1000);
 
-    supabase
+    Promise.resolve(supabase
       .from('eula_acceptances')
       .select('id')
       .eq('user_id', user.id)
       .eq('version', EULA_VERSION)
-      .maybeSingle()
+      .maybeSingle())
       .then(({ data, error }) => {
         if (!active) return;
         clearTimeout(timer);
