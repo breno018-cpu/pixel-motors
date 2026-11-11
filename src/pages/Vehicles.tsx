@@ -486,7 +486,7 @@ export default function Vehicles() {
     <div className="space-y-6 pb-8">
       <PageHeader
         title="Estoque de Veículos"
-        description="Gestão de disponibilidade, tempo de pátio (aging), precificação de catálogo e ações rápidas de venda e reserva."
+        description="Controle de pátio, disponibilidade e vendas."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
