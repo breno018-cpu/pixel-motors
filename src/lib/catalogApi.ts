@@ -7,6 +7,24 @@ import {
   CatalogChatResponse,
 } from "@/types/catalog";
 
+export const CATS = ["ele", "semi", "off", "shineray"] as const;
+export type CatalogCategoryKey = typeof CATS[number];
+
+/**
+ * Normalizador Tolerante a Falhas para Categorias do Catálogo L1MA Motors
+ * Suporta aliases, variações com acento, texto livre e prefixos
+ */
+export function normalizeCat(c: any): CatalogCategoryKey | null {
+  if (!c) return null;
+  const s = String(c).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  if (s === "ele" || s.startsWith("eletric") || s.includes("scooter") || s.includes("patinete")) return "ele";
+  if (s === "off" || s.startsWith("off") || s.includes("quadri") || s.includes("kart") || s.includes("drift") || s.includes("trilha") || s.includes("atv")) return "off";
+  if (s === "semi" || s.startsWith("semi") || s.includes("usad") || s.includes("troca")) return "semi";
+  if (s === "shineray" || s.includes("shine")) return "shineray";
+  if ((CATS as readonly string[]).includes(s)) return s as CatalogCategoryKey;
+  return null;
+}
+
 const STORAGE_URL_KEY = "dealflow_catalog_api_url";
 const STORAGE_TOKEN_KEY = "dealflow_catalog_sync_token";
 

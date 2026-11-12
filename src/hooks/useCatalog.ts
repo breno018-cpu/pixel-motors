@@ -209,8 +209,9 @@ export function useCatalog() {
   // Mover Veículo de Categoria / Parte no Catálogo (shineray, ele, off, semi)
   const updateCategory = (product: CatalogProduct, newCat: "shineray" | "ele" | "off" | "semi") => {
     return syncMutation.mutateAsync({
-      action: "create",
-      ...product,
+      action: "category",
+      id: product.id,
+      category: newCat,
       cat: newCat,
     });
   };
