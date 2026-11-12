@@ -126,20 +126,22 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
   return {
     id: r.id || `sheet-${r.qt}`,
     contract_number: `${isMoc ? 'MOC' : 'DIV'}-${r.qt || '00'}`,
-    vehicle_id: `veh-${r.id || r.qt}`,
-    reseller_id: null,
+    vehicle_id: (r as any).vehicle_id || `veh-${r.id || r.qt}`,
+    reseller_id: (r as any).reseller_id || null,
     store_id: storeId,
-    created_by: r.vendedor || 'Lilian',
+    created_by: (r as any).created_by || (r as any).user_id || r.vendedor || 'Vendedor',
+    user_id: (r as any).user_id || (r as any).created_by || null,
+    vendedor: r.vendedor,
     buyer_name: r.cliente || 'Cliente não informado',
     buyer_cpf: r.lead_mapping || '—',
-    buyer_phone: null,
-    buyer_email: null,
+    buyer_phone: (r as any).buyer_phone || null,
+    buyer_email: (r as any).buyer_email || null,
     buyer_address: `${r.regiao || 'Divinópolis'} - MG`,
     sale_price: r.valor || 0,
     down_payment: downPayment,
     installments: 1,
     installment_value: null,
-    status: r.is_permitted ? 'concluido' : 'pre_venda',
+    status: (r.is_permitted || (r as any).tipo_registro === 'venda') && (r as any).tipo_registro !== 'pre_venda' ? 'concluido' : 'pre_venda',
     payment_method: r.banco || (r.financiamento > 0 ? 'Financiamento' : 'À Vista'),
     financing_bank: r.banco || null,
     financing_installments: null,
@@ -167,7 +169,9 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
     sale_channel: channel,
     evidence_paths: r.comp ? [r.comp] : [],
     external_data: {
+      ...((r as any).external_data || {}),
       vehicle_model_custom: r.modelo,
+      chassis: r.chassi,
       banco: r.banco,
       financiamento: r.financiamento,
       dinheiro: r.dinheiro,
@@ -175,17 +179,19 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
       cartao: r.cartao,
       regiao: r.regiao,
       buyer_city: r.regiao,
+      seller_name: r.vendedor,
+      sale_date: r.data,
       contact_platform: r.lead_mapping || 'WhatsApp / Balcão',
     },
     created_at: createdAt,
     updated_at: createdAt,
     vehicle: {
-      id: `veh-${r.id || r.qt}`,
+      id: (r as any).vehicle_id || `veh-${r.id || r.qt}`,
       brand: 'SHINERAY',
       model: r.modelo || 'Moto',
       year: 2026,
-      color: 'Padrão',
-      plate: null,
+      color: (r as any).cor || 'Padrão',
+      plate: (r as any).placa || null,
       chassis: r.chassi || null,
       vehicle_type: 'moto',
       status: 'vendido',
@@ -194,7 +200,8 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
       id: storeId,
       name: storeName,
     },
-    operator: {
+    operator: (r as any).operator || {
+      id: (r as any).user_id || (r as any).created_by || null,
       full_name: r.vendedor || 'Vendedor',
     },
   };
@@ -232,11 +239,10 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
 
   const sheetRows = getMonthlySheetRows();
   const seenIds = new Set(hydratedDb.map((c) => c.id));
-  const seenNumbers = new Set(hydratedDb.map((c) => c.contract_number));
 
   const fromSheet = sheetRows
     .map(sheetRowToContract)
-    .filter((sc) => !seenIds.has(sc.id) && !seenNumbers.has(sc.contract_number));
+    .filter((sc) => !seenIds.has(sc.id));
 
   return [...hydratedDb, ...fromSheet];
 }

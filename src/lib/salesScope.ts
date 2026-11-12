@@ -113,8 +113,8 @@ export function getUserSalesIdentity(
   const userIds = new Set<string>();
   const userNames = new Set<string>();
 
-  if (auth.userId) userIds.add(auth.userId.toLowerCase());
-  if (auth.profileId) userIds.add(auth.profileId.toLowerCase());
+  if (auth.userId) userIds.add(auth.userId.toLowerCase().trim());
+  if (auth.profileId) userIds.add(auth.profileId.toLowerCase().trim());
 
   let displayName = auth.fullName || 'Vendedor';
 
@@ -122,8 +122,19 @@ export function getUserSalesIdentity(
     const norm = normalizeName(auth.fullName);
     if (norm) {
       userNames.add(norm);
-      const first = norm.split(' ')[0];
-      if (first.length >= 3) userNames.add(first);
+      norm.split(' ').forEach((part) => {
+        if (part.length >= 3) userNames.add(part);
+      });
+    }
+  }
+
+  if (auth.email) {
+    const emailPrefix = auth.email.split('@')[0].toLowerCase().trim();
+    if (emailPrefix) {
+      userNames.add(normalizeName(emailPrefix));
+      emailPrefix.split('.').forEach((part) => {
+        if (part.length >= 3) userNames.add(normalizeName(part));
+      });
     }
   }
 
@@ -143,14 +154,15 @@ export function getUserSalesIdentity(
   });
 
   if (linkedEmp) {
-    if (linkedEmp.id) userIds.add(linkedEmp.id.toLowerCase());
+    if (linkedEmp.id) userIds.add(linkedEmp.id.toLowerCase().trim());
     if (linkedEmp.full_name) {
       displayName = linkedEmp.full_name;
       const empNorm = normalizeName(linkedEmp.full_name);
       if (empNorm) {
         userNames.add(empNorm);
-        const empFirst = empNorm.split(' ')[0];
-        if (empFirst.length >= 3) userNames.add(empFirst);
+        empNorm.split(' ').forEach((part) => {
+          if (part.length >= 3) userNames.add(part);
+        });
       }
     }
   }
@@ -166,22 +178,26 @@ export function isSaleOwnedByCurrentUser(
   auth: UserAuthScopeContext,
   employees: Employee[] = []
 ): boolean {
-  if (!auth.userId && !auth.profileId && !auth.fullName) {
+  if (auth.isAdmin || auth.isManager || auth.hasElevatedAccess) {
+    return true;
+  }
+
+  if (!auth.userId && !auth.profileId && !auth.fullName && !auth.email) {
     return false;
   }
 
   const { userIds, userNames } = getUserSalesIdentity(auth, employees);
 
   // 1. Verificação por IDs (UUID / Chave de criação / Reseller / Operador)
-  const saleCreatedBy = (sale.created_by || '').trim();
-  const saleResellerId = (sale.reseller_id || '').trim();
-  const saleOperatorId = (sale.operator?.id || '').trim();
-  const saleUserId = (sale.user_id || '').trim();
+  const saleCreatedBy = (sale.created_by || '').trim().toLowerCase();
+  const saleResellerId = (sale.reseller_id || '').trim().toLowerCase();
+  const saleOperatorId = (sale.operator?.id || '').trim().toLowerCase();
+  const saleUserId = (sale.user_id || '').trim().toLowerCase();
 
-  if (saleCreatedBy && userIds.has(saleCreatedBy.toLowerCase())) return true;
-  if (saleResellerId && userIds.has(saleResellerId.toLowerCase())) return true;
-  if (saleOperatorId && userIds.has(saleOperatorId.toLowerCase())) return true;
-  if (saleUserId && userIds.has(saleUserId.toLowerCase())) return true;
+  if (saleCreatedBy && userIds.has(saleCreatedBy)) return true;
+  if (saleResellerId && userIds.has(saleResellerId)) return true;
+  if (saleOperatorId && userIds.has(saleOperatorId)) return true;
+  if (saleUserId && userIds.has(saleUserId)) return true;
 
   // 2. Verificação por Nomes (Vendedor, Operador, Planilha)
   const saleSellerNames = [
@@ -201,10 +217,14 @@ export function isSaleOwnedByCurrentUser(
       if (sName === uName) return true;
       if (sName.includes(uName) || uName.includes(sName)) return true;
 
-      const sFirst = sName.split(' ')[0];
-      const uFirst = uName.split(' ')[0];
-      if (sFirst.length >= 3 && uFirst.length >= 3 && sFirst === uFirst) {
-        return true;
+      const sParts = sName.split(' ');
+      const uParts = uName.split(' ');
+      for (const sp of sParts) {
+        for (const up of uParts) {
+          if (sp.length >= 3 && up.length >= 3 && sp === up) {
+            return true;
+          }
+        }
       }
     }
   }

@@ -222,10 +222,22 @@ export default function Dashboard() {
   const { data: contracts = [], isLoading: loadingContracts } = useContracts();
   const { data: employees = [] } = useEmployees();
 
+  const [sheetVersion, setSheetVersion] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setSheetVersion((v) => v + 1);
+    window.addEventListener('dealflow:sheet-updated', handleUpdate);
+    window.addEventListener('dealflow:sales-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('dealflow:sheet-updated', handleUpdate);
+      window.removeEventListener('dealflow:sales-updated', handleUpdate);
+    };
+  }, []);
+
   // Dados das Vendas Mensais (Planilha v9.0 Oficial com Divinópolis e Montes Claros)
   const monthlySheetRows: SheetRowV9[] = useMemo(() => {
     return getLiveSheetRows();
-  }, [isRefreshing]);
+  }, [isRefreshing, sheetVersion]);
 
   // =========================================================================
   // CONSOLIDAÇÃO E DEDUPLICAÇÃO VERÍDICA (100% AUDITADO E SEM DUPLICATAS)

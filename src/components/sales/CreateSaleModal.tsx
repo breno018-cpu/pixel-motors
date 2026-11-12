@@ -415,11 +415,11 @@ export function CreateSaleModal({
       }
 
       const nextQtNumber = String(currentRows.length + 1).padStart(2, '0');
-      const effectiveStoreId = isRestrictedSeller ? (sellerStore?.storeId || storeId) : storeId;
-      const effectiveSaleDate = isRestrictedSeller ? new Date().toISOString().split('T')[0] : saleDate;
-      const effectiveSeller = activeSeller;
+      const effectiveStoreId = isRestrictedSeller ? (sellerStore?.storeId || storeId || 'store-divinopolis') : (storeId || 'store-divinopolis');
+      const effectiveSaleDate = isRestrictedSeller ? new Date().toISOString().split('T')[0] : (saleDate || new Date().toISOString().split('T')[0]);
+      const effectiveSeller = activeSeller || currentSellerName || 'Vendedor';
 
-      const isMoc = effectiveStoreId.includes('montesclaros') || buyerCity.toUpperCase().includes('MONTES CLAROS');
+      const isMoc = (effectiveStoreId || '').includes('montesclaros') || (buyerCity || '').toUpperCase().includes('MONTES CLAROS');
       const storeName = isMoc
         ? 'Concessionária Montes Claros (Polo Norte)'
         : 'Concessionária Divinópolis (Matriz Oeste)';
@@ -437,33 +437,33 @@ export function CreateSaleModal({
       const contractNumber = `${isMoc ? 'MOC' : 'DIV'}-${nextQtNumber}`;
 
       const installmentSummary = [
-        notes.trim(),
-        finValNum > 0 ? `Financiamento: ${finInstallments}x de R$ ${finInstallmentValue || (finValNum / finInstallments).toFixed(2)} (${selectedBank})` : '',
-        cardValNum > 0 && cardInstallments > 1 ? `Cartão: ${cardInstallments}x de R$ ${cardInstallmentValue || (cardValNum / cardInstallments).toFixed(2)}` : '',
+        (notes || '').trim(),
+        finValNum > 0 ? `Financiamento: ${finInstallments}x de R$ ${finInstallmentValue || (finInstallments > 0 ? (finValNum / finInstallments).toFixed(2) : '0.00')} (${selectedBank || 'Banco'})` : '',
+        cardValNum > 0 && cardInstallments > 1 ? `Cartão: ${cardInstallments}x de R$ ${cardInstallmentValue || (cardInstallments > 0 ? (cardValNum / cardInstallments).toFixed(2) : '0.00')}` : '',
         hasTradeIn && tradeInValNum > 0 ? `Troca: ${tradeInModel || 'Veículo Usado'} (R$ ${tradeInValNum.toLocaleString('pt-BR')})` : '',
       ].filter(Boolean).join(' | ');
 
-      const newSheetRow: SheetRowV9 & { created_by?: string; user_id?: string; operator?: any; store_id?: string } = {
+      const newSheetRow: SheetRowV9 & { created_by?: string; user_id?: string; operator?: any; store_id?: string; external_data?: any } = {
         id: newRowId,
         month_key: saleMonthKey,
         qt: nextQtNumber,
         lead_mapping: leadSource || 'Balcão',
         data: formattedDateBR,
-        vendedor: activeSeller,
-        created_by: user?.id || activeSeller,
+        vendedor: effectiveSeller,
+        created_by: user?.id || effectiveSeller,
         user_id: user?.id || null,
         operator: {
           id: user?.id || null,
-          full_name: activeSeller,
+          full_name: effectiveSeller,
         },
         store_id: effectiveStoreId,
-        chassi: vehicleChassis.trim().toUpperCase() || `CH-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-        modelo: vehicleModel.trim().toUpperCase(),
-        cliente: buyerName.trim().toUpperCase(),
-        regiao: buyerCity.trim().toUpperCase(),
+        chassi: (vehicleChassis || '').trim().toUpperCase() || `CH-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
+        modelo: (vehicleModel || '').trim().toUpperCase(),
+        cliente: (buyerName || '').trim().toUpperCase(),
+        regiao: (buyerCity || 'Divinópolis').trim().toUpperCase(),
         valor: totalValNum,
         financiamento: finValNum,
-        banco: finValNum > 0 ? selectedBank : 'À VISTA',
+        banco: finValNum > 0 ? (selectedBank || 'Banco') : 'À VISTA',
         dinheiro: cashValNum,
         pix: pixValNum,
         carta_credito: consValNum,
@@ -475,8 +475,17 @@ export function CreateSaleModal({
         observacoes: installmentSummary,
         tipo_registro: saleType === 'pre_venda' ? 'pre_venda' : 'venda',
         is_permitted: saleType === 'concluido',
-        permitted_by: saleType === 'concluido' ? 'Administrador' : null,
+        permitted_by: saleType === 'concluido' ? (profile?.full_name || 'Administrador') : null,
         permitted_at: saleType === 'concluido' ? new Date().toISOString() : null,
+        external_data: {
+          vehicle_model_custom: vehicleModel,
+          chassis: vehicleChassis,
+          regiao: buyerCity,
+          buyer_city: buyerCity,
+          seller_name: effectiveSeller,
+          sale_date: effectiveSaleDate,
+          store_name: storeName,
+        },
       };
 
       // Adiciona na planilha local imediatamente
@@ -612,8 +621,25 @@ export function CreateSaleModal({
       }
 
       // Notifica todos os módulos da aplicação
-      window.dispatchEvent(new Event('dealflow:sales-updated'));
-      window.dispatchEvent(new Event('dealflow:sheet-updated'));
+      window.dispatchEvent(
+        new CustomEvent('dealflow:sales-updated', {
+          detail: {
+            newSaleId: newRowId,
+            monthKey: saleMonthKey,
+            status: saleType,
+            storeId: effectiveStoreId,
+            seller: effectiveSeller,
+          },
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent('dealflow:sheet-updated', {
+          detail: {
+            newSaleId: newRowId,
+            monthKey: saleMonthKey,
+          },
+        })
+      );
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
 

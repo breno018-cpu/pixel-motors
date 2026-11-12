@@ -17,6 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { useContracts, Contract } from '@/hooks/useContracts';
+import { useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
 import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
@@ -70,6 +71,7 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
       vendedor: r.vendedor,
       observacoes: r.observacoes,
       cliente: r.cliente,
+      regiao: r.regiao,
     },
     employeesList
   );
@@ -90,20 +92,22 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
   return {
     id: r.id || `sheet-${r.qt}`,
     contract_number: `${isMoc ? 'MOC' : 'DIV'}-${r.qt || '00'}`,
-    vehicle_id: `veh-${r.id || r.qt}`,
-    reseller_id: null,
+    vehicle_id: (r as any).vehicle_id || `veh-${r.id || r.qt}`,
+    reseller_id: (r as any).reseller_id || null,
     store_id: storeId,
-    created_by: r.vendedor,
+    created_by: (r as any).created_by || (r as any).user_id || r.vendedor || 'Vendedor',
+    user_id: (r as any).user_id || (r as any).created_by || null,
+    vendedor: r.vendedor,
     buyer_name: r.cliente || 'Cliente não informado',
     buyer_cpf: r.lead_mapping || '—',
-    buyer_phone: null,
-    buyer_email: null,
+    buyer_phone: (r as any).buyer_phone || null,
+    buyer_email: (r as any).buyer_email || null,
     buyer_address: `${r.regiao || 'Divinópolis'} - MG`,
     sale_price: r.valor || 0,
     down_payment: downPayment,
     installments: 1,
     installment_value: null,
-    status: r.is_permitted ? 'concluido' : 'pre_venda',
+    status: (r.is_permitted || (r as any).tipo_registro === 'venda') && (r as any).tipo_registro !== 'pre_venda' ? 'concluido' : 'pre_venda',
     payment_method: r.banco || (r.financiamento > 0 ? 'Financiamento' : 'À Vista'),
     financing_bank: r.banco || null,
     financing_installments: null,
@@ -113,7 +117,7 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
     down_payment_card: r.cartao || 0,
     down_payment_card_installments: null,
     lead_source: r.lead_mapping || 'Balcão',
-    lead_source_detail: null,
+    lead_source_detail: r.regiao || null,
     ad_id: null,
     campaign_name: null,
     signed_at: createdAt,
@@ -129,25 +133,31 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
     template_id: null,
     sale_group_id: null,
     sale_channel: 'interna',
-    evidence_paths: [],
+    evidence_paths: r.comp ? [r.comp] : [],
     external_data: {
+      ...((r as any).external_data || {}),
       vehicle_model_custom: r.modelo,
+      chassis: r.chassi,
       banco: r.banco,
       financiamento: r.financiamento,
       dinheiro: r.dinheiro,
       pix: r.pix,
       cartao: r.cartao,
       regiao: r.regiao,
+      buyer_city: r.regiao,
+      seller_name: r.vendedor,
+      sale_date: r.data,
+      contact_platform: r.lead_mapping || 'WhatsApp / Balcão',
     },
     created_at: createdAt,
     updated_at: createdAt,
     vehicle: {
-      id: `veh-${r.id || r.qt}`,
+      id: (r as any).vehicle_id || `veh-${r.id || r.qt}`,
       brand: 'SHINERAY',
       model: r.modelo || 'Moto',
       year: 2026,
-      color: 'Padrão',
-      plate: null,
+      color: (r as any).cor || 'Padrão',
+      plate: (r as any).placa || null,
       chassis: r.chassi || null,
       vehicle_type: 'moto',
       status: 'vendido',
@@ -156,7 +166,8 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
       id: storeId,
       name: storeName,
     },
-    operator: {
+    operator: (r as any).operator || {
+      id: (r as any).user_id || (r as any).created_by || null,
       full_name: r.vendedor || 'Vendedor',
     },
   };
@@ -164,6 +175,7 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
 
 export default function Sales() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'todas' | 'faturadas' | 'pre_venda' | 'segunda_via' | 'planilha'>('todas');
   const [search, setSearch] = useState('');
   const [storeFilter, setStoreFilter] = useState<string>('all');
@@ -226,14 +238,39 @@ export default function Sales() {
   const [sheetVersion, setSheetVersion] = useState(0);
 
   useEffect(() => {
-    const handleUpdate = () => setSheetVersion((v) => v + 1);
-    window.addEventListener('dealflow:sheet-updated', handleUpdate);
-    window.addEventListener('dealflow:sales-updated', handleUpdate);
-    return () => {
-      window.removeEventListener('dealflow:sheet-updated', handleUpdate);
-      window.removeEventListener('dealflow:sales-updated', handleUpdate);
+    const handleSalesUpdate = (e: any) => {
+      setSheetVersion((v) => v + 1);
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+
+      const detail = e?.detail;
+      if (detail?.monthKey) {
+        setPeriodFilter(detail.monthKey);
+      }
+      if (detail?.status === 'pre_venda') {
+        setActiveTab('pre_venda');
+      } else if (detail?.status === 'concluido') {
+        setActiveTab('faturadas');
+      }
+      setStatusFilter('all');
+      setSearch('');
     };
-  }, []);
+
+    const handleSheetUpdate = (e: any) => {
+      setSheetVersion((v) => v + 1);
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      const detail = e?.detail;
+      if (detail?.monthKey) {
+        setPeriodFilter(detail.monthKey);
+      }
+    };
+
+    window.addEventListener('dealflow:sales-updated', handleSalesUpdate);
+    window.addEventListener('dealflow:sheet-updated', handleSheetUpdate);
+    return () => {
+      window.removeEventListener('dealflow:sales-updated', handleSalesUpdate);
+      window.removeEventListener('dealflow:sheet-updated', handleSheetUpdate);
+    };
+  }, [queryClient, setPeriodFilter]);
 
   const { currentMonthLabel, lastMonthLabel } = useMemo(() => {
     const monthNames = [
@@ -493,7 +530,9 @@ export default function Sales() {
         const aQ = (a as any).review_status === 'questionada' ? 1 : 0;
         const bQ = (b as any).review_status === 'questionada' ? 1 : 0;
         if (aQ !== bQ) return bQ - aQ;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at || b.signed_at || 0).getTime() || 0;
+        const aTime = new Date(a.created_at || a.signed_at || 0).getTime() || 0;
+        return bTime - aTime;
       });
   }, [baseFilteredSales, activeTab, statusFilter]);
 

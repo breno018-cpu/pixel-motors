@@ -57,6 +57,17 @@ const DateFilterContext = createContext<DateFilterContextType | undefined>(undef
 
 export function DateFilterProvider({ children }: { children: React.ReactNode }) {
   const { data: contracts = [] } = useContracts();
+  const [sheetVersion, setSheetVersion] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setSheetVersion((v) => v + 1);
+    window.addEventListener('dealflow:sheet-updated', handleUpdate);
+    window.addEventListener('dealflow:sales-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('dealflow:sheet-updated', handleUpdate);
+      window.removeEventListener('dealflow:sales-updated', handleUpdate);
+    };
+  }, []);
 
   // Detecta dinamicamente todas as competências/meses com dados registrados
   const availablePeriods = useMemo(() => {
@@ -87,7 +98,7 @@ export function DateFilterProvider({ children }: { children: React.ReactNode }) 
     // 2. Processa contratos do banco de dados
     contracts.forEach((c) => {
       // Ignora contratos gerados a partir da planilha para evitar contagem duplicada
-      if (c.id && (c.id.startsWith('sheet-') || c.id.startsWith('row-v9-'))) return;
+      if (c.id && (c.id.startsWith('sheet-') || c.id.startsWith('row-v9-') || c.id.startsWith('venda-'))) return;
       const d = parseAnyDate(c.signed_at || c.created_at);
       if (d) {
         const y = d.getFullYear();
@@ -104,7 +115,7 @@ export function DateFilterProvider({ children }: { children: React.ReactNode }) 
     });
 
     return Array.from(monthsMap.values()).sort((a, b) => b.key.localeCompare(a.key));
-  }, [contracts]);
+  }, [contracts, sheetVersion]);
 
   // Determina o mês ativo padrão (o mais recente com dados ou o mês corrente)
   const defaultMonthKey = useMemo(() => {
