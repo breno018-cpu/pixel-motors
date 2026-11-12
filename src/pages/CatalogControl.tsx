@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useCatalog } from "@/hooks/useCatalog";
 import { CatalogProduct, CatalogPromo, CatalogSyncAction } from "@/types/catalog";
 import { Button } from "@/components/ui/button";
