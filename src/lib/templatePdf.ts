@@ -180,15 +180,19 @@ function replaceVariables(text: string, data: ContractGenerationData): string {
     '{{VEICULO_MODELO}}': data.vehicle.model,
     '{{VEICULO_ANO}}': String(data.vehicle.year),
     '{{VEICULO_COR}}': data.vehicle.color || '',
-    '{{VEICULO_CHASSI}}': data.vehicle.chassis || '',
-    '{{VEICULO_PLACA}}': data.vehicle.plate || 'Sem placa',
-    '{{VEICULO_RENAVAM}}': data.vehicle.renavam || '',
+    '{{VEICULO_CHASSI}}': data.vehicle.chassis?.trim()
+      ? (data.vehicle.chassis.trim().toUpperCase() === 'DISPENSADO'
+          ? 'DISPENSADO (RES. CONTRAN 996/23)'
+          : data.vehicle.chassis)
+      : 'DISPENSADO (RES. CONTRAN 996/23)',
+    '{{VEICULO_PLACA}}': data.vehicle.plate || 'Sem placa / Dispensado',
+    '{{VEICULO_RENAVAM}}': data.vehicle.renavam || 'Dispensado',
     '{{VEICULOS_QTD}}': String(data.vehicles?.length || 1),
     '{{VEICULOS_LISTA}}': (data.vehicles && data.vehicles.length > 0 ? data.vehicles : [{
       brand: data.vehicle.brand, model: data.vehicle.model, year: data.vehicle.year,
       color: data.vehicle.color, chassis: data.vehicle.chassis, plate: data.vehicle.plate,
       price: data.payment.total,
-    }]).map((v, i) => `${i + 1}) ${v.brand} ${v.model}${v.year ? ' ' + v.year : ''}${v.color ? ' - ' + v.color : ''}${v.chassis ? ' - Chassi ' + v.chassis : ''}${v.price ? ' - ' + formatCurrency(Number(v.price)) : ''}`).join('\n'),
+    }]).map((v, i) => `${i + 1}) ${v.brand} ${v.model}${v.year ? ' ' + v.year : ''}${v.color ? ' - ' + v.color : ''}${v.chassis ? (v.chassis.toUpperCase().includes('DISPENSADO') ? ' - ' + v.chassis : ' - Chassi ' + v.chassis) : ' - Chassi Dispensado (Res. 996/23)'}${v.price ? ' - ' + formatCurrency(Number(v.price)) : ''}`).join('\n'),
     '{{GARANTIA_MESES}}': data.vehicle.warranty_months ? String(data.vehicle.warranty_months) : '—',
     '{{REVISAO_MESES}}': data.vehicle.revision_period_months ? String(data.vehicle.revision_period_months) : '—',
     '{{REVISAO_KM}}': data.vehicle.revision_period_km ? data.vehicle.revision_period_km.toLocaleString('pt-BR') : '—',

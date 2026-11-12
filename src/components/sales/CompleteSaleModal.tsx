@@ -352,14 +352,24 @@ export function CompleteSaleModal({
       errors.push('Modelo da motocicleta');
     }
     const cleanChassis = vehicleChassis.trim().toUpperCase();
+    const isExemptOrFrame =
+      cleanChassis.startsWith('DISPENSADO') ||
+      cleanChassis.startsWith('QUADRO') ||
+      cleanChassis.startsWith('SN-') ||
+      cleanChassis.startsWith('EBIKE') ||
+      cleanChassis === 'SEM CHASSI' ||
+      cleanChassis === 'DISPENSADO' ||
+      cleanChassis === 'NAO POSSUI';
+
     if (
-      !cleanChassis ||
-      cleanChassis.length < 8 ||
-      cleanChassis.includes('DEFINIR') ||
-      cleanChassis.includes('INFORMADO') ||
-      cleanChassis.includes('PROVISORIO')
+      !isExemptOrFrame &&
+      (!cleanChassis ||
+        cleanChassis.length < 8 ||
+        cleanChassis.includes('DEFINIR') ||
+        cleanChassis.includes('INFORMADO') ||
+        cleanChassis.includes('PROVISORIO'))
     ) {
-      errors.push('Número do Chassi definitivo do veículo (não provisório)');
+      errors.push('Número do Chassi definitivo do veículo (ou marcar como Dispensado / Nº de Quadro para elétricas)');
     }
     if (priceNum <= 0) {
       errors.push('Valor total da venda (R$)');
@@ -921,6 +931,16 @@ export function CompleteSaleModal({
                   }}
                   filterStoreId={storeId}
                 />
+                <div className="flex items-center justify-between mt-1 px-0.5">
+                  <span className="text-[10px] text-muted-foreground">Bicicletas e elétricas podem dispensar VIN</span>
+                  <button
+                    type="button"
+                    onClick={() => setVehicleChassis('DISPENSADO')}
+                    className="text-[10px] text-amber-600 hover:underline font-bold"
+                  >
+                    Marcar Sem Chassi (Dispensado)
+                  </button>
+                </div>
               </div>
 
               <div>

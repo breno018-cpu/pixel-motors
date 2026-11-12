@@ -233,7 +233,7 @@ export default function MotoInvoices() {
                 <SelectContent>
                   {availableVehicles.map((v) => (
                     <SelectItem key={v.id} value={v.id} className="text-xs">
-                      {v.brand} {v.model} ({v.chassis.slice(-6)})
+                      {v.brand} {v.model} ({v.chassis ? (v.chassis.length > 6 ? v.chassis.slice(-6) : v.chassis) : 'S/ Chassi'})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -251,10 +251,19 @@ export default function MotoInvoices() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">Chassi / VIN da Moto</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Chassi / VIN / Nº Série</Label>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, chassi: 'DISPENSADO' })}
+                    className="text-[10px] text-amber-600 hover:underline font-semibold"
+                  >
+                    Sem Chassi
+                  </button>
+                </div>
                 <Input
                   className="h-9 mt-1 font-mono uppercase text-xs"
-                  placeholder="Ex: 9C2SHI175R0001201"
+                  placeholder="Ex: 9C2... ou Nº Quadro / DISPENSADO"
                   value={form.chassi}
                   onChange={(e) => setForm({ ...form, chassi: e.target.value.toUpperCase() })}
                 />

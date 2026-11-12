@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Bike, Car, Building2, DollarSign, Wrench, CheckCircle2, 
-  Loader2, Sparkles, Lock, Hash, Calendar, Palette, ShieldCheck, RefreshCw, ScanLine 
+  Loader2, Sparkles, Lock, Hash, Calendar, Palette, ShieldCheck, RefreshCw, ScanLine, Zap 
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { recognizeFromChassis, resolveModelYearFromVin, extractYearFromVIN } from '@/lib/chassisRecognition';
 import { BarcodeScannerDialog } from '@/components/vehicles/BarcodeScannerDialog';
 import {
@@ -49,6 +50,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const [storeId, setStoreId] = useState<string>('');
   const [vehicleType, setVehicleType] = useState<'moto' | 'carro'>('moto');
   const [chassis, setChassis] = useState<string>('');
+  const [isNoChassis, setIsNoChassis] = useState<boolean>(false);
   const [brand, setBrand] = useState<string>('');
   const [model, setModel] = useState<string>('');
   const [year, setYear] = useState<string>('');
@@ -80,6 +82,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   // Reset COMPLETO de todas as abas e campos sempre que o modal abre
   const resetForm = useCallback(() => {
     setChassis('');
+    setIsNoChassis(false);
     setBrand('');
     setModel('');
     setYear('');
@@ -192,12 +195,26 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
     }
   }, [open, initialChassis, triggerChassisRecognition]);
 
+  const toggleNoChassis = (checked: boolean) => {
+    setIsNoChassis(checked);
+    if (checked) {
+      setPatternLocked(false);
+      setChassisRecognized(null);
+      setFuelType('eletrico');
+      setTransmission('automatico');
+      lastDecodedVinRef.current = '';
+      if (chassis.length === 17) {
+        setChassis('');
+      }
+    }
+  };
+
   const handleChassisChange = (val: string) => {
-    const upper = val.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const upper = val.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     setChassis(upper);
-    if (upper.length >= 4) {
+    if (!isNoChassis && upper.length >= 4) {
       triggerChassisRecognition(upper);
-    } else {
+    } else if (!isNoChassis) {
       setPatternLocked(false);
       setChassisRecognized(null);
       lastDecodedVinRef.current = '';
@@ -212,11 +229,13 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!chassis.trim() || chassis.trim().length < 5) {
+    const cleanChassis = chassis.trim().toUpperCase();
+
+    if (!isNoChassis && (!cleanChassis || cleanChassis.length < 5)) {
       toast({
         variant: 'destructive',
         title: 'Chassi Obrigatório',
-        description: 'Digite o chassi do veículo para prosseguir com o cadastro.',
+        description: 'Digite o chassi do veículo para prosseguir com o cadastro, ou ative a opção de Bicicleta / Elétrica sem Chassi.',
       });
       return;
     }
@@ -225,7 +244,9 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
       toast({
         variant: 'destructive',
         title: 'Marca e Modelo obrigatórios',
-        description: 'Aguarde o reconhecimento do padrão pelo chassi ou informe o modelo.',
+        description: isNoChassis
+          ? 'Informe a marca e o modelo da bicicleta ou equipamento elétrico.'
+          : 'Aguarde o reconhecimento do padrão pelo chassi ou informe o modelo.',
       });
       return;
     }
@@ -239,9 +260,17 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
       return;
     }
 
+    const finalChassis = isNoChassis
+      ? (cleanChassis || 'DISPENSADO')
+      : cleanChassis;
+
     const confirmed = await confirm({
       title: 'Confirmar Cadastro no Estoque?',
-      description: `Deseja registrar ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) - Chassi ${chassis.trim().toUpperCase()} no estoque disponível?`,
+      description: `Deseja registrar ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) - ${
+        isNoChassis
+          ? (finalChassis === 'DISPENSADO' ? 'Sem Chassi (Dispensado Res. CONTRAN 996/23)' : `Nº Quadro/Série: ${finalChassis}`)
+          : `Chassi ${finalChassis}`
+      } no estoque disponível?`,
       confirmText: 'Sim, Cadastrar Veículo',
       cancelText: 'Revisar',
       variant: 'default',
@@ -257,17 +286,17 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
       year: parseInt(year, 10) || new Date().getFullYear(),
       manufacture_year: parseInt(manufactureYear, 10) || new Date().getFullYear(),
       color: color.trim() || 'Preta',
-      chassis: chassis.trim().toUpperCase(),
+      chassis: finalChassis,
       plate: plate.trim() ? plate.trim().toUpperCase() : undefined,
       renavam: renavam.trim() || undefined,
       mileage: parseInt(mileage, 10) || 0,
-      engine_cc: vehicleType === 'moto' ? parseInt(engineCc, 10) || 125 : undefined,
-      fuel_type: fuelType || 'gasolina',
-      transmission: transmission || 'manual',
+      engine_cc: vehicleType === 'moto' && !isNoChassis ? parseInt(engineCc, 10) || 125 : (parseInt(engineCc, 10) || undefined),
+      fuel_type: fuelType || (isNoChassis ? 'eletrico' : 'gasolina'),
+      transmission: transmission || (isNoChassis ? 'automatico' : 'manual'),
       purchase_price: costNum > 0 ? costNum : undefined,
       sale_price: saleNum,
       warranty_months: parseInt(warrantyMonths, 10) || 12,
-      notes: notes.trim() || undefined,
+      notes: notes.trim() || (isNoChassis ? 'Equipamento elétrico / bicicleta sem chassi VIN (Resolução CONTRAN 996/2023)' : undefined),
       status: 'disponivel',
     });
 
@@ -315,29 +344,67 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* ========================================================================= */}
-          {/* PASSO 1: O PRIMEIRO CAMPO A PREENCHER É O CHASSI (DESTAQUE ABSOLUTO)        */}
+          {/* SELETOR: MULTIMARCAS - BICICLETA / PATINETE / ELÉTRICA SEM CHASSI         */}
+          {/* ========================================================================= */}
+          <div className="flex items-center justify-between p-3.5 rounded-2xl border-2 border-amber-500/40 bg-amber-500/10 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                  Bicicleta / Patinete / Elétrica sem Chassi VIN
+                </p>
+                <p className="text-[11px] text-amber-900/80 dark:text-amber-300/80">
+                  Dispensa chassi de 17 dígitos (Resolução CONTRAN 996/23 Multimarcas) e usa Nº de Série do Quadro.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-bold text-amber-900 dark:text-amber-200 hidden sm:inline">
+                {isNoChassis ? 'Sem Chassi VIN' : 'Veículo com Chassi'}
+              </span>
+              <Switch
+                checked={isNoChassis}
+                onCheckedChange={toggleNoChassis}
+              />
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* PASSO 1: O PRIMEIRO CAMPO A PREENCHER É O CHASSI (OU NÚMERO DO QUADRO)    */}
           {/* ========================================================================= */}
           <div className="p-4 sm:p-5 rounded-2xl border-2 border-primary/40 bg-primary/5 space-y-3 shadow-xs">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
                 <Hash className="w-4 h-4 text-primary" />
-                1. Chassi do Veículo (VIN) * — Primeiro Campo a Preencher
+                {isNoChassis
+                  ? '1. Nº de Série do Quadro / Motor (Opcional)'
+                  : '1. Chassi do Veículo (VIN) * — Primeiro Campo a Preencher'}
               </Label>
               <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setScannerOpen(true)}
-                  className="h-7 px-2 text-[11px] font-semibold gap-1 text-primary border-primary/30 hover:bg-primary/5 shadow-2xs"
-                  title="Escanear com câmera ou leitor de código de barras"
-                >
-                  <ScanLine className="w-3.5 h-3.5" />
-                  <span>Bipar Chassi</span>
-                </Button>
-                <span className="text-xs font-mono font-bold text-primary">
-                  {chassis.length}/17 dígitos
-                </span>
+                {!isNoChassis ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setScannerOpen(true)}
+                      className="h-7 px-2 text-[11px] font-semibold gap-1 text-primary border-primary/30 hover:bg-primary/5 shadow-2xs"
+                      title="Escanear com câmera ou leitor de código de barras"
+                    >
+                      <ScanLine className="w-3.5 h-3.5" />
+                      <span>Bipar Chassi</span>
+                    </Button>
+                    <span className="text-xs font-mono font-bold text-primary">
+                      {chassis.length}/17 dígitos
+                    </span>
+                  </>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] font-bold text-amber-600 border-amber-500/40 bg-amber-500/10">
+                    DISPENSADO / OPCIONAL
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -346,12 +413,16 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 autoFocus
                 value={chassis}
                 onChange={(e) => handleChassisChange(e.target.value)}
-                placeholder="DIGITE O CHASSI (EX: 99HSHF250VS001288)..."
+                placeholder={
+                  isNoChassis
+                    ? 'DIGITE O Nº DE SÉRIE DO QUADRO (OU DEIXE EM BRANCO PARA DISPENSADO)...'
+                    : 'DIGITE O CHASSI (EX: 99HSHF250VS001288)...'
+                }
                 className="h-12 text-base sm:text-lg font-mono font-black tracking-widest bg-background border-primary/40 focus-visible:ring-primary shadow-xs uppercase placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:tracking-normal"
-                maxLength={17}
-                required
+                maxLength={isNoChassis ? 40 : 17}
+                required={!isNoChassis}
               />
-              {isDecodingChassis && (
+              {!isNoChassis && isDecodingChassis && (
                 <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5 text-xs text-primary font-bold">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   <span>Analisando padrão...</span>
@@ -359,8 +430,28 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               )}
             </div>
 
+            {/* Banner de Bicicleta / Elétrica sem Chassi */}
+            {isNoChassis && (
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-950 dark:text-amber-200 animate-scale-in">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <CheckCircle2 className="w-5 h-5 text-amber-600 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-black text-xs uppercase tracking-wide truncate">
+                      Modo Veículo Elétrico / Bicicleta Ativo
+                    </p>
+                    <p className="text-[11px] opacity-90 truncate">
+                      Chassi registrado como <strong>{chassis.trim() || 'DISPENSADO'}</strong>. Ficha técnica totalmente desbloqueada.
+                    </p>
+                  </div>
+                </div>
+                <Badge className="bg-amber-600 text-white font-mono text-[10px] shrink-0 ml-2">
+                  RES. CONTRAN 996/23
+                </Badge>
+              </div>
+            )}
+
             {/* Banner de Padrão Identificado */}
-            {patternLocked && chassisRecognized && (
+            {!isNoChassis && patternLocked && chassisRecognized && (
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-300 animate-scale-in">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -379,7 +470,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               </div>
             )}
 
-            {!patternLocked && chassis.length >= 4 && !isDecodingChassis && (
+            {!isNoChassis && !patternLocked && chassis.length >= 4 && !isDecodingChassis && (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 Digite os primeiros 8 a 10 dígitos do chassi para o sistema identificar o modelo automaticamente.

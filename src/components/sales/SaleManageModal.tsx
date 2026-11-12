@@ -301,14 +301,24 @@ export function SaleManageModal({
         }
         if (!vehicleModel.trim()) missing.push('Modelo da moto');
         const cleanChassis = (vehicleChassis || '').trim().toUpperCase();
+        const isExemptOrFrame =
+          cleanChassis.startsWith('DISPENSADO') ||
+          cleanChassis.startsWith('QUADRO') ||
+          cleanChassis.startsWith('SN-') ||
+          cleanChassis.startsWith('EBIKE') ||
+          cleanChassis === 'SEM CHASSI' ||
+          cleanChassis === 'DISPENSADO' ||
+          cleanChassis === 'NAO POSSUI';
+
         if (
-          !cleanChassis ||
-          cleanChassis.length < 8 ||
-          cleanChassis.includes('DEFINIR') ||
-          cleanChassis.includes('INFORMADO') ||
-          cleanChassis.includes('PROVISORIO')
+          !isExemptOrFrame &&
+          (!cleanChassis ||
+            cleanChassis.length < 8 ||
+            cleanChassis.includes('DEFINIR') ||
+            cleanChassis.includes('INFORMADO') ||
+            cleanChassis.includes('PROVISORIO'))
         ) {
-          missing.push('Chassi oficial definitivo do veículo');
+          missing.push('Chassi oficial definitivo do veículo (ou marcar como Dispensado / Nº de Quadro para elétricas)');
         }
         if (priceNum <= 0) missing.push('Valor total da venda (R$)');
 
@@ -733,11 +743,20 @@ export function SaleManageModal({
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
-                  <Label className="text-xs font-bold">Número de Chassi (VIN Completo)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold">Número de Chassi / Série do Quadro</Label>
+                    <button
+                      type="button"
+                      onClick={() => setVehicleChassis('DISPENSADO')}
+                      className="text-[10px] text-amber-600 hover:underline font-bold"
+                    >
+                      Bicicleta / Elétrica (Dispensado)
+                    </button>
+                  </div>
                   <Input
                     value={vehicleChassis}
                     onChange={(e) => setVehicleChassis(e.target.value.toUpperCase())}
-                    placeholder="Ex: 95Vxxxxxxxxxxxxxx"
+                    placeholder="Ex: 95V... ou Nº Quadro / DISPENSADO"
                     className="h-10 text-xs font-mono font-bold uppercase"
                   />
                 </div>

@@ -965,10 +965,10 @@ export default function Vehicles() {
                           </TableCell>
                           <TableCell>
                             <div className="space-y-0.5 font-mono text-xs">
-                              {vehicle.chassis ? (
+                              {vehicle.chassis && vehicle.chassis.toUpperCase() !== 'DISPENSADO' && !vehicle.chassis.toUpperCase().startsWith('DISPENSADO') ? (
                                 <button
                                   type="button"
-                                  onClick={() => handleCopyText('Chassi', vehicle.chassis)}
+                                  onClick={() => handleCopyText('Chassi', vehicle.chassis!)}
                                   className="flex items-center gap-1 text-foreground hover:text-primary transition-colors"
                                   title="Clique para copiar o chassi"
                                 >
@@ -976,7 +976,9 @@ export default function Vehicles() {
                                   <Copy className="h-3 w-3 opacity-60" />
                                 </button>
                               ) : (
-                                <span className="text-muted-foreground">Sem chassi</span>
+                                <Badge variant="outline" className="text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30">
+                                  Sem Chassi (Elétrica / Bicicleta)
+                                </Badge>
                               )}
                               <div className="text-[11px] text-muted-foreground flex items-center gap-2">
                                 <span>{vehicle.plate ? `Placa ${vehicle.plate}` : 'Zero KM / S/ Placa'}</span>
@@ -1229,16 +1231,20 @@ export default function Vehicles() {
                                       ? `${vehicle.manufacture_year}/${vehicle.year}`
                                       : vehicle.year}
                                   </span>
-                                  {vehicle.chassis && (
+                                  {vehicle.chassis && vehicle.chassis.toUpperCase() !== 'DISPENSADO' && !vehicle.chassis.toUpperCase().startsWith('DISPENSADO') ? (
                                     <button
                                       type="button"
-                                      onClick={() => handleCopyText('Chassi', vehicle.chassis)}
+                                      onClick={() => handleCopyText('Chassi', vehicle.chassis!)}
                                       className="inline-flex items-center gap-1 font-mono text-[11px] bg-muted/50 px-2 py-0.5 rounded border border-border/60 hover:border-primary/40"
                                       title="Copiar chassi"
                                     >
                                       Chassi: {vehicle.chassis}
                                       <Copy className="h-2.5 w-2.5 opacity-60" />
                                     </button>
+                                  ) : (
+                                    <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                                      Sem Chassi (Elétrica)
+                                    </span>
                                   )}
                                   {vehicle.plate && (
                                     <span className="font-mono text-muted-foreground">

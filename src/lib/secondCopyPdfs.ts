@@ -61,6 +61,14 @@ function fmtDate(dateStr?: string | null): string {
   }
 }
 
+function formatChassisDisplay(chassis?: string | null): string {
+  if (!chassis) return 'Dispensado (Res. CONTRAN 996/23)';
+  const upper = chassis.trim().toUpperCase();
+  if (upper === 'DISPENSADO' || upper.startsWith('DISPENSADO')) return 'Dispensado (Res. CONTRAN 996/23)';
+  if (upper.startsWith('QUADRO') || upper.startsWith('SN-')) return `Nº Série: ${upper}`;
+  return upper;
+}
+
 const BRAND_RED: [number, number, number] = [220, 38, 38];
 const BRAND_DARK: [number, number, number] = [24, 24, 27];
 const TEXT_MUTED: [number, number, number] = [113, 113, 122];
@@ -206,7 +214,7 @@ function _legacyCustomSecondCopyPDF(data: SecondCopySaleData): void {
   renderField('Ano Fabricação / Modelo', String(data.vehicleYear || '2026'), m + cw * 0.72, cw * 0.28);
   y += 8;
   renderField('Cor Predominante', data.vehicleColor || 'Padrão', m, cw * 0.3);
-  renderField('Chassi (VIN)', data.vehicleChassis || 'Em processo de faturamento', m + cw * 0.32, cw * 0.38);
+  renderField('Chassi / Nº Série', formatChassisDisplay(data.vehicleChassis), m + cw * 0.32, cw * 0.38);
   renderField('Placa / Emplacamento', data.vehiclePlate || '0 KM (Sem Placa)', m + cw * 0.72, cw * 0.28);
   y += 10;
 
@@ -427,7 +435,7 @@ export function downloadPaymentReceiptSecondCopyPDF(data: SecondCopySaleData): v
   doc.setFontSize(8.5);
   doc.text(`Veículo: ${data.vehicleBrand || 'SHINERAY'} ${data.vehicleModel || 'Moto'}  •  Ano: ${data.vehicleYear || '2026'}  •  Cor: ${data.vehicleColor || 'Padrão'}`, m, y);
   y += 6;
-  doc.text(`Chassi: ${data.vehicleChassis || 'Em faturamento'}   •   Placa: ${data.vehiclePlate || '0 KM / Sem Placa'}`, m, y);
+  doc.text(`Chassi / Nº Série: ${formatChassisDisplay(data.vehicleChassis)}   •   Placa: ${data.vehiclePlate || '0 KM / Sem Placa'}`, m, y);
   y += 10;
 
   // Discriminação dos Pagamentos
@@ -598,7 +606,7 @@ export function downloadVehicleDeliveryTermPDF(data: SecondCopySaleData): void {
   );
   y += 5;
   doc.text(
-    `Chassi (VIN): ${data.vehicleChassis || 'Conforme Nota Fiscal emitida'}   •   Placa: ${data.vehiclePlate || '0 KM / A Emplacar'}`,
+    `Chassi / Nº Série: ${formatChassisDisplay(data.vehicleChassis)}   •   Placa: ${data.vehiclePlate || '0 KM / A Emplacar'}`,
     m,
     y
   );

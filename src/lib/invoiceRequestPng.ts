@@ -99,7 +99,12 @@ export async function generateInvoiceRequestBlob(data: InvoiceRequestData): Prom
   draw(maskCpf(data.cpf), FIELDS.cpf);
   draw(maskCep(data.cep), FIELDS.cep);
   draw(data.endereco, FIELDS.endereco);
-  draw(data.chassi, FIELDS.chassi);
+  const chassiUpper = (data.chassi || "").trim().toUpperCase();
+  const chassiDisplay =
+    !chassiUpper || chassiUpper === "DISPENSADO" || chassiUpper.startsWith("DISPENSADO")
+      ? "DISPENSADO (RES. 996/23)"
+      : data.chassi;
+  draw(chassiDisplay, FIELDS.chassi);
   draw(data.modeloMoto, FIELDS.modelo);
   draw(data.valorNF, FIELDS.valor);
   draw((data.alienacao || "").trim().toUpperCase() || "AVISTA", FIELDS.alienacao);

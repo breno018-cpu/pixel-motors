@@ -758,6 +758,16 @@ export function CreateSaleModal({
                   }}
                   filterStoreId={storeId}
                 />
+                <div className="flex items-center justify-between mt-1 px-0.5">
+                  <span className="text-[10px] text-muted-foreground">Elétricas / Bicicletas</span>
+                  <button
+                    type="button"
+                    onClick={() => setVehicleChassis('DISPENSADO')}
+                    className="text-[10px] text-amber-600 hover:underline font-bold"
+                  >
+                    Sem Chassi (Dispensado)
+                  </button>
+                </div>
               </div>
             </div>
           </div>

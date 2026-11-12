@@ -35,7 +35,7 @@ import { ModelCatalogSelect } from '@/components/vehicles/ModelCatalogSelect';
 import { STANDARD_COLORS } from '@/lib/vehicleCatalog';
 
 const vehicleSchema = z.object({
-  chassis: z.string().max(17).optional().or(z.literal('')),
+  chassis: z.string().max(50).optional().or(z.literal('')),
   plate: z.string().max(10).optional().or(z.literal('')),
   renavam: z.string().max(20).optional().or(z.literal('')),
   brand: z.string().min(1, 'Marca é obrigatória').max(50),
@@ -208,21 +208,21 @@ export function VehicleEditDialog({ vehicle, open, onOpenChange }: VehicleEditDi
                   render={({ field }) => (
                     <FormItem className="sm:col-span-2">
                       <FormLabel>
-                        Chassi (VIN)
+                        Chassi (VIN) / Nº de Série do Quadro
                         {!isAdmin && (
                           <span className="ml-2 text-[10px] text-muted-foreground font-normal">
-                            (somente administradores podem alterar)
+                            (Bicicletas e elétricas podem usar número do quadro ou 'DISPENSADO')
                           </span>
                         )}
                       </FormLabel>
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder="17 caracteres"
+                          placeholder="17 caracteres ou Nº Série do Quadro (ex: DISPENSADO)"
                           className="h-9 uppercase font-mono"
-                          maxLength={17}
-                          disabled={!isAdmin}
-                          readOnly={!isAdmin}
+                          maxLength={50}
+                          disabled={!isAdmin && Boolean(field.value && field.value.length === 17)}
+                          readOnly={!isAdmin && Boolean(field.value && field.value.length === 17)}
                         />
                       </FormControl>
                       <FormMessage />

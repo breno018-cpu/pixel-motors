@@ -211,7 +211,15 @@ export default function Dashboard() {
       modelo?: string;
     }) => {
       const cleanChassis = (item.chassi || '').trim().toUpperCase();
-      if (cleanChassis && cleanChassis.length >= 6) {
+      const isGenericChassis =
+        !cleanChassis ||
+        cleanChassis.includes('DISPENSADO') ||
+        cleanChassis.includes('SEM CHASSI') ||
+        cleanChassis.includes('DEFINIR') ||
+        cleanChassis.includes('PROVISORIO') ||
+        cleanChassis === 'NAO POSSUI';
+
+      if (!isGenericChassis && cleanChassis.length >= 6) {
         return `chassis:${cleanChassis}`;
       }
       const cleanClient = (item.cliente || '')
@@ -222,7 +230,7 @@ export default function Dashboard() {
         .slice(0, 16);
       const cleanVal = Math.round(item.valor || 0);
       const cleanModel = (item.modelo || '').trim().toUpperCase().slice(0, 10);
-      return `sale:${cleanClient}:${cleanVal}:${cleanModel}`;
+      return `sale:${item.id || ''}:${cleanClient}:${cleanVal}:${cleanModel}`;
     };
 
     // 1. Processa vendas da Planilha v9.0 da Concessionária
