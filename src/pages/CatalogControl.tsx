@@ -647,7 +647,7 @@ export default function CatalogControl() {
 
               {hasPromo && (
                 <div className="flex flex-col items-end gap-1">
-                  <Badge className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold gap-1 shadow-xs animate-pulse">
+                  <Badge className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold gap-1 shadow-xs">
                     <Tag className="w-3 h-3" /> {p.promo?.label || "OFERTA"}
                     {p.promo?.discount ? ` (-${formatCurrency(p.promo.discount)})` : ""}
                   </Badge>
