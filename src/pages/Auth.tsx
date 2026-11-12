@@ -49,9 +49,11 @@ export default function Auth() {
   useEffect(() => {
     try {
       const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY);
-      if (savedEmail) {
+      if (savedEmail && !savedEmail.includes('momentsserie6')) {
         setEmail(savedEmail);
         setRememberMe(true);
+      } else if (savedEmail) {
+        localStorage.removeItem(REMEMBER_EMAIL_KEY);
       }
     } catch {}
   }, []);
@@ -249,7 +251,7 @@ export default function Auth() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="momentsserie6@gmail.com"
+                    placeholder="usuario@exemplo.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     aria-invalid={Boolean(errors.email)}
