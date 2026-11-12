@@ -206,7 +206,8 @@ export function generateContractPDF(data: ContractData): jsPDF {
 
 export function downloadContractPDF(data: ContractData): void {
   const doc = generateContractPDF(data);
-  doc.save(`contrato_${data.contractNumber}.pdf`);
+  const safeNumber = String(data.contractNumber || 'CTR-000000').replace(/[\/\\:*?"<>|]/g, '-');
+  doc.save(`contrato_${safeNumber}.pdf`);
 }
 
 export function previewContractPDF(data: ContractData): string {

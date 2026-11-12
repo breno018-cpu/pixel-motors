@@ -352,11 +352,40 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
       await downloadOriginalContract(sale);
       toast({ title: 'Contrato gerado', description: 'O PDF do contrato original foi baixado com sucesso.' });
     } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao gerar contrato',
-        description: err?.message || 'Não foi possível gerar o PDF do contrato.',
-      });
+      console.warn('Erro ao emitir contrato original, tentando fallback:', err);
+      try {
+        const { downloadContractPDF } = await import('@/lib/contractPdf');
+        const v = sale.vehicle || {};
+        const ext = (sale.external_data || {}) as any;
+        downloadContractPDF({
+          contractNumber: sale.contract_number || `CTR-${Date.now().toString().slice(-6)}`,
+          contractType: (sale as any).contract_type === 'repasse' ? 'repasse' : 'venda',
+          createdAt: sale.created_at || new Date().toISOString(),
+          storeName: storeName || sale.store?.name || 'CONCESSIONÁRIA',
+          buyerName: sale.buyer_name || 'Comprador',
+          buyerCpf: sale.buyer_cpf || '',
+          buyerPhone: sale.buyer_phone || ext.buyer_phone,
+          buyerAddress: sale.buyer_address || ext.buyer_address,
+          vehicleBrand: v.brand || ext.marca || 'SHINERAY',
+          vehicleModel: v.model || ext.modelo || vehicleName || 'MOTO',
+          vehicleYear: Number(v.year || ext.ano || 2026),
+          vehicleColor: v.color || ext.cor,
+          vehicleChassis: v.chassis || ext.chassi,
+          vehiclePlate: v.plate || ext.placa,
+          salePrice: Number(sale.sale_price) || 0,
+          downPayment: sale.down_payment ? Number(sale.down_payment) : undefined,
+          installments: sale.installments || 1,
+          installmentValue: sale.installment_value ? Number(sale.installment_value) : undefined,
+          resellerName: resellerName || sale.reseller?.full_name,
+        });
+        toast({ title: 'Contrato gerado', description: 'O PDF do contrato foi baixado com sucesso.' });
+      } catch (fallbackErr: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao gerar contrato',
+          description: fallbackErr?.message || err?.message || 'Não foi possível gerar o PDF do contrato.',
+        });
+      }
     }
   };
 

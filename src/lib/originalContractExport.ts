@@ -4,48 +4,74 @@ import { getStoreFromDatabase } from '@/lib/storeResolution';
 import { generateContractFromTemplate, loadTemplateAssets } from '@/lib/templatePdf';
 import { downloadContractPDF, CLASSIC_SALE_TEMPLATE, CLASSIC_REPASSE_TEMPLATE } from '@/lib/contractPdf';
 
+const isUuid = (val: any): boolean =>
+  typeof val === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
 /**
  * Emite o CONTRATO ORIGINAL EXATAMENTE COMO DESDE O INÍCIO DO SISTEMA
  * Utiliza os templates cadastrados (contract_templates) ou o layout padrão original.
  */
 export async function downloadOriginalContract(sale: any): Promise<void> {
-  // 1. Nome do Operador/Vendedor
-  let operatorName: string | undefined;
-  if (sale.created_by) {
-    const { data: opProfile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', sale.created_by)
-      .maybeSingle();
-    operatorName = opProfile?.full_name || undefined;
-  }
-  if (!operatorName && (sale.external_data as any)?.completed_by) {
-    operatorName = (sale.external_data as any).completed_by;
+  // 1. Nome do Operador/Vendedor (identifica de forma infalível mesmo sem UUID)
+  let operatorName: string | undefined =
+    sale.operator?.full_name ||
+    sale.seller_name ||
+    sale.vendedor ||
+    (sale.external_data as any)?.seller_name ||
+    (sale.external_data as any)?.completed_by ||
+    undefined;
+
+  if (!operatorName && sale.created_by) {
+    if (isUuid(sale.created_by)) {
+      try {
+        const { data: opProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', sale.created_by)
+          .maybeSingle();
+        operatorName = opProfile?.full_name || undefined;
+      } catch {}
+    } else {
+      operatorName = String(sale.created_by);
+    }
   }
 
   // 2. Concessionária / Filial da venda
   const storeTargetId = sale.store_id || sale.store?.id || (sale.vehicle as any)?.store_id;
-  const { data: storesList } = await supabase.from('stores').select('*');
-  const dbStore = (storesList || []).find((s: any) => s.id === storeTargetId);
+  let storesList: any[] = [];
+  try {
+    const { data } = await supabase.from('stores').select('*');
+    if (data) storesList = data;
+  } catch {}
+  const dbStore = storesList.find((s: any) => s.id === storeTargetId);
   const resolvedStore = getStoreFromDatabase(storeTargetId || sale.store?.name, [dbStore].filter(Boolean));
 
   // 3. Busca o template vinculado ou específico da loja
-  const { data: freshContract } = await supabase
-    .from('contracts')
-    .select('template_id, contract_type')
-    .eq('id', sale.id)
-    .maybeSingle();
+  let freshContract: any = null;
+  if (isUuid(sale.id)) {
+    try {
+      const { data } = await supabase
+        .from('contracts')
+        .select('template_id, contract_type')
+        .eq('id', sale.id)
+        .maybeSingle();
+      freshContract = data;
+    } catch {}
+  }
 
   const contractRecord = { ...(sale as any), ...(freshContract || {}) };
   let templateData: any = null;
 
-  if (contractRecord.template_id) {
-    const { data } = await supabase
-      .from('contract_templates')
-      .select('*')
-      .eq('id', contractRecord.template_id)
-      .maybeSingle();
-    templateData = data;
+  if (contractRecord.template_id && isUuid(contractRecord.template_id)) {
+    try {
+      const { data } = await supabase
+        .from('contract_templates')
+        .select('*')
+        .eq('id', contractRecord.template_id)
+        .maybeSingle();
+      templateData = data;
+    } catch {}
   }
 
   const vehItem = sale.vehicle || {};
@@ -54,74 +80,82 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
   const preferredType = isRepasseItem ? 'repasse' : (isMotoItem ? 'venda_moto' : 'venda_carro');
 
   // Se não houver template específico vinculado, busca primeiro o template ativo DA LOJA
-  if (!templateData && storeTargetId) {
-    const { data: storeTyped } = await supabase
-      .from('contract_templates')
-      .select('*')
-      .eq('store_id', storeTargetId)
-      .eq('template_type', preferredType)
-      .eq('is_active', true)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (storeTyped) {
-      templateData = storeTyped;
-    } else {
-      const { data: storeAny } = await supabase
+  if (!templateData && storeTargetId && isUuid(storeTargetId)) {
+    try {
+      const { data: storeTyped } = await supabase
         .from('contract_templates')
         .select('*')
         .eq('store_id', storeTargetId)
+        .eq('template_type', preferredType)
         .eq('is_active', true)
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (storeAny) templateData = storeAny;
-    }
+      if (storeTyped) {
+        templateData = storeTyped;
+      } else {
+        const { data: storeAny } = await supabase
+          .from('contract_templates')
+          .select('*')
+          .eq('store_id', storeTargetId)
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (storeAny) templateData = storeAny;
+      }
+    } catch {}
   }
 
   // Se a loja não tiver template próprio ativo, busca o template geral ativo
   if (!templateData) {
-    const { data: globalTyped } = await supabase
-      .from('contract_templates')
-      .select('*')
-      .is('store_id', null)
-      .eq('template_type', preferredType)
-      .eq('is_active', true)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (globalTyped) {
-      templateData = globalTyped;
-    } else {
-      const { data: anyActive } = await supabase
+    try {
+      const { data: globalTyped } = await supabase
         .from('contract_templates')
         .select('*')
+        .is('store_id', null)
+        .eq('template_type', preferredType)
         .eq('is_active', true)
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      templateData = anyActive;
-    }
+      if (globalTyped) {
+        templateData = globalTyped;
+      } else {
+        const { data: anyActive } = await supabase
+          .from('contract_templates')
+          .select('*')
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        templateData = anyActive;
+      }
+    } catch {}
   }
 
   // 4. Revendedor
   let resellerData: any = null;
-  if (sale.reseller_id) {
-    const { data } = await supabase.from('resellers').select('*').eq('id', sale.reseller_id).maybeSingle();
-    resellerData = data;
+  if (sale.reseller_id && isUuid(sale.reseller_id)) {
+    try {
+      const { data } = await supabase.from('resellers').select('*').eq('id', sale.reseller_id).maybeSingle();
+      resellerData = data;
+    } catch {}
   }
 
   // 5. Veículos
   let groupVehicles: any[] = [];
   let groupTotal = Number(sale.sale_price) || 0;
-  try {
-    const { fetchSaleGroup } = await import('@/lib/saleGroup');
-    const group = await fetchSaleGroup(sale.id);
-    if (group?.vehicles?.length) {
-      groupVehicles = group.vehicles;
-      groupTotal = group.vehicles.length > 1 ? group.total : Number(sale.sale_price);
-    }
-  } catch {}
+  if (isUuid(sale.id)) {
+    try {
+      const { fetchSaleGroup } = await import('@/lib/saleGroup');
+      const group = await fetchSaleGroup(sale.id);
+      if (group?.vehicles?.length) {
+        groupVehicles = group.vehicles;
+        groupTotal = group.vehicles.length > 1 ? group.total : Number(sale.sale_price);
+      }
+    } catch {}
+  }
 
   const ext = (sale.external_data || {}) as any;
   const veh = sale.vehicle || {};
@@ -247,8 +281,9 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
             }),
       };
 
+      const safeName = String(sale.contract_number || 'CTR').replace(/[\/\\:*?"<>|]/g, '-');
       const doc = generateContractFromTemplate(data);
-      doc.save(`contrato_${sale.contract_number}.pdf`);
+      doc.save(`contrato_${safeName}.pdf`);
     } catch (templateError) {
       console.warn('[originalContractExport] Erro ao renderizar template personalizado, usando layout clássico oficial:', templateError);
       fallbackDownload();

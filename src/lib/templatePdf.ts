@@ -170,54 +170,59 @@ function formatCPF(val: string): string {
 }
 
 function replaceVariables(text: string, data: ContractGenerationData): string {
+  const client = data.client || ({} as any);
+  const vehicle = data.vehicle || ({} as any);
+  const store = data.store || ({} as any);
+  const payment = data.payment || ({} as any);
+
   const replacements: Record<string, string> = {
-    '{{CLIENTE_NOME}}': data.client.name,
-    '{{CLIENTE_CPF}}': formatCPF(data.client.cpf),
-    '{{CLIENTE_ENDERECO}}': data.client.address || '',
-    '{{CLIENTE_TELEFONE}}': data.client.phone || '',
-    '{{CLIENTE_EMAIL}}': data.client.email || '',
-    '{{VEICULO_MARCA}}': data.vehicle.brand,
-    '{{VEICULO_MODELO}}': data.vehicle.model,
-    '{{VEICULO_ANO}}': String(data.vehicle.year),
-    '{{VEICULO_COR}}': data.vehicle.color || '',
-    '{{VEICULO_CHASSI}}': data.vehicle.chassis?.trim()
-      ? (data.vehicle.chassis.trim().toUpperCase() === 'DISPENSADO'
+    '{{CLIENTE_NOME}}': client.name || 'COMPRADOR',
+    '{{CLIENTE_CPF}}': formatCPF(client.cpf || ''),
+    '{{CLIENTE_ENDERECO}}': client.address || '',
+    '{{CLIENTE_TELEFONE}}': client.phone || '',
+    '{{CLIENTE_EMAIL}}': client.email || '',
+    '{{VEICULO_MARCA}}': vehicle.brand || 'SHINERAY',
+    '{{VEICULO_MODELO}}': vehicle.model || 'MOTO',
+    '{{VEICULO_ANO}}': String(vehicle.year || 2026),
+    '{{VEICULO_COR}}': vehicle.color || '',
+    '{{VEICULO_CHASSI}}': vehicle.chassis?.trim()
+      ? (vehicle.chassis.trim().toUpperCase() === 'DISPENSADO'
           ? 'DISPENSADO (RES. CONTRAN 996/23)'
-          : data.vehicle.chassis)
+          : vehicle.chassis)
       : 'DISPENSADO (RES. CONTRAN 996/23)',
-    '{{VEICULO_PLACA}}': data.vehicle.plate || 'Sem placa / Dispensado',
-    '{{VEICULO_RENAVAM}}': data.vehicle.renavam || 'Dispensado',
+    '{{VEICULO_PLACA}}': vehicle.plate || 'Sem placa / Dispensado',
+    '{{VEICULO_RENAVAM}}': vehicle.renavam || 'Dispensado',
     '{{VEICULOS_QTD}}': String(data.vehicles?.length || 1),
     '{{VEICULOS_LISTA}}': (data.vehicles && data.vehicles.length > 0 ? data.vehicles : [{
-      brand: data.vehicle.brand, model: data.vehicle.model, year: data.vehicle.year,
-      color: data.vehicle.color, chassis: data.vehicle.chassis, plate: data.vehicle.plate,
-      price: data.payment.total,
+      brand: vehicle.brand || 'SHINERAY', model: vehicle.model || 'MOTO', year: vehicle.year || 2026,
+      color: vehicle.color, chassis: vehicle.chassis, plate: vehicle.plate,
+      price: payment.total || 0,
     }]).map((v, i) => `${i + 1}) ${v.brand} ${v.model}${v.year ? ' ' + v.year : ''}${v.color ? ' - ' + v.color : ''}${v.chassis ? (v.chassis.toUpperCase().includes('DISPENSADO') ? ' - ' + v.chassis : ' - Chassi ' + v.chassis) : ' - Chassi Dispensado (Res. 996/23)'}${v.price ? ' - ' + formatCurrency(Number(v.price)) : ''}`).join('\n'),
-    '{{GARANTIA_MESES}}': data.vehicle.warranty_months ? String(data.vehicle.warranty_months) : '—',
-    '{{REVISAO_MESES}}': data.vehicle.revision_period_months ? String(data.vehicle.revision_period_months) : '—',
-    '{{REVISAO_KM}}': data.vehicle.revision_period_km ? data.vehicle.revision_period_km.toLocaleString('pt-BR') : '—',
+    '{{GARANTIA_MESES}}': vehicle.warranty_months ? String(vehicle.warranty_months) : '—',
+    '{{REVISAO_MESES}}': vehicle.revision_period_months ? String(vehicle.revision_period_months) : '—',
+    '{{REVISAO_KM}}': vehicle.revision_period_km ? vehicle.revision_period_km.toLocaleString('pt-BR') : '—',
     '{{REVENDEDOR_NOME}}': data.reseller?.name || '',
     '{{REVENDEDOR_CPF}}': data.reseller?.cpf ? formatCPF(data.reseller.cpf) : '',
     '{{REVENDEDOR_EMAIL}}': data.reseller?.email || '',
     '{{REVENDEDOR_TELEFONE}}': data.reseller?.phone || '',
     '{{REVENDEDOR_COMISSAO}}': data.reseller?.commission ? `${data.reseller.commission}%` : '',
-    '{{LOJA_RAZAO_SOCIAL}}': data.store.name,
-    '{{LOJA_CNPJ}}': data.store.cnpj || '',
-    '{{LOJA_ENDERECO}}': data.store.address || '',
-    '{{LOJA_CIDADE}}': data.store.city || '',
-    '{{LOJA_TELEFONE}}': data.store.phone || '',
-    '{{LOJA_EMAIL}}': data.store.email || '',
-    '{{VALOR_TOTAL}}': formatCurrency(data.payment.total),
-    '{{VALOR_ENTRADA}}': data.payment.downPayment ? formatCurrency(data.payment.downPayment) : 'R$ 0,00',
-    '{{FORMA_PAGAMENTO}}': data.payment.method || 'À Vista',
-    '{{PARCELAS}}': data.payment.installments && data.payment.installments > 0 ? `${data.payment.installments}x` : '1x',
-    '{{VALOR_PARCELA}}': data.payment.installmentValue
-      ? formatCurrency(data.payment.installmentValue)
-      : (data.payment.installments && data.payment.installments > 1
-          ? formatCurrency(Math.max(0, (data.payment.total - (data.payment.downPayment || 0)) / data.payment.installments))
-          : formatCurrency(Math.max(0, data.payment.total - (data.payment.downPayment || 0)))),
-    '{{NUMERO_CONTRATO}}': data.contractNumber,
-    '{{DATA_CONTRATO}}': data.contractDate,
+    '{{LOJA_RAZAO_SOCIAL}}': store.name || 'CONCESSIONÁRIA',
+    '{{LOJA_CNPJ}}': store.cnpj || '',
+    '{{LOJA_ENDERECO}}': store.address || '',
+    '{{LOJA_CIDADE}}': store.city || '',
+    '{{LOJA_TELEFONE}}': store.phone || '',
+    '{{LOJA_EMAIL}}': store.email || '',
+    '{{VALOR_TOTAL}}': formatCurrency(payment.total || 0),
+    '{{VALOR_ENTRADA}}': payment.downPayment ? formatCurrency(payment.downPayment) : 'R$ 0,00',
+    '{{FORMA_PAGAMENTO}}': payment.method || 'À Vista',
+    '{{PARCELAS}}': payment.installments && payment.installments > 0 ? `${payment.installments}x` : '1x',
+    '{{VALOR_PARCELA}}': payment.installmentValue
+      ? formatCurrency(payment.installmentValue)
+      : (payment.installments && payment.installments > 1
+          ? formatCurrency(Math.max(0, ((payment.total || 0) - (payment.downPayment || 0)) / payment.installments))
+          : formatCurrency(Math.max(0, (payment.total || 0) - (payment.downPayment || 0)))),
+    '{{NUMERO_CONTRATO}}': data.contractNumber || 'CTR-000000',
+    '{{DATA_CONTRATO}}': data.contractDate || new Date().toLocaleDateString('pt-BR'),
   };
 
   let result = text;
@@ -1122,7 +1127,8 @@ export async function loadTemplateAssets(template: {
 
 export function downloadContractFromTemplate(data: ContractGenerationData): void {
   const doc = generateContractFromTemplate(data);
-  doc.save(`contrato_${data.contractNumber}.pdf`);
+  const safeNumber = String(data.contractNumber || 'CTR-000000').replace(/[\/\\:*?"<>|]/g, '-');
+  doc.save(`contrato_${safeNumber}.pdf`);
 }
 
 export function previewContractFromTemplate(data: ContractGenerationData): string {

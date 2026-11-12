@@ -486,6 +486,35 @@ export function CompleteSaleModal({
 
       // REGRA: Ao finalizar a venda, GERA O CONTRATO PDF DEFINITIVO!
       const selectedTemplate = templates.find((t) => t.id === templateId) || templates[0];
+      let pdfGenerated = false;
+
+      const fallbackEmitContract = () => {
+        downloadContractPDF({
+          contractNumber: `CTR-${Date.now().toString().slice(-6)}`,
+          contractType: 'venda',
+          createdAt: new Date().toISOString(),
+          storeName: selectedStoreData.storeName,
+          storeCnpj: selectedStoreData.cnpj,
+          storeAddress: selectedStoreData.address,
+          storePhone: selectedStoreData.phone,
+          storeEmail: selectedStoreData.email,
+          buyerName: buyerName.trim().toUpperCase(),
+          buyerCpf: unmaskedCpf,
+          buyerPhone,
+          buyerAddress,
+          vehicleBrand: vehicleModel.split(' ')[0] || 'SHINERAY',
+          vehicleModel,
+          vehicleYear: parseInt(vehicleYear, 10) || 2026,
+          vehicleColor,
+          vehicleChassis: vehicleChassis.trim().toUpperCase(),
+          salePrice: priceNum,
+          downPayment: totalDownPayment,
+          installments: Number(installments) || 48,
+          installmentValue: parseCurrency(installmentValue) || 0,
+        });
+        pdfGenerated = true;
+      };
+
       if (selectedTemplate) {
         try {
           const assets = await loadTemplateAssets(selectedTemplate as any);
@@ -536,34 +565,17 @@ export function CompleteSaleModal({
           };
 
           downloadContractFromTemplate(contractPayloadForPdf);
+          pdfGenerated = true;
         } catch (pdfErr) {
-          console.error('Falha ao gerar PDF do contrato:', pdfErr);
+          console.warn('Falha ao gerar PDF por template personalizado, usando layout oficial:', pdfErr);
+          fallbackEmitContract();
         }
       } else {
-        const { downloadContractPDF } = await import('@/lib/contractPdf');
-        downloadContractPDF({
-          contractNumber: `CTR-${Date.now().toString().slice(-6)}`,
-          contractType: 'venda',
-          createdAt: new Date().toISOString(),
-          storeName: selectedStoreData.storeName,
-          storeCnpj: selectedStoreData.cnpj,
-          storeAddress: selectedStoreData.address,
-          storePhone: selectedStoreData.phone,
-          storeEmail: selectedStoreData.email,
-          buyerName: buyerName.trim().toUpperCase(),
-          buyerCpf: unmaskedCpf,
-          buyerPhone,
-          buyerAddress,
-          vehicleBrand: vehicleModel.split(' ')[0] || 'SHINERAY',
-          vehicleModel,
-          vehicleYear: parseInt(vehicleYear, 10) || 2026,
-          vehicleColor,
-          vehicleChassis: vehicleChassis.trim().toUpperCase(),
-          salePrice: priceNum,
-          downPayment: totalDownPayment,
-          installments: Number(installments) || 48,
-          installmentValue: parseCurrency(installmentValue) || 0,
-        });
+        fallbackEmitContract();
+      }
+
+      if (!pdfGenerated) {
+        fallbackEmitContract();
       }
 
       // Atualiza ou insere o contrato no Supabase com status 'concluido'
@@ -583,8 +595,6 @@ export function CompleteSaleModal({
         financing_installment_value: parseCurrency(installmentValue) || null,
         status: 'concluido', // Concluída oficialmente! Saiu de Pré-NF para Venda
         notes: notes || null,
-        template_id: templateId || null,
-        store_id: targetStoreId || selectedStoreData.storeId,
         signed_at: new Date().toISOString(),
         external_data: {
           nf_requested: true,
@@ -615,18 +625,36 @@ export function CompleteSaleModal({
         },
       };
 
-      if (selectedPreSaleId) {
-        await supabase.from('contracts').update(payload).eq('id', selectedPreSaleId);
-      } else {
-        payload.contract_number = `CTR-${Date.now().toString().slice(-6)}`;
-        payload.created_by = user?.id;
-        if (vehicleId) payload.vehicle_id = vehicleId;
-        await supabase.from('contracts').insert(payload);
+      const isUuid = (val: any) =>
+        typeof val === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      if (templateId && isUuid(templateId)) {
+        payload.template_id = templateId;
+      }
+      const effectiveStoreId = isUuid(targetStoreId)
+        ? targetStoreId
+        : (isUuid(selectedStoreData?.storeId) ? selectedStoreData.storeId : null);
+      if (effectiveStoreId) {
+        payload.store_id = effectiveStoreId;
       }
 
-      // Marca o veículo como vendido no pátio
-      if (vehicleId) {
-        await supabase.from('vehicles').update({ status: 'vendido' }).eq('id', vehicleId);
+      try {
+        if (selectedPreSaleId && isUuid(selectedPreSaleId)) {
+          await supabase.from('contracts').update(payload).eq('id', selectedPreSaleId);
+        } else {
+          payload.contract_number = `CTR-${Date.now().toString().slice(-6)}`;
+          if (user?.id && isUuid(user.id)) payload.created_by = user.id;
+          if (vehicleId && isUuid(vehicleId)) payload.vehicle_id = vehicleId;
+          await supabase.from('contracts').insert(payload);
+        }
+
+        // Marca o veículo como vendido no pátio se for UUID válido
+        if (vehicleId && isUuid(vehicleId)) {
+          await supabase.from('vehicles').update({ status: 'vendido' }).eq('id', vehicleId);
+        }
+      } catch (dbErr) {
+        console.warn('Aviso ao sincronizar contrato com o Supabase (registro tratado localmente):', dbErr);
       }
 
       // Sincroniza na Planilha Mensal Local v9 da Loja: transforma em faturada / permitida (sem tom claro)
