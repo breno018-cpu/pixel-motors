@@ -42,6 +42,26 @@ export const STORE_UUIDS: Record<string, string> = {
 
 export const CUSTOM_USERS_STORAGE_KEY = 'dealflow_custom_users_v1';
 
+/**
+ * REGRA MASTER DE CONTROLE DE ACESSO:
+ * Apenas Breno e João Vitor podem possuir cargos administrativos (admin / gerente).
+ * Todos os demais usuários da plataforma têm estritamente o cargo de 'vendedor'.
+ */
+export function isMasterUser(name?: string | null, email?: string | null, id?: string | null): boolean {
+  if (
+    id === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
+    id === 'def5409c-f9cc-47ae-b45e-9e15fd52727f' ||
+    id === '63f4c11a-7675-4209-bcc5-770bd7e514a3'
+  ) {
+    return true;
+  }
+  const cleanName = (name || '').toLowerCase();
+  const cleanEmail = (email || '').toLowerCase();
+  if (cleanName.includes('breno') || cleanEmail.includes('breno')) return true;
+  if (cleanName.includes('joão') || cleanName.includes('joao') || cleanEmail.includes('gestor')) return true;
+  return false;
+}
+
 export function resolveStoreUuid(storeId?: string | null): string {
   if (!storeId || storeId === 'none' || storeId === 'all') return STORE_UUIDS['store-divinopolis'];
   if (STORE_UUIDS[storeId]) return STORE_UUIDS[storeId];
@@ -161,12 +181,15 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
       userStatus = 'SUSPENSO';
     }
 
+    const assignedRole = roleMap.get(p.id) || (emp?.role as any) || 'vendedor';
+    const effectiveRole = isMasterUser(p.full_name, p.email, p.id) ? assignedRole : 'vendedor';
+
     userMap.set(emailKey, {
       id: p.id,
       email: p.email,
       full_name: p.full_name || 'Sem nome',
       cpf: emp?.cpf || res?.cpf || undefined,
-      role: roleMap.get(p.id) || (emp?.role as any) || 'vendedor',
+      role: effectiveRole,
       store_id: resolvedStoreId,
       store_name: resolvedStoreName,
       is_active: userStatus === 'ATIVO',
@@ -195,12 +218,17 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
         statusReason = notes.replace('[STATUS: DEMITIDO]', '').trim();
       }
 
+      const assignedRole = e.role || 'vendedor';
+      const effectiveRole = isMasterUser(e.full_name, e.email, e.id)
+        ? assignedRole
+        : (assignedRole === 'mecanico' ? 'mecanico' : 'vendedor');
+
       userMap.set(emailKey, {
         id: e.profile_id || e.id,
         email: e.email || `${e.full_name?.toLowerCase().replace(/\s+/g, '.')}@shineray.com.br`,
         full_name: e.full_name,
         cpf: e.cpf || undefined,
-        role: e.role || 'vendedor',
+        role: effectiveRole,
         store_id: resolvedStoreId,
         store_name: resolvedStoreName,
         is_active: userStatus === 'ATIVO',
@@ -219,17 +247,21 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
     const existing = userMap.get(emailKey);
     const resolvedStoreId = cu.store_id || (existing?.store_id) || undefined;
     const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) || 'Concessionária Divinópolis (Matriz Oeste)';
+    const effectiveRole = isMasterUser(cu.full_name || existing?.full_name, cu.email, cu.id || existing?.id)
+      ? (cu.role || existing?.role || 'vendedor')
+      : 'vendedor';
 
     if (!existing) {
       userMap.set(emailKey, {
         ...cu,
+        role: effectiveRole,
         store_id: resolvedStoreId,
         store_name: resolvedStoreName,
       });
     } else {
       userMap.set(emailKey, {
         ...existing,
-        role: cu.role || existing.role,
+        role: effectiveRole,
         store_id: resolvedStoreId,
         store_name: resolvedStoreName,
         user_status: cu.user_status || existing.user_status,
@@ -317,6 +349,11 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
     } catch {}
   }
 
+  // REGRA DE OURO: Apenas Breno e João Vitor podem possuir cargos administrativos (admin / gerente).
+  // Todos os demais usuários recebem estritamente o cargo de 'vendedor'.
+  const isMaster = isMasterUser(cleanName, cleanEmail, newUserId);
+  const effectiveRole = isMaster ? (data.role || 'admin') : 'vendedor';
+
   // 3. Se temos usuário no auth, atualiza profiles e user_roles (somente colunas válidas)
   if (authProfileCreated) {
     try {
@@ -344,14 +381,14 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
       if (existingRole?.id) {
         await supabase
           .from('user_roles')
-          .update({ role: data.role as any })
+          .update({ role: effectiveRole as any })
           .eq('id', existingRole.id);
       } else {
         await supabase
           .from('user_roles')
           .insert({
             user_id: newUserId,
-            role: data.role as any,
+            role: effectiveRole as any,
           });
       }
     } catch (err) {
@@ -371,7 +408,7 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
       full_name: cleanName,
       email: cleanEmail,
       phone: data.phone || null,
-      role: data.role || 'vendedor',
+      role: effectiveRole,
       store_id: validStoreId,
       is_active: true,
       cpf: data.cpf || null,
@@ -400,7 +437,7 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
     id: newUserId,
     email: cleanEmail,
     full_name: cleanName,
-    role: data.role || 'vendedor',
+    role: effectiveRole,
     store_id: validStoreId,
     cpf: data.cpf || undefined,
     is_active: true,
@@ -412,7 +449,7 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
   // Notifica toda a aplicação
   window.dispatchEvent(
     new CustomEvent('dealflow:users-updated', {
-      detail: { userId: newUserId, email: cleanEmail, role: data.role },
+      detail: { userId: newUserId, email: cleanEmail, role: effectiveRole },
     })
   );
 
@@ -575,6 +612,8 @@ export async function updateUserAccount(
 
   const isAccountActive = data.is_active ?? (data.user_status === 'ATIVO');
   const validStoreId = data.store_id && data.store_id !== 'none' ? resolveStoreUuid(data.store_id) : null;
+  const isMaster = isMasterUser(data.full_name, data.email, userId);
+  const targetRole = isMaster ? (data.role || 'vendedor') : 'vendedor';
 
   // 1. Atualiza profiles (apenas colunas existentes)
   try {
@@ -592,28 +631,26 @@ export async function updateUserAccount(
     console.warn('[userService] Aviso ao atualizar profiles:', err);
   }
 
-  // 2. Atualiza user_roles se role informada
-  if (data.role) {
-    try {
-      const { data: existingRole } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle();
+  // 2. Atualiza user_roles
+  try {
+    const { data: existingRole } = await supabase
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-      if (existingRole?.id) {
-        await supabase
-          .from('user_roles')
-          .update({ role: data.role as any })
-          .eq('id', existingRole.id);
-      } else {
-        await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role: data.role as any });
-      }
-    } catch (err) {
-      console.warn('[userService] Aviso ao atualizar role:', err);
+    if (existingRole?.id) {
+      await supabase
+        .from('user_roles')
+        .update({ role: targetRole as any })
+        .eq('id', existingRole.id);
+    } else {
+      await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: targetRole as any });
     }
+  } catch (err) {
+    console.warn('[userService] Aviso ao atualizar role:', err);
   }
 
   // 3. Atualiza employees
@@ -628,7 +665,7 @@ export async function updateUserAccount(
     };
     if (data.full_name) empUpdate.full_name = data.full_name;
     if (data.email) empUpdate.email = data.email.trim().toLowerCase();
-    if (data.role) empUpdate.role = data.role;
+    empUpdate.role = targetRole;
     if (validStoreId) empUpdate.store_id = validStoreId;
     if (empNotes !== null) empUpdate.notes = empNotes;
 
@@ -645,7 +682,7 @@ export async function updateUserAccount(
     id: userId,
     email: data.email || '',
     full_name: data.full_name,
-    role: data.role || 'vendedor',
+    role: targetRole,
     store_id: validStoreId || undefined,
     is_active: isAccountActive,
     user_status: (data.user_status as any) || (isAccountActive ? 'ATIVO' : 'SUSPENSO'),

@@ -204,21 +204,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let userRoles: AppRole[] = (rolesData ?? []).map((r: any) => r.role as AppRole);
 
-      // Se o usuário logado não possui cargo/role definido no banco, ele recebe papel de administrador ('admin' e 'gerente')
-      // para que todas as abas e esteiras operacionais da concessionária fiquem liberadas!
-      if (!userRoles || userRoles.length === 0) {
-        userRoles = ['admin', 'gerente'];
-        void (async () => {
-          try {
-            await (supabase as any)
-              .from('user_roles')
-              .upsert([
-                { user_id: userId, role: 'admin' },
-                { user_id: userId, role: 'gerente' }
-              ], { onConflict: 'user_id,role' });
-          } catch {}
-        })();
+      // REGRA MASTER: Apenas Breno e João Vitor podem possuir cargos administrativos (admin / gerente).
+      // Todos os demais usuários da concessionária têm estritamente o cargo de 'vendedor'.
+      const cleanName = (nextProfile?.full_name || '').toLowerCase();
+      const cleanEmail = (nextProfile?.email || '').toLowerCase();
+      const isMasterUser =
+        cleanName.includes('breno') ||
+        cleanEmail.includes('breno') ||
+        cleanName.includes('joão') ||
+        cleanName.includes('joao') ||
+        cleanEmail.includes('gestor') ||
+        userId === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
+        userId === 'def5409c-f9cc-47ae-b45e-9e15fd52727f' ||
+        userId === '63f4c11a-7675-4209-bcc5-770bd7e514a3';
+
+      if (!isMasterUser) {
+        userRoles = ['vendedor'];
+      } else if (!userRoles || userRoles.length === 0) {
+        userRoles = cleanEmail.includes('gestor') || cleanName.includes('joão') || cleanName.includes('joao')
+          ? ['gerente']
+          : ['admin', 'gerente'];
       }
+
       setRoles(userRoles);
 
       let nextHasCustomRole = false;
@@ -457,25 +464,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (!error && data?.user) {
         setUser(data.user);
-        setRoles(['admin', 'gerente']);
-        setPermissions(['*']);
-        setDataScope('all');
+        const userEmail = email.trim().toLowerCase();
+        const isMaster = userEmail.includes('breno') || userEmail.includes('gestor') || userEmail.includes('joao') || userEmail.includes('joão') || userEmail.includes('admin');
+        const initialRoles: AppRole[] = isMaster ? ['admin', 'gerente'] : ['vendedor'];
+        const initialScope: DataScope = isMaster ? 'all' : 'own';
+        const initialPerms = isMaster ? ['*'] : ['vendas', 'clientes', 'catalogo'];
+
+        setRoles(initialRoles);
+        setPermissions(initialPerms);
+        setDataScope(initialScope);
         setIsLoading(false);
         setIsDataReady(true);
         writeAuthCache({
           userId: data.user.id,
           profile: {
             id: data.user.id,
-            full_name: data.user.user_metadata?.full_name || 'Usuário Concessionária',
+            full_name: data.user.user_metadata?.full_name || (isMaster ? 'Administrador' : 'Vendedor'),
             email: email.trim(),
             phone: null,
             avatar_url: null,
             must_change_password: false,
           },
-          roles: ['admin', 'gerente'],
-          userStore: { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS' },
-          permissions: ['*'],
-          dataScope: 'all',
+          roles: initialRoles,
+          userStore: { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS' },
+          permissions: initialPerms,
+          dataScope: initialScope,
           customRoleName: null,
           hasCustomRole: false,
         });

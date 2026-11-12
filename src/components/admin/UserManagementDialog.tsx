@@ -32,7 +32,7 @@ import {
 import { TempPasswordDialog } from '@/components/admin/TempPasswordDialog';
 import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDialog';
 import { UserEditDialog } from '@/components/admin/UserEditDialog';
-import { createUserAccount, resetUserPassword, deleteUserAccount, permanentDeleteUserAccount, STORE_UUIDS, fetchConsolidatedUsers } from '@/lib/userService';
+import { createUserAccount, resetUserPassword, deleteUserAccount, permanentDeleteUserAccount, STORE_UUIDS, fetchConsolidatedUsers, isMasterUser } from '@/lib/userService';
 
 const userSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(200),
@@ -264,13 +264,9 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Selecionar cargo" /></SelectTrigger></FormControl>
                           <SelectContent>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="gerente">Gerente</SelectItem>
-                            <SelectItem value="vendedor">Vendedor</SelectItem>
-                    <SelectItem value="vendedor_plus">Vendedor + (cadastra veículos)</SelectItem>
-<SelectItem value="vendedor_externo">Vendedor ++</SelectItem>
-                            <SelectItem value="revendedor">Revendedor</SelectItem>
-                            <SelectItem value="visualizador">Visualizador</SelectItem>
+                            <SelectItem value="vendedor">Vendedor (Padrão)</SelectItem>
+                            <SelectItem value="gerente">Gerente (Apenas João Vitor)</SelectItem>
+                            <SelectItem value="admin">Administrador Master (Apenas Breno)</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -345,22 +341,24 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                       <span className="font-mono text-sm text-muted-foreground">{user.cpf ? maskCPF(user.cpf) : '-'}</span>
                     </TableCell>
                     <TableCell>
-                      <Select value={user.role} onValueChange={(value) => updateRoleMutation.mutate({ userId: user.id, role: value })}>
-                        <SelectTrigger className="h-7 w-32 text-xs">
-                          <Badge variant="outline" className={roleLabels[user.role]?.class || roleLabels.visualizador.class}>
-                            {roleLabels[user.role]?.label || user.role}
-                          </Badge>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                          <SelectItem value="gerente">Gerente</SelectItem>
-                          <SelectItem value="vendedor">Vendedor</SelectItem>
-                    <SelectItem value="vendedor_plus">Vendedor + (cadastra veículos)</SelectItem>
-<SelectItem value="vendedor_externo">Vendedor ++</SelectItem>
-                          <SelectItem value="revendedor">Revendedor</SelectItem>
-                          <SelectItem value="visualizador">Visualizador</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {isMasterUser(user.full_name, user.email, user.id) ? (
+                        <Select value={user.role} onValueChange={(value) => updateRoleMutation.mutate({ userId: user.id, role: value })}>
+                          <SelectTrigger className="h-7 w-32 text-xs">
+                            <Badge variant="outline" className={roleLabels[user.role]?.class || roleLabels.visualizador.class}>
+                              {roleLabels[user.role]?.label || user.role}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Administrador</SelectItem>
+                            <SelectItem value="gerente">Gerente</SelectItem>
+                            <SelectItem value="vendedor">Vendedor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Badge variant="outline" className={roleLabels.vendedor.class}>
+                          Vendedor
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">

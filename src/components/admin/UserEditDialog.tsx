@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
-import { updateUserAccount } from '@/lib/userService';
+import { updateUserAccount, isMasterUser } from '@/lib/userService';
 
 const editSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(200),
@@ -78,10 +78,11 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
 
   useEffect(() => {
     if (user && open) {
+      const isMaster = isMasterUser(user.full_name, user.email, user.id);
       form.reset({
         full_name: user.full_name,
         email: user.email,
-        role: user.role as EditFormData['role'],
+        role: (isMaster ? user.role : 'vendedor') as EditFormData['role'],
         store_id: user.store_id || '',
         user_status: user.user_status || 'ATIVO',
         status_reason: user.status_reason || '',
@@ -151,24 +152,34 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
               </FormItem>
             )} />
 
-            <FormField control={form.control} name="role" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cargo *</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl><SelectTrigger className="h-9"><SelectValue /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="gerente">Gerente</SelectItem>
-                    <SelectItem value="vendedor">Vendedor</SelectItem>
-                    <SelectItem value="vendedor_plus">Vendedor + (cadastra veículos)</SelectItem>
-<SelectItem value="vendedor_externo">Vendedor ++</SelectItem>
-                    <SelectItem value="revendedor">Revendedor</SelectItem>
-                    <SelectItem value="visualizador">Visualizador</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <FormField control={form.control} name="role" render={({ field }) => {
+              const isMaster = isMasterUser(user?.full_name, user?.email, user?.id);
+              return (
+                <FormItem>
+                  <FormLabel>Cargo *</FormLabel>
+                  <Select onValueChange={field.onChange} value={isMaster ? field.value : 'vendedor'} disabled={!isMaster}>
+                    <FormControl><SelectTrigger className="h-9"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {isMaster ? (
+                        <>
+                          <SelectItem value="admin">Administrador Master</SelectItem>
+                          <SelectItem value="gerente">Gerente Geral</SelectItem>
+                          <SelectItem value="vendedor">Vendedor</SelectItem>
+                        </>
+                      ) : (
+                        <SelectItem value="vendedor">Vendedor</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {!isMaster && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Apenas Breno e João Vitor possuem permissão administrativa no sistema.
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              );
+            }} />
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Cargo personalizado</label>
