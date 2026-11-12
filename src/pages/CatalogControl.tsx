@@ -203,7 +203,7 @@ export default function CatalogControl() {
   const [reorderDialogOpen, setReorderDialogOpen] = useState(false);
 
   // Atrelamento ao Estoque Real (DealFlow Hub)
-  const { vehicles } = useVehicles();
+  const { data: vehicles = [] } = useVehicles();
   const [chassisPatternsList, setChassisPatternsList] = useState<ChassisPatternItem[]>(FALLBACK_PATTERNS);
   const [stockLinkDialogOpen, setStockLinkDialogOpen] = useState(false);
   const [selectedProductForStockLink, setSelectedProductForStockLink] = useState<CatalogProduct | null>(null);
@@ -221,7 +221,7 @@ export default function CatalogControl() {
   const [deleting, setDeleting] = useState(false);
 
   // Produtos do catálogo
-  const products = catalog?.products || [];
+  const products = Array.isArray(catalog?.products) ? catalog.products : [];
   const lowStockLimit = catalog?.config?.lowStockThreshold ?? 2;
 
   // Set de IDs existentes para importar

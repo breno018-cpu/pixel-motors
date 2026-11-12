@@ -56,8 +56,8 @@ export function CatalogRealStockLinkDialog({
   open,
   onOpenChange,
   product,
-  vehicles,
-  patterns,
+  vehicles = [],
+  patterns = [],
   onSaveStockLink,
 }: CatalogRealStockLinkDialogProps) {
   const [selectedPatternCode, setSelectedPatternCode] = useState<string>("");

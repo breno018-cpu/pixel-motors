@@ -78,11 +78,14 @@ function normalize(str: string): string {
  * Sugere automaticamente o padrão de verificação para um produto do catálogo
  */
 export function suggestPatternForProduct(
-  product: CatalogProduct,
-  patterns: ChassisPatternItem[]
+  product: CatalogProduct | null | undefined,
+  patterns: ChassisPatternItem[] = []
 ): ChassisPatternItem | null {
+  if (!product) return null;
+  const safePatterns = Array.isArray(patterns) && patterns.length > 0 ? patterns : FALLBACK_PATTERNS;
+
   if (product.patternCode) {
-    const found = patterns.find(
+    const found = safePatterns.find(
       (p) =>
         p.code.toUpperCase() === product.patternCode?.toUpperCase() ||
         p.model_pattern.toUpperCase() === product.patternCode?.toUpperCase()
@@ -90,13 +93,13 @@ export function suggestPatternForProduct(
     if (found) return found;
   }
 
-  const pNormName = normalize(product.name);
-  const pNormId = normalize(product.id);
+  const pNormName = normalize(product.name || "");
+  const pNormId = normalize(product.id || "");
 
   // 1. Busca por equivalência de modelo
-  for (const pat of patterns) {
-    const patNormName = normalize(pat.model_name);
-    const patNormCode = normalize(pat.model_pattern);
+  for (const pat of safePatterns) {
+    const patNormName = normalize(pat.model_name || "");
+    const patNormCode = normalize(pat.model_pattern || "");
 
     if (
       pNormName.includes(patNormName) ||
@@ -124,16 +127,19 @@ export interface RealStockMatchResult {
  */
 export function calculateRealStockForProduct(
   product: CatalogProduct,
-  vehicles: Vehicle[],
-  patterns: ChassisPatternItem[]
+  vehicles: Vehicle[] = [],
+  patterns: ChassisPatternItem[] = []
 ): RealStockMatchResult {
-  const pattern = suggestPatternForProduct(product, patterns);
+  const safeVehicles = Array.isArray(vehicles) ? vehicles : [];
+  const safePatterns = Array.isArray(patterns) && patterns.length > 0 ? patterns : FALLBACK_PATTERNS;
+
+  const pattern = suggestPatternForProduct(product, safePatterns);
   const patternToken = pattern?.model_pattern?.toUpperCase() || "";
-  const normProductName = normalize(product.name);
+  const normProductName = normalize(product?.name || "");
 
   // Filtra apenas motos disponíveis no estoque físico
-  const availableVehicles = vehicles.filter((v) => {
-    if (v.status !== "disponivel") return false;
+  const availableVehicles = safeVehicles.filter((v) => {
+    if (!v || v.status !== "disponivel") return false;
 
     // Se tiver padrão de chassi vinculado, testa no número do chassi
     const cleanChassis = (v.chassis || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
