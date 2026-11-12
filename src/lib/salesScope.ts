@@ -30,7 +30,7 @@ export interface UserAuthScopeContext {
 
 /**
  * Retorna true se o usuário atual tem escopo restrito de vendedor
- * (portanto, NÃO deve ver vendas de outros vendedores).
+ * (vendedores, vendedor+, vendedor++ e variantes devem acessar estritamente apenas suas próprias vendas).
  */
 export function isUserSellerRestricted(auth: UserAuthScopeContext): boolean {
   // Administradores, gerentes ou usuários com acesso de gestão completo têm visão ampla
@@ -43,18 +43,64 @@ export function isUserSellerRestricted(auth: UserAuthScopeContext): boolean {
     return true;
   }
 
-  // Se possuir papel de vendedor sem papel administrativo
-  const roles = auth.roles || [];
+  // Se possuir qualquer papel de vendedor (vendedor, vendedor+, vendedor++, etc.)
+  const roles = (auth.roles || []).map((r) => r.toLowerCase().trim());
   const hasSellerRole =
     auth.isSeller ||
     auth.isSellerPlus ||
     auth.isExternalSeller ||
-    roles.includes('vendedor') ||
-    roles.includes('vendedor_plus') ||
-    roles.includes('vendedor_externo') ||
-    roles.includes('revendedor');
+    roles.some(
+      (r) =>
+        r.includes('vendedor') ||
+        r.includes('seller') ||
+        r.includes('revendedor') ||
+        r === 'vendedor+' ||
+        r === 'vendedor++' ||
+        r.includes('plus')
+    );
 
   return Boolean(hasSellerRole);
+}
+
+/**
+ * Determina a concessionária de origem do vendedor logado com base nos dados do sistema:
+ * userStore -> linked employee store -> concessionária padrão
+ */
+export function resolveUserSellerStore(
+  auth: UserAuthScopeContext & { userStore?: { id: string; name: string } | null },
+  employees: Employee[] = []
+): { storeId: string; storeName: string } {
+  // 1. Diretamente de auth.userStore
+  if (auth.userStore?.id) {
+    const sId = auth.userStore.id;
+    const isMoc = sId === 'store-montesclaros' || (auth.userStore.name || '').toUpperCase().includes('MONTES CLAROS');
+    const storeId = isMoc ? 'store-montesclaros' : 'store-divinopolis';
+    const storeName = isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)';
+    return { storeId, storeName };
+  }
+
+  // 2. Do colaborador vinculado em employees
+  const userEmailNorm = (auth.email || '').toLowerCase().trim();
+  const linkedEmp = (employees || []).find((emp) => {
+    if (emp.profile_id && auth.userId && emp.profile_id.toLowerCase() === auth.userId.toLowerCase()) return true;
+    if (emp.email && userEmailNorm && emp.email.toLowerCase().trim() === userEmailNorm) return true;
+    if (auth.fullName && emp.full_name && normalizeName(emp.full_name) === normalizeName(auth.fullName)) return true;
+    return false;
+  });
+
+  if (linkedEmp?.store_id) {
+    const sId = linkedEmp.store_id;
+    const isMoc = sId === 'store-montesclaros' || (linkedEmp.store?.name || '').toUpperCase().includes('MONTES CLAROS');
+    const storeId = isMoc ? 'store-montesclaros' : 'store-divinopolis';
+    const storeName = isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)';
+    return { storeId, storeName };
+  }
+
+  // Padrão: Concessionária Divinópolis (Matriz Oeste)
+  return {
+    storeId: 'store-divinopolis',
+    storeName: 'Concessionária Divinópolis (Matriz Oeste)',
+  };
 }
 
 /**

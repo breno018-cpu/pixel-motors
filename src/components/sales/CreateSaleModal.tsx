@@ -38,6 +38,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
+import { useEmployees } from '@/hooks/useEmployees';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,7 +48,7 @@ import { SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { ChassisSearchInput } from '@/components/common/ChassisSearchInput';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
-import { isUserSellerRestricted } from '@/lib/salesScope';
+import { isUserSellerRestricted, resolveUserSellerStore } from '@/lib/salesScope';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { cn } from '@/lib/utils';
 
@@ -103,6 +104,7 @@ export function CreateSaleModal({
   const queryClient = useQueryClient();
   const { data: vehicles = [] } = useVehicles();
   const { data: stores = [] } = useStores();
+  const { data: employees = [] } = useEmployees();
 
   const auth = useAuth();
   const { profile, user, roles, isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, dataScope } = auth;
@@ -121,25 +123,29 @@ export function CreateSaleModal({
     dataScope,
   }), [user, profile, roles, isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, dataScope]);
 
+  const sellerStore = useMemo(() => resolveUserSellerStore(auth, employees), [auth, employees]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Status da Venda
   const [saleType, setSaleType] = useState<'concluido' | 'pre_venda'>('concluido');
 
-  // Loja & Vendedor
-  const [storeId, setStoreId] = useState<string>('store-divinopolis');
+  // Loja & Vendedor & Data (Preenchidos automaticamente para vendedores)
+  const [storeId, setStoreId] = useState<string>(() => (isRestrictedSeller ? sellerStore.storeId : 'store-divinopolis'));
   const [sellerName, setSellerName] = useState<string>(() => (isRestrictedSeller && profile?.full_name ? profile.full_name : ''));
   const [customSeller, setCustomSeller] = useState('');
-
-  useEffect(() => {
-    if (open && isRestrictedSeller && profile?.full_name) {
-      setSellerName(profile.full_name);
-    }
-  }, [open, isRestrictedSeller, profile]);
   const [saleDate, setSaleDate] = useState<string>(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+
+  useEffect(() => {
+    if (open && isRestrictedSeller) {
+      if (sellerStore?.storeId) setStoreId(sellerStore.storeId);
+      if (profile?.full_name) setSellerName(profile.full_name);
+      setSaleDate(new Date().toISOString().split('T')[0]);
+    }
+  }, [open, isRestrictedSeller, profile, sellerStore]);
 
   // Veículo
   const [vehicleSource, setVehicleSource] = useState<'inventory' | 'manual'>('inventory');
@@ -393,12 +399,16 @@ export function CreateSaleModal({
       } catch {}
 
       const nextQtNumber = String(currentRows.length + 1).padStart(2, '0');
-      const isMoc = storeId.includes('montesclaros') || buyerCity.toUpperCase().includes('MONTES CLAROS');
+      const effectiveStoreId = isRestrictedSeller ? (sellerStore?.storeId || storeId) : storeId;
+      const effectiveSaleDate = isRestrictedSeller ? new Date().toISOString().split('T')[0] : saleDate;
+      const effectiveSeller = activeSeller;
+
+      const isMoc = effectiveStoreId.includes('montesclaros') || buyerCity.toUpperCase().includes('MONTES CLAROS');
       const storeName = isMoc
         ? 'Concessionária Montes Claros (Polo Norte)'
         : 'Concessionária Divinópolis (Matriz Oeste)';
 
-      const dateParts = saleDate.split('-');
+      const dateParts = effectiveSaleDate.split('-');
       const formattedDateBR = dateParts.length === 3
         ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`
         : new Date().toLocaleDateString('pt-BR');
@@ -469,8 +479,8 @@ export function CreateSaleModal({
           down_payment_card_installments: cardInstallments,
           lead_source: leadSource,
           notes: installmentSummary || null,
-          store_id: storeId,
-          created_by: activeSeller || 'Vendedor',
+          store_id: effectiveStoreId,
+          created_by: user?.id || effectiveSeller || 'Vendedor',
           sale_channel: channel,
           external_data: {
             vehicle_model_custom: vehicleModel,
@@ -478,6 +488,9 @@ export function CreateSaleModal({
             regiao: buyerCity,
             buyer_city: buyerCity,
             contact_platform: leadSource,
+            seller_name: effectiveSeller,
+            sale_date: effectiveSaleDate,
+            store_name: storeName,
             payment_method_category: paymentMethodCategory,
             financing_installments: finInstallments,
             financing_installment_value: parseFloat(finInstallmentValue) || (finInstallments > 0 ? finValNum / finInstallments : 0),
@@ -640,32 +653,66 @@ export function CreateSaleModal({
             </div>
           )}
 
-          {/* SEÇÃO 1: LOJA & VENDEDOR */}
+          {/* SEÇÃO 1: LOJA, VENDEDOR E DATA */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-primary" />
-              1. Concessionária & Operador
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-primary" />
+                1. Concessionária & Operador
+              </h4>
+              {isRestrictedSeller && (
+                <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border border-primary/20">
+                  🔒 Dados Oficiais Bloqueados pelo Sistema
+                </Badge>
+              )}
+            </div>
+
+            {isRestrictedSeller && (
+              <div className="text-[11px] bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 rounded-md px-3 py-1.5 flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  Concessionária, Vendedor e Data são preenchidos automaticamente com seus dados oficiais e não podem ser alterados.
+                </span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs font-semibold">Concessionária</Label>
-                <Select value={storeId} onValueChange={setStoreId}>
-                  <SelectTrigger className="h-10 text-xs mt-1">
-                    <SelectValue placeholder="Selecione a loja" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="store-divinopolis">Divinópolis (Matriz Oeste)</SelectItem>
-                    <SelectItem value="store-montesclaros">Montes Claros (Polo Norte)</SelectItem>
-                  </SelectContent>
-                </Select>
+                {isRestrictedSeller ? (
+                  <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-muted/40 flex items-center justify-between text-xs font-medium text-foreground">
+                    <span className="flex items-center gap-2 truncate">
+                      <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="truncate">{sellerStore.storeName}</span>
+                    </span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
+                      🔒 Bloqueado
+                    </Badge>
+                  </div>
+                ) : (
+                  <Select value={storeId} onValueChange={setStoreId}>
+                    <SelectTrigger className="h-10 text-xs mt-1">
+                      <SelectValue placeholder="Selecione a loja" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="store-divinopolis">Divinópolis (Matriz Oeste)</SelectItem>
+                      <SelectItem value="store-montesclaros">Montes Claros (Polo Norte)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div>
                 <Label className="text-xs font-semibold">Vendedor</Label>
                 {isRestrictedSeller ? (
-                  <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-primary/5 flex items-center text-xs font-semibold text-primary">
-                    <User className="w-3.5 h-3.5 mr-2" />
-                    <span>{profile?.full_name || 'Seu Usuário'}</span>
+                  <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-muted/40 flex items-center justify-between text-xs font-medium text-foreground">
+                    <span className="flex items-center gap-2 truncate">
+                      <User className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="truncate">{profile?.full_name || 'Seu Usuário'}</span>
+                    </span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
+                      🔒 Bloqueado
+                    </Badge>
                   </div>
                 ) : (
                   <>
@@ -697,13 +744,25 @@ export function CreateSaleModal({
 
               <div>
                 <Label className="text-xs font-semibold">Data da Venda</Label>
-                <Input
-                  type="date"
-                  value={saleDate}
-                  onChange={(e) => setSaleDate(e.target.value)}
-                  className="h-10 text-xs mt-1"
-                  required
-                />
+                {isRestrictedSeller ? (
+                  <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-muted/40 flex items-center justify-between text-xs font-medium text-foreground">
+                    <span className="flex items-center gap-2 truncate">
+                      <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>{new Date().toLocaleDateString('pt-BR')} (Hoje)</span>
+                    </span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
+                      🔒 Bloqueado
+                    </Badge>
+                  </div>
+                ) : (
+                  <Input
+                    type="date"
+                    value={saleDate}
+                    onChange={(e) => setSaleDate(e.target.value)}
+                    className="h-10 text-xs mt-1"
+                    required
+                  />
+                )}
               </div>
             </div>
           </div>

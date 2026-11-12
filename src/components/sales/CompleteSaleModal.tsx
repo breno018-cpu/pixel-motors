@@ -44,9 +44,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useContracts } from '@/hooks/useContracts';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
+import { useEmployees } from '@/hooks/useEmployees';
 import { useFinancingBanks } from '@/hooks/useFinancingBanks';
 import { useActiveTemplates } from '@/hooks/useContractTemplates';
 import { useAuth } from '@/contexts/AuthContext';
+import { isUserSellerRestricted, filterSalesBySellerScope, resolveUserSellerStore } from '@/lib/salesScope';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,23 +86,32 @@ export function CompleteSaleModal({
   const { toast } = useToast();
   const confirm = useConfirm();
   const queryClient = useQueryClient();
-  const { profile, user, isAdmin, isManager } = useAuth();
+  const auth = useAuth();
+  const { profile, user, isAdmin, isManager } = auth;
 
   const { data: contracts = [] } = useContracts();
   const { data: vehicles = [] } = useVehicles();
   const { data: stores = [] } = useStores();
+  const { data: employees = [] } = useEmployees();
   const { data: financingBanks = [] } = useFinancingBanks();
   const { data: templates = [] } = useActiveTemplates();
 
-  // Lista de Pré-Vendas pendentes no sistema (status: 'pre_venda' ou com flag nf_requested)
+  const isRestrictedSeller = useMemo(() => isUserSellerRestricted(auth), [auth]);
+  const sellerStore = useMemo(() => resolveUserSellerStore(auth, employees), [auth, employees]);
+
+  // Lista de Pré-Vendas pendentes no sistema (filtradas para garantir que o vendedor veja apenas as suas)
+  const visibleContracts = useMemo(() => {
+    return filterSalesBySellerScope(contracts, auth, employees);
+  }, [contracts, auth, employees]);
+
   const pendingPreSales = useMemo(() => {
-    return contracts.filter(
+    return visibleContracts.filter(
       (c) =>
         c.status === 'pre_venda' ||
         c.status === 'pendente' ||
         (c.external_data && (c.external_data as any).nf_requested),
     );
-  }, [contracts]);
+  }, [visibleContracts]);
 
   // Pré-venda selecionada para preencher o que falta
   const [selectedPreSaleId, setSelectedPreSaleId] = useState<string>(
@@ -117,6 +128,12 @@ export function CompleteSaleModal({
   const [buyerState, setBuyerState] = useState('');
   const [buyerCep, setBuyerCep] = useState('');
   const [storeId, setStoreId] = useState('');
+
+  useEffect(() => {
+    if (open && isRestrictedSeller && sellerStore?.storeId) {
+      setStoreId(sellerStore.storeId);
+    }
+  }, [open, isRestrictedSeller, sellerStore]);
 
   const [vehicleId, setVehicleId] = useState('');
   const [vehicleModel, setVehicleModel] = useState('');
@@ -878,18 +895,27 @@ export function CompleteSaleModal({
                   <Building className="w-3 h-3 text-muted-foreground" />
                   Concessionária / Filial
                 </Label>
-                <Select value={storeId} onValueChange={setStoreId}>
-                  <SelectTrigger className="h-10 mt-1 text-xs">
-                    <SelectValue placeholder="Selecione a loja..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stores.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name} ({s.city}/{s.state || 'MG'})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {isRestrictedSeller ? (
+                  <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-muted/40 flex items-center justify-between text-xs font-medium text-foreground">
+                    <span className="truncate">{sellerStore.storeName}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
+                      🔒 Bloqueado
+                    </Badge>
+                  </div>
+                ) : (
+                  <Select value={storeId} onValueChange={setStoreId}>
+                    <SelectTrigger className="h-10 mt-1 text-xs">
+                      <SelectValue placeholder="Selecione a loja..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stores.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} ({s.city}/{s.state || 'MG'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div>
