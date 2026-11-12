@@ -65,6 +65,26 @@ function readAuthCache(): CachedUserData | null {
     if (parsed.userId === 'dev-master-admin') {
       return DEFAULT_ACTIVE_ADMIN;
     }
+
+    // Sanitização de segurança: Se o usuário em cache não for Breno ou João Vitor, restringe estritamente a 'vendedor' e escopo 'own'
+    const cleanName = (parsed.profile?.full_name || '').toLowerCase();
+    const cleanEmail = (parsed.profile?.email || '').toLowerCase();
+    const isMaster =
+      cleanName.includes('breno') ||
+      cleanEmail.includes('breno') ||
+      cleanName.includes('joão') ||
+      cleanName.includes('joao') ||
+      cleanEmail.includes('gestor') ||
+      parsed.userId === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
+      parsed.userId === 'def5409c-f9cc-47ae-b45e-9e15fd52727f' ||
+      parsed.userId === '63f4c11a-7675-4209-bcc5-770bd7e514a3';
+
+    if (!isMaster) {
+      parsed.roles = ['vendedor'];
+      parsed.dataScope = 'own';
+      parsed.permissions = ['vendas', 'clientes'];
+    }
+
     return parsed;
   } catch {
     return DEFAULT_ACTIVE_ADMIN;
@@ -704,28 +724,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const isAdmin = roles.includes('admin') || roles.length === 0;
-  const isSellerPlus = roles.includes('vendedor_plus');
-  const isExternalSeller = roles.includes('vendedor_externo');
-  const isDriver = roles.includes('motorista');
-  const isLogistics = roles.includes('coordenador_logistica') || isDriver || isAdmin;
-  const isSeller = roles.includes('vendedor') || isSellerPlus || isExternalSeller;
-  const usePerms = hasCustomRole && !isAdmin;
-  const can = (permission: string) =>
-    isAdmin ||
-    roles.includes('admin') ||
-    roles.includes('gerente') ||
-    roles.length === 0 ||
-    permissions.includes('*') ||
-    permission === 'page.inspections' ||
-    permission === 'page.sales' ||
-    permission === 'page.spreadsheets' ||
-    permission.startsWith('logistics.calculate') ||
-    (isSeller && (permission === 'vehicles.create' || permission === 'page.vehicles' || permission.startsWith('logistics.'))) ||
-    (isLogistics && (permission.startsWith('logistics.') || permission === 'page.moto_invoices')) ||
-    (usePerms ? permissions.includes(permission) : legacyCan(roles, permission));
-  const hasElevatedAccess = isAdmin || can('access.elevated');
-  const isManager = !isAdmin && hasElevatedAccess;
+  const cleanName = (profile?.full_name || '').toLowerCase();
+  const cleanEmail = (profile?.email || user?.email || '').toLowerCase();
+  const isBreno =
+    cleanName.includes('breno') ||
+    cleanEmail.includes('breno') ||
+    user?.id === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
+    user?.id === 'def5409c-f9cc-47ae-b45e-9e15fd52727f';
+
+  const isJoao =
+    cleanName.includes('joão') ||
+    cleanName.includes('joao') ||
+    cleanEmail.includes('gestor') ||
+    user?.id === '63f4c11a-7675-4209-bcc5-770bd7e514a3';
+
+  const isAdmin = isBreno;
+  const isManager = isJoao;
+  const hasElevatedAccess = isBreno || isJoao;
+  const isSellerPlus = !hasElevatedAccess && roles.includes('vendedor_plus');
+  const isExternalSeller = !hasElevatedAccess && roles.includes('vendedor_externo');
+  const isDriver = !hasElevatedAccess && roles.includes('motorista');
+  const isLogistics = !hasElevatedAccess && (roles.includes('coordenador_logistica') || isDriver);
+  const isSeller = !hasElevatedAccess;
+  const usePerms = hasCustomRole && !hasElevatedAccess;
+  const can = (permission: string) => {
+    if (hasElevatedAccess) return true;
+    if (permission === 'page.inspections' || permission === 'page.sales') return true;
+    if (permission.startsWith('logistics.calculate')) return true;
+    if (isSeller && (permission === 'vehicles.create' || permission === 'page.vehicles')) return true;
+    if (isLogistics && permission.startsWith('logistics.')) return true;
+    return usePerms ? permissions.includes(permission) : legacyCan(roles, permission);
+  };
   const canCreateSales = hasElevatedAccess || isSeller || can('sales.create');
   const canRegisterVehicles = hasElevatedAccess || isSeller || can('vehicles.create');
   const canViewMargins = hasElevatedAccess || can('finance.view_margins');

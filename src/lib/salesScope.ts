@@ -1,4 +1,5 @@
 import { Employee } from '@/hooks/useEmployees';
+import { isMasterUser } from '@/lib/userService';
 
 /**
  * Normaliza strings para comparação fonética/sem acento
@@ -29,37 +30,17 @@ export interface UserAuthScopeContext {
 }
 
 /**
- * Retorna true se o usuário atual tem escopo restrito de vendedor
- * (vendedores, vendedor+, vendedor++ e variantes devem acessar estritamente apenas suas próprias vendas).
+ * Retorna true se o usuário atual tem escopo restrito de vendedor.
+ * REGRA MASTER: Apenas Breno e João Vitor têm visão ampla de todas as vendas da empresa.
+ * Todos os demais usuários (vendedores de loja, consultores, terceiros) acessam estritamente apenas suas próprias vendas!
  */
 export function isUserSellerRestricted(auth: UserAuthScopeContext): boolean {
-  // Administradores, gerentes ou usuários com acesso de gestão completo têm visão ampla
-  if (auth.isAdmin || auth.isManager || auth.hasElevatedAccess) {
+  if (isMasterUser(auth.fullName, auth.email, auth.userId || auth.profileId)) {
     return false;
   }
 
-  // Se o escopo de dados for 'own', é estritamente restrito às próprias vendas
-  if (auth.dataScope === 'own') {
-    return true;
-  }
-
-  // Se possuir qualquer papel de vendedor (vendedor, vendedor+, vendedor++, etc.)
-  const roles = (auth.roles || []).map((r) => r.toLowerCase().trim());
-  const hasSellerRole =
-    auth.isSeller ||
-    auth.isSellerPlus ||
-    auth.isExternalSeller ||
-    roles.some(
-      (r) =>
-        r.includes('vendedor') ||
-        r.includes('seller') ||
-        r.includes('revendedor') ||
-        r === 'vendedor+' ||
-        r === 'vendedor++' ||
-        r.includes('plus')
-    );
-
-  return Boolean(hasSellerRole);
+  // Qualquer outro usuário é estritamente restrito às suas próprias vendas
+  return true;
 }
 
 /**
@@ -178,7 +159,7 @@ export function isSaleOwnedByCurrentUser(
   auth: UserAuthScopeContext,
   employees: Employee[] = []
 ): boolean {
-  if (auth.isAdmin || auth.isManager || auth.hasElevatedAccess) {
+  if (isMasterUser(auth.fullName, auth.email, auth.userId || auth.profileId)) {
     return true;
   }
 
@@ -204,8 +185,10 @@ export function isSaleOwnedByCurrentUser(
     sale.operator?.full_name,
     sale.seller_name,
     sale.vendedor,
-    sale.created_by, // na planilha ou contratos rápidos, created_by pode ser o nome "Lilian", "Geibriel"
+    sale.created_by,
     sale.external_data?.seller_name,
+    sale.external_data?.vendedor,
+    sale.external_data?.operator?.full_name,
   ]
     .filter(Boolean)
     .map((s) => normalizeName(String(s)));
