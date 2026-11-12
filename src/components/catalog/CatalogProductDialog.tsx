@@ -23,7 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { CatalogProduct } from "@/types/catalog";
 import { maskCurrency, parseCurrency } from "@/lib/masks";
-import { Plus, Trash2, Image, Layers, DollarSign, Wrench } from "lucide-react";
+import { FALLBACK_PATTERNS, fetchChassisPatterns, ChassisPatternItem } from "@/lib/catalogStockLink";
+import { Plus, Trash2, Image, Layers, DollarSign, Wrench, Link2, ShieldCheck, RefreshCw } from "lucide-react";
 
 interface CatalogProductDialogProps {
   open: boolean;
@@ -57,6 +58,9 @@ export function CatalogProductDialog({
   const [installments, setInstallments] = useState(true);
   const [stockType, setStockType] = useState<"fixed" | "unlimited" | "soldout">("unlimited");
   const [stockQty, setStockQty] = useState<number>(5);
+  const [patternCode, setPatternCode] = useState<string>("");
+  const [autoSyncStock, setAutoSyncStock] = useState<boolean>(true);
+  const [patternsList, setPatternsList] = useState<ChassisPatternItem[]>(FALLBACK_PATTERNS);
 
   // Aba Fotos & Cores
   const [photosText, setPhotosText] = useState("");
@@ -70,6 +74,10 @@ export function CatalogProductDialog({
 
   useEffect(() => {
     if (open) {
+      fetchChassisPatterns().then((pts) => {
+        if (pts && pts.length > 0) setPatternsList(pts);
+      });
+
       if (product) {
         setId(product.id || "");
         setName(product.name || "");
@@ -82,6 +90,8 @@ export function CatalogProductDialog({
         setStoreId(product.store_id || "all");
         setVideo(product.video || "");
         setDisc(product.disc || "");
+        setPatternCode(product.patternCode || "");
+        setAutoSyncStock(product.autoSyncStock !== false);
 
         setPrice(product.price !== null && product.price !== undefined ? maskCurrency(product.price) : "");
         setOldPrice(product.oldPrice !== null && product.oldPrice !== undefined ? maskCurrency(product.oldPrice) : "");
@@ -213,6 +223,8 @@ export function CatalogProductDialog({
       store_id: storeId,
       store_name: storeId === "store-divinopolis" ? "Divinópolis" : storeId === "store-montesclaros" ? "Montes Claros" : "Todas as Lojas",
       stock: finalStock,
+      patternCode: patternCode.trim() || undefined,
+      autoSyncStock,
       desc: desc.trim(),
       photos: photos.length > 0 ? photos : ["https://placehold.co/600x400/png?text=Sem+Foto"],
       specs: specs
@@ -495,6 +507,72 @@ export function CatalogProductDialog({
                     value={stockQty}
                     onChange={(e) => setStockQty(Number(e.target.value))}
                   />
+                </div>
+              )}
+            </div>
+
+            {/* ATRELAMENTO AO ESTOQUE REAL / CÓDIGO DE VERIFICAÇÃO AUTOMÁTICA */}
+            <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-primary" />
+                  <div>
+                    <Label className="text-sm font-bold text-foreground">
+                      Atrelamento ao Estoque Real (Código de Chassi)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Vincula este modelo ao código de verificação automática (WMI + Padrão) usado no cadastro de motos no pátio.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">
+                    Código de Verificação / Padrão de Chassi
+                  </Label>
+                  <Select
+                    value={patternCode || "none"}
+                    onValueChange={(val) => setPatternCode(val === "none" ? "" : val)}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Selecione o código de verificação..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      <SelectItem value="none">
+                        (Nenhum - Estoque manual ou sem chassi)
+                      </SelectItem>
+                      {patternsList.map((pt) => {
+                        const code = `${pt.wmi_code}-${pt.model_pattern}`;
+                        return (
+                          <SelectItem key={pt.id || code} value={code}>
+                            <span className="font-mono font-semibold text-primary">{code}</span>
+                            <span className="ml-2 text-xs text-muted-foreground">— {pt.model_name}</span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-lg border bg-background">
+                  <div className="space-y-0.5">
+                    <Label className="text-xs font-medium">Sincronizar Automaticamente</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Atualiza o catálogo com o pátio real
+                    </p>
+                  </div>
+                  <Switch checked={autoSyncStock} onCheckedChange={setAutoSyncStock} />
+                </div>
+              </div>
+
+              {patternCode && (
+                <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20">
+                  <Link2 className="w-4 h-4 shrink-0" />
+                  <span>
+                    Atrelado a <strong>{patternCode}</strong>: O catálogo consulta os veículos com chassi correspondente em status <strong>Disponível</strong> no pátio.
+                  </span>
                 </div>
               )}
             </div>

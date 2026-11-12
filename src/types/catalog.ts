@@ -29,6 +29,11 @@ export interface CatalogProduct {
   store_id?: string;        // ID da loja / concessionária ('store-divinopolis', 'store-montesclaros', 'all')
   store_name?: string;      // Nome da concessionária ("Divinópolis", "Montes Claros", "Todas as Lojas")
 
+  // Atrelamento com o Estoque Real (Código de Verificação Automática de Chassi)
+  patternCode?: string;        // Ex: "WRK125", "99H-WRK125", "STF200"
+  linkedModelPattern?: string; // Padrão de Chassi / Modelo vinculado
+  autoSyncStock?: boolean;     // Sincronização automática em tempo real com o estoque físico
+
   // Mídias
   photos: string[];         // URLs das fotos oficiais em alta definição (photos[0] é a principal)
   rotation360?: string[] | null; // 24 fotos para giro interativo 360°

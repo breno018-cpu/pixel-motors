@@ -65,7 +65,17 @@ import {
   Table as TableIcon,
   Layers3,
   ChevronDown,
+  Boxes,
+  Link2,
 } from "lucide-react";
+import { useVehicles } from "@/hooks/useVehicles";
+import {
+  FALLBACK_PATTERNS,
+  fetchChassisPatterns,
+  calculateRealStockForProduct,
+  ChassisPatternItem,
+} from "@/lib/catalogStockLink";
+import { CatalogRealStockLinkDialog } from "@/components/catalog/CatalogRealStockLinkDialog";
 import { CatalogConfigDialog } from "@/components/catalog/CatalogConfigDialog";
 import { CatalogCampaignDialog } from "@/components/catalog/CatalogCampaignDialog";
 import { CatalogProductDialog } from "@/components/catalog/CatalogProductDialog";
@@ -191,6 +201,20 @@ export default function CatalogControl() {
   const [descDialogOpen, setDescDialogOpen] = useState(false);
   const [selectedProductForDesc, setSelectedProductForDesc] = useState<CatalogProduct | null>(null);
   const [reorderDialogOpen, setReorderDialogOpen] = useState(false);
+
+  // Atrelamento ao Estoque Real (DealFlow Hub)
+  const { vehicles } = useVehicles();
+  const [chassisPatternsList, setChassisPatternsList] = useState<ChassisPatternItem[]>(FALLBACK_PATTERNS);
+  const [stockLinkDialogOpen, setStockLinkDialogOpen] = useState(false);
+  const [selectedProductForStockLink, setSelectedProductForStockLink] = useState<CatalogProduct | null>(null);
+  const [isBulkSyncingStock, setIsBulkSyncingStock] = useState(false);
+
+  // Carregar padrões de chassi do banco de dados (chassis_patterns)
+  useEffect(() => {
+    fetchChassisPatterns().then((pts) => {
+      if (pts && pts.length > 0) setChassisPatternsList(pts);
+    });
+  }, []);
 
   // Dialog de Exclusão
   const [deleteProduct, setDeleteProduct] = useState<CatalogProduct | null>(null);
@@ -438,6 +462,80 @@ export default function CatalogControl() {
     setDescDialogOpen(true);
   };
 
+  const handleOpenStockLink = (prod: CatalogProduct) => {
+    setSelectedProductForStockLink(prod);
+    setStockLinkDialogOpen(true);
+  };
+
+  const handleSaveStockLink = async (
+    productId: string,
+    patternCode: string,
+    realStockQty: number,
+    autoSync: boolean
+  ) => {
+    const stockAction: CatalogSyncAction = {
+      action: "stock",
+      id: productId,
+      stock: realStockQty,
+      readyDelivery: realStockQty > 0,
+    };
+    await dispatchOrQueue(stockAction, `Estoque físico (${realStockQty} un.) para ${productId}`);
+
+    const prod = products.find((p) => p.id === productId);
+    if (prod) {
+      const updateAction: CatalogSyncAction = {
+        action: "create",
+        ...prod,
+        stock: realStockQty,
+        readyDelivery: realStockQty > 0,
+        patternCode,
+        autoSyncStock: autoSync,
+      };
+      await dispatchOrQueue(updateAction, `Atrelar código ${patternCode} em ${prod.name}`);
+    }
+  };
+
+  const handleBulkSyncRealStock = async () => {
+    if (!products || products.length === 0) {
+      toast.error("Nenhum produto cadastrado no catálogo para sincronizar.");
+      return;
+    }
+
+    setIsBulkSyncingStock(true);
+    try {
+      const syncActions: CatalogSyncAction[] = [];
+      let updatedCount = 0;
+
+      for (const p of products) {
+        const stockRes = calculateRealStockForProduct(p, vehicles, chassisPatternsList);
+        const realQty = stockRes.totalCount;
+        if (p.stock !== realQty) {
+          syncActions.push({
+            action: "stock",
+            id: p.id,
+            stock: realQty,
+            readyDelivery: realQty > 0,
+          });
+          updatedCount++;
+        }
+      }
+
+      if (syncActions.length === 0) {
+        toast.info("Todos os modelos já estão alinhados com o estoque físico em pátio!");
+        return;
+      }
+
+      await batchSync(syncActions);
+      toast.success(
+        `Sincronização concluída! ${updatedCount} modelos atualizados com a contagem real de motos em estoque no pátio.`
+      );
+    } catch (err: any) {
+      toast.error(`Falha ao sincronizar estoque em lote: ${err.message}`);
+    } finally {
+      setIsBulkSyncingStock(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleteProduct) return;
     setDeleting(true);
@@ -473,6 +571,7 @@ export default function CatalogControl() {
     const isLowStock = p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= lowStockLimit;
     const isUnlimited = p.stock === null || p.stock === undefined;
     const mainPhoto = p.photos && p.photos.length > 0 ? p.photos[0] : "";
+    const realStock = calculateRealStockForProduct(p, vehicles, chassisPatternsList);
 
     return (
       <div
@@ -725,6 +824,35 @@ export default function CatalogControl() {
                 </div>
               </div>
 
+              {/* Atrelamento ao Pátio Real (DealFlow Hub) */}
+              <div className="flex items-center justify-between p-1.5 rounded-lg bg-background/80 border border-border/50">
+                <div className="flex items-center gap-1.5">
+                  <Boxes className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="text-[11px] text-muted-foreground">Pátio Real:</span>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] font-mono font-bold ${
+                      realStock.totalCount > 0
+                        ? "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5"
+                        : "text-zinc-500 border-zinc-700"
+                    }`}
+                  >
+                    {realStock.totalCount} {realStock.totalCount === 1 ? "física" : "físicas"}
+                  </Badge>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleOpenStockLink(p)}
+                  className="h-6 px-1.5 text-[10px] gap-1 text-primary hover:text-primary font-bold"
+                  title="Atrelar ou sincronizar com o código de verificação automática"
+                >
+                  <Link2 className="w-3 h-3" />
+                  {p.patternCode ? p.patternCode : "Atrelar"}
+                </Button>
+              </div>
+
               {/* Botões rápidos de 1 clique: Zerar Estoque, +1, +5 e Pronta Entrega */}
               <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/40">
                 <Button
@@ -859,6 +987,11 @@ export default function CatalogControl() {
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
+                <DropdownMenuItem onClick={() => handleOpenStockLink(p)} className="gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <Boxes className="w-3.5 h-3.5" />
+                  Atrelar ao Estoque Real (Chassi)
+                </DropdownMenuItem>
+
                 <DropdownMenuItem onClick={() => handleOpenDesc(p)} className="gap-2 text-xs">
                   <FileText className="w-3.5 h-3.5 text-blue-500" />
                   Editar Descrição (WhatsApp/IA)
@@ -908,6 +1041,7 @@ export default function CatalogControl() {
     const isSoldOut = p.stock === 0;
     const isLowStock = p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= lowStockLimit;
     const mainPhoto = p.photos && p.photos.length > 0 ? p.photos[0] : "";
+    const realStock = calculateRealStockForProduct(p, vehicles, chassisPatternsList);
 
     return (
       <tr
@@ -1063,51 +1197,70 @@ export default function CatalogControl() {
 
         {/* Estoque & Pronta Entrega */}
         <td className="p-3">
-          <div className="flex items-center gap-2">
-            <div className="w-16">
-              <Input
-                type="number"
-                min={0}
-                value={p.stock !== null && p.stock !== undefined ? p.stock : ""}
-                placeholder="∞"
-                onChange={(e) => {
-                  const val = e.target.value.trim() !== "" ? parseInt(e.target.value, 10) : null;
-                  handleDirectStockChange(p, isNaN(val as number) ? null : val);
-                }}
-                className="h-7 text-xs font-mono text-center p-1"
-                title="Digitar quantidade em estoque (0 = Esgotado)"
-              />
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-16">
+                <Input
+                  type="number"
+                  min={0}
+                  value={p.stock !== null && p.stock !== undefined ? p.stock : ""}
+                  placeholder="∞"
+                  onChange={(e) => {
+                    const val = e.target.value.trim() !== "" ? parseInt(e.target.value, 10) : null;
+                    handleDirectStockChange(p, isNaN(val as number) ? null : val);
+                  }}
+                  className="h-7 text-xs font-mono text-center p-1"
+                  title="Digitar quantidade em estoque (0 = Esgotado)"
+                />
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleZeroStock(p)}
+                className="h-7 px-1.5 text-[10px] text-destructive hover:bg-destructive/10 border-destructive/30"
+                title="Zerar estoque imediatamente"
+              >
+                Zerar (0)
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRestock(p, 1)}
+                className="h-7 px-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                title="Adicionar +1"
+              >
+                +1
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleRestock(p, 5)}
+                className="h-7 px-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                title="Adicionar +5"
+              >
+                +5
+              </Button>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleZeroStock(p)}
-              className="h-7 px-1.5 text-[10px] text-destructive hover:bg-destructive/10 border-destructive/30"
-              title="Zerar estoque imediatamente"
-            >
-              Zerar (0)
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleRestock(p, 1)}
-              className="h-7 px-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
-              title="Adicionar +1"
-            >
-              +1
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleRestock(p, 5)}
-              className="h-7 px-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
-              title="Adicionar +5"
-            >
-              +5
-            </Button>
+            <div className="flex items-center justify-between gap-1 text-[10px] px-1.5 bg-muted/40 rounded border border-border/40 py-0.5">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Boxes className="w-3 h-3 text-emerald-500" />
+                Pátio: <strong className="font-mono text-emerald-500">{realStock.totalCount}</strong>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleOpenStockLink(p)}
+                className="h-5 px-1 text-[10px] text-primary hover:text-primary gap-0.5 font-bold"
+                title="Atrelar código de verificação automática"
+              >
+                <Link2 className="w-2.5 h-2.5" />
+                {p.patternCode || "Atrelar"}
+              </Button>
+            </div>
           </div>
         </td>
 
@@ -1177,6 +1330,15 @@ export default function CatalogControl() {
         {/* Ações */}
         <td className="p-3 text-right">
           <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleOpenStockLink(p)}
+              className="h-7 w-7 p-0 text-emerald-600 dark:text-emerald-400 hover:text-emerald-500"
+              title="Atrelar ao Estoque Real (Chassi)"
+            >
+              <Boxes className="w-3.5 h-3.5" />
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -1303,6 +1465,18 @@ export default function CatalogControl() {
           >
             <Bot className="w-4 h-4 text-blue-500" />
             Testar IA
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkSyncRealStock}
+            disabled={isBulkSyncingStock}
+            className="gap-1.5 font-bold border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+            title="Sincronizar em 1 clique o estoque do catálogo com as motos físicas no pátio"
+          >
+            <Boxes className={`w-4 h-4 ${isBulkSyncingStock ? "animate-spin" : ""}`} />
+            Sincronizar com Pátio Real
           </Button>
 
           <Button
@@ -1941,7 +2115,17 @@ export default function CatalogControl() {
         }
       />
 
-      {/* 11. Dialog de Confirmação de Exclusão Definitiva */}
+      {/* 11. Modal de Atrelamento com Estoque Real (Chassi / DealFlow Hub) */}
+      <CatalogRealStockLinkDialog
+        open={stockLinkDialogOpen}
+        onOpenChange={setStockLinkDialogOpen}
+        product={selectedProductForStockLink}
+        vehicles={vehicles}
+        patterns={chassisPatternsList}
+        onSaveStockLink={handleSaveStockLink}
+      />
+
+      {/* 12. Dialog de Confirmação de Exclusão Definitiva */}
       <AlertDialog open={!!deleteProduct} onOpenChange={(open) => !open && setDeleteProduct(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
