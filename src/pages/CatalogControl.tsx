@@ -645,20 +645,6 @@ export default function CatalogControl() {
                 </Badge>
               )}
 
-              {hasPromo && (
-                <div className="flex flex-col items-end gap-1">
-                  <Badge className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold gap-1 shadow-xs">
-                    <Tag className="w-3 h-3" /> {p.promo?.label || "OFERTA"}
-                    {p.promo?.discount ? ` (-${formatCurrency(p.promo.discount)})` : ""}
-                  </Badge>
-                  {p.promo?.reason && (
-                    <span className="text-[9px] font-bold text-white bg-black/85 backdrop-blur-sm px-1.5 py-0.5 rounded shadow-xs border border-white/20">
-                      {p.promo.reason}
-                    </span>
-                  )}
-                </div>
-              )}
-
               {p.readyDelivery && (
                 <Badge className="bg-emerald-600 text-white text-[10px] shadow-xs font-semibold">
                   Pronta Entrega
@@ -1264,23 +1250,18 @@ export default function CatalogControl() {
           </div>
         </td>
 
-        {/* Promoção */}
+        {/* Desconto */}
         <td className="p-3 text-center">
-          {hasPromo ? (
+          {hasPromo && p.promo?.discount ? (
             <div
               onClick={() => handleOpenPromo(p)}
               className="cursor-pointer flex flex-col items-center gap-0.5"
             >
-              <Badge
-                variant="outline"
-                className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 text-[10px] font-bold hover:bg-red-500/20"
-              >
-                <Tag className="w-3 h-3 mr-1" />
-                {p.promo?.label || "OFERTA"}
-                {p.promo?.discount ? ` (-${formatCurrency(p.promo.discount)})` : ""}
-              </Badge>
+              <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                -{formatCurrency(p.promo.discount)}
+              </span>
               {p.promo?.reason && (
-                <span className="text-[10px] text-amber-500 font-medium truncate max-w-[120px]">
+                <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[120px]">
                   {p.promo.reason}
                 </span>
               )}
@@ -1292,7 +1273,7 @@ export default function CatalogControl() {
               onClick={() => handleOpenPromo(p)}
               className="h-6 text-[11px] text-muted-foreground hover:text-foreground"
             >
-              + Oferta
+              + Desconto
             </Button>
           )}
         </td>
