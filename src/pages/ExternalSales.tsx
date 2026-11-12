@@ -32,6 +32,7 @@ import { NewSaleDialog } from '@/components/sales/NewSaleDialog';
 import { SaleActionsMenu } from '@/components/sales/SaleActionsMenu';
 import { FreightCalculatorDialog } from '@/components/logistics/FreightCalculatorDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { isUserSellerRestricted, isSaleOwnedByCurrentUser } from '@/lib/salesScope';
 import { useExternalContracts } from '@/hooks/useContracts';
 import { useExternalSellers, useMyExternalPanel } from '@/hooks/useExternalSellers';
 import { leadSourceLabel } from '@/lib/leadSources';
@@ -56,7 +57,21 @@ function formatCurrency(value: number) {
 }
 
 export default function ExternalSales() {
-  const { hasElevatedAccess, isExternalSeller, profile } = useAuth();
+  const auth = useAuth();
+  const { hasElevatedAccess, isExternalSeller, profile, user, roles, isAdmin, isManager, dataScope } = auth;
+  const isRestrictedSeller = useMemo(() => isUserSellerRestricted({
+    userId: user?.id,
+    profileId: profile?.id,
+    fullName: profile?.full_name,
+    email: user?.email,
+    roles,
+    isAdmin,
+    isManager,
+    hasElevatedAccess,
+    isExternalSeller,
+    dataScope,
+  }), [user, profile, roles, isAdmin, isManager, hasElevatedAccess, isExternalSeller, dataScope]);
+
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -72,6 +87,11 @@ export default function ExternalSales() {
   const visibleSales = useMemo(() => {
     const term = search.trim().toLowerCase();
     return (externalContracts || []).filter((sale) => {
+      // Regra de privacidade de vendedor: só vê as próprias vendas
+      if (isRestrictedSeller && !isSaleOwnedByCurrentUser(sale, auth, [])) {
+        return false;
+      }
+
       const created = new Date(sale.created_at);
       const external = sale.external_data || {};
       const searchable = [
@@ -85,7 +105,7 @@ export default function ExternalSales() {
         && (statusFilter === 'all' || sale.status === statusFilter)
         && (!term || searchable.includes(term));
     });
-  }, [externalContracts, month, year, search, statusFilter]);
+  }, [externalContracts, month, year, search, statusFilter, isRestrictedSeller, auth]);
 
   const salesTotal = visibleSales.reduce((sum, sale) => sum + Number(sale.sale_price || 0), 0);
   const completedSales = visibleSales.filter((sale) => ['assinado', 'concluido'].includes(sale.status)).length;

@@ -46,6 +46,8 @@ import { maskCPFCNPJ, maskPhone } from '@/lib/masks';
 import { SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { ChassisSearchInput } from '@/components/common/ChassisSearchInput';
 import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/contexts/AuthContext';
+import { isUserSellerRestricted } from '@/lib/salesScope';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { cn } from '@/lib/utils';
 
@@ -102,6 +104,23 @@ export function CreateSaleModal({
   const { data: vehicles = [] } = useVehicles();
   const { data: stores = [] } = useStores();
 
+  const auth = useAuth();
+  const { profile, user, roles, isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, dataScope } = auth;
+  const isRestrictedSeller = useMemo(() => isUserSellerRestricted({
+    userId: user?.id,
+    profileId: profile?.id,
+    fullName: profile?.full_name,
+    email: user?.email,
+    roles,
+    isAdmin,
+    isManager,
+    hasElevatedAccess,
+    isSeller,
+    isSellerPlus,
+    isExternalSeller,
+    dataScope,
+  }), [user, profile, roles, isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, dataScope]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Status da Venda
@@ -109,8 +128,14 @@ export function CreateSaleModal({
 
   // Loja & Vendedor
   const [storeId, setStoreId] = useState<string>('store-divinopolis');
-  const [sellerName, setSellerName] = useState<string>('');
+  const [sellerName, setSellerName] = useState<string>(() => (isRestrictedSeller && profile?.full_name ? profile.full_name : ''));
   const [customSeller, setCustomSeller] = useState('');
+
+  useEffect(() => {
+    if (open && isRestrictedSeller && profile?.full_name) {
+      setSellerName(profile.full_name);
+    }
+  }, [open, isRestrictedSeller, profile]);
   const [saleDate, setSaleDate] = useState<string>(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -310,7 +335,9 @@ export function CreateSaleModal({
   const diff = totalValNum - totalPayments;
   const isBalanced = Math.abs(diff) < 0.01;
 
-  const activeSeller = sellerName === 'OUTRO' ? customSeller.trim() : sellerName;
+  const activeSeller = isRestrictedSeller
+    ? (profile?.full_name || 'Vendedor')
+    : (sellerName === 'OUTRO' ? customSeller.trim() : sellerName);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -635,27 +662,36 @@ export function CreateSaleModal({
 
               <div>
                 <Label className="text-xs font-semibold">Vendedor</Label>
-                <Select value={sellerName} onValueChange={setSellerName}>
-                  <SelectTrigger className="h-10 text-xs mt-1">
-                    <SelectValue placeholder="Selecione o vendedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRESET_SELLERS.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="OUTRO">Outro Vendedor...</SelectItem>
-                  </SelectContent>
-                </Select>
-                {sellerName === 'OUTRO' && (
-                  <Input
-                    placeholder="Nome do vendedor"
-                    value={customSeller}
-                    onChange={(e) => setCustomSeller(e.target.value)}
-                    className="h-9 text-xs mt-1.5"
-                    required
-                  />
+                {isRestrictedSeller ? (
+                  <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-primary/5 flex items-center text-xs font-semibold text-primary">
+                    <User className="w-3.5 h-3.5 mr-2" />
+                    <span>{profile?.full_name || 'Seu Usuário'}</span>
+                  </div>
+                ) : (
+                  <>
+                    <Select value={sellerName} onValueChange={setSellerName}>
+                      <SelectTrigger className="h-10 text-xs mt-1">
+                        <SelectValue placeholder="Selecione o vendedor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRESET_SELLERS.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="OUTRO">Outro Vendedor...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {sellerName === 'OUTRO' && (
+                      <Input
+                        placeholder="Nome do vendedor"
+                        value={customSeller}
+                        onChange={(e) => setCustomSeller(e.target.value)}
+                        className="h-9 text-xs mt-1.5"
+                        required
+                      />
+                    )}
+                  </>
                 )}
               </div>
 

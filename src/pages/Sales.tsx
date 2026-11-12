@@ -22,6 +22,7 @@ import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
 import { resolveSaleStore } from '@/lib/storeResolution';
 import { useAuth } from '@/contexts/AuthContext';
+import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -190,7 +191,37 @@ export default function Sales() {
   const { data: stores } = useStores();
   const { data: resellers } = useResellers();
   const { data: employees = [] } = useEmployees();
-  const { isAdmin, hasElevatedAccess, canCreateSales, isSeller } = useAuth();
+  const {
+    user,
+    profile,
+    roles,
+    isAdmin,
+    isManager,
+    hasElevatedAccess,
+    canCreateSales,
+    isSeller,
+    isSellerPlus,
+    isExternalSeller,
+    dataScope,
+  } = useAuth();
+
+  // Regra de Privacidade Estrita: Vendedores NÃO veem vendas de outros vendedores
+  const isRestrictedSeller = useMemo(() => {
+    return isUserSellerRestricted({
+      userId: user?.id,
+      profileId: profile?.id,
+      fullName: profile?.full_name,
+      email: user?.email,
+      roles,
+      isAdmin,
+      isManager,
+      hasElevatedAccess,
+      isSeller,
+      isSellerPlus,
+      isExternalSeller,
+      dataScope,
+    });
+  }, [user, profile, roles, isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, dataScope]);
 
   const [sheetVersion, setSheetVersion] = useState(0);
 
@@ -256,8 +287,47 @@ export default function Sales() {
     const fromSheet = monthlySheetRows
       .filter((r) => !contractIds.has(r.id))
       .map((r) => sheetRowToContract(r, employees));
-    return [...fromContracts, ...fromSheet];
-  }, [contracts, monthlySheetRows, employees]);
+    const rawConsolidated = [...fromContracts, ...fromSheet];
+
+    // Se o usuário for vendedor restrito, isola estritamente apenas suas próprias vendas
+    if (isRestrictedSeller) {
+      return filterSalesBySellerScope(
+        rawConsolidated,
+        {
+          userId: user?.id,
+          profileId: profile?.id,
+          fullName: profile?.full_name,
+          email: user?.email,
+          roles,
+          isAdmin,
+          isManager,
+          hasElevatedAccess,
+          isSeller,
+          isSellerPlus,
+          isExternalSeller,
+          dataScope,
+        },
+        employees
+      );
+    }
+
+    return rawConsolidated;
+  }, [
+    contracts,
+    monthlySheetRows,
+    employees,
+    isRestrictedSeller,
+    user,
+    profile,
+    roles,
+    isAdmin,
+    isManager,
+    hasElevatedAccess,
+    isSeller,
+    isSellerPlus,
+    isExternalSeller,
+    dataScope,
+  ]);
 
   // Períodos e competências mensais disponíveis nas vendas
   const availablePeriods = useMemo(() => {
@@ -290,6 +360,11 @@ export default function Sales() {
 
   // Vendedores — colaboradores da loja selecionada + quem tiver vendas registradas
   const sellerOptions = useMemo(() => {
+    if (isRestrictedSeller) {
+      const myName = profile?.full_name || 'Minhas Vendas';
+      return [{ id: myName, name: myName }];
+    }
+
     const map = new Map<string, string>();
 
     // 1. Dos colaboradores cadastrados (employees)
@@ -334,7 +409,7 @@ export default function Sales() {
       const matchesStore = storeFilter === 'all' || sale.store_id === storeFilter;
       const sellerName = ((sale as any).created_by || (sale as any).operator?.full_name || (sale as any).seller_name || (sale as any).vendedor || '').trim().toLowerCase();
       const targetReseller = resellerFilter.trim().toLowerCase();
-      const matchesReseller = resellerFilter === 'all' ||
+      const matchesReseller = isRestrictedSeller || resellerFilter === 'all' ||
         sellerName === targetReseller ||
         sellerName.includes(targetReseller) ||
         targetReseller.includes(sellerName);
@@ -413,20 +488,22 @@ export default function Sales() {
         }
       />
 
+      {/* Alerta de Escopo Restrito para Vendedores */}
+      {isRestrictedSeller && (
+        <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-primary/30 bg-primary/5 text-xs text-primary font-medium">
+          <User className="w-4 h-4 shrink-0 text-primary" />
+          <span>
+            <strong>Painel Individual do Vendedor:</strong> Você está visualizando exclusivamente as suas próprias vendas registradas (<strong>{profile?.full_name || 'Seu Perfil'}</strong>). Vendas de outros colaboradores são estritamente restritas à gerência.
+          </span>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Vendas Faturadas" value={totalSales} icon={ShoppingCart} tone="success" />
-        <StatCard label="Pré-Vendas (NF Solicitada)" value={preSalesCount} icon={FileText} tone="warning" />
-        {isSeller ? (
-          <>
-            <StatCard label="Aguardando aprovação" value={inProgress} icon={Clock} tone="warning" />
-          </>
-        ) : (
-          <>
-            <StatCard label="Receita Faturada" value={formatCurrency(totalRevenue)} icon={DollarSign} />
-            <StatCard label="Ticket médio" value={formatCurrency(avgTicket)} icon={TrendingUp} tone="neutral" />
-          </>
-        )}
+        <StatCard label={isRestrictedSeller ? "Minhas Vendas Faturadas" : "Vendas Faturadas"} value={totalSales} icon={ShoppingCart} tone="success" />
+        <StatCard label={isRestrictedSeller ? "Minhas Pré-Vendas (NF)" : "Pré-Vendas (NF Solicitada)"} value={preSalesCount} icon={FileText} tone="warning" />
+        <StatCard label={isRestrictedSeller ? "Meu Faturamento" : "Receita Faturada"} value={formatCurrency(totalRevenue)} icon={DollarSign} />
+        <StatCard label={isRestrictedSeller ? "Meu Ticket Médio" : "Ticket médio"} value={formatCurrency(avgTicket)} icon={TrendingUp} tone="neutral" />
       </div>
 
       {/* ABAS DO MÓDULO DE VENDAS */}
@@ -491,23 +568,25 @@ export default function Sales() {
           <Printer className="w-4 h-4 text-red-500" />
           Gestão & 2ª Via Oficial
         </Button>
-        <Button
-          size="sm"
-          variant={activeTab === 'planilha' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('planilha')}
-          className={cn(
-            "text-xs font-bold gap-2 h-9 px-3.5 rounded-xl transition-colors",
-            activeTab === 'planilha'
-              ? "bg-sky-600 hover:bg-sky-700 text-white"
-              : "text-sky-700 dark:text-sky-400 hover:bg-sky-500/10"
-          )}
-        >
-          <FileSpreadsheet className="w-4 h-4 text-sky-500" />
-          Planilha de Vendas & Excel Online
-        </Button>
+        {!isRestrictedSeller && (
+          <Button
+            size="sm"
+            variant={activeTab === 'planilha' ? 'default' : 'ghost'}
+            onClick={() => setActiveTab('planilha')}
+            className={cn(
+              "text-xs font-bold gap-2 h-9 px-3.5 rounded-xl transition-colors",
+              activeTab === 'planilha'
+                ? "bg-sky-600 hover:bg-sky-700 text-white"
+                : "text-sky-700 dark:text-sky-400 hover:bg-sky-500/10"
+            )}
+          >
+            <FileSpreadsheet className="w-4 h-4 text-sky-500" />
+            Planilha de Vendas & Excel Online
+          </Button>
+        )}
       </div>
 
-      {activeTab === 'planilha' ? (
+      {activeTab === 'planilha' && !isRestrictedSeller ? (
         <div className="pt-2">
           <CloudMonthlySpreadsheet onedriveUrl={ONEDRIVE_DEFAULT_URL} />
         </div>
@@ -559,22 +638,29 @@ export default function Sales() {
           </Select>
 
           {/* Vendedor Filter */}
-          <Select value={resellerFilter} onValueChange={setResellerFilter}>
-            <SelectTrigger className="w-[165px] h-10 text-xs">
-              <User className="w-3.5 h-3.5 mr-1.5 text-primary" />
-              <SelectValue placeholder="Vendedor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                {storeFilter === 'all' ? 'Toda Equipe' : 'Equipe da Loja'}
-              </SelectItem>
-              {sellerOptions.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
+          {isRestrictedSeller ? (
+            <div className="flex items-center gap-1.5 px-3 h-10 rounded-xl border border-primary/30 bg-primary/10 text-xs font-semibold text-primary">
+              <User className="w-3.5 h-3.5" />
+              <span>Minhas Vendas ({profile?.full_name || 'Vendedor'})</span>
+            </div>
+          ) : (
+            <Select value={resellerFilter} onValueChange={setResellerFilter}>
+              <SelectTrigger className="w-[165px] h-10 text-xs">
+                <User className="w-3.5 h-3.5 mr-1.5 text-primary" />
+                <SelectValue placeholder="Vendedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {storeFilter === 'all' ? 'Toda Equipe' : 'Equipe da Loja'}
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                {sellerOptions.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>

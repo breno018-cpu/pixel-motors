@@ -61,6 +61,7 @@ import {
   Line,
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
+import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { useVehicles, useVehicleStats } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
@@ -99,7 +100,38 @@ const PALETTE = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { profile, canCreateSales } = useAuth();
+  const auth = useAuth();
+  const {
+    profile,
+    user,
+    roles,
+    isAdmin,
+    isManager,
+    hasElevatedAccess,
+    canCreateSales,
+    isSeller,
+    isSellerPlus,
+    isExternalSeller,
+    dataScope,
+  } = auth;
+
+  // Regra de Privacidade Estrita: Vendedores NÃO veem vendas de outros vendedores
+  const isRestrictedSeller = useMemo(() => {
+    return isUserSellerRestricted({
+      userId: user?.id,
+      profileId: profile?.id,
+      fullName: profile?.full_name,
+      email: user?.email,
+      roles,
+      isAdmin,
+      isManager,
+      hasElevatedAccess,
+      isSeller,
+      isSellerPlus,
+      isExternalSeller,
+      dataScope,
+    });
+  }, [user, profile, roles, isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, dataScope]);
 
   // Filtros Globais (Período Unificado com Todas as Abas)
   const {
@@ -372,13 +404,57 @@ export default function Dashboard() {
       }
     });
 
-    return Array.from(salesMap.values());
-  }, [monthlySheetRows, contracts, employees]);
+    const rawConsolidated = Array.from(salesMap.values());
+
+    // Se o usuário for vendedor restrito, exibe unicamente as suas vendas
+    if (isRestrictedSeller) {
+      return filterSalesBySellerScope(
+        rawConsolidated,
+        {
+          userId: user?.id,
+          profileId: profile?.id,
+          fullName: profile?.full_name,
+          email: user?.email,
+          roles,
+          isAdmin,
+          isManager,
+          hasElevatedAccess,
+          isSeller,
+          isSellerPlus,
+          isExternalSeller,
+          dataScope,
+        },
+        employees
+      );
+    }
+
+    return rawConsolidated;
+  }, [
+    monthlySheetRows,
+    contracts,
+    employees,
+    isRestrictedSeller,
+    user,
+    profile,
+    roles,
+    isAdmin,
+    isManager,
+    hasElevatedAccess,
+    isSeller,
+    isSellerPlus,
+    isExternalSeller,
+    dataScope,
+  ]);
 
   // =========================================================================
   // CATÁLOGO E FILTRAGEM INTELIGENTE DE VENDEDORES (NUNCA DESAPARECEM DOS FILTROS)
   // =========================================================================
   const allSellersList = useMemo(() => {
+    if (isRestrictedSeller) {
+      const myName = profile?.full_name || 'Minhas Vendas';
+      return [{ name: myName, storeId: 'all', storeLabel: 'Minhas Vendas' }];
+    }
+
     const list: Array<{ name: string; storeId: string; storeLabel: string }> = [];
     const seen = new Set<string>();
 
@@ -518,7 +594,7 @@ export default function Dashboard() {
 
   // Contratos Filtrados pelo Contexto de Loja e Vendedor
   const filteredContracts = useMemo(() => {
-    return (contracts || []).filter((c) => {
+    const raw = (contracts || []).filter((c) => {
       if (storeFilter !== 'all') {
         const resolved = resolveSaleStore(
           {
@@ -546,7 +622,46 @@ export default function Dashboard() {
       }
       return true;
     });
-  }, [contracts, storeFilter, sellerFilter, employees]);
+
+    if (isRestrictedSeller) {
+      return filterSalesBySellerScope(
+        raw,
+        {
+          userId: user?.id,
+          profileId: profile?.id,
+          fullName: profile?.full_name,
+          email: user?.email,
+          roles,
+          isAdmin,
+          isManager,
+          hasElevatedAccess,
+          isSeller,
+          isSellerPlus,
+          isExternalSeller,
+          dataScope,
+        },
+        employees
+      );
+    }
+
+    return raw;
+  }, [
+    contracts,
+    storeFilter,
+    sellerFilter,
+    employees,
+    isRestrictedSeller,
+    user,
+    profile,
+    roles,
+    isAdmin,
+    isManager,
+    hasElevatedAccess,
+    isSeller,
+    isSellerPlus,
+    isExternalSeller,
+    dataScope,
+  ]);
 
   // =========================================================================
   // MÉTRICAS E KPIS EXECUTIVOS 100% REAIS (SEM NENHUM NÚMERO FICTÍCIO)
