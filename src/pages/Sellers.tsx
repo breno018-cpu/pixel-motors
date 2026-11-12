@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDialog';
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
+import { fetchConsolidatedUsers } from '@/lib/userService';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -34,38 +35,27 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
   const { hasElevatedAccess } = useAuth();
   const { isDateInPeriod, activePeriodLabel } = useDateFilter();
 
+  useEffect(() => {
+    const handleUpdate = () => refetch();
+    window.addEventListener('dealflow:users-updated', handleUpdate);
+    return () => window.removeEventListener('dealflow:users-updated', handleUpdate);
+  }, [refetch]);
+
   const { data: sellersRaw, isLoading, refetch } = useQuery({
     queryKey: ['sellers-list'],
     queryFn: async () => {
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('role', ['vendedor', 'vendedor_plus', 'vendedor_externo']);
-
-      if (!roles?.length) return [];
-
-      const ids = roles.map(r => r.user_id);
-      const roleMap = Object.fromEntries(roles.map(r => [r.user_id, r.role]));
-
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email, phone')
-        .in('id', ids);
-
-      const { data: employees } = await supabase
-        .from('employees')
-        .select('profile_id, store_id')
-        .in('profile_id', ids);
-
-      const storeMap = Object.fromEntries(
-        (employees || []).filter(e => e.profile_id).map(e => [e.profile_id as string, e.store_id]),
-      );
-
-      return (profiles || []).map(p => ({
-        ...p,
-        role: roleMap[p.id] || 'vendedor',
-        store_id: storeMap[p.id] || (p as any).store_id || 'store-divinopolis',
-      }));
+      const allUsers = await fetchConsolidatedUsers(stores);
+      return allUsers.filter((u) => {
+        const r = (u.role || '').toLowerCase();
+        return (
+          r === 'vendedor' ||
+          r === 'vendedor_plus' ||
+          r === 'vendedor_externo' ||
+          r === 'revendedor' ||
+          r.includes('vendedor') ||
+          r.includes('seller')
+        );
+      });
     },
   });
 

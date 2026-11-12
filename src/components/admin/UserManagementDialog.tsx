@@ -32,7 +32,7 @@ import {
 import { TempPasswordDialog } from '@/components/admin/TempPasswordDialog';
 import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDialog';
 import { UserEditDialog } from '@/components/admin/UserEditDialog';
-import { createUserAccount, resetUserPassword, deleteUserAccount, permanentDeleteUserAccount, STORE_UUIDS } from '@/lib/userService';
+import { createUserAccount, resetUserPassword, deleteUserAccount, permanentDeleteUserAccount, STORE_UUIDS, fetchConsolidatedUsers } from '@/lib/userService';
 
 const userSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(200),
@@ -74,61 +74,21 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
   const queryClient = useQueryClient();
   const { data: stores } = useStores();
 
+  useEffect(() => {
+    const handleUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-master-users'] });
+      queryClient.invalidateQueries({ queryKey: ['sellers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+    };
+    window.addEventListener('dealflow:users-updated', handleUpdate);
+    return () => window.removeEventListener('dealflow:users-updated', handleUpdate);
+  }, [queryClient]);
+
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles').select('*').order('created_at', { ascending: false });
-      if (profilesError) throw profilesError;
-
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles').select('*');
-      if (rolesError) throw rolesError;
-
-      const { data: resellers, error: resellersError } = await supabase
-        .from('resellers').select('user_id, store_id, cpf, is_active');
-      if (resellersError) throw resellersError;
-
-      const { data: employees } = await supabase
-        .from('employees').select('profile_id, store_id, cpf, is_active, notes');
-
-      const usersWithRoles: UserWithRole[] = profiles.map(profile => {
-        const userRole = roles.find(r => r.user_id === profile.id);
-        const reseller = resellers.find(r => r.user_id === profile.id);
-        const employee = (employees || []).find(e => e.profile_id === profile.id);
-        const resolvedStoreId = employee?.store_id || reseller?.store_id || undefined;
-        const store = stores?.find(s => s.id === resolvedStoreId);
-
-        const notes = employee?.notes || '';
-        let userStatus: 'ATIVO' | 'SUSPENSO' | 'DEMITIDO' = 'ATIVO';
-        let statusReason = '';
-
-        if (notes.includes('[STATUS: SUSPENSO]')) {
-          userStatus = 'SUSPENSO';
-          statusReason = notes.replace('[STATUS: SUSPENSO]', '').trim();
-        } else if (notes.includes('[STATUS: DEMITIDO]')) {
-          userStatus = 'DEMITIDO';
-          statusReason = notes.replace('[STATUS: DEMITIDO]', '').trim();
-        } else if (employee?.is_active === false || reseller?.is_active === false) {
-          userStatus = 'SUSPENSO';
-        }
-
-        return {
-          id: profile.id,
-          email: profile.email,
-          full_name: profile.full_name,
-          cpf: employee?.cpf || reseller?.cpf || undefined,
-          role: userRole?.role || 'visualizador',
-          store_id: resolvedStoreId,
-          store_name: store?.name,
-          is_active: userStatus === 'ATIVO',
-          user_status: userStatus,
-          status_reason: statusReason,
-          created_at: profile.created_at,
-        };
-      });
-
-      return usersWithRoles;
+      return await fetchConsolidatedUsers(stores);
     },
     enabled: open,
   });

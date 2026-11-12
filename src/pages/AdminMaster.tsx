@@ -38,6 +38,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
 import { maskCPF } from '@/lib/masks';
+import { fetchConsolidatedUsers } from '@/lib/userService';
 import { purgeFictitiousData } from '@/integrations/supabase/localDbFallback';
 
 // Componentes Administrativos Integrados
@@ -103,41 +104,17 @@ export default function AdminMaster() {
   const { data: users = [], isLoading: isLoadingUsers, refetch: refetchUsers } = useQuery({
     queryKey: ['admin-master-users'],
     queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (profilesError) throw profilesError;
-
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-      if (rolesError) throw rolesError;
-
-      const { data: employees, error: employeesError } = await supabase
-        .from('employees').select('profile_id, store_id, cpf, is_active');
-      if (employeesError) throw employeesError;
-      const { data: resellers, error: resellersError } = await supabase
-        .from('resellers').select('user_id, store_id, cpf, is_active');
-      if (resellersError) throw resellersError;
-      const employeeMap = new Map((employees || []).map((e) => [e.profile_id, e]));
-      const resellerMap = new Map((resellers || []).map((r) => [r.user_id, r]));
-      const roleMap = new Map(userRoles.map((r) => [r.user_id, r.role]));
-      const storeMap = new Map((stores || []).map((s) => [s.id, s.name]));
-
-      return profiles.map((p) => ({
-        id: p.id,
-        email: p.email,
-        full_name: p.full_name || 'Sem nome',
-        cpf: employeeMap.get(p.id)?.cpf || resellerMap.get(p.id)?.cpf || undefined,
-        role: roleMap.get(p.id) || 'vendedor',
-        store_id: employeeMap.get(p.id)?.store_id || resellerMap.get(p.id)?.store_id || undefined,
-        store_name: storeMap.get(employeeMap.get(p.id)?.store_id || resellerMap.get(p.id)?.store_id || '') || 'Sem loja vinculada',
-        is_active: employeeMap.get(p.id)?.is_active ?? resellerMap.get(p.id)?.is_active ?? true,
-        created_at: p.created_at,
-      })) as UserWithRole[];
+      return await fetchConsolidatedUsers(stores);
     },
   });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      refetchUsers();
+    };
+    window.addEventListener('dealflow:users-updated', handleUpdate);
+    return () => window.removeEventListener('dealflow:users-updated', handleUpdate);
+  }, [refetchUsers]);
 
   // Métricas Globais da Operação
   const { data: globalMetrics } = useQuery({

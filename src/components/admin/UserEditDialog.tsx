@@ -107,6 +107,8 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-master-users'] });
+      queryClient.invalidateQueries({ queryKey: ['sellers-list'] });
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       onOpenChange(false);
       toast({ 
