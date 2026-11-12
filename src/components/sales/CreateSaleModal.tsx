@@ -279,7 +279,7 @@ export function CreateSaleModal({
         else if (paymentMethodCategory === 'a_vista_dinheiro') setCashVal(pStr);
         else if (paymentMethodCategory === 'financiamento_100') setFinVal(pStr);
       }
-      if (found.store_id) setStoreId(found.store_id);
+      if (found.store_id && !isRestrictedSeller) setStoreId(found.store_id);
     }
   };
 
