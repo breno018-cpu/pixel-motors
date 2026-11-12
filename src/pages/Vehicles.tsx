@@ -487,60 +487,60 @@ export default function Vehicles() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Estoque de Veículos"
-        description="Gestão de disponibilidade, giro de pátio e precificação de vendas."
+        title="Estoque"
+        description="Disponibilidade e giro de pátio."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportCsv}
               disabled={filteredVehicles.length === 0}
-              className="h-9"
+              className="h-8 sm:h-9 text-xs"
             >
               <Download className="mr-1.5 h-3.5 w-3.5" />
-              Exportar CSV
+              Exportar
             </Button>
             {canRegisterVehicles && (
               <>
                 {hasElevatedAccess && (
-                  <Button variant="outline" size="sm" onClick={() => setTransferOpen(true)} className="h-9">
+                  <Button variant="outline" size="sm" onClick={() => setTransferOpen(true)} className="h-8 sm:h-9 text-xs">
                     <ArrowLeftRight className="mr-1.5 h-3.5 w-3.5" />
                     Transferir
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)} className="h-9">
+                <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)} className="h-8 sm:h-9 text-xs">
                   <ScanLine className="mr-1.5 h-3.5 w-3.5" />
-                  Escanear Chassi
+                  Bipar Chassi
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={() => handleTabChange('laudos')} 
                   className={cn(
-                    "h-9 gap-1.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-bold",
+                    "h-8 sm:h-9 gap-1.5 text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-bold",
                     tab === 'laudos' && "bg-emerald-500/15 border-emerald-500/60 ring-2 ring-emerald-500/20"
                   )}
                   title="Abrir aba de laudos periciais cautelares, vistorias e procedência"
                 >
                   <FileCheck className="h-3.5 w-3.5" />
-                  Laudos Cautelares ({inspections.length})
+                  Laudos ({inspections.length})
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={() => setBatchOpen(true)} 
-                  className="h-9 gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+                  className="h-8 sm:h-9 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
                   title="Cadastre múltiplas motos de uma remessa de fábrica colando a lista de chassis"
                 >
                   <Boxes className="h-3.5 w-3.5" />
-                  Entrada em Lote (NF Fábrica)
+                  Entrada em Lote
                 </Button>
                 <Button 
                   size="sm" 
                   onClick={() => handleTabChange('entrada')} 
                   className={cn(
-                    "h-9 gap-1.5 font-semibold shadow-xs",
+                    "h-8 sm:h-9 gap-1.5 text-xs font-semibold shadow-xs",
                     tab === 'entrada'
                       ? "bg-red-700 text-white ring-2 ring-red-500/30"
                       : "bg-red-600 hover:bg-red-700 text-white"
@@ -548,10 +548,10 @@ export default function Vehicles() {
                   title="Receber caminhão: anexe a imagem da lista do caminhão e bipe as caixas das motos"
                 >
                   <Truck className="h-3.5 w-3.5" />
-                  Controle de Entrada
+                  Recebimento
                 </Button>
-                <Button size="sm" onClick={() => setFormOpen(true)} className="h-9">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                <Button size="sm" onClick={() => setFormOpen(true)} className="h-8 sm:h-9 text-xs gap-1 font-bold">
+                  <Plus className="mr-1 h-3.5 w-3.5" />
                   Novo Veículo
                 </Button>
               </>
