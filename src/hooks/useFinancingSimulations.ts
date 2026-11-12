@@ -47,6 +47,7 @@ export interface SimulationInput {
   bank_code: string;
   customer_name: string;
   customer_document: string;
+  customer_cpf?: string;
   customer_phone?: string;
   customer_email?: string;
   customer_income?: number;
