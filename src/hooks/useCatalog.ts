@@ -202,6 +202,15 @@ export function useCatalog() {
     });
   };
 
+  // Mover Veículo de Categoria / Parte no Catálogo (shineray, ele, off, semi)
+  const updateCategory = (product: CatalogProduct, newCat: "shineray" | "ele" | "off" | "semi") => {
+    return syncMutation.mutateAsync({
+      action: "create",
+      ...product,
+      cat: newCat,
+    });
+  };
+
   // 8. Campanha com Contagem Regressiva
   const updateCampaign = (campaign: CatalogCampaign | null) => {
     return syncMutation.mutateAsync({
@@ -273,6 +282,7 @@ export function useCatalog() {
     reorderProducts,
     updateDescription,
     updateStore,
+    updateCategory,
     updateCampaign,
     updateConfig,
     updateRates,

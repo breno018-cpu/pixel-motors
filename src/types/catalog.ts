@@ -82,6 +82,7 @@ export interface CatalogData {
 export type CatalogSyncAction =
   | { action: "upsert"; product: CatalogProduct }
   | ({ action: "create" } & Partial<CatalogProduct>)
+  | { action: "cat"; id: string; cat: "shineray" | "ele" | "off" | "semi" | string; value?: string }
   | { action: "order"; id: string; order: number }
   | { action: "reorder"; ids: string[] }
   | { action: "price"; id: string; price?: number | null; oldPrice?: number | null; installments?: boolean; value?: number | null; keepOld?: boolean }

@@ -63,10 +63,8 @@ import {
   FileText,
   Send,
   Table as TableIcon,
-  Package,
   Layers3,
-  X,
-  CheckCircle2,
+  ChevronDown,
 } from "lucide-react";
 import { CatalogConfigDialog } from "@/components/catalog/CatalogConfigDialog";
 import { CatalogCampaignDialog } from "@/components/catalog/CatalogCampaignDialog";
@@ -80,12 +78,12 @@ import { CatalogDescDialog } from "@/components/catalog/CatalogDescDialog";
 import { CatalogReorderDialog } from "@/components/catalog/CatalogReorderDialog";
 import { toast } from "sonner";
 
-// Definição dos 4 Grupos Oficiais do Catálogo L1MA Motors (idêntico ao site público)
-const OFFICIAL_GROUPS = [
+// Definição das 4 Partes Oficiais do Catálogo L1MA Motors
+const CATALOG_PARTS = [
   {
     id: "shineray",
     name: "Concessionária Shineray",
-    shortName: "Shineray L1MA Motors (concessionária oficial)",
+    shortName: "Shineray",
     tagline: "Concessionária Autorizada Exclusiva Shineray do Brasil",
     badge: "Autorizada Oficial",
     borderTheme: "border-emerald-500/30",
@@ -152,6 +150,7 @@ export default function CatalogControl() {
     setProductOrder,
     reorderProducts,
     updateDescription,
+    updateCategory,
     updateStore,
     updateCampaign,
     updateConfig,
@@ -162,10 +161,10 @@ export default function CatalogControl() {
     apiSettings,
   } = useCatalog();
 
-  // Filtros por Loja & por Grupo
-  const [selectedStore, setSelectedStore] = useState<string>("all"); // 'all' | 'store-divinopolis' | 'store-montesclaros'
+  // Controle de Parte no Catálogo (shineray, ele, off, semi ou all)
   const [selectedCat, setSelectedCat] = useState<string>("all"); // 'all' | 'shineray' | 'ele' | 'off' | 'semi'
   const [selectedSub, setSelectedSub] = useState<string>("all"); // Subcategoria
+  const [selectedStore, setSelectedStore] = useState<string>("all"); // Filtro de concessionária opcional
   const [viewGrouping, setViewGrouping] = useState<"sections" | "tabs">("sections"); // 'sections' (como no site) | 'tabs'
   const [viewLayout, setViewLayout] = useState<"cards" | "table">("cards"); // 'cards' | 'table'
   const [search, setSearch] = useState("");
@@ -204,37 +203,25 @@ export default function CatalogControl() {
   // Set de IDs existentes para importar
   const existingIds = useMemo(() => new Set(products.map((p) => p.id)), [products]);
 
-  // Contadores por Concessionária / Loja
-  const countDivinopolis = useMemo(() => {
-    return products.filter((p) => !p.store_id || p.store_id === "all" || p.store_id === "store-divinopolis").length;
-  }, [products]);
+  // Contadores por Parte no Catálogo (Categorias Oficiais)
+  const countShineray = useMemo(() => products.filter((p) => p.cat === "shineray").length, [products]);
+  const countEle = useMemo(() => products.filter((p) => p.cat === "ele").length, [products]);
+  const countOff = useMemo(() => products.filter((p) => p.cat === "off").length, [products]);
+  const countSemi = useMemo(() => products.filter((p) => p.cat === "semi").length, [products]);
 
-  const countMontesClaros = useMemo(() => {
-    return products.filter((p) => !p.store_id || p.store_id === "all" || p.store_id === "store-montesclaros").length;
-  }, [products]);
-
-  // Produtos Filtrados Inicialmente pela Concessionária Selecionada
-  const storeProducts = useMemo(() => {
-    if (selectedStore === "all") return products;
-    return products.filter((p) => {
-      const pStore = p.store_id || "all";
-      return pStore === "all" || pStore === selectedStore;
-    });
-  }, [products, selectedStore]);
-
-  // Contadores e KPIs no Escopo da Loja Selecionada
-  const totalCount = storeProducts.length;
-  const activeCount = storeProducts.filter((p) => p.active !== false).length;
-  const hiddenCount = storeProducts.filter((p) => p.active === false).length;
-  const soldOutCount = storeProducts.filter((p) => p.stock === 0).length;
-  const promoCount = storeProducts.filter(
+  // Contadores e KPIs Gerais
+  const totalCount = products.length;
+  const activeCount = products.filter((p) => p.active !== false).length;
+  const hiddenCount = products.filter((p) => p.active === false).length;
+  const soldOutCount = products.filter((p) => p.stock === 0).length;
+  const promoCount = products.filter(
     (p) => (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price)
   ).length;
-  const heroCount = storeProducts.filter((p) => p.featuredHero).length;
+  const heroCount = products.filter((p) => p.featuredHero).length;
 
-  // Filtragem Geral (Loja + Grupo + Subcategoria + Status + Busca)
+  // Filtragem Geral (Parte no Catálogo + Subcategoria + Status + Busca)
   const filteredProducts = useMemo(() => {
-    return storeProducts.filter((p) => {
+    return products.filter((p) => {
       // Busca
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -247,7 +234,7 @@ export default function CatalogControl() {
         }
       }
 
-      // Grupo / Categoria
+      // Parte no Catálogo (shineray, ele, off, semi)
       if (selectedCat !== "all" && p.cat !== selectedCat) {
         return false;
       }
@@ -255,6 +242,14 @@ export default function CatalogControl() {
       // Subcategoria (se filtrada)
       if (selectedSub !== "all" && selectedSub !== "Todas") {
         if ((p.sub || "").toLowerCase() !== selectedSub.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Filtro de Loja (se selecionada)
+      if (selectedStore !== "all") {
+        const pStore = p.store_id || "all";
+        if (pStore !== "all" && pStore !== selectedStore) {
           return false;
         }
       }
@@ -271,20 +266,20 @@ export default function CatalogControl() {
 
       return true;
     });
-  }, [storeProducts, search, selectedCat, selectedSub, statusFilter]);
+  }, [products, search, selectedCat, selectedSub, selectedStore, statusFilter]);
 
-  // Lista de Subcategorias disponíveis para o grupo selecionado
+  // Lista de Subcategorias disponíveis para a parte do catálogo selecionada
   const currentAvailableSubs = useMemo(() => {
     if (selectedCat === "all") {
       const set = new Set<string>();
-      storeProducts.forEach((p) => {
+      products.forEach((p) => {
         if (p.sub) set.add(p.sub.trim());
       });
       return ["Todas", ...Array.from(set).sort()];
     }
-    const grp = OFFICIAL_GROUPS.find((g) => g.id === selectedCat);
+    const grp = CATALOG_PARTS.find((g) => g.id === selectedCat);
     return grp ? grp.defaultSubs : ["Todas"];
-  }, [selectedCat, storeProducts]);
+  }, [selectedCat, products]);
 
   // Helper de Despacho Direto ou Enfileiramento em Lote
   const dispatchOrQueue = async (action: CatalogSyncAction, label: string) => {
@@ -319,6 +314,22 @@ export default function CatalogControl() {
   const handleClearBatch = () => {
     setPendingBatch([]);
     toast.info("Fila de lote descartada.");
+  };
+
+  // MUDAR PARTE NO CATÁLOGO (Shineray, Elétricas, Off-Road, Semi-novos)
+  const handleMoveCategory = (p: CatalogProduct, newCat: "shineray" | "ele" | "off" | "semi") => {
+    const catLabels: Record<string, string> = {
+      shineray: "🟢 Concessionária Shineray",
+      ele: "⚡ Elétricas Multimarcas",
+      off: "🏁 Off-Road & Quadriciclos",
+      semi: "🔄 Semi-Novos Selecionados",
+    };
+    const action: CatalogSyncAction = {
+      action: "create",
+      ...p,
+      cat: newCat,
+    };
+    dispatchOrQueue(action, `Mover "${p.name}" para ${catLabels[newCat]}`);
   };
 
   // Handlers de Operações
@@ -402,11 +413,6 @@ export default function CatalogControl() {
     dispatchOrQueue(action, `Mover ${p.name} para posição #${targetIndex + 1}`);
   };
 
-  const handleDirectOrder = (p: CatalogProduct, order: number) => {
-    const action: CatalogSyncAction = { action: "order", id: p.id, order };
-    dispatchOrQueue(action, `Definir posição #${order} para ${p.name}`);
-  };
-
   const handleEditProduct = (prod: CatalogProduct) => {
     setSelectedProductForEdit(prod);
     setProductDialogOpen(true);
@@ -467,12 +473,6 @@ export default function CatalogControl() {
     const isLowStock = p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= lowStockLimit;
     const isUnlimited = p.stock === null || p.stock === undefined;
     const mainPhoto = p.photos && p.photos.length > 0 ? p.photos[0] : "";
-    const storeLabel =
-      p.store_id === "store-divinopolis"
-        ? "Divinópolis"
-        : p.store_id === "store-montesclaros"
-        ? "Montes Claros"
-        : "Todas as Lojas";
 
     return (
       <div
@@ -559,34 +559,67 @@ export default function CatalogControl() {
               )}
             </div>
 
-            {/* Badges Flutuantes Inferiores: Grupo & Loja */}
-            <div className="absolute bottom-2 left-2 flex items-center gap-1">
-              <Badge
-                variant="secondary"
-                className="bg-background/90 backdrop-blur-sm text-[10px] font-bold uppercase shadow-xs"
-              >
-                {p.cat === "shineray"
-                  ? "🟢 Shineray"
-                  : p.cat === "ele"
-                  ? "⚡ Elétrica"
-                  : p.cat === "semi"
-                  ? "🔄 Semi-novo"
-                  : "🏁 Off-Road"}
-              </Badge>
+            {/* CONTROLE INSTANTÂNEO DE PARTE NO CATÁLOGO NO PRÓPRIO CARD */}
+            <div className="absolute bottom-2 left-2 flex items-center gap-1.5 z-10">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] gap-1 px-2 font-bold rounded-lg border bg-background/95 backdrop-blur-sm hover:bg-background shadow-xs text-foreground"
+                    title="Clique para mudar a parte deste veículo no catálogo (Shineray, Elétricas, Off-Road, Semi-novos)"
+                  >
+                    <span>
+                      {p.cat === "shineray"
+                        ? "🟢 Shineray"
+                        : p.cat === "ele"
+                        ? "⚡ Elétricas"
+                        : p.cat === "semi"
+                        ? "🔄 Semi-novos"
+                        : "🏁 Off-Road"}
+                    </span>
+                    <ChevronDown className="w-2.5 h-2.5 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="text-xs w-52 z-30">
+                  <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground">
+                    Mover para Parte do Catálogo:
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => handleMoveCategory(p, "shineray")}
+                    className="gap-2 text-xs font-semibold cursor-pointer text-emerald-600 dark:text-emerald-400"
+                  >
+                    🟢 Concessionária Shineray
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleMoveCategory(p, "ele")}
+                    className="gap-2 text-xs font-semibold cursor-pointer text-cyan-600 dark:text-cyan-400"
+                  >
+                    ⚡ Elétricas Multimarcas
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleMoveCategory(p, "off")}
+                    className="gap-2 text-xs font-semibold cursor-pointer text-amber-600 dark:text-amber-400"
+                  >
+                    🏁 Off-Road & Quadriciclos
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleMoveCategory(p, "semi")}
+                    className="gap-2 text-xs font-semibold cursor-pointer text-purple-600 dark:text-purple-400"
+                  >
+                    🔄 Semi-Novos Selecionados
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-              <Badge
-                variant="outline"
-                className={`text-[9px] font-semibold backdrop-blur-sm ${
-                  p.store_id === "store-divinopolis"
-                    ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
-                    : p.store_id === "store-montesclaros"
-                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
-                    : "bg-muted/80 text-foreground border-border"
-                }`}
-              >
-                <MapPin className="w-2.5 h-2.5 mr-0.5 inline" />
-                {storeLabel}
-              </Badge>
+              {p.sub && (
+                <Badge
+                  variant="outline"
+                  className="bg-background/80 backdrop-blur-sm text-[9px] font-semibold border-border text-muted-foreground"
+                >
+                  {p.sub}
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -769,6 +802,40 @@ export default function CatalogControl() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Ações do Modelo</DropdownMenuLabel>
                 
+                {/* Mudar Parte no Catálogo no Submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="gap-2 text-xs font-semibold">
+                    <Layers className="w-3.5 h-3.5 text-primary" />
+                    Mudar Parte no Catálogo
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="text-xs w-52">
+                    <DropdownMenuItem
+                      onClick={() => handleMoveCategory(p, "shineray")}
+                      className="gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                    >
+                      🟢 Concessionária Shineray
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleMoveCategory(p, "ele")}
+                      className="gap-2 text-xs font-semibold text-cyan-600 dark:text-cyan-400"
+                    >
+                      ⚡ Elétricas Multimarcas
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleMoveCategory(p, "off")}
+                      className="gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400"
+                    >
+                      🏁 Off-Road & Quadriciclos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleMoveCategory(p, "semi")}
+                      className="gap-2 text-xs font-semibold text-purple-600 dark:text-purple-400"
+                    >
+                      🔄 Semi-Novos Selecionados
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
                 <DropdownMenuItem onClick={() => handleOpenDesc(p)} className="gap-2 text-xs">
                   <FileText className="w-3.5 h-3.5 text-blue-500" />
                   Editar Descrição (WhatsApp/IA)
@@ -790,25 +857,6 @@ export default function CatalogControl() {
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
-
-                {/* Atribuição de Concessionária / Loja */}
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="gap-2 text-xs">
-                    <Building2 className="w-3.5 h-3.5 text-primary" />
-                    Atribuir à Loja
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="text-xs">
-                    <DropdownMenuItem onClick={() => dispatchOrQueue({ action: "store", id: p.id, store_id: "all", store_name: "Todas as Lojas" }, `Atribuir ${p.name} a Todas as Lojas`)}>
-                      🏢 Todas as Lojas (Rede)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => dispatchOrQueue({ action: "store", id: p.id, store_id: "store-divinopolis", store_name: "Divinópolis" }, `Atribuir ${p.name} a Divinópolis`)}>
-                      📍 Divinópolis (Matriz Oeste)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => dispatchOrQueue({ action: "store", id: p.id, store_id: "store-montesclaros", store_name: "Montes Claros" }, `Atribuir ${p.name} a Montes Claros`)}>
-                      📍 Montes Claros (Polo Norte)
-                    </DropdownMenuItem>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
 
                 <DropdownMenuItem onClick={() => handleEditProduct(p)} className="gap-2 text-xs">
                   <Edit className="w-3.5 h-3.5" />
@@ -904,6 +952,59 @@ export default function CatalogControl() {
               </div>
             </div>
           </div>
+        </td>
+
+        {/* PARTE NO CATÁLOGO (DROPDOWN DIRETO NA LINHA) */}
+        <td className="p-3 text-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1 px-2 font-bold rounded-lg border w-full justify-between"
+              >
+                <span>
+                  {p.cat === "shineray"
+                    ? "🟢 Shineray"
+                    : p.cat === "ele"
+                    ? "⚡ Elétricas"
+                    : p.cat === "semi"
+                    ? "🔄 Semi-novos"
+                    : "🏁 Off-Road"}
+                </span>
+                <ChevronDown className="w-3 h-3 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="text-xs w-52">
+              <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground">
+                Mudar Parte no Catálogo
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => handleMoveCategory(p, "shineray")}
+                className="gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+              >
+                🟢 Concessionária Shineray
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleMoveCategory(p, "ele")}
+                className="gap-2 text-xs font-semibold text-cyan-600 dark:text-cyan-400"
+              >
+                ⚡ Elétricas Multimarcas
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleMoveCategory(p, "off")}
+                className="gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400"
+              >
+                🏁 Off-Road & Quadriciclos
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleMoveCategory(p, "semi")}
+                className="gap-2 text-xs font-semibold text-purple-600 dark:text-purple-400"
+              >
+                🔄 Semi-Novos Selecionados
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </td>
 
         {/* Visibilidade */}
@@ -1112,7 +1213,7 @@ export default function CatalogControl() {
             </div>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Sincronização em tempo real das 12 operações da API: reordenação, cadastro, visibilidade, estoque, preços, ofertas, carrossel, descrição, campanha e taxas da concessionária.
+            Controle direto de em qual parte do catálogo cada veículo é exibido (Shineray, Elétricas, Off-Road, Semi-novos), estoque, preços, promoções e sincronização em tempo real.
           </p>
         </div>
 
@@ -1198,44 +1299,74 @@ export default function CatalogControl() {
         </div>
       </div>
 
-      {/* 2. BARRA DE MODO DE OPERAÇÃO: GRAVAÇÃO INSTANTÂNEA VS MODO FILA EM LOTE (BATCH SYNC) */}
+      {/* 2. SELETOR PRINCIPAL: PARTE NO CATÁLOGO (SHINERAY, ELÉTRICAS, OFF-ROAD, SEMI-NOVOS) */}
       <div className="p-3.5 rounded-2xl border bg-card/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        {/* Seletor de Concessionária */}
+        {/* Seletor de Parte no Catálogo */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground mr-1">
-            <Building2 className="w-4 h-4 text-primary shrink-0" />
-            <span>Loja:</span>
+            <Layers className="w-4 h-4 text-primary shrink-0" />
+            <span>Parte no Catálogo:</span>
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
             <Button
-              variant={selectedStore === "all" ? "default" : "outline"}
+              variant={selectedCat === "all" ? "default" : "outline"}
               size="sm"
-              onClick={() => setSelectedStore("all")}
+              onClick={() => {
+                setSelectedCat("all");
+                setSelectedSub("all");
+              }}
               className="h-8 text-xs gap-1.5 rounded-xl font-bold"
             >
-              <Store className="w-3.5 h-3.5" />
-              Todas as Lojas ({products.length})
+              🌟 Todo o Catálogo ({totalCount})
             </Button>
 
             <Button
-              variant={selectedStore === "store-divinopolis" ? "default" : "outline"}
+              variant={selectedCat === "shineray" ? "default" : "outline"}
               size="sm"
-              onClick={() => setSelectedStore("store-divinopolis")}
-              className="h-8 text-xs gap-1.5 rounded-xl font-bold"
+              onClick={() => {
+                setSelectedCat("shineray");
+                setSelectedSub("all");
+              }}
+              className="h-8 text-xs gap-1.5 rounded-xl font-bold text-emerald-600 dark:text-emerald-400"
             >
-              <MapPin className="w-3.5 h-3.5 text-red-500" />
-              Divinópolis ({countDivinopolis})
+              🟢 Shineray ({countShineray})
             </Button>
 
             <Button
-              variant={selectedStore === "store-montesclaros" ? "default" : "outline"}
+              variant={selectedCat === "ele" ? "default" : "outline"}
               size="sm"
-              onClick={() => setSelectedStore("store-montesclaros")}
-              className="h-8 text-xs gap-1.5 rounded-xl font-bold"
+              onClick={() => {
+                setSelectedCat("ele");
+                setSelectedSub("all");
+              }}
+              className="h-8 text-xs gap-1.5 rounded-xl font-bold text-cyan-600 dark:text-cyan-400"
             >
-              <MapPin className="w-3.5 h-3.5 text-blue-500" />
-              Montes Claros ({countMontesClaros})
+              ⚡ Elétricas ({countEle})
+            </Button>
+
+            <Button
+              variant={selectedCat === "off" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setSelectedCat("off");
+                setSelectedSub("all");
+              }}
+              className="h-8 text-xs gap-1.5 rounded-xl font-bold text-amber-600 dark:text-amber-400"
+            >
+              🏁 Off-road ({countOff})
+            </Button>
+
+            <Button
+              variant={selectedCat === "semi" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setSelectedCat("semi");
+                setSelectedSub("all");
+              }}
+              className="h-8 text-xs gap-1.5 rounded-xl font-bold text-purple-600 dark:text-purple-400"
+            >
+              🔄 Semi-novos ({countSemi})
             </Button>
           </div>
         </div>
@@ -1285,7 +1416,7 @@ export default function CatalogControl() {
         </div>
       </div>
 
-      {/* 3. KPIS DE RESUMO DA LOJA SELECIONADA */}
+      {/* 3. KPIS DE RESUMO */}
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
@@ -1342,37 +1473,9 @@ export default function CatalogControl() {
         </div>
       </div>
 
-      {/* 4. AS 5 ABAS OFICIAIS DE CATEGORIA + OS 6 FILTROS RÁPIDOS (PILLS) */}
+      {/* 4. FILTROS RÁPIDOS DE STATUS & BUSCA */}
       <div className="space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* As 5 Abas de Categoria */}
-          <Tabs
-            value={selectedCat}
-            onValueChange={(val) => {
-              setSelectedCat(val);
-              setSelectedSub("all");
-            }}
-            className="w-full lg:w-auto"
-          >
-            <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full lg:w-auto h-auto p-1 bg-muted/60">
-              <TabsTrigger value="all" className="text-xs py-2 font-bold">
-                Todas as Motos ({totalCount})
-              </TabsTrigger>
-              <TabsTrigger value="shineray" className="text-xs py-2 font-bold gap-1 text-emerald-600 dark:text-emerald-400">
-                🟢 Shineray L1MA Motors ({storeProducts.filter((p) => p.cat === "shineray").length})
-              </TabsTrigger>
-              <TabsTrigger value="ele" className="text-xs py-2 font-bold gap-1 text-cyan-600 dark:text-cyan-400">
-                ⚡ Elétricas ({storeProducts.filter((p) => p.cat === "ele").length})
-              </TabsTrigger>
-              <TabsTrigger value="off" className="text-xs py-2 font-bold gap-1 text-amber-600 dark:text-amber-400">
-                🏁 Off-road ({storeProducts.filter((p) => p.cat === "off").length})
-              </TabsTrigger>
-              <TabsTrigger value="semi" className="text-xs py-2 font-bold gap-1 text-purple-600 dark:text-purple-400">
-                🔄 Semi-novos ({storeProducts.filter((p) => p.cat === "semi").length})
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
           {/* Os 6 Filtros Rápidos por Pílula (Pills) */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <Button
@@ -1426,7 +1529,7 @@ export default function CatalogControl() {
           </div>
         </div>
 
-        {/* Pílulas de Subcategorias (Estilos Comerciais do Grupo) */}
+        {/* Pílulas de Subcategorias (Estilos Comerciais) */}
         {currentAvailableSubs.length > 1 && (
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5">
             <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1 shrink-0">
@@ -1519,10 +1622,10 @@ export default function CatalogControl() {
       ) : filteredProducts.length === 0 ? (
         <div className="p-12 text-center border rounded-2xl bg-card space-y-3">
           <Store className="w-10 h-10 mx-auto text-muted-foreground/60" />
-          <h3 className="text-lg font-semibold text-foreground">Nenhum veículo encontrado para este filtro</h3>
+          <h3 className="text-lg font-semibold text-foreground">Nenhum veículo encontrado nesta parte do catálogo</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            {search || selectedStore !== "all" || selectedCat !== "all" || statusFilter !== "all"
-              ? "Tente ajustar os filtros de concessionária, grupo ou busca acima."
+            {search || selectedCat !== "all" || statusFilter !== "all"
+              ? "Tente selecionar outra parte no catálogo ou limpar a busca."
               : "Seu catálogo público ainda não possui modelos cadastrados."}
           </p>
           <div className="flex justify-center gap-2 pt-2">
@@ -1543,6 +1646,7 @@ export default function CatalogControl() {
                 <tr className="border-b border-border bg-muted/50 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                   <th className="p-3 text-center w-16">Posição</th>
                   <th className="p-3">Veículo</th>
+                  <th className="p-3 text-center w-36">Parte no Catálogo</th>
                   <th className="p-3 text-center w-28">Visibilidade</th>
                   <th className="p-3 w-36">Preço / 21x</th>
                   <th className="p-3 w-56">Estoque & Ações</th>
@@ -1559,9 +1663,9 @@ export default function CatalogControl() {
           </div>
         </div>
       ) : viewGrouping === "sections" && selectedCat === "all" ? (
-        // VISUALIZAÇÃO DIVIDIDA POR GRUPO (SEÇÕES COMO NO SITE PÚBLICO)
+        // VISUALIZAÇÃO DIVIDIDA POR PARTE DO CATÁLOGO (SEÇÕES COMO NO SITE PÚBLICO)
         <div className="space-y-8">
-          {OFFICIAL_GROUPS.map((group) => {
+          {CATALOG_PARTS.map((group) => {
             const groupProducts = filteredProducts.filter((p) => p.cat === group.id);
             if (groupProducts.length === 0) return null;
 
@@ -1569,7 +1673,7 @@ export default function CatalogControl() {
 
             return (
               <div key={group.id} className="space-y-4">
-                {/* CABEÇALHO DO GRUPO (IDÊNTICO AO SITE PÚBLICO) */}
+                {/* CABEÇALHO DA PARTE DO CATÁLOGO */}
                 <div className={`p-4 rounded-2xl border ${group.borderTheme} ${group.bgTheme} flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs`}>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-card border flex items-center justify-center shrink-0 shadow-xs">
@@ -1592,7 +1696,7 @@ export default function CatalogControl() {
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <Badge variant="outline" className="font-mono text-xs bg-card/80">
-                      {groupProducts.length} {groupProducts.length === 1 ? "modelo" : "modelos"} nesta loja
+                      {groupProducts.length} {groupProducts.length === 1 ? "modelo" : "modelos"}
                     </Badge>
                     <Button
                       variant="ghost"
@@ -1603,7 +1707,7 @@ export default function CatalogControl() {
                       }}
                       className="text-xs h-7 px-2 font-medium"
                     >
-                      Ver apenas este grupo →
+                      Ver apenas {group.shortName} →
                     </Button>
                   </div>
                 </div>
@@ -1617,14 +1721,14 @@ export default function CatalogControl() {
           })}
         </div>
       ) : (
-        // VISUALIZAÇÃO EM GRADE FILTRADA (OU ABA ESPECÍFICA)
+        // VISUALIZAÇÃO EM GRADE FILTRADA
         <div className="space-y-4">
           {selectedCat !== "all" && (
             <div className="p-3.5 rounded-2xl border bg-muted/30 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Store className="w-4 h-4 text-primary" />
+                <Layers className="w-4 h-4 text-primary" />
                 <span className="text-xs font-bold text-foreground">
-                  Exibindo grupo: {OFFICIAL_GROUPS.find((g) => g.id === selectedCat)?.name || selectedCat}
+                  Parte no Catálogo: {CATALOG_PARTS.find((g) => g.id === selectedCat)?.name || selectedCat}
                 </span>
                 <span className="text-xs text-muted-foreground">({filteredProducts.length} modelos)</span>
               </div>
@@ -1637,7 +1741,7 @@ export default function CatalogControl() {
                 }}
                 className="text-xs h-7"
               >
-                ← Ver todas as motos
+                ← Ver todo o catálogo
               </Button>
             </div>
           )}
