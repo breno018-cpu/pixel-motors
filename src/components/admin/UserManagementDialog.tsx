@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UserPlus, Trash2, Key, Store, Shield, X, BarChart3, Pencil, XCircle } from 'lucide-react';
+import { UserPlus, Trash2, Key, Store, Shield, X, BarChart3, Pencil, XCircle, UserX, UserCheck } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -165,32 +165,40 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
     },
   });
 
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      return await deleteUserAccount(userId);
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ userId, nextActive, email, full_name }: { userId: string; nextActive: boolean; email?: string; full_name?: string }) => {
+      return await toggleUserStatus(userId, nextActive, { email, full_name });
     },
-    onSuccess: () => {
+    onSuccess: (_, { nextActive }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-master-users'] });
+      queryClient.invalidateQueries({ queryKey: ['sellers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
       setDeleteUser(null);
-      toast({ title: 'Usuário desativado com sucesso' });
+      toast({
+        title: nextActive ? 'Acesso reativado com sucesso' : 'Acesso suspenso com sucesso',
+      });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message || 'Não foi possível desativar o usuário.' });
+      toast({ variant: 'destructive', title: 'Erro', description: error.message || 'Não foi possível alterar o status do usuário.' });
     },
   });
 
   const permanentDeleteMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      return await permanentDeleteUserAccount(userId);
+    mutationFn: async ({ userId, email }: { userId: string; email?: string }) => {
+      return await permanentDeleteUserAccount(userId, email);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-master-users'] });
+      queryClient.invalidateQueries({ queryKey: ['sellers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['resellers'] });
       setPermanentDeleteUser(null);
-      toast({ title: 'Usuário excluído permanentemente' });
+      toast({ title: 'Usuário excluído permanentemente com sucesso' });
     },
     onError: (error: Error) => {
-      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+      toast({ variant: 'destructive', title: 'Erro', description: error.message || 'Falha ao excluir usuário.' });
     },
   });
 
@@ -397,13 +405,14 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                           onClick={() => setResetPasswordUser(user)}>
                           <Key className="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-warning hover:text-warning"
-                          onClick={() => setDeleteUser(user)} title="Desativar">
-                          <Trash2 className="w-3.5 h-3.5" />
+                        <Button variant="ghost" size="icon" className={`h-7 w-7 ${user.is_active ? 'text-amber-500 hover:text-amber-600' : 'text-emerald-500 hover:text-emerald-600'}`}
+                          onClick={() => toggleStatusMutation.mutate({ userId: user.id, nextActive: !user.is_active, email: user.email, full_name: user.full_name })}
+                          title={user.is_active ? "Suspender Acesso" : "Reativar Acesso"}>
+                          {user.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => setPermanentDeleteUser(user)} title="Excluir permanentemente">
-                          <XCircle className="w-3.5 h-3.5" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setPermanentDeleteUser(user)} title="Excluir Usuário Permanentemente">
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
                         </Button>
                       </div>
                     </TableCell>
@@ -414,43 +423,26 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
           </Card>
         )}
 
-        {/* Delete Confirmation */}
-        <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
-              <AlertDialogDescription>
-                O usuário {deleteUser?.full_name} será desativado e não poderá mais acessar o sistema.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => deleteUser && deleteUserMutation.mutate(deleteUser.id)}
-                disabled={deleteUserMutation.isPending}>
-                {deleteUserMutation.isPending ? 'Desativando...' : 'Desativar'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
         {/* Permanent Delete Confirmation */}
         <AlertDialog open={!!permanentDeleteUser} onOpenChange={() => setPermanentDeleteUser(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir usuário permanentemente?</AlertDialogTitle>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="w-5 h-5 text-destructive" />
+                Excluir usuário permanentemente?
+              </AlertDialogTitle>
               <AlertDialogDescription>
                 <span className="font-semibold text-destructive">ATENÇÃO: Esta ação é irreversível!</span><br />
-                O usuário <strong>{permanentDeleteUser?.full_name}</strong> será completamente removido do sistema, 
-                incluindo todos os dados de perfil, cargo e associações.
+                O usuário <strong>{permanentDeleteUser?.full_name}</strong> ({permanentDeleteUser?.email}) será completamente removido do sistema, 
+                incluindo todos os dados de perfil, cargo e credenciais de acesso.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel disabled={permanentDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
               <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => permanentDeleteUser && permanentDeleteMutation.mutate(permanentDeleteUser.id)}
+                onClick={() => permanentDeleteUser && permanentDeleteMutation.mutate({ userId: permanentDeleteUser.id, email: permanentDeleteUser.email })}
                 disabled={permanentDeleteMutation.isPending}>
-                {permanentDeleteMutation.isPending ? 'Excluindo...' : 'Excluir Permanentemente'}
+                {permanentDeleteMutation.isPending ? 'Excluindo...' : 'Sim, Excluir Definitivamente'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

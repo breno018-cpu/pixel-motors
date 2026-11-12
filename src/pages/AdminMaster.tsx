@@ -22,6 +22,8 @@ import {
   BarChart3,
   Trash2,
   XCircle,
+  UserX,
+  UserCheck,
   DollarSign
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -32,13 +34,23 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
 import { maskCPF } from '@/lib/masks';
-import { fetchConsolidatedUsers } from '@/lib/userService';
+import { fetchConsolidatedUsers, toggleUserStatus, permanentDeleteUserAccount, resetUserPassword, UserWithRole } from '@/lib/userService';
 import { purgeFictitiousData } from '@/integrations/supabase/localDbFallback';
 
 // Componentes Administrativos Integrados
@@ -96,6 +108,7 @@ export default function AdminMaster() {
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
   const [editUser, setEditUser] = useState<UserWithRole | null>(null);
+  const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const [tempPasswordData, setTempPasswordData] = useState<{ password: string; name: string; email: string } | null>(null);
   const [performanceUser, setPerformanceUser] = useState<UserWithRole | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -151,15 +164,17 @@ export default function AdminMaster() {
 
   // Alternar ativação de usuário (Credenciais de Acesso)
   const toggleUserActiveMutation = useMutation({
-    mutationFn: async ({ userId, currentState }: { userId: string; currentState: boolean }) => {
+    mutationFn: async ({ userId, currentState, email, full_name }: { userId: string; currentState: boolean; email?: string; full_name?: string }) => {
       const nextState = !currentState;
-      return await toggleUserStatus(userId, nextState);
+      return await toggleUserStatus(userId, nextState, { email, full_name });
     },
     onSuccess: (_, { currentState }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-master-users'] });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['sellers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast({
-        title: currentState ? 'Acesso desativado' : 'Acesso reativado com sucesso',
+        title: currentState ? 'Acesso suspenso com sucesso' : 'Acesso reativado com sucesso',
         description: currentState ? 'O usuário não conseguirá mais entrar no sistema.' : 'O usuário agora pode acessar o sistema.',
       });
     },
@@ -167,6 +182,31 @@ export default function AdminMaster() {
       toast({
         title: 'Falha ao alterar status',
         description: err.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Exclusão definitiva de usuário e vínculos
+  const permanentDeleteMutation = useMutation({
+    mutationFn: async ({ userId, email }: { userId: string; email?: string }) => {
+      return await permanentDeleteUserAccount(userId, email);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-master-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['sellers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setUserToDelete(null);
+      toast({
+        title: 'Usuário excluído com sucesso',
+        description: 'O colaborador e suas credenciais foram completamente removidos da plataforma.',
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Falha ao excluir usuário',
+        description: err.message || 'Não foi possível concluir a exclusão.',
         variant: 'destructive',
       });
     },
@@ -555,11 +595,23 @@ export default function AdminMaster() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className={`h-7 w-7 ${u.is_active ? 'text-muted-foreground hover:text-red-500' : 'text-emerald-500 hover:text-emerald-600'}`}
-                                    title={u.is_active ? 'Desativar Acesso' : 'Reativar Acesso'}
-                                    onClick={() => toggleUserActiveMutation.mutate({ userId: u.id, currentState: u.is_active })}
+                                    className={`h-7 w-7 ${u.is_active ? 'text-muted-foreground hover:text-amber-500' : 'text-emerald-500 hover:text-emerald-600'}`}
+                                    title={u.is_active ? 'Suspender Acesso' : 'Reativar Acesso'}
+                                    onClick={() => toggleUserActiveMutation.mutate({ userId: u.id, currentState: u.is_active, email: u.email, full_name: u.full_name })}
                                   >
-                                    {u.is_active ? <XCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                                    {u.is_active ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                  </Button>
+                                )}
+
+                                {u.id !== profile?.id && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-red-600 hover:bg-red-500/10"
+                                    title="Excluir Usuário Permanentemente"
+                                    onClick={() => setUserToDelete(u)}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
                                   </Button>
                                 )}
                               </div>
@@ -693,6 +745,40 @@ export default function AdminMaster() {
           user={performanceUser}
         />
       )}
+
+      {/* Diálogo de Confirmação de Exclusão Definitiva de Usuário */}
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5 text-destructive" />
+              Excluir Usuário Permanentemente?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 pt-1 text-sm">
+              <p>
+                Tem certeza que deseja excluir o colaborador <strong>{userToDelete?.full_name}</strong> ({userToDelete?.email})?
+              </p>
+              <p className="text-xs text-destructive font-semibold bg-destructive/10 p-2.5 rounded-lg border border-destructive/20">
+                ⚠️ Esta ação é irreversível. O perfil, credenciais, cargos e vínculos deste usuário serão completamente apagados do sistema.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={permanentDeleteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={permanentDeleteMutation.isPending}
+              onClick={() => {
+                if (userToDelete) {
+                  permanentDeleteMutation.mutate({ userId: userToDelete.id, email: userToDelete.email });
+                }
+              }}
+            >
+              {permanentDeleteMutation.isPending ? 'Excluindo...' : 'Sim, Excluir Definitivamente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} />
     </div>

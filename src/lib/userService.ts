@@ -41,6 +41,86 @@ export const STORE_UUIDS: Record<string, string> = {
 };
 
 export const CUSTOM_USERS_STORAGE_KEY = 'dealflow_custom_users_v1';
+export const DELETED_USERS_STORAGE_KEY = 'dealflow_deleted_users_v1';
+export const USER_OVERRIDES_STORAGE_KEY = 'dealflow_user_overrides_v1';
+
+export function getDeletedUserIdentifiers(): string[] {
+  try {
+    const raw = localStorage.getItem(DELETED_USERS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map((s: string) => String(s).toLowerCase().trim());
+    }
+  } catch {}
+  return [];
+}
+
+export function recordDeletedUser(id?: string | null, email?: string | null) {
+  try {
+    const current = new Set(getDeletedUserIdentifiers());
+    if (id) current.add(String(id).toLowerCase().trim());
+    if (email) current.add(String(email).toLowerCase().trim());
+    localStorage.setItem(DELETED_USERS_STORAGE_KEY, JSON.stringify(Array.from(current)));
+  } catch {}
+}
+
+export function unmarkDeletedUser(idOrEmail?: string | null) {
+  if (!idOrEmail) return;
+  try {
+    const target = String(idOrEmail).toLowerCase().trim();
+    const current = getDeletedUserIdentifiers().filter((x) => x !== target);
+    localStorage.setItem(DELETED_USERS_STORAGE_KEY, JSON.stringify(current));
+  } catch {}
+}
+
+export function isUserDeleted(id?: string | null, email?: string | null): boolean {
+  const deletedSet = new Set(getDeletedUserIdentifiers());
+  if (id && deletedSet.has(String(id).toLowerCase().trim())) return true;
+  if (email && deletedSet.has(String(email).toLowerCase().trim())) return true;
+  return false;
+}
+
+export interface UserOverride {
+  id?: string;
+  email?: string;
+  full_name?: string;
+  role?: string;
+  store_id?: string;
+  is_active?: boolean;
+  user_status?: 'ATIVO' | 'SUSPENSO' | 'DEMITIDO';
+  status_reason?: string;
+  status_date?: string;
+  temp_password?: string;
+}
+
+export function getUserOverrides(): Record<string, UserOverride> {
+  try {
+    const raw = localStorage.getItem(USER_OVERRIDES_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === 'object' && parsed !== null) return parsed;
+    }
+  } catch {}
+  return {};
+}
+
+export function saveUserOverride(key: string, override: UserOverride) {
+  try {
+    const all = getUserOverrides();
+    const cleanKey = key.toLowerCase().trim();
+    all[cleanKey] = { ...(all[cleanKey] || {}), ...override };
+    localStorage.setItem(USER_OVERRIDES_STORAGE_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+export function removeUserOverride(key: string) {
+  try {
+    const all = getUserOverrides();
+    const cleanKey = key.toLowerCase().trim();
+    delete all[cleanKey];
+    localStorage.setItem(USER_OVERRIDES_STORAGE_KEY, JSON.stringify(all));
+  } catch {}
+}
 
 /**
  * REGRA MASTER DE CONTROLE DE ACESSO:
@@ -121,9 +201,15 @@ export function removeCustomUser(idOrEmail: string) {
  * 1. profiles & user_roles do Supabase
  * 2. employees cadastrados no Supabase
  * 3. usuários customizados/locais em localStorage (dealflow_custom_users_v1)
+ * 4. Aplica lista de exclusão permanente (dealflow_deleted_users_v1)
+ * 5. Aplica modificações e status de dealflow_user_overrides_v1
  */
 export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWithRole[]> {
   await ensureSupabaseSession();
+
+  const deletedList = getDeletedUserIdentifiers();
+  const deletedSet = new Set(deletedList);
+  const overrides = getUserOverrides();
 
   let profiles: any[] = [];
   let userRoles: any[] = [];
@@ -162,6 +248,13 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
   for (const p of profiles) {
     if (!p.email) continue;
     const emailKey = p.email.toLowerCase().trim();
+    const idKey = (p.id || '').toLowerCase().trim();
+
+    // Se estiver na lista de deletados, ignora completamente
+    if (deletedSet.has(idKey) || deletedSet.has(emailKey)) {
+      continue;
+    }
+
     const emp = employeeProfileMap.get(p.id) || (employees || []).find((e) => e.email && e.email.toLowerCase().trim() === emailKey);
     const res = resellerMap.get(p.id);
     const resolvedStoreId = emp?.store_id || res?.store_id || undefined;
@@ -202,6 +295,13 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
   // 2. Processa colaboradores cadastrados em employees que ainda não possuem perfil
   for (const e of employees) {
     const emailKey = (e.email || `${e.full_name?.toLowerCase().replace(/\s+/g, '.')}@shineray.internal`).toLowerCase().trim();
+    const idKey = (e.id || '').toLowerCase().trim();
+    const profileIdKey = (e.profile_id || '').toLowerCase().trim();
+
+    if (deletedSet.has(emailKey) || (idKey && deletedSet.has(idKey)) || (profileIdKey && deletedSet.has(profileIdKey))) {
+      continue;
+    }
+
     if (!userMap.has(emailKey)) {
       const resolvedStoreId = e.store_id || undefined;
       const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) || 'Concessionária Divinópolis (Matriz Oeste)';
@@ -244,6 +344,12 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
   for (const cu of customUsers) {
     if (!cu.email) continue;
     const emailKey = cu.email.toLowerCase().trim();
+    const idKey = (cu.id || '').toLowerCase().trim();
+
+    if (deletedSet.has(emailKey) || (idKey && deletedSet.has(idKey))) {
+      continue;
+    }
+
     const existing = userMap.get(emailKey);
     const resolvedStoreId = cu.store_id || (existing?.store_id) || undefined;
     const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) || 'Concessionária Divinópolis (Matriz Oeste)';
@@ -272,7 +378,33 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
     }
   }
 
-  return Array.from(userMap.values()).sort((a, b) => a.full_name.localeCompare(b.full_name));
+  // 4. Aplica Overrides específicos (edições manuais recentes, ativações, suspensões)
+  for (const [emailKey, user] of Array.from(userMap.entries())) {
+    const ov = overrides[user.id.toLowerCase().trim()] || overrides[emailKey];
+    if (ov) {
+      if (ov.full_name) user.full_name = ov.full_name;
+      if (ov.store_id) {
+        user.store_id = ov.store_id;
+        user.store_name = storeMap.get(ov.store_id) || user.store_name;
+      }
+      if (ov.is_active !== undefined) user.is_active = ov.is_active;
+      if (ov.user_status) user.user_status = ov.user_status;
+      if (ov.status_reason) user.status_reason = ov.status_reason;
+      if (ov.temp_password) user.temp_password = ov.temp_password;
+      if (ov.role) {
+        user.role = isMasterUser(user.full_name, user.email, user.id) ? ov.role : 'vendedor';
+      }
+    }
+  }
+
+  // 5. Filtro final: assegura que nenhum excluído vaze
+  const finalUsers = Array.from(userMap.values()).filter(
+    (u) =>
+      !deletedSet.has(u.id.toLowerCase().trim()) &&
+      (!u.email || !deletedSet.has(u.email.toLowerCase().trim()))
+  );
+
+  return finalUsers.sort((a, b) => a.full_name.localeCompare(b.full_name));
 }
 
 /**
@@ -286,6 +418,10 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
   const cleanName = data.full_name.trim();
   const validStoreId = resolveStoreUuid(data.store_id);
   const tempPassword = generateRandomPassword();
+
+  // Se o e-mail estava previamente na lixeira de deletados, restaura imediatamente
+  unmarkDeletedUser(cleanEmail);
+  removeUserOverride(cleanEmail);
 
   let newUserId = crypto.randomUUID();
   let authProfileCreated = false;
@@ -348,6 +484,10 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
       }
     } catch {}
   }
+
+  // Remove qualquer marca de deleção do ID gerado/recuperado
+  unmarkDeletedUser(newUserId);
+  removeUserOverride(newUserId);
 
   // REGRA DE OURO: Apenas Breno e João Vitor podem possuir cargos administrativos (admin / gerente).
   // Todos os demais usuários recebem estritamente o cargo de 'vendedor'.
@@ -432,7 +572,7 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
     console.warn('[userService] Aviso ao salvar employee:', err);
   }
 
-  // 5. Salva SEMPRE no repositório de usuários locais (dealflow_custom_users_v1)
+  // 5. Salva no override e no repositório de usuários locais (dealflow_custom_users_v1)
   saveCustomUser({
     id: newUserId,
     email: cleanEmail,
@@ -443,6 +583,27 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
     is_active: true,
     user_status: 'ATIVO',
     created_at: new Date().toISOString(),
+    temp_password: tempPassword,
+  });
+
+  saveUserOverride(newUserId, {
+    id: newUserId,
+    email: cleanEmail,
+    full_name: cleanName,
+    role: effectiveRole,
+    store_id: validStoreId,
+    is_active: true,
+    user_status: 'ATIVO',
+    temp_password: tempPassword,
+  });
+  saveUserOverride(cleanEmail, {
+    id: newUserId,
+    email: cleanEmail,
+    full_name: cleanName,
+    role: effectiveRole,
+    store_id: validStoreId,
+    is_active: true,
+    user_status: 'ATIVO',
     temp_password: tempPassword,
   });
 
@@ -474,6 +635,7 @@ export async function resetUserPassword(userId: string): Promise<{ success: bool
       body: { action: 'reset_password', user_id: userId },
     });
     if (!error && data?.temp_password) {
+      saveUserOverride(userId, { temp_password: data.temp_password });
       return { success: true, temp_password: data.temp_password };
     }
   } catch {}
@@ -496,18 +658,10 @@ export async function resetUserPassword(userId: string): Promise<{ success: bool
         notes: `Senha redefinida: ${tempPassword}`,
         updated_at: new Date().toISOString(),
       })
-      .eq('profile_id', userId);
+      .or(`profile_id.eq.${userId},id.eq.${userId}`);
   } catch {}
 
-  saveCustomUser({
-    id: userId,
-    email: '',
-    full_name: '',
-    role: '',
-    is_active: true,
-    created_at: new Date().toISOString(),
-    temp_password: tempPassword,
-  });
+  saveUserOverride(userId, { temp_password: tempPassword });
 
   window.dispatchEvent(new CustomEvent('dealflow:users-updated', { detail: { userId } }));
 
@@ -518,12 +672,40 @@ export async function resetUserPassword(userId: string): Promise<{ success: bool
 }
 
 /**
- * Alterna status de ativação / desativação do usuário.
+ * Alterna status de ativação / desativação do usuário com persistência universal.
  */
-export async function toggleUserStatus(userId: string, isActive: boolean): Promise<{ success: boolean }> {
+export async function toggleUserStatus(
+  userId: string,
+  isActive: boolean,
+  meta?: { email?: string; full_name?: string; reason?: string }
+): Promise<{ success: boolean }> {
   await ensureSupabaseSession();
 
-  // 1. Atualiza profiles
+  const nextStatus: 'ATIVO' | 'SUSPENSO' = isActive ? 'ATIVO' : 'SUSPENSO';
+
+  // 1. Grava no override garantindo que a interface reflita imediatamente
+  saveUserOverride(userId, {
+    id: userId,
+    email: meta?.email,
+    full_name: meta?.full_name,
+    is_active: isActive,
+    user_status: nextStatus,
+    status_reason: meta?.reason,
+    status_date: new Date().toISOString().slice(0, 10),
+  });
+  if (meta?.email) {
+    saveUserOverride(meta.email, {
+      id: userId,
+      email: meta.email,
+      full_name: meta.full_name,
+      is_active: isActive,
+      user_status: nextStatus,
+      status_reason: meta?.reason,
+      status_date: new Date().toISOString().slice(0, 10),
+    });
+  }
+
+  // 2. Atualiza profiles no Supabase
   try {
     await supabase
       .from('profiles')
@@ -533,27 +715,32 @@ export async function toggleUserStatus(userId: string, isActive: boolean): Promi
       .eq('id', userId);
   } catch {}
 
-  // 2. Atualiza employees
+  // 3. Atualiza employees no Supabase
   try {
+    const empNotes = isActive ? null : `[STATUS: SUSPENSO] ${meta?.reason || 'Acesso suspenso pelo administrador'}`;
+    const updatePayload: Record<string, any> = {
+      is_active: isActive,
+      updated_at: new Date().toISOString(),
+    };
+    if (empNotes) updatePayload.notes = empNotes;
+
     await (supabase as any)
       .from('employees')
-      .update({
-        is_active: isActive,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .or(`profile_id.eq.${userId},id.eq.${userId}`);
   } catch {}
 
-  // 3. Atualiza custom users
-  saveCustomUser({
-    id: userId,
-    email: '',
-    full_name: '',
-    role: '',
-    is_active: isActive,
-    user_status: isActive ? 'ATIVO' : 'SUSPENSO',
-    created_at: new Date().toISOString(),
-  });
+  // 4. Se existir em custom_users, atualiza lá também
+  const customUsers = getCustomUsers();
+  const cUser = customUsers.find((u) => u.id === userId || (meta?.email && u.email.toLowerCase().trim() === meta.email.toLowerCase().trim()));
+  if (cUser) {
+    saveCustomUser({
+      ...cUser,
+      is_active: isActive,
+      user_status: nextStatus,
+      status_reason: meta?.reason,
+    });
+  }
 
   window.dispatchEvent(new CustomEvent('dealflow:users-updated', { detail: { userId, isActive } }));
 
@@ -563,31 +750,66 @@ export async function toggleUserStatus(userId: string, isActive: boolean): Promi
 /**
  * Desativação segura de credencial de usuário.
  */
-export async function deleteUserAccount(userId: string): Promise<{ success: boolean }> {
-  return await toggleUserStatus(userId, false);
+export async function deleteUserAccount(
+  userId: string,
+  meta?: { email?: string; full_name?: string }
+): Promise<{ success: boolean }> {
+  return await toggleUserStatus(userId, false, meta);
 }
 
 /**
- * Exclusão permanente de usuário e seus vínculos.
+ * Exclusão definitiva de usuário e de todas as suas credenciais.
+ * Purga de profiles, user_roles, resellers, employees e registra na lista de exclusão permanente.
  */
-export async function permanentDeleteUserAccount(userId: string): Promise<{ success: boolean }> {
+export async function permanentDeleteUserAccount(userId: string, email?: string): Promise<{ success: boolean }> {
   await ensureSupabaseSession();
 
+  // 1. Marca imediatamente como deletado no registro persistente
+  recordDeletedUser(userId, email);
+  removeCustomUser(userId);
+  removeUserOverride(userId);
+  if (email) {
+    removeCustomUser(email);
+    removeUserOverride(email);
+  }
+
+  // 2. Remove vínculos no banco de dados Supabase
   try {
     await supabase.from('user_roles').delete().eq('user_id', userId);
+  } catch {}
+
+  try {
+    await (supabase as any).from('resellers').delete().or(`user_id.eq.${userId},id.eq.${userId}`);
   } catch {}
 
   try {
     await (supabase as any).from('employees').delete().or(`profile_id.eq.${userId},id.eq.${userId}`);
   } catch {}
 
+  // Se houver chave estrangeira impedindo exclusão em employees, marca como demitido e inativo
+  try {
+    await (supabase as any)
+      .from('employees')
+      .update({
+        is_active: false,
+        notes: '[STATUS: DEMITIDO] Usuário excluído permanentemente da plataforma',
+        updated_at: new Date().toISOString(),
+      })
+      .or(`profile_id.eq.${userId},id.eq.${userId}`);
+  } catch {}
+
   try {
     await supabase.from('profiles').delete().eq('id', userId);
   } catch {}
 
-  removeCustomUser(userId);
+  // 3. Tenta Edge Function de administração se houver
+  try {
+    await supabase.functions.invoke('create-user', {
+      body: { action: 'delete_user', user_id: userId, email },
+    });
+  } catch {}
 
-  window.dispatchEvent(new CustomEvent('dealflow:users-updated', { detail: { userId } }));
+  window.dispatchEvent(new CustomEvent('dealflow:users-updated', { detail: { userId, email, deleted: true } }));
 
   return { success: true };
 }
@@ -677,7 +899,24 @@ export async function updateUserAccount(
     console.warn('[userService] Aviso ao atualizar employee:', err);
   }
 
-  // 4. Atualiza custom users no localStorage
+  // 4. Salva override universal
+  const overrideData: UserOverride = {
+    id: userId,
+    email: data.email,
+    full_name: data.full_name,
+    role: targetRole,
+    store_id: validStoreId || undefined,
+    is_active: isAccountActive,
+    user_status: (data.user_status as any) || (isAccountActive ? 'ATIVO' : 'SUSPENSO'),
+    status_reason: data.status_reason,
+    status_date: data.status_date,
+  };
+  saveUserOverride(userId, overrideData);
+  if (data.email) {
+    saveUserOverride(data.email, overrideData);
+  }
+
+  // 5. Atualiza custom users no localStorage
   saveCustomUser({
     id: userId,
     email: data.email || '',
