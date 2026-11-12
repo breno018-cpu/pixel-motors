@@ -142,14 +142,16 @@ export default function Consignments() {
   });
 
   const filteredContracts = contracts?.filter(contract => {
-    const searchLower = search.toLowerCase();
+    const searchLower = search.trim().toLowerCase();
+    const searchDigits = search.replace(/\D/g, '');
+
     const matchesSearch = !searchLower ||
       contract.vehicle?.brand?.toLowerCase().includes(searchLower) ||
       contract.vehicle?.model?.toLowerCase().includes(searchLower) ||
       contract.vehicle?.chassis?.toLowerCase().includes(searchLower) ||
       contract.vehicle?.plate?.toLowerCase().includes(searchLower) ||
       contract.reseller?.full_name?.toLowerCase().includes(searchLower) ||
-      contract.reseller?.cpf?.includes(search.replace(/\D/g, ''));
+      (searchDigits.length >= 3 && (contract.reseller?.cpf || '').replace(/\D/g, '').includes(searchDigits));
 
     const matchesStore = storeFilter === 'all' || contract.store_id === storeFilter;
     const matchesReseller = resellerFilter === 'all' || contract.reseller_id === resellerFilter;

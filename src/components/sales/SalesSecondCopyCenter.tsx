@@ -81,18 +81,23 @@ export function SalesSecondCopyCenter({ sales }: SalesSecondCopyCenterProps) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return sales;
+    const qDigits = q.replace(/\D/g, '');
+
     return sales.filter((s) => {
       const name = (s.buyer_name || '').toLowerCase();
       const cpf = (s.buyer_cpf || '').replace(/\D/g, '');
       const ctr = (s.contract_number || '').toLowerCase();
       const mod = (s.vehicle?.model || (s.external_data as any)?.vehicle_model_custom || '').toLowerCase();
       const cha = (s.vehicle?.chassis || (s.external_data as any)?.chassi || '').toLowerCase();
+      const op = ((s as any).operator?.full_name || (s as any).seller_name || (s as any).vendedor || '').toLowerCase();
+
       return (
         name.includes(q) ||
-        cpf.includes(q.replace(/\D/g, '')) ||
+        (qDigits.length >= 3 && cpf.includes(qDigits)) ||
         ctr.includes(q) ||
         mod.includes(q) ||
-        cha.includes(q)
+        cha.includes(q) ||
+        op.includes(q)
       );
     });
   }, [sales, search]);

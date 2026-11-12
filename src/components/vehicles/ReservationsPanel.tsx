@@ -136,16 +136,18 @@ export function ReservationsPanel() {
   };
 
   const filtered = useMemo(() => {
+    const s = search.trim().toLowerCase();
+    const sDigits = search.replace(/\D/g, '');
+
     return (reservations || []).filter((r) => {
-      const s = search.toLowerCase();
       const matchSearch =
         !s ||
-        r.buyer_name.toLowerCase().includes(s) ||
-        r.reservation_number.toLowerCase().includes(s) ||
-        r.buyer_cpf.includes(search.replace(/\D/g, '')) ||
-        r.vehicle?.brand?.toLowerCase().includes(s) ||
-        r.vehicle?.model?.toLowerCase().includes(s) ||
-        r.vehicle?.chassis?.toLowerCase().includes(s);
+        (r.buyer_name || '').toLowerCase().includes(s) ||
+        (r.reservation_number || '').toLowerCase().includes(s) ||
+        (sDigits.length >= 3 && (r.buyer_cpf || '').replace(/\D/g, '').includes(sDigits)) ||
+        (r.vehicle?.brand || '').toLowerCase().includes(s) ||
+        (r.vehicle?.model || '').toLowerCase().includes(s) ||
+        (r.vehicle?.chassis || '').toLowerCase().includes(s);
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
       return matchSearch && matchStatus;
     });

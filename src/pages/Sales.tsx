@@ -392,36 +392,72 @@ export default function Sales() {
 
   // 1. Vendas que atendem aos filtros gerais (busca, loja, vendedor, período)
   const baseFilteredSales = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    const term = search.trim().toLowerCase();
+    const termDigits = search.replace(/\D/g, '');
 
     return allSales.filter(sale => {
-      const searchLower = search.toLowerCase();
-      const matchesSearch = 
-        sale.buyer_name.toLowerCase().includes(searchLower) ||
-        sale.buyer_cpf.includes(search.replace(/\D/g, '')) ||
-        sale.contract_number.toLowerCase().includes(searchLower) ||
-        sale.vehicle?.brand?.toLowerCase().includes(searchLower) ||
-        sale.vehicle?.model?.toLowerCase().includes(searchLower) ||
-        sale.vehicle?.chassis?.toLowerCase().includes(searchLower);
+      // 1. Filtro de Busca Geral (Cliente, CPF, Contrato, Modelo, Chassi, Vendedor, Observações)
+      if (term) {
+        const rawCpf = (sale.buyer_cpf || '').replace(/\D/g, '');
+        const rawChassis = (sale.vehicle?.chassis || (sale as any).external_data?.chassis || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const termClean = term.replace(/[^a-z0-9]/g, '');
 
+        const searchable = [
+          sale.buyer_name,
+          sale.buyer_cpf,
+          sale.buyer_phone,
+          sale.contract_number,
+          sale.vehicle?.brand,
+          sale.vehicle?.model,
+          sale.vehicle?.chassis,
+          (sale as any).external_data?.vehicle_model_custom,
+          (sale as any).external_data?.chassis,
+          (sale as any).external_data?.regiao,
+          (sale as any).external_data?.buyer_city,
+          (sale as any).external_data?.seller_name,
+          (sale as any).created_by,
+          (sale as any).operator?.full_name,
+          (sale as any).seller_name,
+          (sale as any).vendedor,
+          (sale as any).notes,
+          (sale as any).observacoes,
+          (sale as any).store?.name,
+          (sale as any).banco,
+          (sale as any).payment_method,
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        const matchesText = searchable.includes(term);
+        const matchesDigits = termDigits.length >= 3 && rawCpf.includes(termDigits);
+        const matchesCleanChassis = termClean.length >= 3 && rawChassis.includes(termClean);
+
+        if (!matchesText && !matchesDigits && !matchesCleanChassis) {
+          return false;
+        }
+      }
+
+      // 2. Filtro de Concessionária
       const matchesStore = storeFilter === 'all' || sale.store_id === storeFilter;
+      if (!matchesStore) return false;
+
+      // 3. Filtro de Vendedor / Operador
       const sellerName = ((sale as any).created_by || (sale as any).operator?.full_name || (sale as any).seller_name || (sale as any).vendedor || '').trim().toLowerCase();
       const targetReseller = resellerFilter.trim().toLowerCase();
       const matchesReseller = isRestrictedSeller || resellerFilter === 'all' ||
         sellerName === targetReseller ||
         sellerName.includes(targetReseller) ||
         targetReseller.includes(sellerName);
+      if (!matchesReseller) return false;
 
+      // 4. Filtro de Período
       let matchesPeriod = true;
       if (periodFilter !== 'all' && (sale as any).review_status !== 'questionada') {
         matchesPeriod = isDateInPeriod(sale.signed_at || sale.created_at);
       }
+      if (!matchesPeriod) return false;
 
-      return matchesSearch && matchesStore && matchesReseller && matchesPeriod;
+      return true;
     });
-  }, [allSales, search, storeFilter, resellerFilter, periodFilter, isDateInPeriod]);
+  }, [allSales, search, storeFilter, resellerFilter, periodFilter, isDateInPeriod, isRestrictedSeller]);
 
   // Contadores oficiais das abas e métricas baseadas no escopo atual
   const completedSales = useMemo(() => {
