@@ -228,24 +228,25 @@ export default function CatalogControl() {
   const existingIds = useMemo(() => new Set(products.map((p) => p.id)), [products]);
 
   // Contadores por Parte no Catálogo (Categorias Oficiais)
-  const countShineray = useMemo(() => products.filter((p) => p.cat === "shineray").length, [products]);
-  const countEle = useMemo(() => products.filter((p) => p.cat === "ele").length, [products]);
-  const countOff = useMemo(() => products.filter((p) => p.cat === "off").length, [products]);
-  const countSemi = useMemo(() => products.filter((p) => p.cat === "semi").length, [products]);
+  const countShineray = useMemo(() => (products || []).filter((p) => p?.cat === "shineray").length, [products]);
+  const countEle = useMemo(() => (products || []).filter((p) => p?.cat === "ele").length, [products]);
+  const countOff = useMemo(() => (products || []).filter((p) => p?.cat === "off").length, [products]);
+  const countSemi = useMemo(() => (products || []).filter((p) => p?.cat === "semi").length, [products]);
 
   // Contadores e KPIs Gerais
-  const totalCount = products.length;
-  const activeCount = products.filter((p) => p.active !== false).length;
-  const hiddenCount = products.filter((p) => p.active === false).length;
-  const soldOutCount = products.filter((p) => p.stock === 0).length;
-  const promoCount = products.filter(
-    (p) => (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price)
+  const totalCount = (products || []).length;
+  const activeCount = (products || []).filter((p) => p && p.active !== false).length;
+  const hiddenCount = (products || []).filter((p) => p && p.active === false).length;
+  const soldOutCount = (products || []).filter((p) => p && p.stock === 0).length;
+  const promoCount = (products || []).filter(
+    (p) => p && ((p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price))
   ).length;
-  const heroCount = products.filter((p) => p.featuredHero).length;
+  const heroCount = (products || []).filter((p) => p && p.featuredHero).length;
 
   // Filtragem Geral (Parte no Catálogo + Subcategoria + Status + Busca)
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    return (products || []).filter((p) => {
+      if (!p) return false;
       // Busca
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -1827,7 +1828,7 @@ export default function CatalogControl() {
         // VISUALIZAÇÃO DIVIDIDA POR PARTE DO CATÁLOGO (SEÇÕES COMO NO SITE PÚBLICO)
         <div className="space-y-8">
           {CATALOG_PARTS.map((group) => {
-            const groupProducts = filteredProducts.filter((p) => p.cat === group.id);
+            const groupProducts = (filteredProducts || []).filter((p) => p && p.cat === group.id);
             if (groupProducts.length === 0) return null;
 
             const GroupIcon = group.icon;
