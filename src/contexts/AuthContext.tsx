@@ -60,10 +60,11 @@ function readAuthCache(): CachedUserData | null {
       return null;
     }
     const raw = localStorage.getItem(AUTH_CACHE_KEY) || sessionStorage.getItem(AUTH_CACHE_KEY);
-    if (!raw) return DEFAULT_ACTIVE_ADMIN;
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedUserData;
+    if (!parsed || !parsed.userId) return null;
     if (parsed.userId === 'dev-master-admin') {
-      return DEFAULT_ACTIVE_ADMIN;
+      return null;
     }
 
     // Sanitização de segurança: Se o usuário em cache não for Breno ou João Vitor, restringe estritamente a 'vendedor' e escopo 'own'
@@ -82,12 +83,12 @@ function readAuthCache(): CachedUserData | null {
     if (!isMaster) {
       parsed.roles = ['vendedor'];
       parsed.dataScope = 'own';
-      parsed.permissions = ['vendas', 'clientes'];
+      parsed.permissions = ['vendas', 'clientes', 'catalogo'];
     }
 
     return parsed;
   } catch {
-    return DEFAULT_ACTIVE_ADMIN;
+    return null;
   }
 }
 
@@ -148,11 +149,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       initialCache.current?.userId
         ? ({
             id: initialCache.current.userId,
-            email: initialCache.current.profile?.email || 'admin@pixelmotors.com.br',
+            email: initialCache.current.profile?.email || 'usuario@concessionaria.com.br',
             aud: 'authenticated',
             created_at: new Date().toISOString(),
             app_metadata: {},
-            user_metadata: {},
+            user_metadata: { full_name: initialCache.current.profile?.full_name },
           } as unknown as User)
         : null
   );
@@ -205,21 +206,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setMustChangePassword(true);
         }
       } else {
+        // Tenta buscar no storage local de custom_users
+        let foundCustom: any = null;
+        try {
+          const raw = localStorage.getItem('dealflow_custom_users_v1');
+          if (raw) {
+            const list = JSON.parse(raw);
+            foundCustom = list.find((u: any) => u.id === userId || (user?.email && u.email?.toLowerCase().trim() === user.email.toLowerCase().trim()));
+          }
+        } catch {}
+
         nextProfile = {
           id: userId,
-          full_name: 'Administrador (Concessionária)',
-          email: 'usuario@pixelmotors.com.br',
+          full_name: foundCustom?.full_name || user?.user_metadata?.full_name || 'Vendedor',
+          email: foundCustom?.email || user?.email || 'vendedor@concessionaria.com.br',
           phone: null,
           avatar_url: null,
           must_change_password: false,
           is_active: true,
         };
         setProfile(nextProfile);
-        void (async () => {
-          try {
-            await supabase.from('profiles').upsert(nextProfile as any, { onConflict: 'id' });
-          } catch {}
-        })();
       }
 
       let userRoles: AppRole[] = (rolesData ?? []).map((r: any) => r.role as AppRole);
@@ -373,6 +379,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       const nextUser = nextSession?.user ?? null;
 
+      // Verifica quem está autenticado no aplicativo (cache da sessão do usuário)
+      const cached = readAuthCache();
+      const isCachedSeller =
+        cached &&
+        cached.roles.includes('vendedor') &&
+        !cached.roles.includes('admin') &&
+        !cached.roles.includes('gerente');
+
+      // Se um vendedor está ativo no DealFlow e o Supabase usa a credencial técnica de dados (admbreno),
+      // MANTÉM estritamente a identidade e permissões do VENDEDOR!
+      if (isCachedSeller && nextUser?.email === 'admbreno@index.com') {
+        const defaultUser = {
+          id: cached.userId,
+          email: cached.profile?.email || 'vendedor@concessionaria.com.br',
+          aud: 'authenticated',
+          created_at: new Date().toISOString(),
+          app_metadata: {},
+          user_metadata: { full_name: cached.profile?.full_name },
+        } as unknown as User;
+        setUser(defaultUser);
+        setProfile(cached.profile);
+        setRoles(['vendedor']);
+        setUserStore(cached.userStore);
+        setPermissions(cached.permissions);
+        setDataScope('own');
+        setCustomRoleName(cached.customRoleName);
+        setHasCustomRole(cached.hasCustomRole);
+        setIsDataReady(true);
+        setIsLoading(false);
+        return;
+      }
+
       if (nextUser) {
         setUser(nextUser);
         startSessionTimer();
@@ -387,15 +425,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         fetchUserData(nextUser.id);
       } else {
-        const cached = readAuthCache();
         if (cached && localStorage.getItem('df_explicit_signout') !== 'true') {
           const defaultUser = {
             id: cached.userId,
-            email: cached.profile?.email || 'admin@pixelmotors.com.br',
+            email: cached.profile?.email || 'usuario@concessionaria.com.br',
             aud: 'authenticated',
             created_at: new Date().toISOString(),
             app_metadata: {},
-            user_metadata: {},
+            user_metadata: { full_name: cached.profile?.full_name },
           } as unknown as User;
           setUser(defaultUser);
           setProfile(cached.profile);
@@ -437,20 +474,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(initTimer);
       if (currentSession) {
         handleSession(currentSession);
-      } else if (localStorage.getItem('df_explicit_signout') !== 'true') {
-        try {
-          const { data: authData, error } = await supabase.auth.signInWithPassword({
-            email: 'admbreno@index.com',
-            password: 'PixelMotors@2026',
-          });
-          if (!error && authData?.session) {
-            handleSession(authData.session);
-            return;
-          }
-        } catch {}
-        handleSession(null);
       } else {
-        handleSession(null);
+        const cached = readAuthCache();
+        if (cached && localStorage.getItem('df_explicit_signout') !== 'true') {
+          handleSession(null);
+        } else {
+          handleSession(null);
+        }
       }
     }).catch(() => {
       clearTimeout(initTimer);
@@ -582,8 +612,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (matched) {
               const expectedPass = matched.temp_password || 'PixelMotors@2026';
               if (password === expectedPass || password === 'PixelMotors@2026' || !matched.temp_password) {
-                const isSellerRole = (matched.role || '').toLowerCase().includes('vendedor') || matched.role === 'revendedor';
-                const roleName = (matched.role || 'vendedor') as AppRole;
+                const isMaster = isMasterUser(matched.full_name, matched.email, matched.id);
+                const roleName: AppRole = isMaster ? (matched.role || 'admin') : 'vendedor';
+                const currentScope: DataScope = isMaster ? 'all' : 'own';
+                const currentPerms = isMaster ? ['*'] : ['vendas', 'clientes', 'catalogo'];
                 const sId = matched.store_id || 'store-divinopolis';
                 const isMoc = sId.includes('montesclaros');
                 const storeObj = {
@@ -600,6 +632,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   created_at: matched.created_at || new Date().toISOString(),
                 } as unknown as User;
 
+                activeUserIdRef.current = matched.id;
+                hasLoadedUserDataRef.current = true;
+                inFlightUserIdRef.current = null;
+
                 setUser(customUser);
                 setProfile({
                   id: matched.id,
@@ -611,8 +647,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 });
                 setRoles([roleName]);
                 setUserStore(storeObj);
-                setPermissions(roleName === 'admin' ? ['*'] : ['view:dashboard', 'view:sales', 'create:sales']);
-                setDataScope(roleName === 'admin' ? 'all' : (isSellerRole ? 'own' : 'store'));
+                setPermissions(currentPerms);
+                setDataScope(currentScope);
                 setIsDataReady(true);
                 setIsLoading(false);
 
@@ -628,8 +664,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   },
                   roles: [roleName],
                   userStore: storeObj,
-                  permissions: roleName === 'admin' ? ['*'] : ['view:dashboard', 'view:sales', 'create:sales'],
-                  dataScope: roleName === 'admin' ? 'all' : (isSellerRole ? 'own' : 'store'),
+                  permissions: currentPerms,
+                  dataScope: currentScope,
                   customRoleName: null,
                   hasCustomRole: false,
                 });
@@ -726,21 +762,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const cleanName = (profile?.full_name || '').toLowerCase();
   const cleanEmail = (profile?.email || user?.email || '').toLowerCase();
+  const isVendedor = roles.includes('vendedor') && !roles.includes('admin') && !roles.includes('gerente');
+
   const isBreno =
-    cleanName.includes('breno') ||
-    cleanEmail.includes('breno') ||
-    user?.id === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
-    user?.id === 'def5409c-f9cc-47ae-b45e-9e15fd52727f';
+    !isVendedor &&
+    (cleanName.includes('breno') ||
+      cleanEmail.includes('breno') ||
+      user?.id === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
+      user?.id === 'def5409c-f9cc-47ae-b45e-9e15fd52727f');
 
   const isJoao =
-    cleanName.includes('joão') ||
-    cleanName.includes('joao') ||
-    cleanEmail.includes('gestor') ||
-    user?.id === '63f4c11a-7675-4209-bcc5-770bd7e514a3';
+    !isVendedor &&
+    (cleanName.includes('joão') ||
+      cleanName.includes('joao') ||
+      cleanEmail.includes('gestor') ||
+      user?.id === '63f4c11a-7675-4209-bcc5-770bd7e514a3');
 
-  const isAdmin = isBreno;
-  const isManager = isJoao;
-  const hasElevatedAccess = isBreno || isJoao;
+  const isAdmin = !isVendedor && isBreno;
+  const isManager = !isVendedor && isJoao;
+  const hasElevatedAccess = !isVendedor && (isBreno || isJoao);
   const isSellerPlus = !hasElevatedAccess && roles.includes('vendedor_plus');
   const isExternalSeller = !hasElevatedAccess && roles.includes('vendedor_externo');
   const isDriver = !hasElevatedAccess && roles.includes('motorista');
