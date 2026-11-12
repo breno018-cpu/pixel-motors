@@ -937,7 +937,7 @@ export function LancamentoRapidoFimDeMes({
       {dirtyFuncIds.size > 0 && (
         <div className="sticky bottom-4 z-30 mx-auto max-w-2xl bg-slate-900/95 backdrop-blur text-white px-5 py-3 rounded-2xl shadow-2xl border border-amber-500/40 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-2">
           <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0" />
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
             <span className="text-xs font-bold text-amber-200">
               Você tem {dirtyFuncIds.size} colaborador(es) com lançamentos alterados pendentes de gravação.
             </span>

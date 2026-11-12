@@ -276,7 +276,7 @@ export function LaudosTabPanel({ vehiclesInStock = [] }: LaudosTabPanelProps) {
     if (status === 'aprovado') {
       return (
         <Badge variant="outline" className="gap-1.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold text-xs py-1 px-2.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
           Aprovada Showroom
         </Badge>
       );

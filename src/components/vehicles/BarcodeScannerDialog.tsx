@@ -429,7 +429,7 @@ export function BarcodeScannerDialog({
                   )}
                   title={torchOn ? 'Desligar lanterna' : 'Ligar lanterna da câmera'}
                 >
-                  <Flashlight className={cn("w-3.5 h-3.5", torchOn && "text-amber-500 animate-pulse")} />
+                  <Flashlight className={cn("w-3.5 h-3.5", torchOn && "text-amber-500 ")} />
                   <span>{torchOn ? 'Lanterna On' : 'Lanterna'}</span>
                 </Button>
               )}
@@ -460,7 +460,7 @@ export function BarcodeScannerDialog({
                 
                 {/* Retículo Laser de Bipagem */}
                 <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-20 border-2 border-primary/80 rounded-xl pointer-events-none flex items-center justify-center">
-                  <div className="w-full h-0.5 bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse" />
+                  <div className="w-full h-0.5 bg-red-500 shadow-[0_0_8px_#ef4444] " />
                 </div>
 
                 {cameraStatus === 'initializing' && (
@@ -472,7 +472,7 @@ export function BarcodeScannerDialog({
 
                 {cameraStatus === 'scanning' && (
                   <div className="absolute top-2.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 text-white text-[11px] font-medium backdrop-blur-xs">
-                    <ScanLine className="w-3 h-3 text-red-500 animate-pulse" />
+                    <ScanLine className="w-3 h-3 text-red-500 " />
                     <span>Aponte para o código de barras ou use leitor USB</span>
                   </div>
                 )}

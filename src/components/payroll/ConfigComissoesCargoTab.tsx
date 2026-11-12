@@ -553,7 +553,7 @@ export const ConfigComissoesCargoTab: React.FC<Props> = ({
           )}
 
           {salvandoStatus === 'salvando' && (
-            <span className="text-xs font-bold text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-lg border border-amber-400/30 flex items-center gap-1.5 animate-pulse">
+            <span className="text-xs font-bold text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-lg border border-amber-400/30 flex items-center gap-1.5">
               <i className="fa-solid fa-circle-notch fa-spin"></i> Salvando alterações...
             </span>
           )}

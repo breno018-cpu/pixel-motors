@@ -570,13 +570,9 @@
   color: hsl(var(--accent-foreground));
 }
 
-/* Indicador Pulsante Conectado */
-@keyframes online-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
-}
+/* Indicador Conectado (Sem animação piscante) */
 .status-indicator-pulse {
-  animation: online-pulse 2.5s infinite ease-in-out;
+  opacity: 1;
 }
 
 /* Regras de Impressão Oficial de Holerites e Demonstrativos CLT */

@@ -1268,7 +1268,7 @@ export function CloudMonthlySpreadsheet({
           >
             <div className="flex items-center justify-between pb-2 border-b border-amber-500/20">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
+                <div className="w-3 h-3 rounded-full bg-amber-500" />
                 <h3 className="font-black text-xs uppercase tracking-wider text-amber-700 dark:text-amber-400">
                   Pré-Vendas (Tom Claro)
                 </h3>
@@ -2195,7 +2195,7 @@ export function CloudMonthlySpreadsheet({
                 <Check className="w-3 h-3 text-emerald-500" /> Faturada
               </span>
             ) : (
-              <span className="flex items-center gap-1 animate-pulse">
+              <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3 text-amber-500" /> Permitir
               </span>
             )}

@@ -1034,7 +1034,7 @@ export default function Dashboard() {
                 <span className="truncate">Cockpit Executivo Comercial</span>
               </h1>
               <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] uppercase font-black tracking-wider px-2.5 py-0.5 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5 inline-block" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
                 Dealership v9.0
               </Badge>
             </div>

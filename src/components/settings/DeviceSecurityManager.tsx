@@ -144,7 +144,7 @@ export function DeviceSecurityManager() {
                 <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
                   Regra de Sessão Única por Conta
                   <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1 inline-block" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 inline-block" />
                     Monitoramento em Tempo Real
                   </Badge>
                 </CardTitle>

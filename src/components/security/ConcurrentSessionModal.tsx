@@ -53,7 +53,7 @@ export function ConcurrentSessionModal() {
       >
         <DialogHeader className="space-y-3">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-destructive/15 border border-destructive/30 flex items-center justify-center text-destructive">
-            <ShieldAlert className="w-8 h-8 animate-pulse" />
+            <ShieldAlert className="w-8 h-8 " />
           </div>
 
           <div className="text-center space-y-1.5">

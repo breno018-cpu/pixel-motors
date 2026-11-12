@@ -136,7 +136,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             >
               <ShieldAlert className={`w-4 h-4 ${pendingCount > 0 ? 'text-amber-500' : 'text-muted-foreground'}`} />
               {pendingCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white shadow-xs animate-pulse">
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white shadow-xs">
                   {pendingCount}
                 </span>
               )}
@@ -145,7 +145,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
           {/* Indicador Online */}
           <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 status-indicator-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span>Online</span>
           </div>
 

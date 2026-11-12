@@ -1300,7 +1300,7 @@ function HoleriteModalContent({ dados, onClose }: HoleriteModalProps) {
           {/* RODAPÉ DO MODAL */}
           <div className="px-5 py-3 border-t border-border/60 bg-muted/40 flex justify-between items-center no-print shrink-0">
             <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               Padrão Contábil Oficial e eSocial • Exportação em alta resolução (Imagem PNG 300 DPI e PDF A4)
             </div>
             <Button type="button" variant="outline" size="sm" onClick={onClose} className="font-bold">

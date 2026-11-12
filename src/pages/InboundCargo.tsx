@@ -330,7 +330,7 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
                     className={cn(
                       "text-[10px]",
                       activeBatch?.status === 'concluido' && "bg-emerald-600 text-white",
-                      activeBatch?.status === 'divergente' && "bg-red-600 text-white animate-pulse"
+                      activeBatch?.status === 'divergente' && "bg-red-600 text-white"
                     )}
                   >
                     {activeBatch?.status === 'concluido' ? 'Descarga Concluída' : activeBatch?.status === 'divergente' ? 'Com Alertas de Rejeição' : 'Em Conferência'}

@@ -151,7 +151,7 @@ export default function Logistics() {
         );
       case 'em_transporte':
         return (
-          <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30 text-[11px] font-bold animate-pulse">
+          <Badge className="bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30 text-[11px] font-bold">
             <Truck className="w-3 h-3 mr-1 text-sky-600" /> Em Transporte
           </Badge>
         );

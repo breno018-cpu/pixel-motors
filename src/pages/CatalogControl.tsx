@@ -1354,35 +1354,8 @@ export default function CatalogControl() {
               Painel de Controle e Gestão do Catálogo L1MA Motors
             </h1>
 
-            {/* Status da Conexão SSE (<50ms) */}
+            {/* Contagem de Modelos Cadastrados */}
             <div className="flex items-center gap-1.5 ml-2">
-              {streamStatus === "connected" ? (
-                <Badge
-                  variant="outline"
-                  className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 flex items-center gap-1.5 py-0.5 text-xs font-semibold"
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  Conectado via SSE (v{catalog?.version || 1})
-                </Badge>
-              ) : streamStatus === "connecting" ? (
-                <Badge
-                  variant="outline"
-                  className="bg-amber-500/10 text-amber-400 border-amber-500/30 flex items-center gap-1.5 py-0.5 text-xs font-semibold"
-                >
-                  <Radio className="w-3 h-3 animate-pulse" /> Conectando API...
-                </Badge>
-              ) : (
-                <Badge
-                  variant="outline"
-                  className="bg-destructive/10 text-destructive border-destructive/30 flex items-center gap-1.5 py-0.5 text-xs font-semibold"
-                >
-                  <WifiOff className="w-3 h-3" /> Desconectado (Reconectando...)
-                </Badge>
-              )}
-
               <Badge variant="secondary" className="text-xs font-mono">
                 {products.length} Modelos Cadastrados
               </Badge>
@@ -1945,7 +1918,7 @@ export default function CatalogControl() {
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-2xl bg-zinc-950/95 backdrop-blur-md border border-primary/40 text-zinc-100 p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/20 text-primary border border-primary/30">
-              <Layers3 className="w-5 h-5 animate-pulse" />
+              <Layers3 className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">

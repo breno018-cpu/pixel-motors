@@ -428,7 +428,7 @@ export function InboundBarcodeScanner({
       <div className="flex items-center justify-between px-4 py-3 bg-muted/60 border-b border-border/80">
         <div className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-lg bg-red-600/10 border border-red-600/20 text-red-600 flex items-center justify-center">
-            <ScanLine className="w-4 h-4 animate-pulse" />
+            <ScanLine className="w-4 h-4 " />
           </div>
           <div>
             <h3 className="font-display font-bold text-sm text-foreground flex items-center gap-1.5">
@@ -453,7 +453,7 @@ export function InboundBarcodeScanner({
               )}
               title={torchOn ? 'Desligar lanterna' : 'Ligar lanterna da câmera'}
             >
-              <Flashlight className={cn("w-3.5 h-3.5", torchOn && "text-amber-500 animate-pulse")} />
+              <Flashlight className={cn("w-3.5 h-3.5", torchOn && "text-amber-500 ")} />
               <span>{torchOn ? 'Lanterna On' : 'Lanterna'}</span>
             </Button>
           )}
@@ -487,7 +487,7 @@ export function InboundBarcodeScanner({
         </div>
 
         {batch.divergent_items > 0 && (
-          <Badge variant="destructive" className="animate-pulse flex items-center gap-1 shrink-0 font-bold text-xs py-1">
+          <Badge variant="destructive" className=" flex items-center gap-1 shrink-0 font-bold text-xs py-1">
             <AlertTriangle className="w-3.5 h-3.5" />
             {batch.divergent_items} Alerta{batch.divergent_items > 1 ? 's' : ''} de Rejeição
           </Badge>
@@ -600,7 +600,7 @@ export function InboundBarcodeScanner({
 
           {lastScanResult.type === 'not_found' && (
             <div className="flex items-start gap-3">
-              <ShieldAlert className="w-6 h-6 text-red-600 shrink-0 mt-0.5 animate-pulse" />
+              <ShieldAlert className="w-6 h-6 text-red-600 shrink-0 mt-0.5 " />
               <div className="flex-1">
                 <p className="font-extrabold text-red-600 dark:text-red-400 text-sm font-display tracking-tight">
                   ⛔ ATENÇÃO! ESTA MOTO NÃO DEVE DESCER DO CAMINHÃO!
@@ -748,7 +748,7 @@ export function InboundBarcodeScanner({
             <div className="flex flex-col">
               {/* Header Vermelho de Alerta */}
               <div className="bg-red-600/15 border-b border-red-600/30 p-5 flex items-center gap-3.5">
-                <div className="h-14 w-14 rounded-2xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-red-600/30 animate-pulse">
+                <div className="h-14 w-14 rounded-2xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-red-600/30 ">
                   <ShieldAlert className="w-8 h-8 stroke-[2.5]" />
                 </div>
                 <div>

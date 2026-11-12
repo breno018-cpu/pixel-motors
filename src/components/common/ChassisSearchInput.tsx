@@ -400,7 +400,7 @@ export function ChassisSearchInput({
 
       {/* Badge de Reconhecimento Autônomo */}
       {isDecoding ? (
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground animate-pulse">
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Loader2 className="w-3 h-3 animate-spin text-primary" />
           <span>Consultando decodificador de chassi...</span>
         </div>
