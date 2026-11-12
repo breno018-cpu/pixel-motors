@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCatalog } from "@/hooks/useCatalog";
-import { CatalogProduct, CatalogPromo } from "@/types/catalog";
+import { CatalogProduct, CatalogPromo, CatalogSyncAction } from "@/types/catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Wifi,
   WifiOff,
   Radio,
   Settings,
@@ -45,14 +44,11 @@ import {
   Tag,
   Eye,
   EyeOff,
-  PackageCheck,
   AlertTriangle,
   History,
-  Activity,
   Sparkles,
   Bot,
   Star,
-  CheckCircle2,
   Building2,
   MapPin,
   Zap,
@@ -61,8 +57,16 @@ import {
   Layers,
   LayoutGrid,
   Award,
-  ChevronDown,
-  ChevronUp,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  FileText,
+  Send,
+  Table as TableIcon,
+  Package,
+  Layers3,
+  X,
+  CheckCircle2,
 } from "lucide-react";
 import { CatalogConfigDialog } from "@/components/catalog/CatalogConfigDialog";
 import { CatalogCampaignDialog } from "@/components/catalog/CatalogCampaignDialog";
@@ -72,13 +76,16 @@ import { CatalogQuickPriceDialog } from "@/components/catalog/CatalogQuickPriceD
 import { CatalogHeroCarouselDialog } from "@/components/catalog/CatalogHeroCarouselDialog";
 import { CatalogPromoDialog } from "@/components/catalog/CatalogPromoDialog";
 import { CatalogChatTestDialog } from "@/components/catalog/CatalogChatTestDialog";
+import { CatalogDescDialog } from "@/components/catalog/CatalogDescDialog";
+import { CatalogReorderDialog } from "@/components/catalog/CatalogReorderDialog";
+import { toast } from "sonner";
 
 // Definição dos 4 Grupos Oficiais do Catálogo L1MA Motors (idêntico ao site público)
 const OFFICIAL_GROUPS = [
   {
     id: "shineray",
     name: "Concessionária Shineray",
-    shortName: "Shineray",
+    shortName: "Shineray L1MA Motors (concessionária oficial)",
     tagline: "Concessionária Autorizada Exclusiva Shineray do Brasil",
     badge: "Autorizada Oficial",
     borderTheme: "border-emerald-500/30",
@@ -102,7 +109,7 @@ const OFFICIAL_GROUPS = [
   {
     id: "off",
     name: "Off-Road & Quadriciclos",
-    shortName: "Off-Road",
+    shortName: "Off-road",
     tagline: "Quadriciclos 4x4, ATVs, UTVs e Motocross Multimarcas",
     badge: "Fora de Estrada",
     borderTheme: "border-amber-500/30",
@@ -141,6 +148,10 @@ export default function CatalogControl() {
     updatePromo,
     toggleFeaturedHero,
     setHeroList,
+    setCarouselList,
+    setProductOrder,
+    reorderProducts,
+    updateDescription,
     updateStore,
     updateCampaign,
     updateConfig,
@@ -156,9 +167,15 @@ export default function CatalogControl() {
   const [selectedCat, setSelectedCat] = useState<string>("all"); // 'all' | 'shineray' | 'ele' | 'off' | 'semi'
   const [selectedSub, setSelectedSub] = useState<string>("all"); // Subcategoria
   const [viewGrouping, setViewGrouping] = useState<"sections" | "tabs">("sections"); // 'sections' (como no site) | 'tabs'
+  const [viewLayout, setViewLayout] = useState<"cards" | "table">("cards"); // 'cards' | 'table'
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "hidden" | "soldout" | "promo" | "hero">("all");
   const [showLiveStream, setShowLiveStream] = useState(false);
+
+  // Fila de Envio em Lote (Batch Sync Queue)
+  const [batchMode, setBatchMode] = useState(false);
+  const [pendingBatch, setPendingBatch] = useState<Array<{ action: CatalogSyncAction; label: string }>>([]);
+  const [isSendingBatch, setIsSendingBatch] = useState(false);
 
   // Modais
   const [configOpen, setConfigOpen] = useState(false);
@@ -172,6 +189,9 @@ export default function CatalogControl() {
   const [selectedProductForPrice, setSelectedProductForPrice] = useState<CatalogProduct | null>(null);
   const [promoDialogOpen, setPromoDialogOpen] = useState(false);
   const [selectedProductForPromo, setSelectedProductForPromo] = useState<CatalogProduct | null>(null);
+  const [descDialogOpen, setDescDialogOpen] = useState(false);
+  const [selectedProductForDesc, setSelectedProductForDesc] = useState<CatalogProduct | null>(null);
+  const [reorderDialogOpen, setReorderDialogOpen] = useState(false);
 
   // Dialog de Exclusão
   const [deleteProduct, setDeleteProduct] = useState<CatalogProduct | null>(null);
@@ -205,6 +225,7 @@ export default function CatalogControl() {
   // Contadores e KPIs no Escopo da Loja Selecionada
   const totalCount = storeProducts.length;
   const activeCount = storeProducts.filter((p) => p.active !== false).length;
+  const hiddenCount = storeProducts.filter((p) => p.active === false).length;
   const soldOutCount = storeProducts.filter((p) => p.stock === 0).length;
   const promoCount = storeProducts.filter(
     (p) => (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price)
@@ -265,6 +286,127 @@ export default function CatalogControl() {
     return grp ? grp.defaultSubs : ["Todas"];
   }, [selectedCat, storeProducts]);
 
+  // Helper de Despacho Direto ou Enfileiramento em Lote
+  const dispatchOrQueue = async (action: CatalogSyncAction, label: string) => {
+    if (batchMode) {
+      setPendingBatch((prev) => [...prev, { action, label }]);
+      toast.info(`Adicionado ao lote pendente: ${label}`);
+      return;
+    }
+    try {
+      await batchSync([action]);
+    } catch (e: any) {
+      // Toast já tratado no hook useCatalog
+    }
+  };
+
+  // Enviar Lote Atômico Completo
+  const handleSendBatch = async () => {
+    if (pendingBatch.length === 0) return;
+    setIsSendingBatch(true);
+    try {
+      const actions = pendingBatch.map((item) => item.action);
+      await batchSync(actions);
+      toast.success(`${pendingBatch.length} operações enviadas e aplicadas em lote com sucesso!`);
+      setPendingBatch([]);
+    } catch (e: any) {
+      toast.error(`Falha no envio em lote: ${e.message}`);
+    } finally {
+      setIsSendingBatch(false);
+    }
+  };
+
+  const handleClearBatch = () => {
+    setPendingBatch([]);
+    toast.info("Fila de lote descartada.");
+  };
+
+  // Handlers de Operações
+  const handleToggleActive = (p: CatalogProduct) => {
+    const nextActive = p.active === false;
+    const action: CatalogSyncAction = { action: "active", id: p.id, value: nextActive };
+    dispatchOrQueue(action, `${nextActive ? "Ativar" : "Ocultar"} ${p.name}`);
+  };
+
+  const handleDirectStockChange = (p: CatalogProduct, newStock: number | null) => {
+    const action: CatalogSyncAction = {
+      action: "stock",
+      id: p.id,
+      stock: newStock,
+      value: newStock,
+      readyDelivery: newStock !== 0,
+    };
+    dispatchOrQueue(action, `Estoque ${p.name} = ${newStock !== null ? newStock : "Pronta Entrega"}`);
+  };
+
+  const handleZeroStock = (p: CatalogProduct) => {
+    const action: CatalogSyncAction = {
+      action: "stock",
+      id: p.id,
+      stock: 0,
+      value: 0,
+      readyDelivery: false,
+    };
+    dispatchOrQueue(action, `Zerar estoque (Esgotado) ${p.name}`);
+  };
+
+  const handleRestock = (p: CatalogProduct, addQty: number) => {
+    const current = typeof p.stock === "number" ? p.stock : 0;
+    const nextStock = current + addQty;
+    const action: CatalogSyncAction = {
+      action: "stock",
+      id: p.id,
+      stock: nextStock,
+      value: nextStock,
+      readyDelivery: true,
+    };
+    dispatchOrQueue(action, `Repor +${addQty} unid. em ${p.name}`);
+  };
+
+  const handleToggleReadyDelivery = (p: CatalogProduct) => {
+    const nextReady = !p.readyDelivery;
+    const action: CatalogSyncAction = {
+      action: "stock",
+      id: p.id,
+      stock: p.stock,
+      readyDelivery: nextReady,
+    };
+    dispatchOrQueue(action, `Pronta entrega ${nextReady ? "Sim" : "Não"} em ${p.name}`);
+  };
+
+  const handleToggleHero = (p: CatalogProduct) => {
+    const nextHero = !p.featuredHero;
+    const nextOrder = p.heroOrder || 1;
+    const action: CatalogSyncAction = {
+      action: "carousel",
+      id: p.id,
+      featured: nextHero,
+      order: nextOrder,
+    };
+    dispatchOrQueue(action, `${nextHero ? "Destacar" : "Remover"} no Carrossel: ${p.name}`);
+  };
+
+  const handleMoveProduct = (p: CatalogProduct, direction: "up" | "down") => {
+    const index = filteredProducts.findIndex((item) => item.id === p.id);
+    if (index === -1) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= filteredProducts.length) return;
+
+    const copy = [...filteredProducts];
+    const temp = copy[index];
+    copy[index] = copy[targetIndex];
+    copy[targetIndex] = temp;
+
+    const ids = copy.map((item) => item.id);
+    const action: CatalogSyncAction = { action: "reorder", ids };
+    dispatchOrQueue(action, `Mover ${p.name} para posição #${targetIndex + 1}`);
+  };
+
+  const handleDirectOrder = (p: CatalogProduct, order: number) => {
+    const action: CatalogSyncAction = { action: "order", id: p.id, order };
+    dispatchOrQueue(action, `Definir posição #${order} para ${p.name}`);
+  };
+
   const handleEditProduct = (prod: CatalogProduct) => {
     setSelectedProductForEdit(prod);
     setProductDialogOpen(true);
@@ -285,11 +427,17 @@ export default function CatalogControl() {
     setPromoDialogOpen(true);
   };
 
+  const handleOpenDesc = (prod: CatalogProduct) => {
+    setSelectedProductForDesc(prod);
+    setDescDialogOpen(true);
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleteProduct) return;
     setDeleting(true);
     try {
-      await removeProduct(deleteProduct.id);
+      const action: CatalogSyncAction = { action: "remove", id: deleteProduct.id };
+      await dispatchOrQueue(action, `Excluir ${deleteProduct.name}`);
       setDeleteProduct(null);
     } finally {
       setDeleting(false);
@@ -301,7 +449,7 @@ export default function CatalogControl() {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
   };
 
-  // Combina eventos de GET /api/events e SSE
+  // Auditoria
   const allEvents = useMemo(() => {
     const list = [...liveEvents, ...events];
     const unique = new Map<string, any>();
@@ -312,8 +460,8 @@ export default function CatalogControl() {
     return Array.from(unique.values()).slice(0, 60);
   }, [liveEvents, events]);
 
-  // Renderizador de Card Individual de Veículo
-  const renderProductCard = (p: CatalogProduct) => {
+  // Card Individual
+  const renderProductCard = (p: CatalogProduct, index: number) => {
     const hasPromo = (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price);
     const isSoldOut = p.stock === 0;
     const isLowStock = p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= lowStockLimit;
@@ -353,6 +501,33 @@ export default function CatalogControl() {
               </div>
             )}
 
+            {/* Posição Numérica & Ordem */}
+            <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
+              <Badge className="bg-black/80 backdrop-blur-sm text-white font-mono text-xs font-bold shadow-xs">
+                #{index + 1}
+              </Badge>
+              <div className="flex bg-black/70 backdrop-blur-sm rounded overflow-hidden">
+                <button
+                  type="button"
+                  disabled={index === 0}
+                  onClick={() => handleMoveProduct(p, "up")}
+                  className="px-1.5 py-0.5 text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
+                  title="Subir posição"
+                >
+                  <ArrowUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  disabled={index === filteredProducts.length - 1}
+                  onClick={() => handleMoveProduct(p, "down")}
+                  className="px-1.5 py-0.5 text-white/90 hover:text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
+                  title="Descer posição"
+                >
+                  <ArrowDown className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
             {/* Carimbo de ESGOTADO com botão Avise-me */}
             {isSoldOut && (
               <div className="absolute inset-0 bg-black/65 backdrop-blur-[1px] flex flex-col items-center justify-center gap-1.5">
@@ -363,46 +538,7 @@ export default function CatalogControl() {
               </div>
             )}
 
-            {/* Badges Flutuantes Superiores: Grupo & Subgrupo & Loja */}
-            <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
-              <Badge
-                variant="secondary"
-                className="bg-background/90 backdrop-blur-sm text-[10px] font-bold uppercase shadow-xs"
-              >
-                {p.cat === "shineray"
-                  ? "🟢 Shineray"
-                  : p.cat === "ele"
-                  ? "⚡ Elétrica"
-                  : p.cat === "semi"
-                  ? "🔄 Semi-novo"
-                  : "🏁 Off-Road"}
-              </Badge>
-
-              {p.sub && (
-                <Badge
-                  variant="outline"
-                  className="bg-background/80 backdrop-blur-sm text-[9px] font-semibold border-border"
-                >
-                  {p.sub}
-                </Badge>
-              )}
-
-              {/* Badge da Loja / Concessionária */}
-              <Badge
-                variant="outline"
-                className={`text-[9px] font-semibold backdrop-blur-sm ${
-                  p.store_id === "store-divinopolis"
-                    ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
-                    : p.store_id === "store-montesclaros"
-                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
-                    : "bg-muted/80 text-foreground border-border"
-                }`}
-              >
-                <MapPin className="w-2.5 h-2.5 mr-0.5 inline" />
-                {storeLabel}
-              </Badge>
-            </div>
-
+            {/* Badges Flutuantes Superiores Direitos */}
             <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
               {p.featuredHero && (
                 <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold gap-1 shadow-xs">
@@ -417,10 +553,40 @@ export default function CatalogControl() {
               )}
 
               {p.readyDelivery && (
-                <Badge className="bg-emerald-600 text-white text-[10px] shadow-xs">
+                <Badge className="bg-emerald-600 text-white text-[10px] shadow-xs font-semibold">
                   Pronta Entrega
                 </Badge>
               )}
+            </div>
+
+            {/* Badges Flutuantes Inferiores: Grupo & Loja */}
+            <div className="absolute bottom-2 left-2 flex items-center gap-1">
+              <Badge
+                variant="secondary"
+                className="bg-background/90 backdrop-blur-sm text-[10px] font-bold uppercase shadow-xs"
+              >
+                {p.cat === "shineray"
+                  ? "🟢 Shineray"
+                  : p.cat === "ele"
+                  ? "⚡ Elétrica"
+                  : p.cat === "semi"
+                  ? "🔄 Semi-novo"
+                  : "🏁 Off-Road"}
+              </Badge>
+
+              <Badge
+                variant="outline"
+                className={`text-[9px] font-semibold backdrop-blur-sm ${
+                  p.store_id === "store-divinopolis"
+                    ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30"
+                    : p.store_id === "store-montesclaros"
+                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                    : "bg-muted/80 text-foreground border-border"
+                }`}
+              >
+                <MapPin className="w-2.5 h-2.5 mr-0.5 inline" />
+                {storeLabel}
+              </Badge>
             </div>
           </div>
 
@@ -459,8 +625,8 @@ export default function CatalogControl() {
                   variant="ghost"
                   size="sm"
                   onClick={() => handleQuickPrice(p)}
-                  className="h-6 px-1.5 text-xs text-primary hover:text-primary gap-1"
-                  title="Alterar Preço"
+                  className="h-6 px-1.5 text-xs text-primary hover:text-primary gap-1 font-semibold"
+                  title="Alterar Preço e Parcelas 21x"
                 >
                   <DollarSign className="w-3 h-3" />
                   Preço
@@ -469,8 +635,8 @@ export default function CatalogControl() {
                   variant="ghost"
                   size="sm"
                   onClick={() => handleOpenPromo(p)}
-                  className="h-6 px-1.5 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-500 gap-1"
-                  title="Configurar Promoção"
+                  className="h-6 px-1.5 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-500 gap-1 font-semibold"
+                  title="Configurar Promoção e Validade"
                 >
                   <Tag className="w-3 h-3" />
                   Promoção
@@ -478,55 +644,88 @@ export default function CatalogControl() {
               </div>
             </div>
 
-            {/* CONTROLE DE ESTOQUE REATIVO */}
-            <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-xs">
-              <span className="text-muted-foreground">Estoque:</span>
-              <div className="flex items-center gap-1.5">
-                {isSoldOut ? (
-                  <Badge variant="destructive" className="text-[10px] font-bold">
-                    ESGOTADO (0)
-                  </Badge>
-                ) : isLowStock ? (
-                  <Badge variant="outline" className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold">
-                    Últimas {p.stock} unid.!
-                  </Badge>
-                ) : isUnlimited ? (
-                  <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-400">
-                    Pronta Entrega
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-[10px] font-semibold">
-                    {p.stock} unid.
-                  </Badge>
-                )}
-
-                {/* Alterar Rápido de Estoque */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-muted-foreground">
-                      <Edit className="w-3 h-3" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="text-xs">
-                    <DropdownMenuLabel>Ajuste Rápido de Estoque</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => updateStock(p.id, 0)}>
-                      Marcar como Esgotado (0)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateStock(p.id, 1)}>
-                      Última unidade (1)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateStock(p.id, 2)}>
-                      2 unidades
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateStock(p.id, 5)}>
-                      Estoque normal (5)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateStock(p.id, null)}>
-                      Pronta Entrega (Sem limite)
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+            {/* GESTÃO DE ESTOQUE REATIVO COM BOTÕES RÁPIDOS DE 1 CLIQUE */}
+            <div className="p-2.5 rounded-xl bg-muted/40 border border-border/60 text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground font-medium">Estoque:</span>
+                <div className="flex items-center gap-1.5">
+                  {isSoldOut ? (
+                    <Badge variant="destructive" className="text-[10px] font-bold">
+                      ESGOTADO (0)
+                    </Badge>
+                  ) : isLowStock ? (
+                    <Badge variant="outline" className="text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-bold">
+                      Últimas {p.stock} unid.!
+                    </Badge>
+                  ) : isUnlimited ? (
+                    <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-400 font-semibold">
+                      Pronta Entrega
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] font-semibold">
+                      {p.stock} unid.
+                    </Badge>
+                  )}
+                </div>
               </div>
+
+              {/* Botões rápidos de 1 clique: Zerar Estoque, +1, +5 e Pronta Entrega */}
+              <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/40">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleZeroStock(p)}
+                  className="h-6 text-[10px] px-1.5 text-destructive hover:bg-destructive/10 border-destructive/30"
+                  title="Marcar como ESGOTADO (0 unidades)"
+                >
+                  Zerar (0)
+                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRestock(p, 1)}
+                    className="h-6 text-[10px] px-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                    title="Adicionar +1 unidade"
+                  >
+                    +1
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRestock(p, 5)}
+                    className="h-6 text-[10px] px-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                    title="Adicionar +5 unidades"
+                  >
+                    +5
+                  </Button>
+                </div>
+                <div className="flex items-center gap-1 pl-1">
+                  <span className="text-[10px] text-muted-foreground">Pronta:</span>
+                  <Switch
+                    checked={!!p.readyDelivery}
+                    onCheckedChange={() => handleToggleReadyDelivery(p)}
+                    className="scale-75"
+                    title="Alternar selo de pronta entrega"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Descrição Comercial (Botão Direto) */}
+            <div className="pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleOpenDesc(p)}
+                className="w-full h-7 text-xs text-muted-foreground hover:text-foreground justify-between border border-dashed border-border/70 rounded-lg"
+              >
+                <span className="flex items-center gap-1.5 truncate">
+                  <FileText className="w-3.5 h-3.5 text-primary" />
+                  <span className="truncate">{p.desc ? p.desc.slice(0, 36) + "..." : "Adicionar descrição comercial..."}</span>
+                </span>
+                <span className="text-[10px] text-primary shrink-0 font-medium">Editar →</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -537,7 +736,7 @@ export default function CatalogControl() {
           <div className="flex items-center gap-1.5">
             <Switch
               checked={p.active !== false}
-              onCheckedChange={(val) => toggleActive(p.id, val)}
+              onCheckedChange={() => handleToggleActive(p)}
               id={`switch-${p.id}`}
               className="scale-90"
             />
@@ -567,9 +766,31 @@ export default function CatalogControl() {
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuLabel>Ações do Veículo</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Ações do Modelo</DropdownMenuLabel>
                 
+                <DropdownMenuItem onClick={() => handleOpenDesc(p)} className="gap-2 text-xs">
+                  <FileText className="w-3.5 h-3.5 text-blue-500" />
+                  Editar Descrição (WhatsApp/IA)
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => handleToggleHero(p)} className="gap-2 text-xs">
+                  <Star className={`w-3.5 h-3.5 ${p.featuredHero ? "fill-amber-500 text-amber-500" : ""}`} />
+                  {p.featuredHero ? "Remover do Carrossel Hero" : "Destacar no Carrossel Hero"}
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => handleOpenPromo(p)} className="gap-2 text-xs">
+                  <Tag className="w-3.5 h-3.5 text-amber-500" />
+                  Configurar Promoção
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={() => handleQuickPrice(p)} className="gap-2 text-xs">
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                  Alterar Preço & Parcelas 21x
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
                 {/* Atribuição de Concessionária / Loja */}
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger className="gap-2 text-xs">
@@ -577,37 +798,23 @@ export default function CatalogControl() {
                     Atribuir à Loja
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="text-xs">
-                    <DropdownMenuItem onClick={() => updateStore(p.id, "all", "Todas as Lojas")}>
+                    <DropdownMenuItem onClick={() => dispatchOrQueue({ action: "store", id: p.id, store_id: "all", store_name: "Todas as Lojas" }, `Atribuir ${p.name} a Todas as Lojas`)}>
                       🏢 Todas as Lojas (Rede)
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateStore(p.id, "store-divinopolis", "Divinópolis")}>
+                    <DropdownMenuItem onClick={() => dispatchOrQueue({ action: "store", id: p.id, store_id: "store-divinopolis", store_name: "Divinópolis" }, `Atribuir ${p.name} a Divinópolis`)}>
                       📍 Divinópolis (Matriz Oeste)
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateStore(p.id, "store-montesclaros", "Montes Claros")}>
+                    <DropdownMenuItem onClick={() => dispatchOrQueue({ action: "store", id: p.id, store_id: "store-montesclaros", store_name: "Montes Claros" }, `Atribuir ${p.name} a Montes Claros`)}>
                       📍 Montes Claros (Polo Norte)
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
-                <DropdownMenuItem onClick={() => handleOpenPromo(p)} className="gap-2 text-xs">
-                  <Tag className="w-3.5 h-3.5 text-amber-500" />
-                  Configurar Promoção
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => toggleFeaturedHero(p.id, !p.featuredHero, p.heroOrder || 1)}
-                  className="gap-2 text-xs"
-                >
-                  <Star className={`w-3.5 h-3.5 ${p.featuredHero ? "fill-amber-500 text-amber-500" : ""}`} />
-                  {p.featuredHero ? "Remover do Carrossel Hero" : "Destacar no Carrossel Hero"}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleQuickPrice(p)} className="gap-2 text-xs">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
-                  Alterar Preço
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleEditProduct(p)} className="gap-2 text-xs">
                   <Edit className="w-3.5 h-3.5" />
                   Editar Completo (Fotos, Specs)
                 </DropdownMenuItem>
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setDeleteProduct(p)}
@@ -624,15 +831,250 @@ export default function CatalogControl() {
     );
   };
 
+  // Linha da Tabela Desktop
+  const renderProductTableRow = (p: CatalogProduct, index: number) => {
+    const hasPromo = (p.promo && p.promo.active !== false) || (p.oldPrice && p.price && p.oldPrice > p.price);
+    const isSoldOut = p.stock === 0;
+    const isLowStock = p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= lowStockLimit;
+    const mainPhoto = p.photos && p.photos.length > 0 ? p.photos[0] : "";
+
+    return (
+      <tr
+        key={p.id}
+        className={`border-b border-border hover:bg-muted/30 transition-colors ${
+          !p.active ? "opacity-60 bg-muted/10" : ""
+        }`}
+      >
+        {/* Posição / Reordenação */}
+        <td className="p-3 text-center">
+          <div className="flex items-center gap-1 justify-center">
+            <span className="font-mono text-xs font-bold text-muted-foreground w-6 text-right">
+              #{index + 1}
+            </span>
+            <div className="flex flex-col">
+              <button
+                type="button"
+                disabled={index === 0}
+                onClick={() => handleMoveProduct(p, "up")}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-20 p-0.5"
+                title="Subir"
+              >
+                <ArrowUp className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                disabled={index === filteredProducts.length - 1}
+                onClick={() => handleMoveProduct(p, "down")}
+                className="text-muted-foreground hover:text-foreground disabled:opacity-20 p-0.5"
+                title="Descer"
+              >
+                <ArrowDown className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </td>
+
+        {/* Foto & Veículo */}
+        <td className="p-3">
+          <div className="flex items-center gap-3">
+            {mainPhoto ? (
+              <img
+                src={mainPhoto}
+                alt={p.name}
+                className={`w-12 h-10 object-contain rounded bg-muted/40 p-0.5 border ${
+                  isSoldOut ? "grayscale" : ""
+                }`}
+              />
+            ) : (
+              <div className="w-12 h-10 rounded bg-muted/40 border flex items-center justify-center text-[10px] text-muted-foreground">
+                Sem Foto
+              </div>
+            )}
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-sm text-foreground">{p.name}</span>
+                <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                  {p.brand}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                <span>{p.sub}</span>
+                <span>•</span>
+                <span className="font-mono text-[10px]">{p.id}</span>
+              </div>
+            </div>
+          </div>
+        </td>
+
+        {/* Visibilidade */}
+        <td className="p-3 text-center">
+          <div className="flex items-center justify-center gap-1.5">
+            <Switch
+              checked={p.active !== false}
+              onCheckedChange={() => handleToggleActive(p)}
+              className="scale-85"
+            />
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {p.active !== false ? "Ativo" : "Oculto"}
+            </span>
+          </div>
+        </td>
+
+        {/* Preço & Parcelas 21x */}
+        <td className="p-3">
+          <div className="space-y-0.5">
+            {p.oldPrice && (
+              <div className="text-[11px] line-through text-muted-foreground">
+                De: {formatCurrency(p.oldPrice)}
+              </div>
+            )}
+            <div className="font-bold text-sm text-foreground">{formatCurrency(p.price)}</div>
+            {p.installments && (
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block font-medium">
+                Até 21x cartão
+              </span>
+            )}
+          </div>
+        </td>
+
+        {/* Estoque & Pronta Entrega */}
+        <td className="p-3">
+          <div className="flex items-center gap-2">
+            <div className="w-16">
+              <Input
+                type="number"
+                min={0}
+                value={p.stock !== null && p.stock !== undefined ? p.stock : ""}
+                placeholder="∞"
+                onChange={(e) => {
+                  const val = e.target.value.trim() !== "" ? parseInt(e.target.value, 10) : null;
+                  handleDirectStockChange(p, isNaN(val as number) ? null : val);
+                }}
+                className="h-7 text-xs font-mono text-center p-1"
+                title="Digitar quantidade em estoque (0 = Esgotado)"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleZeroStock(p)}
+              className="h-7 px-1.5 text-[10px] text-destructive hover:bg-destructive/10 border-destructive/30"
+              title="Zerar estoque imediatamente"
+            >
+              Zerar (0)
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleRestock(p, 1)}
+              className="h-7 px-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+              title="Adicionar +1"
+            >
+              +1
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleRestock(p, 5)}
+              className="h-7 px-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+              title="Adicionar +5"
+            >
+              +5
+            </Button>
+          </div>
+        </td>
+
+        {/* Promoção */}
+        <td className="p-3 text-center">
+          {hasPromo ? (
+            <Badge
+              variant="outline"
+              onClick={() => handleOpenPromo(p)}
+              className="cursor-pointer bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 text-[10px] font-bold"
+            >
+              <Tag className="w-3 h-3 mr-1" />
+              {p.promo?.label || "OFERTA"}
+            </Badge>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleOpenPromo(p)}
+              className="h-6 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              + Oferta
+            </Button>
+          )}
+        </td>
+
+        {/* Carrossel Hero */}
+        <td className="p-3 text-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleToggleHero(p)}
+            className={`h-7 px-2 text-xs gap-1 font-semibold ${
+              p.featuredHero ? "text-amber-500" : "text-muted-foreground"
+            }`}
+            title="Alternar presença no carrossel de topo"
+          >
+            <Star className={`w-3.5 h-3.5 ${p.featuredHero ? "fill-amber-500 text-amber-500" : ""}`} />
+            {p.featuredHero ? `#${p.heroOrder || 1}` : "Hero"}
+          </Button>
+        </td>
+
+        {/* Descrição */}
+        <td className="p-3 text-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleOpenDesc(p)}
+            className="h-7 px-2 text-xs gap-1 text-primary hover:text-primary font-medium"
+            title="Editar descrição comercial compartilhada no WhatsApp"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Texto
+          </Button>
+        </td>
+
+        {/* Ações */}
+        <td className="p-3 text-right">
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEditProduct(p)}
+              className="h-7 text-xs"
+            >
+              Editar
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteProduct(p)}
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+              title="Excluir do catálogo"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
-    <div className="space-y-6 pb-12">
-      {/* 1. CABEÇALHO EXECUTIVO */}
+    <div className="space-y-6 pb-20">
+      {/* 1. CABEÇALHO EXECUTIVO COM STATUS SSE E AÇÕES GLOBAIS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
               <Store className="w-6 h-6 text-primary" />
-              Controle do Catálogo L1MA Motors
+              Painel de Controle e Gestão do Catálogo L1MA Motors
             </h1>
 
             {/* Status da Conexão SSE (<50ms) */}
@@ -640,59 +1082,70 @@ export default function CatalogControl() {
               {streamStatus === "connected" ? (
                 <Badge
                   variant="outline"
-                  className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 flex items-center gap-1.5 py-0.5 text-xs font-normal"
+                  className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 flex items-center gap-1.5 py-0.5 text-xs font-semibold"
                 >
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
-                  SSE Ao Vivo (&lt;50ms)
+                  Conectado via SSE (v{catalog?.version || 1})
                 </Badge>
               ) : streamStatus === "connecting" ? (
                 <Badge
                   variant="outline"
-                  className="bg-amber-500/10 text-amber-400 border-amber-500/30 flex items-center gap-1.5 py-0.5 text-xs font-normal"
+                  className="bg-amber-500/10 text-amber-400 border-amber-500/30 flex items-center gap-1.5 py-0.5 text-xs font-semibold"
                 >
                   <Radio className="w-3 h-3 animate-pulse" /> Conectando API...
                 </Badge>
               ) : (
                 <Badge
                   variant="outline"
-                  className="bg-destructive/10 text-destructive border-destructive/30 flex items-center gap-1.5 py-0.5 text-xs font-normal"
+                  className="bg-destructive/10 text-destructive border-destructive/30 flex items-center gap-1.5 py-0.5 text-xs font-semibold"
                 >
-                  <WifiOff className="w-3 h-3" /> Offline
+                  <WifiOff className="w-3 h-3" /> Desconectado (Reconectando...)
                 </Badge>
               )}
 
               <Badge variant="secondary" className="text-xs font-mono">
-                {products.length} Modelos • v{catalog?.version || 1}
+                {products.length} Modelos Cadastrados
               </Badge>
             </div>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Central de comando e sincronização em tempo real (produtos, estoque por loja, grupos comerciais, preços, promoções e mídias).
+            Sincronização em tempo real das 12 operações da API: reordenação, cadastro, visibilidade, estoque, preços, ofertas, carrossel, descrição, campanha e taxas da concessionária.
           </p>
         </div>
 
-        {/* Botões de Ações Rápidas */}
+        {/* Botões de Ações Rápidas do Cabeçalho */}
         <div className="flex items-center flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isLoading || isRefetching}
-            className="gap-1.5"
+            className="gap-1.5 font-medium"
             title="Recarregar dados do catálogo"
           >
             <RefreshCw className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
-            Atualizar
+            Recarregar Dados
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setReorderDialogOpen(true)}
+            className="gap-1.5 font-medium"
+            title="Reordenar modelos por Drag-and-Drop ou posição numérica"
+          >
+            <ArrowUpDown className="w-4 h-4 text-primary" />
+            Reordenar Motos
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => setHeroDialogOpen(true)}
-            className="gap-1.5"
+            className="gap-1.5 font-medium"
           >
             <Sparkles className="w-4 h-4 text-amber-500" />
             Carrossel Topo ({heroCount})
@@ -702,7 +1155,7 @@ export default function CatalogControl() {
             variant="outline"
             size="sm"
             onClick={() => setCampaignOpen(true)}
-            className="gap-1.5"
+            className="gap-1.5 font-medium"
           >
             <Megaphone className="w-4 h-4 text-primary" />
             Campanha
@@ -712,7 +1165,7 @@ export default function CatalogControl() {
             variant="outline"
             size="sm"
             onClick={() => setChatDialogOpen(true)}
-            className="gap-1.5"
+            className="gap-1.5 font-medium"
           >
             <Bot className="w-4 h-4 text-blue-500" />
             Testar IA
@@ -722,35 +1175,36 @@ export default function CatalogControl() {
             variant="outline"
             size="sm"
             onClick={() => setImportDialogOpen(true)}
-            className="gap-1.5"
+            className="gap-1.5 font-medium"
           >
             <Download className="w-4 h-4 text-emerald-500" />
-            Importar do Estoque
+            Importar Estoque
           </Button>
 
           <Button
             variant="outline"
             size="sm"
             onClick={() => setConfigOpen(true)}
-            className="gap-1.5"
+            className="gap-1.5 font-medium"
           >
             <Settings className="w-4 h-4" />
             Taxas & Loja
           </Button>
 
-          <Button size="sm" onClick={handleNewProduct} className="gap-1.5">
+          <Button size="sm" onClick={handleNewProduct} className="gap-1.5 font-semibold">
             <Plus className="w-4 h-4" />
             Novo Veículo
           </Button>
         </div>
       </div>
 
-      {/* 2. DIVISÃO POR LOJA (SELETOR DE CONCESSIONÁRIA E MODO DE VISUALIZAÇÃO) */}
-      <div className="p-3.5 rounded-2xl border bg-card/70 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      {/* 2. BARRA DE MODO DE OPERAÇÃO: GRAVAÇÃO INSTANTÂNEA VS MODO FILA EM LOTE (BATCH SYNC) */}
+      <div className="p-3.5 rounded-2xl border bg-card/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Seletor de Concessionária */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground mr-1">
             <Building2 className="w-4 h-4 text-primary shrink-0" />
-            <span>Concessionária:</span>
+            <span>Loja:</span>
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -761,7 +1215,7 @@ export default function CatalogControl() {
               className="h-8 text-xs gap-1.5 rounded-xl font-bold"
             >
               <Store className="w-3.5 h-3.5" />
-              Todas as Lojas / Rede ({products.length})
+              Todas as Lojas ({products.length})
             </Button>
 
             <Button
@@ -786,49 +1240,65 @@ export default function CatalogControl() {
           </div>
         </div>
 
-        {/* Alternador de Modo de Visualização: Em Seções por Grupo vs Em Abas */}
-        <div className="flex items-center gap-1.5 self-end md:self-auto border-t md:border-t-0 pt-2 md:pt-0">
-          <span className="text-[11px] font-medium text-muted-foreground mr-1 hidden sm:inline">Exibição:</span>
-          <Button
-            variant={viewGrouping === "sections" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setViewGrouping("sections")}
-            className="h-8 text-xs gap-1.5 font-bold rounded-xl"
-            title="Exibir dividido por seções de grupos (idêntico ao site público)"
-          >
-            <LayoutGrid className="w-3.5 h-3.5 text-primary" />
-            Por Grupo (Como no Site)
-          </Button>
+        {/* Controles de Lote e Visualização */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Toggle Modo Lote (Batch Sync) */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-muted/40 border border-border">
+            <Layers3 className="w-4 h-4 text-primary" />
+            <span className="text-xs font-medium text-foreground">Modo Fila em Lote:</span>
+            <Switch
+              checked={batchMode}
+              onCheckedChange={setBatchMode}
+              className="scale-85"
+              id="batch-mode-toggle"
+            />
+            {batchMode && (
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30 text-[10px] font-bold">
+                {pendingBatch.length} na fila
+              </Badge>
+            )}
+          </div>
 
-          <Button
-            variant={viewGrouping === "tabs" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setViewGrouping("tabs")}
-            className="h-8 text-xs gap-1.5 font-bold rounded-xl"
-            title="Exibir em abas individuais"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            Em Abas
-          </Button>
+          {/* Alternador de Layout: Cards vs Tabela */}
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-muted/40 border border-border">
+            <Button
+              variant={viewLayout === "cards" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewLayout("cards")}
+              className="h-7 text-xs px-2 gap-1 font-semibold rounded-lg"
+              title="Exibir como cards"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              Cards
+            </Button>
+            <Button
+              variant={viewLayout === "table" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setViewLayout("table")}
+              className="h-7 text-xs px-2 gap-1 font-semibold rounded-lg"
+              title="Exibir como tabela"
+            >
+              <TableIcon className="w-3.5 h-3.5" />
+              Tabela
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* 3. KPIS DE RESUMO DA LOJA SELECIONADA */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Modelos na Loja</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Modelos</span>
             <Store className="w-4 h-4 text-primary" />
           </div>
           <div className="text-2xl font-bold text-foreground">{totalCount}</div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            {selectedStore === "all" ? "Toda a rede L1MA" : selectedStore === "store-divinopolis" ? "Unidade Divinópolis" : "Unidade Montes Claros"}
-          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Cadastrados</p>
         </div>
 
         <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Ativos / Visíveis</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Ativos</span>
             <Eye className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-bold text-emerald-500">{activeCount}</div>
@@ -837,16 +1307,25 @@ export default function CatalogControl() {
 
         <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Esgotados</span>
-            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <span className="text-[11px] font-medium uppercase tracking-wider">Ocultos</span>
+            <EyeOff className="w-4 h-4 text-muted-foreground" />
           </div>
-          <div className="text-2xl font-bold text-destructive">{soldOutCount}</div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Carimbo WhatsApp ativo</p>
+          <div className="text-2xl font-bold text-muted-foreground">{hiddenCount}</div>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Sem exclusão</p>
         </div>
 
         <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider">Em Oferta</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider">Esgotados</span>
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+          </div>
+          <div className="text-2xl font-bold text-destructive">{soldOutCount}</div>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Selo WhatsApp ativo</p>
+        </div>
+
+        <div className="p-3.5 rounded-xl border bg-card shadow-2xs">
+          <div className="flex items-center justify-between text-muted-foreground mb-1">
+            <span className="text-[11px] font-medium uppercase tracking-wider">Ofertas</span>
             <Tag className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-bold text-amber-500">{promoCount}</div>
@@ -859,14 +1338,14 @@ export default function CatalogControl() {
             <Sparkles className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-bold text-amber-500">{heroCount}</div>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Destaques do banner</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Slides principais</p>
         </div>
       </div>
 
-      {/* 4. DIVISÃO POR GRUPO (ABAS OFICIAIS COMO NO SITE PÚBLICO) */}
+      {/* 4. AS 5 ABAS OFICIAIS DE CATEGORIA + OS 6 FILTROS RÁPIDOS (PILLS) */}
       <div className="space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Abas dos 4 Grandes Grupos */}
+          {/* As 5 Abas de Categoria */}
           <Tabs
             value={selectedCat}
             onValueChange={(val) => {
@@ -877,16 +1356,16 @@ export default function CatalogControl() {
           >
             <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full lg:w-auto h-auto p-1 bg-muted/60">
               <TabsTrigger value="all" className="text-xs py-2 font-bold">
-                🌟 Todos ({totalCount})
+                Todas as Motos ({totalCount})
               </TabsTrigger>
               <TabsTrigger value="shineray" className="text-xs py-2 font-bold gap-1 text-emerald-600 dark:text-emerald-400">
-                🟢 Shineray ({storeProducts.filter((p) => p.cat === "shineray").length})
+                🟢 Shineray L1MA Motors ({storeProducts.filter((p) => p.cat === "shineray").length})
               </TabsTrigger>
               <TabsTrigger value="ele" className="text-xs py-2 font-bold gap-1 text-cyan-600 dark:text-cyan-400">
                 ⚡ Elétricas ({storeProducts.filter((p) => p.cat === "ele").length})
               </TabsTrigger>
               <TabsTrigger value="off" className="text-xs py-2 font-bold gap-1 text-amber-600 dark:text-amber-400">
-                🏁 Off-Road ({storeProducts.filter((p) => p.cat === "off").length})
+                🏁 Off-road ({storeProducts.filter((p) => p.cat === "off").length})
               </TabsTrigger>
               <TabsTrigger value="semi" className="text-xs py-2 font-bold gap-1 text-purple-600 dark:text-purple-400">
                 🔄 Semi-novos ({storeProducts.filter((p) => p.cat === "semi").length})
@@ -894,7 +1373,7 @@ export default function CatalogControl() {
             </TabsList>
           </Tabs>
 
-          {/* Filtros Rápidos de Status */}
+          {/* Os 6 Filtros Rápidos por Pílula (Pills) */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <Button
               variant={statusFilter === "all" ? "default" : "outline"}
@@ -902,7 +1381,7 @@ export default function CatalogControl() {
               onClick={() => setStatusFilter("all")}
               className="h-8 text-xs font-semibold rounded-xl"
             >
-              Todos
+              Todas ({totalCount})
             </Button>
             <Button
               variant={statusFilter === "active" ? "default" : "outline"}
@@ -910,7 +1389,7 @@ export default function CatalogControl() {
               onClick={() => setStatusFilter("active")}
               className="h-8 text-xs gap-1 font-semibold rounded-xl"
             >
-              <Eye className="w-3.5 h-3.5 text-emerald-500" /> Ativos
+              <Eye className="w-3.5 h-3.5 text-emerald-500" /> Ativas ({activeCount})
             </Button>
             <Button
               variant={statusFilter === "hidden" ? "default" : "outline"}
@@ -918,15 +1397,7 @@ export default function CatalogControl() {
               onClick={() => setStatusFilter("hidden")}
               className="h-8 text-xs gap-1 font-semibold rounded-xl"
             >
-              <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> Ocultos
-            </Button>
-            <Button
-              variant={statusFilter === "soldout" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setStatusFilter("soldout")}
-              className="h-8 text-xs gap-1 font-semibold rounded-xl"
-            >
-              <AlertTriangle className="w-3.5 h-3.5 text-destructive" /> Esgotados
+              <EyeOff className="w-3.5 h-3.5 text-muted-foreground" /> Ocultas ({hiddenCount})
             </Button>
             <Button
               variant={statusFilter === "promo" ? "default" : "outline"}
@@ -934,7 +1405,15 @@ export default function CatalogControl() {
               onClick={() => setStatusFilter("promo")}
               className="h-8 text-xs gap-1 font-semibold rounded-xl"
             >
-              <Tag className="w-3.5 h-3.5 text-amber-500" /> Ofertas
+              <Tag className="w-3.5 h-3.5 text-amber-500" /> Em Promoção ({promoCount})
+            </Button>
+            <Button
+              variant={statusFilter === "soldout" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter("soldout")}
+              className="h-8 text-xs gap-1 font-semibold rounded-xl"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-destructive" /> Esgotadas ({soldOutCount})
             </Button>
             <Button
               variant={statusFilter === "hero" ? "default" : "outline"}
@@ -942,7 +1421,7 @@ export default function CatalogControl() {
               onClick={() => setStatusFilter("hero")}
               className="h-8 text-xs gap-1 font-semibold rounded-xl"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Carrossel
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" /> No Carrossel ({heroCount})
             </Button>
           </div>
         </div>
@@ -972,7 +1451,7 @@ export default function CatalogControl() {
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome do modelo, marca, estilo (Trail, Scooter, Street...) ou ID único..."
+              placeholder="Buscar instantaneamente por nome do modelo, marca, estilo (Trail, Scooter, Street...) ou ID único..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-9 text-xs rounded-xl"
@@ -1031,7 +1510,7 @@ export default function CatalogControl() {
         </div>
       )}
 
-      {/* 5. LISTAGEM DIVIDIDA POR GRUPO (COMO NO SITE) OU EM GRADE */}
+      {/* 5. LISTAGEM EM GRADE (CARDS) OU TABELA (DESKTOP) */}
       {isLoading ? (
         <div className="p-16 text-center text-muted-foreground">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
@@ -1053,6 +1532,30 @@ export default function CatalogControl() {
             <Button size="sm" onClick={handleNewProduct} className="gap-1.5">
               <Plus className="w-4 h-4" /> Criar Novo Veículo
             </Button>
+          </div>
+        </div>
+      ) : viewLayout === "table" ? (
+        // VISUALIZAÇÃO EM TABELA COMPACTA (DESKTOP)
+        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-muted/50 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  <th className="p-3 text-center w-16">Posição</th>
+                  <th className="p-3">Veículo</th>
+                  <th className="p-3 text-center w-28">Visibilidade</th>
+                  <th className="p-3 w-36">Preço / 21x</th>
+                  <th className="p-3 w-56">Estoque & Ações</th>
+                  <th className="p-3 text-center w-28">Promoção</th>
+                  <th className="p-3 text-center w-24">Carrossel</th>
+                  <th className="p-3 text-center w-24">Descrição</th>
+                  <th className="p-3 text-right w-28">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map((prod, idx) => renderProductTableRow(prod, idx))}
+              </tbody>
+            </table>
           </div>
         </div>
       ) : viewGrouping === "sections" && selectedCat === "all" ? (
@@ -1098,7 +1601,7 @@ export default function CatalogControl() {
                         setSelectedCat(group.id);
                         setSelectedSub("all");
                       }}
-                      className="text-xs h-7 px-2"
+                      className="text-xs h-7 px-2 font-medium"
                     >
                       Ver apenas este grupo →
                     </Button>
@@ -1107,7 +1610,7 @@ export default function CatalogControl() {
 
                 {/* GRID DE CARDS DO GRUPO */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {groupProducts.map(renderProductCard)}
+                  {groupProducts.map((p, idx) => renderProductCard(p, idx))}
                 </div>
               </div>
             );
@@ -1134,44 +1637,112 @@ export default function CatalogControl() {
                 }}
                 className="text-xs h-7"
               >
-                ← Ver todos os grupos
+                ← Ver todas as motos
               </Button>
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProducts.map(renderProductCard)}
+            {filteredProducts.map((p, idx) => renderProductCard(p, idx))}
           </div>
         </div>
       )}
 
-      {/* 6. MODAIS DO SISTEMA DO CATÁLOGO */}
-      {/* Modal de Configurações da Loja e Taxas */}
+      {/* 6. BANNER FLUTUANTE DA FILA DE LOTE (BATCH SYNC DRAWER) */}
+      {pendingBatch.length > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-2xl bg-zinc-950/95 backdrop-blur-md border border-primary/40 text-zinc-100 p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/20 text-primary border border-primary/30">
+              <Layers3 className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm">Fila de Alterações em Lote</span>
+                <Badge className="bg-primary text-primary-foreground font-mono font-bold text-xs">
+                  {pendingBatch.length} {pendingBatch.length === 1 ? "ação pendente" : "ações pendentes"}
+                </Badge>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Serão despachadas atomicamente em um único POST /api/sync.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleClearBatch}
+              disabled={isSendingBatch}
+              className="text-zinc-400 hover:text-zinc-100 text-xs"
+            >
+              Descartar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleSendBatch}
+              disabled={isSendingBatch}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-1.5 shadow-md"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {isSendingBatch ? "Enviando Lote..." : "Enviar Lote Atômico"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 7. TODOS OS MODAIS DO SISTEMA DO CATÁLOGO (100% COBERTURA) */}
+      {/* 1. Modal de Reordenação das Motos */}
+      <CatalogReorderDialog
+        open={reorderDialogOpen}
+        onOpenChange={setReorderDialogOpen}
+        products={filteredProducts}
+        category={selectedCat}
+        onSaveReorder={(ids) => dispatchOrQueue({ action: "reorder", ids }, `Reordenar ${ids.length} veículos`)}
+        onSetOrder={(id, order) => dispatchOrQueue({ action: "order", id, order }, `Posição #${order} para ${id}`)}
+      />
+
+      {/* 2. Modal de Edição da Descrição Comercial (desc) */}
+      <CatalogDescDialog
+        open={descDialogOpen}
+        onOpenChange={setDescDialogOpen}
+        product={selectedProductForDesc}
+        onSave={(id, desc) => dispatchOrQueue({ action: "desc", id, desc }, `Descrição de ${id}`)}
+      />
+
+      {/* 3. Modal de Configurações da Loja e Taxas */}
       <CatalogConfigDialog
         open={configOpen}
         onOpenChange={setConfigOpen}
-        config={catalog?.config || {}}
-        onSaveConfig={updateConfig}
-        onSaveRates={updateRates}
+        currentConfig={catalog?.config || {}}
+        onSaveStoreConfig={(config) => dispatchOrQueue({ action: "config", config }, "Configurações da Loja")}
+        onSaveRates={(debitRate, installmentRates, installmentNote) =>
+          dispatchOrQueue({ action: "rates", debitRate, installmentRates, installmentNote }, "Taxas de Parcelamento")
+        }
       />
 
-      {/* Modal de Campanha Sazonal */}
+      {/* 4. Modal de Campanha Sazonal */}
       <CatalogCampaignDialog
         open={campaignOpen}
         onOpenChange={setCampaignOpen}
         campaign={catalog?.config?.campaign}
-        onSaveCampaign={updateCampaign}
+        onSaveCampaign={(campaign) => dispatchOrQueue({ action: "campaign", campaign }, "Campanha Sazonal")}
       />
 
-      {/* Modal do Carrossel Hero */}
+      {/* 5. Modal do Carrossel Hero */}
       <CatalogHeroCarouselDialog
         open={heroDialogOpen}
         onOpenChange={setHeroDialogOpen}
         products={products}
-        onSaveHeroList={setHeroList}
+        onSaveHeroList={(items) => dispatchOrQueue({ action: "hero_list", items }, "Ordem do Carrossel Hero")}
+        onToggleHero={(id, featured, heroOrder) =>
+          dispatchOrQueue({ action: "carousel", id, featured, order: heroOrder }, `Hero ${id}`)
+        }
       />
 
-      {/* Sandbox do Chatbot com IA */}
+      {/* 6. Sandbox do Chatbot com IA */}
       <CatalogChatTestDialog
         open={chatDialogOpen}
         onOpenChange={setChatDialogOpen}
@@ -1179,15 +1750,15 @@ export default function CatalogControl() {
         isSending={chatMutation.isPending}
       />
 
-      {/* Modal de Produto Completo */}
+      {/* 7. Modal de Cadastro e Edição Completa de Veículo */}
       <CatalogProductDialog
         open={productDialogOpen}
         onOpenChange={setProductDialogOpen}
         product={selectedProductForEdit}
-        onSaveProduct={upsertProduct}
+        onSaveProduct={(prod) => dispatchOrQueue({ action: "create", ...prod }, `Salvar ${prod.name}`)}
       />
 
-      {/* Modal de Importação do Estoque Físico */}
+      {/* 8. Modal de Importação do Estoque Físico */}
       <CatalogImportFromStockDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
@@ -1195,23 +1766,43 @@ export default function CatalogControl() {
         onBatchSync={batchSync}
       />
 
-      {/* Modal de Alteração Rápida de Preço */}
+      {/* 9. Modal de Alteração Rápida de Preço e Parcelas 21x */}
       <CatalogQuickPriceDialog
         open={priceDialogOpen}
         onOpenChange={setPriceDialogOpen}
         product={selectedProductForPrice}
-        onSavePrice={updatePrice}
+        onSavePrice={(id, price, oldPrice, installments) =>
+          dispatchOrQueue(
+            { action: "price", id, price, oldPrice, installments, value: price },
+            `Preço de ${id}`
+          )
+        }
       />
 
-      {/* Modal de Configuração de Oferta / Promoção */}
+      {/* 10. Modal de Configuração de Oferta / Promoção */}
       <CatalogPromoDialog
         open={promoDialogOpen}
         onOpenChange={setPromoDialogOpen}
         product={selectedProductForPromo}
-        onSavePromo={updatePromo}
+        onSavePromo={(id, promo) =>
+          dispatchOrQueue(
+            promo
+              ? {
+                  action: "promo",
+                  id,
+                  active: promo.active,
+                  label: promo.label,
+                  discount: promo.discount,
+                  until: promo.until,
+                  promo,
+                }
+              : { action: "promo", id, active: false, label: "", discount: 0, until: "", promo: null },
+            `Promoção de ${id}`
+          )
+        }
       />
 
-      {/* Dialog de Confirmação de Exclusão */}
+      {/* 11. Dialog de Confirmação de Exclusão Definitiva */}
       <AlertDialog open={!!deleteProduct} onOpenChange={(open) => !open && setDeleteProduct(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1226,7 +1817,7 @@ export default function CatalogControl() {
             <AlertDialogAction
               onClick={handleConfirmDelete}
               disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold"
             >
               {deleting ? "Excluindo..." : "Sim, Excluir do Catálogo"}
             </AlertDialogAction>

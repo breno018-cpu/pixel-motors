@@ -91,29 +91,55 @@ export function useCatalog() {
   };
 
   // 2. Controle de Estoque (0 = ESGOTADO, 1-2 = últimas unidades, >2 = normal, null = pronta entrega)
-  const updateStock = (id: string, value: number | null) => {
+  const updateStock = (id: string, value: number | null, readyDelivery?: boolean) => {
     return syncMutation.mutateAsync({
       action: "stock",
       id,
+      stock: value,
       value,
+      readyDelivery,
     });
   };
 
-  // 3. Alteração de Preços à vista e "De / Por"
-  const updatePrice = (id: string, value: number | null, keepOld = true) => {
+  // 3. Alteração de Preços à vista e "De / Por" e Parcelamento
+  const updatePrice = (
+    id: string,
+    value: number | null,
+    oldPrice?: number | null,
+    installments?: boolean,
+    keepOld = true
+  ) => {
     return syncMutation.mutateAsync({
       action: "price",
       id,
+      price: value,
       value,
+      oldPrice,
+      installments,
       keepOld,
     });
   };
 
   // 4. Promoções em Destaque (Selo, Desconto R$, Data Limite)
   const updatePromo = (id: string, promo: CatalogPromo | null) => {
+    if (!promo || promo.active === false) {
+      return syncMutation.mutateAsync({
+        action: "promo",
+        id,
+        active: false,
+        label: "",
+        discount: 0,
+        until: "",
+        promo: null,
+      });
+    }
     return syncMutation.mutateAsync({
       action: "promo",
       id,
+      active: promo.active,
+      label: promo.label,
+      discount: promo.discount,
+      until: promo.until,
       promo,
     });
   };
@@ -121,10 +147,49 @@ export function useCatalog() {
   // 5. Carrossel Hero do Topo (Destaques)
   const toggleFeaturedHero = (id: string, featuredHero: boolean, heroOrder = 1) => {
     return syncMutation.mutateAsync({
-      action: "featuredHero",
+      action: "carousel",
       id,
-      value: featuredHero,
-      heroOrder,
+      featured: featuredHero,
+      order: heroOrder,
+    });
+  };
+
+  const setCarouselList = (ids: string[]) => {
+    return syncMutation.mutateAsync({
+      action: "carousel_list",
+      ids,
+    });
+  };
+
+  const setHeroList = (items: Array<{ id: string; heroOrder: number }>) => {
+    return syncMutation.mutateAsync({
+      action: "hero_list",
+      items,
+    });
+  };
+
+  // 6. Reordenação de Modelos (Ordem Unitária e em Lote)
+  const setProductOrder = (id: string, order: number) => {
+    return syncMutation.mutateAsync({
+      action: "order",
+      id,
+      order,
+    });
+  };
+
+  const reorderProducts = (ids: string[]) => {
+    return syncMutation.mutateAsync({
+      action: "reorder",
+      ids,
+    });
+  };
+
+  // 7. Edição Rápida da Descrição Comercial
+  const updateDescription = (id: string, desc: string) => {
+    return syncMutation.mutateAsync({
+      action: "desc",
+      id,
+      desc,
     });
   };
 
@@ -137,14 +202,7 @@ export function useCatalog() {
     });
   };
 
-  const setHeroList = (items: Array<{ id: string; heroOrder: number }>) => {
-    return syncMutation.mutateAsync({
-      action: "hero_list",
-      items,
-    });
-  };
-
-  // 6. Campanha com Contagem Regressiva
+  // 8. Campanha com Contagem Regressiva
   const updateCampaign = (campaign: CatalogCampaign | null) => {
     return syncMutation.mutateAsync({
       action: "campaign",
@@ -152,7 +210,7 @@ export function useCatalog() {
     });
   };
 
-  // 7. Parâmetros da Loja (WhatsApp, Nome, Parcelas, etc.)
+  // 9. Parâmetros da Loja (WhatsApp, Nome, Parcelas, etc.)
   const updateConfig = (config: CatalogConfig) => {
     return syncMutation.mutateAsync({
       action: "config",
@@ -160,7 +218,7 @@ export function useCatalog() {
     });
   };
 
-  // 8. Taxas da Maquininha e Simulador de 1x a 21x
+  // 10. Taxas da Maquininha e Simulador de 1x a 21x
   const updateRates = (debitRate: number, installmentRates: number[], installmentNote?: string) => {
     return syncMutation.mutateAsync({
       action: "rates",
@@ -170,15 +228,15 @@ export function useCatalog() {
     });
   };
 
-  // 9. Cadastro/Edição Completa de Modelo
+  // 11. Cadastro/Edição Completa de Modelo
   const upsertProduct = (product: CatalogProduct) => {
     return syncMutation.mutateAsync({
-      action: "upsert",
-      product,
+      action: "create",
+      ...product,
     });
   };
 
-  // 10. Exclusão permanente do catálogo
+  // 12. Exclusão permanente do catálogo
   const removeProduct = (id: string) => {
     return syncMutation.mutateAsync({
       action: "remove",
@@ -186,12 +244,12 @@ export function useCatalog() {
     });
   };
 
-  // 11. Sincronização em Lote (Batch)
+  // 13. Sincronização em Lote (Batch)
   const batchSync = (actions: CatalogSyncAction[]) => {
     return syncMutation.mutateAsync(actions);
   };
 
-  // 12. Assistente Virtual IA (Chatbot)
+  // 14. Assistente Virtual IA (Chatbot)
   const chatMutation = useMutation({
     mutationFn: (messages: CatalogChatMessage[]) => sendCatalogChatMessage(messages),
   });
@@ -209,7 +267,11 @@ export function useCatalog() {
     updatePrice,
     updatePromo,
     toggleFeaturedHero,
+    setCarouselList,
     setHeroList,
+    setProductOrder,
+    reorderProducts,
+    updateDescription,
     updateStore,
     updateCampaign,
     updateConfig,

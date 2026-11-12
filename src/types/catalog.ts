@@ -81,12 +81,18 @@ export interface CatalogData {
 
 export type CatalogSyncAction =
   | { action: "upsert"; product: CatalogProduct }
-  | { action: "price"; id: string; value: number | null; keepOld?: boolean }
-  | { action: "stock"; id: string; value: number | null }
+  | ({ action: "create" } & Partial<CatalogProduct>)
+  | { action: "order"; id: string; order: number }
+  | { action: "reorder"; ids: string[] }
+  | { action: "price"; id: string; price?: number | null; oldPrice?: number | null; installments?: boolean; value?: number | null; keepOld?: boolean }
+  | { action: "stock"; id: string; stock?: number | null; readyDelivery?: boolean; value?: number | null }
   | { action: "active"; id: string; value: boolean }
-  | { action: "promo"; id: string; promo: CatalogPromo | null }
+  | { action: "promo"; id: string; active?: boolean; label?: string; discount?: number; until?: string; promo?: CatalogPromo | null }
+  | { action: "carousel"; id: string; featured: boolean; order?: number }
+  | { action: "carousel_list"; ids: string[] }
   | { action: "featuredHero"; id: string; value: boolean; heroOrder?: number }
   | { action: "hero_list"; items: Array<{ id: string; heroOrder: number }> }
+  | { action: "desc"; id: string; desc: string }
   | { action: "store"; id: string; store_id: string; store_name?: string }
   | { action: "campaign"; campaign: CatalogCampaign | null }
   | { action: "remove"; id: string }
