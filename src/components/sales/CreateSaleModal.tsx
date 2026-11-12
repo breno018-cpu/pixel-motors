@@ -50,6 +50,8 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, resolveUserSellerStore } from '@/lib/salesScope';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
+import { useDateFilter } from '@/contexts/DateFilterContext';
+import { getMonthlySheetRows } from '@/hooks/useContracts';
 import { cn } from '@/lib/utils';
 
 interface CreateSaleModalProps {
@@ -126,6 +128,7 @@ export function CreateSaleModal({
   const sellerStore = useMemo(() => resolveUserSellerStore(auth, employees), [auth, employees]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setPeriodFilter } = useDateFilter();
 
   // Status da Venda
   const [saleType, setSaleType] = useState<'concluido' | 'pre_venda'>('concluido');
@@ -341,9 +344,19 @@ export function CreateSaleModal({
   const diff = totalValNum - totalPayments;
   const isBalanced = Math.abs(diff) < 0.01;
 
+  const currentSellerName = useMemo(() => {
+    return (
+      profile?.full_name?.trim() ||
+      (user as any)?.user_metadata?.full_name?.trim() ||
+      (user as any)?.user_metadata?.name?.trim() ||
+      user?.email?.split('@')[0]?.trim() ||
+      'Vendedor'
+    );
+  }, [profile, user]);
+
   const activeSeller = isRestrictedSeller
-    ? (profile?.full_name || 'Vendedor')
-    : (sellerName === 'OUTRO' ? customSeller.trim() : sellerName);
+    ? currentSellerName
+    : (sellerName === 'OUTRO' ? customSeller.trim() : (sellerName || currentSellerName));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -394,9 +407,12 @@ export function CreateSaleModal({
         const stored = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) currentRows = parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) currentRows = parsed;
         }
       } catch {}
+      if (currentRows.length === 0) {
+        currentRows = getMonthlySheetRows();
+      }
 
       const nextQtNumber = String(currentRows.length + 1).padStart(2, '0');
       const effectiveStoreId = isRestrictedSeller ? (sellerStore?.storeId || storeId) : storeId;
@@ -413,6 +429,10 @@ export function CreateSaleModal({
         ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`
         : new Date().toLocaleDateString('pt-BR');
 
+      const saleYear = dateParts.length === 3 ? dateParts[0] : String(new Date().getFullYear());
+      const saleMonth = dateParts.length === 3 ? dateParts[1] : String(new Date().getMonth() + 1).padStart(2, '0');
+      const saleMonthKey = `${saleYear}-${saleMonth}`;
+
       const newRowId = `venda-${Date.now()}`;
       const contractNumber = `${isMoc ? 'MOC' : 'DIV'}-${nextQtNumber}`;
 
@@ -423,13 +443,20 @@ export function CreateSaleModal({
         hasTradeIn && tradeInValNum > 0 ? `Troca: ${tradeInModel || 'Veículo Usado'} (R$ ${tradeInValNum.toLocaleString('pt-BR')})` : '',
       ].filter(Boolean).join(' | ');
 
-      const newSheetRow: SheetRowV9 = {
+      const newSheetRow: SheetRowV9 & { created_by?: string; user_id?: string; operator?: any; store_id?: string } = {
         id: newRowId,
-        month_key: '2026-10',
+        month_key: saleMonthKey,
         qt: nextQtNumber,
         lead_mapping: leadSource || 'Balcão',
         data: formattedDateBR,
-        vendedor: activeSeller || 'Vendedor',
+        vendedor: activeSeller,
+        created_by: user?.id || activeSeller,
+        user_id: user?.id || null,
+        operator: {
+          id: user?.id || null,
+          full_name: activeSeller,
+        },
+        store_id: effectiveStoreId,
         chassi: vehicleChassis.trim().toUpperCase() || `CH-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
         modelo: vehicleModel.trim().toUpperCase(),
         cliente: buyerName.trim().toUpperCase(),
@@ -456,8 +483,36 @@ export function CreateSaleModal({
       const updatedRows = [...currentRows, newSheetRow];
       localStorage.setItem('dealflow_cloud_monthly_sheet_v9', JSON.stringify(updatedRows));
 
+      // Sincroniza o período ativo do sistema para o mês da venda recém-criada
+      try {
+        setPeriodFilter(saleMonthKey);
+      } catch {}
+
       // 2. Insere no Supabase Contracts em segundo plano
       try {
+        const isUuid = (val: any): boolean =>
+          typeof val === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+        let targetStoreUuid: string | null = null;
+        if (isUuid(effectiveStoreId)) {
+          targetStoreUuid = effectiveStoreId;
+        } else {
+          const matchedDbStore = stores.find((s: any) =>
+            isUuid(s.id) && (
+              s.id === effectiveStoreId ||
+              (isMoc && (s.name?.toLowerCase().includes('montes') || s.city?.toLowerCase().includes('montes'))) ||
+              (!isMoc && (s.name?.toLowerCase().includes('divin') || s.city?.toLowerCase().includes('divin')))
+            )
+          );
+          if (matchedDbStore && isUuid(matchedDbStore.id)) {
+            targetStoreUuid = matchedDbStore.id;
+          } else {
+            const firstValidStore = stores.find((s: any) => isUuid(s.id));
+            if (firstValidStore) targetStoreUuid = firstValidStore.id;
+          }
+        }
+
         const contractPayload: any = {
           contract_number: contractNumber,
           buyer_name: buyerName.trim(),
@@ -479,8 +534,6 @@ export function CreateSaleModal({
           down_payment_card_installments: cardInstallments,
           lead_source: leadSource,
           notes: installmentSummary || null,
-          store_id: effectiveStoreId,
-          created_by: user?.id || effectiveSeller || 'Vendedor',
           sale_channel: channel,
           external_data: {
             vehicle_model_custom: vehicleModel,
@@ -509,12 +562,20 @@ export function CreateSaleModal({
           },
         };
 
-        if (selectedVehicleId && vehicleSource === 'inventory') {
+        if (targetStoreUuid) {
+          contractPayload.store_id = targetStoreUuid;
+        }
+        if (user?.id && isUuid(user.id)) {
+          contractPayload.created_by = user.id;
+        }
+        if (selectedVehicleId && isUuid(selectedVehicleId)) {
           contractPayload.vehicle_id = selectedVehicleId;
           await supabase.from('vehicles').update({ status: saleType === 'concluido' ? 'vendido' : 'reservado' }).eq('id', selectedVehicleId);
         }
 
-        await (supabase as any).from('contracts').insert([contractPayload]);
+        if (contractPayload.store_id && contractPayload.vehicle_id) {
+          await (supabase as any).from('contracts').insert([contractPayload]);
+        }
       } catch (err) {
         console.warn('Registro em Supabase contratos salvo localmente:', err);
       }

@@ -58,6 +58,7 @@ import {
   downloadVehicleDeliveryTermPDF,
   SecondCopySaleData,
 } from '@/lib/secondCopyPdfs';
+import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { getStoreFromDatabase } from '@/lib/storeResolution';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { ReceiptAttachmentManager } from '@/components/sales/ReceiptAttachmentManager';
@@ -997,7 +998,6 @@ export function SaleManageModal({
                     <Button
                       onClick={async () => {
                         try {
-                          const { downloadOriginalContract } = await import('@/lib/originalContractExport');
                           await downloadOriginalContract(sale);
                           toast({ title: 'Contrato baixado', description: 'O PDF do contrato original foi baixado com sucesso.' });
                         } catch (e: any) {

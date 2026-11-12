@@ -52,6 +52,8 @@ import { logActivity } from '@/lib/audit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { getStoreFromDatabase } from '@/lib/storeResolution';
+import { downloadOriginalContract } from '@/lib/originalContractExport';
+import { downloadContractPDF } from '@/lib/contractPdf';
 
 interface Sale {
   id: string;
@@ -348,13 +350,11 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
 
   const handleExportSale = async () => {
     try {
-      const { downloadOriginalContract } = await import('@/lib/originalContractExport');
       await downloadOriginalContract(sale);
       toast({ title: 'Contrato gerado', description: 'O PDF do contrato original foi baixado com sucesso.' });
     } catch (err: any) {
       console.warn('Erro ao emitir contrato original, tentando fallback:', err);
       try {
-        const { downloadContractPDF } = await import('@/lib/contractPdf');
         const v = sale.vehicle || {};
         const ext = (sale.external_data || {}) as any;
         downloadContractPDF({

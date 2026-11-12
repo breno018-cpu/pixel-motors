@@ -6,10 +6,13 @@ import {
   Check,
   Sparkles,
   Loader2,
-  Building2,
   X,
-  SlidersHorizontal,
-  ExternalLink,
+  ScanBarcode,
+  Building2,
+  FileSpreadsheet,
+  ArrowRight,
+  ShieldCheck,
+  ChevronDown,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,15 +24,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { recognizeFromChassis, resolveModelYearFromVin } from '@/lib/chassisRecognition';
+import { BarcodeScannerDialog } from '@/components/vehicles/BarcodeScannerDialog';
+import { SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { cn } from '@/lib/utils';
 
 export interface SelectedChassisVehicle {
@@ -61,7 +61,7 @@ export function ChassisSearchInput({
   value,
   onChange,
   onSelectVehicle,
-  placeholder = 'Digite ou pesquise o chassi (ex: 99HSHF...)',
+  placeholder = 'Digite o chassi ou final (ex: 99HSHF... ou 001704)',
   className,
   label,
   required = false,
@@ -69,50 +69,67 @@ export function ChassisSearchInput({
   autoRecognize = true,
 }: ChassisSearchInputProps) {
   const { data: vehicles = [], isLoading: isLoadingVehicles } = useVehicles();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
+  const [modalTab, setModalTab] = useState<'all' | 'stock' | 'sheet' | 'patterns'>('all');
   const [isDecoding, setIsDecoding] = useState(false);
-  const [recognizedInfo, setRecognizedInfo] = useState<{
+  const [decodedInfo, setDecodedInfo] = useState<{
     brand?: string;
     model?: string;
     year?: number | null;
+    salePrice?: number | null;
+    vehicleType?: string | null;
   } | null>(null);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const lastDecodedRef = useRef<string>('');
 
-  // Padrões cadastrados no catálogo mestre da Ala Master
+  // Busca chassi gravados na planilha mensal local (para cobrir vendas e pré-vendas)
+  const sheetRows: SheetRowV9[] = useMemo(() => {
+    try {
+      const stored = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  }, [dropdownOpen, modalOpen]);
+
+  // Padrões cadastrados no catálogo mestre
   const { data: chassisPatterns = [] } = useQuery({
     queryKey: ['chassis-patterns-search'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('chassis_patterns')
-        .select('*');
+      const { data, error } = await supabase.from('chassis_patterns').select('*');
       if (error) return [];
       return data || [];
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  // Limpa o valor digitado
-  const cleanVin = (vin: string) => vin.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const cleanVin = (vin: string) =>
+    (vin || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-  const handleInputChange = (raw: string) => {
-    const cleaned = cleanVin(raw);
-    onChange(cleaned);
-    if (cleaned.length >= 2) {
-      setPopoverOpen(true);
-    } else {
-      setPopoverOpen(false);
-    }
-  };
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  // Reconhecimento autônomo ao digitar ou colar
+  // Reconhecimento do Chassi (apenas informativo, não sobrescreve os campos silenciosamente)
   useEffect(() => {
     if (!autoRecognize) return;
     const vin = cleanVin(value);
-    if (vin.length < 4) {
-      setRecognizedInfo(null);
+
+    if (vin.length < 5 || vin === 'DISPENSADO') {
+      setDecodedInfo(null);
       return;
     }
     if (lastDecodedRef.current === vin) return;
@@ -129,37 +146,23 @@ export function ChassisSearchInput({
         if (!isMounted) return;
         lastDecodedRef.current = vin;
 
-        if (pattern) {
-          setRecognizedInfo({
-            brand: pattern.brand,
-            model: pattern.model,
-            year: yearRes?.year,
-          });
-
-          if (onSelectVehicle && !vehicles.some((v) => v.chassis === vin)) {
-            onSelectVehicle({
-              id: '',
-              brand: pattern.brand,
-              model: pattern.model || '',
-              year: yearRes?.year,
-              chassis: vin,
-              sale_price: pattern.default_sale_price,
-              vehicle_type: pattern.vehicle_type,
-            });
-          }
-        } else if (yearRes?.year) {
-          setRecognizedInfo({
-            year: yearRes.year,
+        if (pattern || yearRes?.year) {
+          setDecodedInfo({
+            brand: pattern?.brand || 'SHINERAY',
+            model: pattern?.model || undefined,
+            year: yearRes?.year || undefined,
+            salePrice: pattern?.default_sale_price || undefined,
+            vehicleType: pattern?.vehicle_type || 'moto',
           });
         } else {
-          setRecognizedInfo(null);
+          setDecodedInfo(null);
         }
       } catch {
-        if (isMounted) setRecognizedInfo(null);
+        if (isMounted) setDecodedInfo(null);
       } finally {
         if (isMounted) setIsDecoding(false);
       }
-    }, 400);
+    }, 350);
 
     return () => {
       isMounted = false;
@@ -167,95 +170,183 @@ export function ChassisSearchInput({
     };
   }, [value, autoRecognize]);
 
-  // Veículos correspondentes no estoque
-  const matchingVehicles = useMemo(() => {
+  // Lista unificada de sugestões rápidas
+  const searchResults = useMemo(() => {
     const q = cleanVin(value);
-    if (!q) return [];
-    return vehicles
+    if (!q || q.length < 2) return [];
+
+    const isStoreMatch = (sId?: string | null) => {
+      if (!filterStoreId || filterStoreId === 'all') return true;
+      if (!sId) return true;
+      return sId === filterStoreId || sId.toLowerCase().includes(filterStoreId.toLowerCase());
+    };
+
+    // 1. Veículos no Estoque (Pátio)
+    const matchedVehicles = vehicles
       .filter((v) => {
-        if (filterStoreId && filterStoreId !== 'all' && v.store_id !== filterStoreId) {
-          return false;
-        }
-        const ch = (v.chassis || '').toUpperCase();
-        const pl = (v.plate || '').toUpperCase();
+        if (!isStoreMatch(v.store_id)) return false;
+        const ch = cleanVin(v.chassis || '');
+        const pl = cleanVin(v.plate || '');
         const md = `${v.brand} ${v.model}`.toUpperCase();
         return ch.includes(q) || pl.includes(q) || md.includes(q);
       })
-      .slice(0, 6);
-  }, [vehicles, value, filterStoreId]);
-
-  // Padrões correspondentes no catálogo
-  const matchingPatterns = useMemo(() => {
-    const q = cleanVin(value);
-    if (!q || q.length < 2) return [];
-    return chassisPatterns
-      .filter((p) => {
-        const wmi = (p.wmi_code || '').toUpperCase();
-        const pattern = (p.model_pattern || '').toUpperCase();
-        const name = `${p.brand} ${p.model_name || ''}`.toUpperCase();
-        return q.startsWith(wmi) || q.includes(pattern) || wmi.includes(q) || name.includes(q);
-      })
-      .slice(0, 4);
-  }, [chassisPatterns, value]);
-
-  // Veículos filtrados dentro do modal de pesquisa avançada
-  const modalFilteredVehicles = useMemo(() => {
-    const q = modalSearch.toLowerCase().trim();
-    if (!q) return vehicles.slice(0, 50);
-    return vehicles.filter((v) => {
-      const ch = (v.chassis || '').toLowerCase();
-      const pl = (v.plate || '').toLowerCase();
-      const md = `${v.brand} ${v.model}`.toLowerCase();
-      const col = (v.color || '').toLowerCase();
-      return ch.includes(q) || pl.includes(q) || md.includes(q) || col.includes(q);
-    });
-  }, [vehicles, modalSearch]);
-
-  const handleSelectFromList = (v: any) => {
-    onChange(v.chassis || '');
-    setPopoverOpen(false);
-    setModalOpen(false);
-    if (onSelectVehicle) {
-      onSelectVehicle({
+      .slice(0, 5)
+      .map((v) => ({
+        type: 'stock' as const,
         id: v.id,
+        chassis: v.chassis || '',
         brand: v.brand,
         model: v.model,
         year: v.year,
         color: v.color,
-        chassis: v.chassis,
         sale_price: v.sale_price,
         plate: v.plate,
         store_id: v.store_id,
         vehicle_type: v.vehicle_type,
+        status: v.status,
+      }));
+
+    // 2. Chassi de vendas recentes na Planilha
+    const seenChassis = new Set(matchedVehicles.map((m) => m.chassis));
+    const matchedSheet = sheetRows
+      .filter((r) => {
+        const ch = cleanVin(r.chassi || '');
+        const md = (r.modelo || '').toUpperCase();
+        return ch && !seenChassis.has(ch) && (ch.includes(q) || md.includes(q));
+      })
+      .slice(0, 3)
+      .map((r) => ({
+        type: 'sheet' as const,
+        id: r.id,
+        chassis: r.chassi,
+        brand: 'SHINERAY',
+        model: r.modelo,
+        year: 2026,
+        color: undefined,
+        sale_price: r.valor,
+        plate: undefined,
+        store_id: undefined,
+        vehicle_type: 'moto',
+        status: r.is_permitted ? 'faturada' : 'pre_venda',
+      }));
+
+    // 3. Padrões do Catálogo Mestre
+    const matchedPatterns = chassisPatterns
+      .filter((p) => {
+        const wmi = cleanVin(p.wmi_code || '');
+        const pat = cleanVin(p.model_pattern || '');
+        const name = `${p.brand} ${p.model_name || ''}`.toUpperCase();
+        return q.startsWith(wmi) || q.includes(pat) || wmi.includes(q) || name.includes(q);
+      })
+      .slice(0, 3)
+      .map((p) => ({
+        type: 'pattern' as const,
+        id: p.id,
+        chassis: p.wmi_code,
+        patternCode: p.model_pattern,
+        brand: p.brand,
+        model: p.model_name || 'Modelo Shineray',
+        year: 2026,
+        color: undefined,
+        sale_price: p.default_sale_price,
+        plate: undefined,
+        store_id: undefined,
+        vehicle_type: p.vehicle_type,
+        status: 'catalogo',
+      }));
+
+    return [...matchedVehicles, ...matchedSheet, ...matchedPatterns];
+  }, [value, vehicles, sheetRows, chassisPatterns, filterStoreId]);
+
+  // Lista completa de busca dentro do Modal Avançado
+  const modalResults = useMemo(() => {
+    const q = cleanVin(modalSearch) || modalSearch.trim().toUpperCase();
+
+    const stockList = vehicles.filter((v) => {
+      if (!q) return true;
+      const ch = cleanVin(v.chassis || '');
+      const pl = cleanVin(v.plate || '');
+      const md = `${v.brand} ${v.model} ${v.color || ''}`.toUpperCase();
+      return ch.includes(q) || pl.includes(q) || md.includes(q);
+    });
+
+    const sheetList = sheetRows.filter((r) => {
+      if (!q) return true;
+      const ch = cleanVin(r.chassi || '');
+      const md = `${r.modelo} ${r.cliente}`.toUpperCase();
+      return ch.includes(q) || md.includes(q);
+    });
+
+    const patternList = chassisPatterns.filter((p) => {
+      if (!q) return true;
+      const wmi = cleanVin(p.wmi_code || '');
+      const pat = cleanVin(p.model_pattern || '');
+      const md = `${p.brand} ${p.model_name || ''}`.toUpperCase();
+      return wmi.includes(q) || pat.includes(q) || md.includes(q);
+    });
+
+    return { stockList, sheetList, patternList };
+  }, [modalSearch, vehicles, sheetRows, chassisPatterns]);
+
+  const handleSelectVehicle = (item: any) => {
+    const chassisToSet = item.type === 'pattern' ? value : (item.chassis || '');
+    onChange(chassisToSet);
+    setDropdownOpen(false);
+    setModalOpen(false);
+
+    if (onSelectVehicle) {
+      onSelectVehicle({
+        id: item.type === 'stock' ? item.id : '',
+        brand: item.brand || 'SHINERAY',
+        model: item.model || '',
+        year: item.year || 2026,
+        color: item.color || null,
+        chassis: item.chassis || '',
+        sale_price: item.sale_price || null,
+        plate: item.plate || null,
+        store_id: item.store_id || null,
+        vehicle_type: item.vehicle_type || 'moto',
       });
     }
   };
 
-  const handleSelectPatternFromList = (p: any) => {
-    const prefix = p.wmi_code || '';
-    onChange(prefix);
-    setPopoverOpen(false);
-    setModalOpen(false);
-    if (onSelectVehicle) {
-      onSelectVehicle({
-        id: '',
-        brand: p.brand,
-        model: p.model_name || '',
-        chassis: prefix,
-        sale_price: p.default_sale_price,
-        vehicle_type: p.vehicle_type,
-      });
-    }
+  const handleApplyDecoded = () => {
+    if (!decodedInfo || !onSelectVehicle) return;
+    onSelectVehicle({
+      id: '',
+      brand: decodedInfo.brand || 'SHINERAY',
+      model: decodedInfo.model || '',
+      year: decodedInfo.year || 2026,
+      chassis: cleanVin(value),
+      sale_price: decodedInfo.salePrice || null,
+      vehicle_type: decodedInfo.vehicleType || 'moto',
+    });
+  };
+
+  const handleDispenseChassis = () => {
+    onChange('DISPENSADO');
+    setDecodedInfo(null);
+    setDropdownOpen(false);
   };
 
   return (
-    <div className={cn('space-y-1.5 w-full', className)}>
-      {label && (
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-            {label}
-            {required && <span className="text-destructive">*</span>}
-          </label>
+    <div ref={containerRef} className={cn('relative space-y-1.5 w-full', className)}>
+      {/* Label e Ações de Topo */}
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+          {label || 'Chassi do Veículo'}
+          {required && <span className="text-destructive">*</span>}
+        </label>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleDispenseChassis}
+            className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+            title="Para bicicletas elétricas e ciclomotores dispensados de emplacamento e VIN (Res. 996/23)"
+          >
+            Dispensar VIN
+          </button>
+          <span className="text-muted-foreground/40">•</span>
           <button
             type="button"
             onClick={() => {
@@ -265,167 +356,195 @@ export function ChassisSearchInput({
             className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
           >
             <Search className="w-3 h-3" />
-            Pesquisar Chassi
+            Localizador
           </button>
+        </div>
+      </div>
+
+      {/* Input com Ações Integradas */}
+      <div className="relative flex items-center">
+        <Input
+          value={value}
+          onChange={(e) => {
+            const clean = cleanVin(e.target.value);
+            onChange(clean);
+            setDropdownOpen(clean.length >= 2);
+          }}
+          onFocus={() => {
+            if (cleanVin(value).length >= 2) setDropdownOpen(true);
+          }}
+          placeholder={placeholder}
+          className="h-10 text-xs font-mono uppercase tracking-wider pr-24 bg-background rounded-xl border focus-visible:ring-1"
+          maxLength={24}
+          required={required}
+        />
+
+        {/* Botões rápidos na borda direita do input */}
+        <div className="absolute right-1 flex items-center gap-0.5">
+          {value && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+              onClick={() => {
+                onChange('');
+                setDecodedInfo(null);
+                setDropdownOpen(false);
+              }}
+              title="Limpar chassi"
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-primary hover:bg-primary/10 rounded-lg"
+            onClick={() => setScannerOpen(true)}
+            title="Bipar / Escanear Chassi com a Câmera ou Leitor"
+          >
+            <ScanBarcode className="w-3.5 h-3.5" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg"
+            onClick={() => {
+              setModalSearch(value);
+              setModalOpen(true);
+            }}
+            title="Abrir Localizador Avançado de Chassi"
+          >
+            <Search className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Dropdown de Sugestões Inteligentes */}
+      {dropdownOpen && searchResults.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-card border rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-border/60 max-h-72 overflow-y-auto animate-in fade-in-50 zoom-in-95">
+          <div className="p-2 bg-muted/40 text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+            <span>Resultados para "{value}"</span>
+            <span className="text-[9px] lowercase font-normal">clique para preencher</span>
+          </div>
+
+          {searchResults.map((item, idx) => (
+            <div
+              key={`${item.type}-${item.id || idx}`}
+              onClick={() => handleSelectVehicle(item)}
+              className="p-2.5 hover:bg-primary/5 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className={cn(
+                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold',
+                    item.type === 'stock'
+                      ? 'bg-emerald-500/10 text-emerald-600'
+                      : item.type === 'sheet'
+                      ? 'bg-blue-500/10 text-blue-600'
+                      : 'bg-amber-500/10 text-amber-600'
+                  )}
+                >
+                  {item.vehicle_type === 'carro' ? <Car className="w-3.5 h-3.5" /> : <Bike className="w-3.5 h-3.5" />}
+                </div>
+
+                <div className="min-w-0 space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary transition-colors truncate">
+                      {item.chassis || 'SEM CHASSI'}
+                    </span>
+                    {item.type === 'stock' && (
+                      <Badge variant="outline" className="text-[9px] px-1 py-0 border-emerald-500/30 text-emerald-600 bg-emerald-500/5">
+                        Em Estoque
+                      </Badge>
+                    )}
+                    {item.type === 'sheet' && (
+                      <Badge variant="outline" className="text-[9px] px-1 py-0 border-blue-500/30 text-blue-600 bg-blue-500/5">
+                        Na Planilha
+                      </Badge>
+                    )}
+                    {item.type === 'pattern' && (
+                      <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-500/30 text-amber-600 bg-amber-500/5">
+                        Catálogo
+                      </Badge>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    <strong className="text-foreground">{item.brand} {item.model}</strong>
+                    {item.color && <span> • {item.color}</span>}
+                    {item.year && <span> • {item.year}</span>}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                {item.sale_price ? (
+                  <span className="text-xs font-bold text-foreground block">
+                    R$ {Number(item.sale_price).toLocaleString('pt-BR')}
+                  </span>
+                ) : null}
+                <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+                  Selecionar →
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      <Popover open={popoverOpen && (matchingVehicles.length > 0 || matchingPatterns.length > 0)} onOpenChange={setPopoverOpen}>
-        <PopoverTrigger asChild>
-          <div className="relative flex items-center">
-            <Input
-              value={value}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onFocus={() => {
-                if (cleanVin(value).length >= 2) setPopoverOpen(true);
-              }}
-              placeholder={placeholder}
-              className="h-10 text-xs font-mono uppercase tracking-wider pr-16 bg-background rounded-xl border"
-              maxLength={20}
-              required={required}
-            />
-
-            <div className="absolute right-1 flex items-center gap-0.5">
-              {value && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    onChange('');
-                    setRecognizedInfo(null);
-                    setPopoverOpen(false);
-                  }}
-                  title="Limpar"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </Button>
+      {/* Cartão de Reconhecimento Inteligente / Sugestão Não-Intrusiva */}
+      {isDecoding ? (
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-0.5">
+          <Loader2 className="w-3 h-3 animate-spin text-primary" />
+          <span>Decodificando padrão do chassi VIN...</span>
+        </div>
+      ) : decodedInfo && (decodedInfo.model || decodedInfo.year) ? (
+        <div className="flex items-center justify-between gap-2 p-2 bg-primary/5 border border-primary/20 rounded-xl text-xs mt-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+            <div className="text-[11px] truncate">
+              <span className="font-semibold text-foreground">
+                {[decodedInfo.brand, decodedInfo.model].filter(Boolean).join(' ')}
+              </span>
+              {decodedInfo.year && <span className="text-muted-foreground"> • Ano {decodedInfo.year}</span>}
+              {decodedInfo.salePrice && (
+                <span className="text-emerald-600 font-bold ml-1">
+                  • Sugerido R$ {decodedInfo.salePrice.toLocaleString('pt-BR')}
+                </span>
               )}
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-primary hover:bg-primary/10 rounded-lg"
-                onClick={() => {
-                  setModalSearch(value);
-                  setModalOpen(true);
-                }}
-                title="Pesquisar Veículo por Chassi no Estoque"
-              >
-                <Search className="w-3.5 h-3.5" />
-              </Button>
             </div>
           </div>
-        </PopoverTrigger>
 
-        {/* Dropdown com resultados da busca em tempo real */}
-        <PopoverContent
-          align="start"
-          sideOffset={4}
-          className="w-[340px] sm:w-[420px] p-2 bg-card border shadow-xl rounded-2xl z-50 text-xs max-h-80 overflow-y-auto space-y-2"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          {matchingVehicles.length > 0 && (
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 flex items-center gap-1">
-                <Bike className="w-3 h-3 text-primary" />
-                Veículos no Estoque com esse Chassi
-              </span>
-              <div className="space-y-1">
-                {matchingVehicles.map((v) => (
-                  <div
-                    key={v.id}
-                    onClick={() => handleSelectFromList(v)}
-                    className="p-2 rounded-xl hover:bg-primary/10 border border-transparent hover:border-primary/20 cursor-pointer transition-all flex items-center justify-between group"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="font-mono font-bold text-foreground text-xs flex items-center gap-1.5">
-                        <span className="text-primary">{v.chassis || 'Sem chassi'}</span>
-                        {v.plate && <Badge variant="outline" className="text-[9px] px-1 py-0">{v.plate}</Badge>}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground font-medium">
-                        {v.brand} {v.model} {v.color ? `• ${v.color}` : ''} {v.year ? `(${v.year})` : ''}
-                      </p>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="text-[11px] font-bold text-emerald-600 block">
-                        R$ {(v.sale_price || 0).toLocaleString('pt-BR')}
-                      </span>
-                      <span className="text-[9px] text-muted-foreground">
-                        {v.status === 'disponivel' ? 'Disponível' : v.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {onSelectVehicle && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleApplyDecoded}
+              className="h-6 px-2 text-[10px] font-bold border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground shrink-0 rounded-lg"
+            >
+              Aplicar ao Formulário
+            </Button>
           )}
-
-          {matchingPatterns.length > 0 && (
-            <div className="space-y-1 pt-1 border-t">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" />
-                Padrões de Chassi Homologados (Catálogo Mestre)
-              </span>
-              <div className="space-y-1">
-                {matchingPatterns.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => handleSelectPatternFromList(p)}
-                    className="p-2 rounded-xl hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 cursor-pointer transition-all flex items-center justify-between"
-                  >
-                    <div>
-                      <span className="font-mono font-bold text-xs text-amber-700 dark:text-amber-400">
-                        {p.wmi_code} {p.model_pattern ? `• ${p.model_pattern}` : ''}
-                      </span>
-                      <p className="text-[11px] text-muted-foreground">
-                        {p.brand} {p.model_name || ''} ({p.vehicle_type === 'moto' ? 'Moto' : 'Carro'})
-                      </p>
-                    </div>
-                    {p.default_sale_price && (
-                      <span className="text-[11px] font-bold text-muted-foreground">
-                        Tab: R$ {p.default_sale_price.toLocaleString('pt-BR')}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
-
-      {/* Badge de Reconhecimento Autônomo */}
-      {isDecoding ? (
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <Loader2 className="w-3 h-3 animate-spin text-primary" />
-          <span>Consultando decodificador de chassi...</span>
-        </div>
-      ) : recognizedInfo && (recognizedInfo.brand || recognizedInfo.model || recognizedInfo.year) ? (
-        <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20 w-fit">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-          <span>
-            Reconhecimento Autônomo:{' '}
-            {[recognizedInfo.brand, recognizedInfo.model, recognizedInfo.year ? `Ano ${recognizedInfo.year}` : '']
-              .filter(Boolean)
-              .join(' ')}
-          </span>
         </div>
       ) : null}
 
-      {/* MODAL DE PESQUISA AVANÇADA DE CHASSI */}
+      {/* MODAL LOCALIZADOR AVANÇADO DE CHASSI */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-5 rounded-3xl">
           <DialogHeader className="pb-3 border-b">
             <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
               <Search className="w-4 h-4 text-primary" />
-              Localizador de Veículos por Chassi (Estoque & Catálogo)
+              Localizador Completo de Chassi & Estoque
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Pesquise qualquer parte do chassi (número de série, WMI, modelo ou placa) para preenchimento instantâneo.
+              Consulte motos e ciclomotores pelo final do chassi (ex: 1704), chassi completo, modelo ou placa.
             </DialogDescription>
           </DialogHeader>
 
@@ -433,81 +552,226 @@ export function ChassisSearchInput({
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Ex: 001222, 99HSHF, SHI 250, preta, placa..."
+                placeholder="Digite o final do chassi, modelo ou placa..."
                 value={modalSearch}
                 onChange={(e) => setModalSearch(e.target.value)}
-                className="pl-9 h-10 text-xs font-mono uppercase rounded-xl"
+                className="pl-9 pr-8 h-10 text-xs font-mono uppercase rounded-xl"
                 autoFocus
               />
+              {modalSearch && (
+                <button
+                  type="button"
+                  onClick={() => setModalSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            <div className="text-[11px] text-muted-foreground flex items-center justify-between">
-              <span>{modalFilteredVehicles.length} veículo(s) encontrado(s) no estoque</span>
-              <span className="font-semibold text-primary">Clique em qualquer veículo para selecionar</span>
+            {/* Abas Rápidas */}
+            <div className="flex items-center gap-2 text-xs">
+              <Button
+                size="sm"
+                variant={modalTab === 'all' ? 'default' : 'outline'}
+                onClick={() => setModalTab('all')}
+                className="h-7 text-[11px] rounded-lg"
+              >
+                Todos ({modalResults.stockList.length + modalResults.sheetList.length + modalResults.patternList.length})
+              </Button>
+              <Button
+                size="sm"
+                variant={modalTab === 'stock' ? 'default' : 'outline'}
+                onClick={() => setModalTab('stock')}
+                className="h-7 text-[11px] rounded-lg"
+              >
+                Pátio / Estoque ({modalResults.stockList.length})
+              </Button>
+              <Button
+                size="sm"
+                variant={modalTab === 'sheet' ? 'default' : 'outline'}
+                onClick={() => setModalTab('sheet')}
+                className="h-7 text-[11px] rounded-lg"
+              >
+                Planilha Mensal ({modalResults.sheetList.length})
+              </Button>
+              <Button
+                size="sm"
+                variant={modalTab === 'patterns' ? 'default' : 'outline'}
+                onClick={() => setModalTab('patterns')}
+                className="h-7 text-[11px] rounded-lg"
+              >
+                Catálogo ({modalResults.patternList.length})
+              </Button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-2 mt-2 max-h-[400px] pr-1">
+          {/* Lista de Resultados no Modal */}
+          <div className="flex-1 overflow-y-auto space-y-2 mt-2 max-h-[380px] pr-1">
             {isLoadingVehicles ? (
               <div className="text-center py-10 text-xs text-muted-foreground">
                 <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
-                Carregando estoque de veículos...
-              </div>
-            ) : modalFilteredVehicles.length === 0 ? (
-              <div className="text-center py-12 text-xs text-muted-foreground bg-muted/20 rounded-2xl border border-dashed p-6">
-                <p className="font-semibold text-foreground">Nenhum veículo encontrado com esse termo</p>
-                <p className="mt-1">Tente pesquisar apenas os 4 ou 6 dígitos finais do chassi.</p>
+                Carregando inventário...
               </div>
             ) : (
-              modalFilteredVehicles.map((v) => (
-                <div
-                  key={v.id}
-                  onClick={() => handleSelectFromList(v)}
-                  className="p-3 rounded-2xl border border-border/70 hover:border-primary/50 bg-card hover:bg-primary/5 cursor-pointer transition-all flex items-center justify-between group"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                        {v.vehicle_type === 'carro' ? <Car className="w-4 h-4" /> : <Bike className="w-4 h-4" />}
-                      </div>
-                      <div>
-                        <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary transition-colors">
-                          {v.chassis || 'CHASSI NÃO INFORMADO'}
-                        </span>
-                        {v.plate && (
-                          <Badge variant="outline" className="text-[10px] ml-2 px-1.5 py-0 font-mono">
-                            {v.plate}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-muted-foreground flex items-center gap-2 pl-9">
-                      <strong className="text-foreground">{v.brand} {v.model}</strong>
-                      {v.color && <span>• {v.color}</span>}
-                      {v.year && <span>• Ano {v.year}</span>}
-                      <span className="text-[10px]">• Loja: {v.store_id === 'store-montesclaros' ? 'Montes Claros' : 'Divinópolis'}</span>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0 pl-3">
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">
-                      R$ {(v.sale_price || 0).toLocaleString('pt-BR')}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[10px] font-bold rounded-lg mt-1 group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary"
+              <>
+                {/* 1. Estoque */}
+                {(modalTab === 'all' || modalTab === 'stock') &&
+                  modalResults.stockList.map((v) => (
+                    <div
+                      key={`modal-stock-${v.id}`}
+                      onClick={() => handleSelectVehicle({ ...v, type: 'stock' })}
+                      className="p-3 rounded-2xl border border-border/70 hover:border-emerald-500/50 bg-card hover:bg-emerald-500/5 cursor-pointer transition-all flex items-center justify-between group"
                     >
-                      Selecionar
-                    </Button>
-                  </div>
-                </div>
-              ))
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 text-[9px] px-1.5 py-0 font-bold">
+                            ESTOQUE
+                          </Badge>
+                          <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary">
+                            {v.chassis || 'SEM CHASSI'}
+                          </span>
+                          {v.plate && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 font-mono">
+                              {v.plate}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <strong className="text-foreground">{v.brand} {v.model}</strong>
+                          {v.color && <span>• {v.color}</span>}
+                          {v.year && <span>• {v.year}</span>}
+                          <span className="text-[10px]">• Loja: {v.store_id === 'store-montesclaros' ? 'Montes Claros' : 'Divinópolis'}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-bold text-emerald-600 block">
+                          R$ {(v.sale_price || 0).toLocaleString('pt-BR')}
+                        </span>
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] font-bold rounded-md mt-1">
+                          Selecionar
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                {/* 2. Planilha */}
+                {(modalTab === 'all' || modalTab === 'sheet') &&
+                  modalResults.sheetList.map((r) => (
+                    <div
+                      key={`modal-sheet-${r.id}`}
+                      onClick={() =>
+                        handleSelectVehicle({
+                          type: 'sheet',
+                          id: r.id,
+                          chassis: r.chassi,
+                          brand: 'SHINERAY',
+                          model: r.modelo,
+                          sale_price: r.valor,
+                          year: 2026,
+                        })
+                      }
+                      className="p-3 rounded-2xl border border-border/70 hover:border-blue-500/50 bg-card hover:bg-blue-500/5 cursor-pointer transition-all flex items-center justify-between group"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="border-blue-500/40 text-blue-600 text-[9px] px-1.5 py-0 font-bold">
+                            PLANILHA
+                          </Badge>
+                          <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary">
+                            {r.chassi || 'SEM CHASSI'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <strong className="text-foreground">{r.modelo}</strong>
+                          <span>• Cliente: {r.cliente}</span>
+                          <span>• {r.is_permitted ? 'Faturada' : 'Pré-Venda'}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-bold text-foreground block">
+                          R$ {(r.valor || 0).toLocaleString('pt-BR')}
+                        </span>
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] font-bold rounded-md mt-1">
+                          Usar Chassi
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                {/* 3. Catálogo */}
+                {(modalTab === 'all' || modalTab === 'patterns') &&
+                  modalResults.patternList.map((p) => (
+                    <div
+                      key={`modal-pat-${p.id}`}
+                      onClick={() =>
+                        handleSelectVehicle({
+                          type: 'pattern',
+                          id: '',
+                          chassis: p.wmi_code,
+                          brand: p.brand,
+                          model: p.model_name,
+                          sale_price: p.default_sale_price,
+                          year: 2026,
+                          vehicle_type: p.vehicle_type,
+                        })
+                      }
+                      className="p-3 rounded-2xl border border-border/70 hover:border-amber-500/50 bg-card hover:bg-amber-500/5 cursor-pointer transition-all flex items-center justify-between group"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="border-amber-500/40 text-amber-600 text-[9px] px-1.5 py-0 font-bold">
+                            CATÁLOGO
+                          </Badge>
+                          <span className="font-mono font-bold text-xs text-amber-700 dark:text-amber-400">
+                            WMI: {p.wmi_code} {p.model_pattern ? `• ${p.model_pattern}` : ''}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          <strong className="text-foreground">{p.brand} {p.model_name}</strong>
+                          <span> • Padrão Homologado</span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        {p.default_sale_price && (
+                          <span className="text-xs font-bold text-foreground block">
+                            Tabela: R$ {p.default_sale_price.toLocaleString('pt-BR')}
+                          </span>
+                        )}
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] font-bold rounded-md mt-1">
+                          Selecionar Modelo
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                {modalResults.stockList.length === 0 &&
+                  modalResults.sheetList.length === 0 &&
+                  modalResults.patternList.length === 0 && (
+                    <div className="text-center py-12 text-xs text-muted-foreground bg-muted/20 rounded-2xl border border-dashed p-6">
+                      <p className="font-semibold text-foreground">Nenhum resultado com "{modalSearch}"</p>
+                      <p className="mt-1">Dica: Tente pesquisar apenas os 4 ou 6 últimos dígitos do chassi gravado na moto.</p>
+                    </div>
+                  )}
+              </>
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* DIÁLOGO INTEGRADO DE BIPAGEM / CÂMERA */}
+      <BarcodeScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onChassisScanned={(scanned) => {
+          const clean = cleanVin(scanned);
+          onChange(clean);
+          setDropdownOpen(false);
+        }}
+      />
     </div>
   );
 }

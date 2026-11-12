@@ -38,6 +38,7 @@ import {
   downloadVehicleDeliveryTermPDF,
   SecondCopySaleData,
 } from '@/lib/secondCopyPdfs';
+import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { SaleManageModal } from '@/components/sales/SaleManageModal';
 import { useStores } from '@/hooks/useStores';
@@ -363,7 +364,6 @@ export function SalesSecondCopyCenter({ sales }: SalesSecondCopyCenterProps) {
                             variant="outline"
                             onClick={async () => {
                               try {
-                                const { downloadOriginalContract } = await import('@/lib/originalContractExport');
                                 await downloadOriginalContract(sale);
                               } catch (e: any) {
                                 try {
