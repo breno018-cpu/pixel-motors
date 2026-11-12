@@ -491,7 +491,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password: 'PixelMotors@2026',
           });
           if (!adminErr && adminAuth?.session) {
-            handleSession(adminAuth.session);
+            setSession(adminAuth.session);
+            setUser(adminAuth.session.user);
+            await fetchUserData(adminAuth.session.user.id);
             return { error: null };
           }
         } catch {}
