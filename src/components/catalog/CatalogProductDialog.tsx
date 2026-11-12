@@ -22,6 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { CatalogProduct } from "@/types/catalog";
+import { maskCurrency, parseCurrency } from "@/lib/masks";
 import { Plus, Trash2, Image, Layers, DollarSign, Wrench } from "lucide-react";
 
 interface CatalogProductDialogProps {
@@ -82,8 +83,8 @@ export function CatalogProductDialog({
         setVideo(product.video || "");
         setDisc(product.disc || "");
 
-        setPrice(product.price !== null && product.price !== undefined ? String(product.price) : "");
-        setOldPrice(product.oldPrice !== null && product.oldPrice !== undefined ? String(product.oldPrice) : "");
+        setPrice(product.price !== null && product.price !== undefined ? maskCurrency(product.price) : "");
+        setOldPrice(product.oldPrice !== null && product.oldPrice !== undefined ? maskCurrency(product.oldPrice) : "");
         setInstallments(product.installments !== false);
 
         if (product.stock === 0) {
@@ -205,8 +206,8 @@ export function CatalogProductDialog({
       sub: sub.trim(),
       brand: brand.trim(),
       name: name.trim(),
-      price: price.trim() !== "" ? parseFloat(price) : null,
-      oldPrice: oldPrice.trim() !== "" ? parseFloat(oldPrice) : undefined,
+      price: price.trim() !== "" ? parseCurrency(price) : null,
+      oldPrice: oldPrice.trim() !== "" ? parseCurrency(oldPrice) : undefined,
       installments,
       readyDelivery,
       store_id: storeId,
@@ -398,29 +399,31 @@ export function CatalogProductDialog({
           <TabsContent value="preco" className="space-y-4 pt-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="prod-price" className="flex items-center gap-1.5">
+                <Label htmlFor="prod-price" className="flex items-center gap-1.5 font-bold">
                   <DollarSign className="w-4 h-4 text-emerald-500" />
                   Preço À Vista (R$)
                 </Label>
                 <Input
                   id="prod-price"
-                  type="number"
-                  step="0.01"
-                  placeholder="Ex: 18990 (deixe em branco para 'Sob Consulta')"
+                  type="text"
+                  placeholder="R$ 0,00 (ou deixe em branco para 'Sob Consulta')"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onChange={(e) => setPrice(maskCurrency(e.target.value))}
+                  className="font-mono text-base font-bold text-emerald-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="prod-oldprice">Preço Original / De (R$)</Label>
+                <Label htmlFor="prod-oldprice" className="font-semibold">
+                  Preço Original / Anterior ("De R$")
+                </Label>
                 <Input
                   id="prod-oldprice"
-                  type="number"
-                  step="0.01"
-                  placeholder="Ex: 20490 (gera selo promocional 'De / Por')"
+                  type="text"
+                  placeholder="Ex: R$ 20.490,00 (gera selo 'De / Por')"
                   value={oldPrice}
-                  onChange={(e) => setOldPrice(e.target.value)}
+                  onChange={(e) => setOldPrice(maskCurrency(e.target.value))}
+                  className="font-mono text-sm"
                 />
               </div>
             </div>

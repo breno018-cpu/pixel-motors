@@ -547,9 +547,17 @@ export default function CatalogControl() {
               )}
 
               {hasPromo && (
-                <Badge className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold gap-1 shadow-xs animate-pulse">
-                  <Tag className="w-3 h-3" /> {p.promo?.label || "OFERTA"}
-                </Badge>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold gap-1 shadow-xs animate-pulse">
+                    <Tag className="w-3 h-3" /> {p.promo?.label || "OFERTA"}
+                    {p.promo?.discount ? ` (-${formatCurrency(p.promo.discount)})` : ""}
+                  </Badge>
+                  {p.promo?.reason && (
+                    <span className="text-[9px] font-bold text-white bg-black/85 backdrop-blur-sm px-1.5 py-0.5 rounded shadow-xs border border-white/20">
+                      {p.promo.reason}
+                    </span>
+                  )}
+                </div>
               )}
 
               {p.readyDelivery && (
@@ -650,6 +658,21 @@ export default function CatalogControl() {
                   <span className="text-[10px] text-muted-foreground block">
                     Simulador até 21x ativo
                   </span>
+                )}
+                {p.promo && p.promo.active !== false && (
+                  <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                    {p.promo.discount && (
+                      <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10">
+                        Economia: {formatCurrency(p.promo.discount)}
+                      </Badge>
+                    )}
+                    {p.promo.reason && (
+                      <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-0.5">
+                        <Sparkles className="w-3 h-3 inline" />
+                        {p.promo.reason}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1091,14 +1114,24 @@ export default function CatalogControl() {
         {/* Promoção */}
         <td className="p-3 text-center">
           {hasPromo ? (
-            <Badge
-              variant="outline"
+            <div
               onClick={() => handleOpenPromo(p)}
-              className="cursor-pointer bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 text-[10px] font-bold"
+              className="cursor-pointer flex flex-col items-center gap-0.5"
             >
-              <Tag className="w-3 h-3 mr-1" />
-              {p.promo?.label || "OFERTA"}
-            </Badge>
+              <Badge
+                variant="outline"
+                className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 text-[10px] font-bold hover:bg-red-500/20"
+              >
+                <Tag className="w-3 h-3 mr-1" />
+                {p.promo?.label || "OFERTA"}
+                {p.promo?.discount ? ` (-${formatCurrency(p.promo.discount)})` : ""}
+              </Badge>
+              {p.promo?.reason && (
+                <span className="text-[10px] text-amber-500 font-medium truncate max-w-[120px]">
+                  {p.promo.reason}
+                </span>
+              )}
+            </div>
           ) : (
             <Button
               variant="ghost"
@@ -1898,9 +1931,11 @@ export default function CatalogControl() {
                   label: promo.label,
                   discount: promo.discount,
                   until: promo.until,
+                  reason: promo.reason,
+                  description: promo.description,
                   promo,
                 }
-              : { action: "promo", id, active: false, label: "", discount: 0, until: "", promo: null },
+              : { action: "promo", id, active: false, label: "", discount: 0, until: "", reason: "", description: "", promo: null },
             `Promoção de ${id}`
           )
         }

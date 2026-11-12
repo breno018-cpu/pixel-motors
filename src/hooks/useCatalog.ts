@@ -130,6 +130,8 @@ export function useCatalog() {
         label: "",
         discount: 0,
         until: "",
+        reason: "",
+        description: "",
         promo: null,
       });
     }
@@ -140,6 +142,8 @@ export function useCatalog() {
       label: promo.label,
       discount: promo.discount,
       until: promo.until,
+      reason: promo.reason,
+      description: promo.description,
       promo,
     });
   };

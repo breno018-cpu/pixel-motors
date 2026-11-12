@@ -3,6 +3,8 @@ export interface CatalogPromo {
   label: string;       // Ex: "R$ 1.000 OFF", "Queima de Estoque", "Taxa Zero"
   discount?: number;   // Valor em reais do desconto
   until?: string;      // Data limite da oferta (ex: "2026-12-31" ou ISO)
+  reason?: string;     // Para que serve o desconto (ex: "Bônus de Fábrica", "Queima de Estoque", "Desconto à Vista")
+  description?: string;// Explicação detalhada da finalidade do desconto
 }
 
 export interface CatalogProduct {
@@ -88,7 +90,7 @@ export type CatalogSyncAction =
   | { action: "price"; id: string; price?: number | null; oldPrice?: number | null; installments?: boolean; value?: number | null; keepOld?: boolean }
   | { action: "stock"; id: string; stock?: number | null; readyDelivery?: boolean; value?: number | null }
   | { action: "active"; id: string; value: boolean }
-  | { action: "promo"; id: string; active?: boolean; label?: string; discount?: number; until?: string; promo?: CatalogPromo | null }
+  | { action: "promo"; id: string; active?: boolean; label?: string; discount?: number; until?: string; reason?: string; description?: string; promo?: CatalogPromo | null }
   | { action: "carousel"; id: string; featured: boolean; order?: number }
   | { action: "carousel_list"; ids: string[] }
   | { action: "featuredHero"; id: string; value: boolean; heroOrder?: number }
