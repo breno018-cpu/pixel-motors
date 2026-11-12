@@ -162,6 +162,8 @@ export async function initializeSingleSessionGuard(userId: string): Promise<stri
 function startSessionHeartbeat(userId: string, mySessionToken: string) {
   if (heartbeatInterval) clearInterval(heartbeatInterval);
 
+  const fingerprint = getDeviceFingerprint();
+
   const checkDbActiveSession = async () => {
     try {
       const { data } = await supabase
