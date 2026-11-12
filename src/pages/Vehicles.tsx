@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowLeftRight,
   ArrowUpDown,
   Bike,
+  Building2,
   CalendarClock,
   Car,
   ChevronDown,
@@ -63,6 +64,8 @@ import { VehicleActionsMenu } from '@/components/actions/VehicleActionsMenu';
 import { ReservationsPanel } from '@/components/vehicles/ReservationsPanel';
 import { TransfersPanel } from '@/components/vehicles/TransfersPanel';
 import { StockTransferDialog } from '@/components/vehicles/StockTransferDialog';
+import type { TransferType } from '@/hooks/useStockTransfers';
+import { useConfirm } from '@/contexts/ConfirmationContext';
 import { NewSaleDialog } from '@/components/sales/NewSaleDialog';
 import { CreateReservationDialog } from '@/components/reservations/CreateReservationDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -144,6 +147,9 @@ export default function Vehicles() {
   const [batchOpen, setBatchOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [transferVehicleId, setTransferVehicleId] = useState<string | undefined>(undefined);
+  const [transferToStoreId, setTransferToStoreId] = useState<string | undefined>(undefined);
+  const [transferType, setTransferType] = useState<TransferType | undefined>(undefined);
   const [saleVehicleId, setSaleVehicleId] = useState<string | null>(null);
   const [reserveVehicleId, setReserveVehicleId] = useState<string | null>(null);
   const [scannedChassisForForm, setScannedChassisForForm] = useState<string>('');
@@ -181,6 +187,16 @@ export default function Vehicles() {
     userStore,
   } = useAuth();
   const { toast } = useToast();
+  const confirm = useConfirm();
+
+  // Inicializa o filtro com a loja local do usuário para manter as lojas independentes por padrão
+  const hasInitializedStoreRef = useRef(false);
+  useEffect(() => {
+    if (!hasInitializedStoreRef.current && userStore?.id && !searchParams.get('store')) {
+      setStoreFilter(userStore.id);
+      hasInitializedStoreRef.current = true;
+    }
+  }, [userStore?.id, searchParams]);
 
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
@@ -189,9 +205,38 @@ export default function Vehicles() {
     }
   }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
-    if (!hasElevatedAccess && userStore?.id) setStoreFilter(userStore.id);
-  }, [hasElevatedAccess, userStore?.id]);
+  // Abertura direcionada da transferência entre lojas
+  const handleRequestTransfer = (vehicle: Vehicle) => {
+    setTransferVehicleId(vehicle.id);
+    setTransferType('loja_para_loja');
+    if (userStore?.id && vehicle.store_id !== userStore.id) {
+      setTransferToStoreId(userStore.id);
+    } else {
+      setTransferToStoreId(undefined);
+    }
+    setTransferOpen(true);
+  };
+
+  // Se o veículo for de outra loja, exige transferência antes de iniciar venda
+  const handleInitiateSale = async (vehicle: Vehicle) => {
+    const isOtherStore = Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id);
+    if (isOtherStore) {
+      const originStore = stores?.find((s) => s.id === vehicle.store_id)?.name || 'Outro Pátio';
+      const myStore = userStore?.name || 'sua loja';
+      const confirmed = await confirm({
+        title: 'Veículo em Outro Pátio',
+        description: `Este veículo está alocado fisicamente no estoque de "${originStore}". Para que sua loja ("${myStore}") possa emitir o contrato e faturar a venda, é necessário realizar a transferência de estoque entre lojas primeiro. Deseja abrir a transferência agora?`,
+        confirmText: 'Transferir para Minha Loja',
+        cancelText: 'Cancelar',
+        variant: 'default',
+      });
+      if (confirmed) {
+        handleRequestTransfer(vehicle);
+      }
+      return;
+    }
+    setSaleVehicleId(vehicle.id);
+  };
 
   // Lista base de veículos ativos no escopo de loja/revendedor (para contadores globais)
   const scopedVehicles = useMemo(() => {
@@ -503,12 +548,20 @@ export default function Vehicles() {
             </Button>
             {canRegisterVehicles && (
               <>
-                {hasElevatedAccess && (
-                  <Button variant="outline" size="sm" onClick={() => setTransferOpen(true)} className="h-8 sm:h-9 text-xs">
-                    <ArrowLeftRight className="mr-1.5 h-3.5 w-3.5" />
-                    Transferir
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setTransferVehicleId(undefined);
+                    setTransferToStoreId(undefined);
+                    setTransferType('loja_para_loja');
+                    setTransferOpen(true);
+                  }}
+                  className="h-8 sm:h-9 text-xs"
+                >
+                  <ArrowLeftRight className="mr-1.5 h-3.5 w-3.5" />
+                  Transferir
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)} className="h-8 sm:h-9 text-xs">
                   <ScanLine className="mr-1.5 h-3.5 w-3.5" />
                   Bipar Chassi
@@ -577,7 +630,20 @@ export default function Vehicles() {
           setFormOpen(true);
         }}
       />
-      <StockTransferDialog open={transferOpen} onOpenChange={setTransferOpen} />
+      <StockTransferDialog
+        open={transferOpen}
+        onOpenChange={(open) => {
+          setTransferOpen(open);
+          if (!open) {
+            setTransferVehicleId(undefined);
+            setTransferToStoreId(undefined);
+            setTransferType(undefined);
+          }
+        }}
+        defaultVehicleId={transferVehicleId}
+        defaultToStoreId={transferToStoreId}
+        defaultType={transferType}
+      />
 
       {/* Diálogo de Venda Rápida a partir da unidade do estoque */}
       {saleVehicleId && (
@@ -774,19 +840,23 @@ export default function Vehicles() {
               <Select
                 value={storeFilter}
                 onValueChange={setStoreFilter}
-                disabled={!isAdmin && !hasElevatedAccess}
               >
-                <SelectTrigger className="h-9 w-full lg:w-[175px] text-xs">
-                  <Store className="mr-1.5 h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <SelectTrigger className="h-9 w-full lg:w-[210px] text-xs font-semibold">
+                  <Store className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
                   <SelectValue placeholder="Loja" />
                 </SelectTrigger>
-                <SelectContent>
-                  {hasElevatedAccess && <SelectItem value="all">Todas as lojas</SelectItem>}
-                  {stores?.map((store) => (
-                    <SelectItem key={store.id} value={store.id}>
-                      {store.name}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="bg-background z-50">
+                  <SelectItem value="all" className="font-bold text-primary">
+                    🌐 Todas as Lojas (Rede Integrada)
+                  </SelectItem>
+                  {stores?.map((store) => {
+                    const isMyStore = store.id === userStore?.id;
+                    return (
+                      <SelectItem key={store.id} value={store.id} className={cn(isMyStore && 'font-bold text-foreground')}>
+                        {store.name} {isMyStore ? '★ (Minha Loja)' : ''}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
 
@@ -878,6 +948,47 @@ export default function Vehicles() {
             </div>
           </div>
 
+          {/* BANNER INFORMATIVO DE CONSULTA ENTRE LOJAS */}
+          {storeFilter !== 'all' && userStore?.id && storeFilter !== userStore.id && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-950 dark:text-amber-200 text-xs animate-scale-in">
+              <div className="flex items-center gap-2.5">
+                <Store className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  Consultando o estoque externo de <strong>{stores?.find((s) => s.id === storeFilter)?.name || 'Outra Loja'}</strong>. Para vender um destes veículos, utilize o botão <strong>Transferir</strong> para alocá-lo no seu pátio.
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStoreFilter(userStore.id)}
+                className="h-7 text-xs font-bold border-amber-500/40 text-amber-800 dark:text-amber-200 hover:bg-amber-500/20 shrink-0"
+              >
+                Ver Minha Loja ({userStore.name || 'Local'})
+              </Button>
+            </div>
+          )}
+
+          {storeFilter === 'all' && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-primary/10 border border-primary/20 text-foreground text-xs animate-scale-in">
+              <div className="flex items-center gap-2.5">
+                <Building2 className="w-4 h-4 text-primary shrink-0" />
+                <span>
+                  Exibindo o <strong>Estoque Integrado da Rede</strong>. Cada veículo indica seu pátio de origem. Se desejar faturar uma unidade de outra loja, realize a transferência de pátio primeiro.
+                </span>
+              </div>
+              {userStore?.id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStoreFilter(userStore.id)}
+                  className="h-7 text-xs font-semibold shrink-0"
+                >
+                  Filtrar Minha Loja
+                </Button>
+              )}
+            </div>
+          )}
+
           {/* CONTEÚDO PRINCIPAL DO ESTOQUE */}
           {isLoading ? (
             <LoadingList />
@@ -890,8 +1001,14 @@ export default function Vehicles() {
               resellers={resellers || []}
               canCreateSales={canCreateSales}
               canViewMargins={canViewMargins}
+              userStoreId={userStore?.id}
               onBack={() => setSelectedModel(null)}
-              onSell={(id) => setSaleVehicleId(id)}
+              onSell={(id) => {
+                const target = vehicles?.find((v) => v.id === id);
+                if (target) handleInitiateSale(target);
+                else setSaleVehicleId(id);
+              }}
+              onRequestTransfer={handleRequestTransfer}
               onReserve={(id) => setReserveVehicleId(id)}
               onCopy={handleCopyText}
             />
@@ -987,8 +1104,15 @@ export default function Vehicles() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-xs text-foreground font-medium">
-                              {store?.name || 'Loja Principal'}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs text-foreground font-medium">
+                                {store?.name || 'Loja Principal'}
+                              </span>
+                              {Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id) && (
+                                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/40 font-bold">
+                                  Outro Pátio
+                                </Badge>
+                              )}
                             </div>
                             <div className="text-[11px] text-muted-foreground">
                               {reseller ? `Consignado: ${reseller.full_name}` : 'Pátio próprio'}
@@ -1019,15 +1143,29 @@ export default function Vehicles() {
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               {canCreateSales && vehicle.status !== 'vendido' && (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  onClick={() => setSaleVehicleId(vehicle.id)}
-                                  className="h-7 px-2.5 text-xs"
-                                >
-                                  <ShoppingBag className="h-3 w-3 mr-1" />
-                                  Vender
-                                </Button>
+                                Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id) ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleRequestTransfer(vehicle)}
+                                    className="h-7 px-2.5 text-xs font-bold border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15 shadow-2xs"
+                                    title={`Veículo no pátio de ${store?.name || 'outra loja'}. Transfira para seu estoque para poder faturar.`}
+                                  >
+                                    <ArrowLeftRight className="h-3 w-3 mr-1 text-amber-600" />
+                                    Transferir p/ Vender
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => setSaleVehicleId(vehicle.id)}
+                                    className="h-7 px-2.5 text-xs"
+                                  >
+                                    <ShoppingBag className="h-3 w-3 mr-1" />
+                                    Vender
+                                  </Button>
+                                )
                               )}
                               {vehicle.status === 'disponivel' && (
                                 <Button
@@ -1251,10 +1389,16 @@ export default function Vehicles() {
                                       Placa: {vehicle.plate}
                                     </span>
                                   )}
-                                  <span className="text-muted-foreground">
-                                    {store?.name || 'Loja'}
-                                    {reseller ? ` · ${reseller.full_name}` : ''}
-                                  </span>
+                                  {Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id) ? (
+                                    <Badge variant="outline" className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/30">
+                                      Pátio: {store?.name || 'Outro'}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">
+                                      {store?.name || 'Loja'}
+                                      {reseller ? ` · ${reseller.full_name}` : ''}
+                                    </span>
+                                  )}
                                 </div>
 
                                 <div className="flex items-center justify-between sm:justify-end gap-2.5">
@@ -1268,15 +1412,29 @@ export default function Vehicles() {
                                     {formatCurrency(vehicle.sale_price)}
                                   </span>
                                   {canCreateSales && vehicle.status !== 'vendido' && (
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      onClick={() => setSaleVehicleId(vehicle.id)}
-                                      className="h-7 px-2.5 text-xs"
-                                    >
-                                      <ShoppingBag className="h-3 w-3 mr-1" />
-                                      Vender
-                                    </Button>
+                                    Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id) ? (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleRequestTransfer(vehicle)}
+                                        className="h-7 px-2.5 text-xs font-bold border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15"
+                                        title={`Veículo no pátio de ${store?.name || 'outra loja'}. Transfira para seu estoque para poder vender.`}
+                                      >
+                                        <ArrowLeftRight className="h-3 w-3 mr-1 text-amber-600" />
+                                        Transferir
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => setSaleVehicleId(vehicle.id)}
+                                        className="h-7 px-2.5 text-xs"
+                                      >
+                                        <ShoppingBag className="h-3 w-3 mr-1" />
+                                        Vender
+                                      </Button>
+                                    )
                                   )}
                                   {vehicle.status === 'disponivel' && (
                                     <Button
@@ -1322,8 +1480,10 @@ function UnitList({
   resellers,
   canCreateSales,
   canViewMargins,
+  userStoreId,
   onBack,
   onSell,
+  onRequestTransfer,
   onReserve,
   onCopy,
 }: {
@@ -1332,8 +1492,10 @@ function UnitList({
   resellers: Array<{ id: string; full_name: string }>;
   canCreateSales: boolean;
   canViewMargins: boolean;
+  userStoreId?: string;
   onBack: () => void;
   onSell: (vehicleId: string) => void;
+  onRequestTransfer?: (vehicle: Vehicle) => void;
   onReserve: (vehicleId: string) => void;
   onCopy: (label: string, text?: string | null) => void;
 }) {
@@ -1420,6 +1582,11 @@ function UnitList({
                 <p>
                   {vehicle.plate ? `Placa ${vehicle.plate}` : 'Sem placa'}
                   {store ? ` · ${store.name}` : ''}
+                  {Boolean(userStoreId && vehicle.store_id && vehicle.store_id !== userStoreId) && (
+                    <span className="ml-1.5 inline-block text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
+                      Outro Pátio
+                    </span>
+                  )}
                   {reseller ? ` · ${reseller.full_name}` : ''}
                 </p>
               </div>
@@ -1446,15 +1613,29 @@ function UnitList({
 
               <div className="flex items-center justify-end gap-1.5">
                 {canCreateSales && vehicle.status !== 'vendido' && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => onSell(vehicle.id)}
-                    className="h-8 px-3 text-xs"
-                  >
-                    <ShoppingBag className="h-3.5 w-3.5 mr-1.5" />
-                    Vender
-                  </Button>
+                  Boolean(userStoreId && vehicle.store_id && vehicle.store_id !== userStoreId) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onRequestTransfer?.(vehicle as any)}
+                      className="h-8 px-2.5 text-xs font-bold border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15"
+                      title={`Veículo no pátio de ${store?.name || 'outra loja'}. Transfira para seu estoque para faturar.`}
+                    >
+                      <ArrowLeftRight className="h-3.5 w-3.5 mr-1 text-amber-600" />
+                      Transferir p/ Vender
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => onSell(vehicle.id)}
+                      className="h-8 px-3 text-xs"
+                    >
+                      <ShoppingBag className="h-3.5 w-3.5 mr-1.5" />
+                      Vender
+                    </Button>
+                  )
                 )}
                 {vehicle.status === 'disponivel' && (
                   <Button

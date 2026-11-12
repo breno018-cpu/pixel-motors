@@ -98,13 +98,35 @@ export function useCreateStockTransfer() {
         .select()
         .single();
       if (error) throw error;
+
+      // Se a transferência estiver com status concluída, atualiza o pátio da loja no veículo
+      if (input.status === 'concluida') {
+        const vehiclePatch: Record<string, any> = {};
+        if (input.to_store_id) {
+          vehiclePatch.store_id = input.to_store_id;
+          vehiclePatch.reseller_id = input.to_reseller_id || null;
+        } else if (input.to_reseller_id) {
+          vehiclePatch.reseller_id = input.to_reseller_id;
+        }
+        if (Object.keys(vehiclePatch).length > 0) {
+          try {
+            await (supabase as any)
+              .from('vehicles')
+              .update(vehiclePatch)
+              .eq('id', input.vehicle_id);
+          } catch (updateErr) {
+            console.warn('Falha ao atualizar pátio do veículo pós-transferência:', updateErr);
+          }
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-transfers'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
-      toast({ title: 'Transferência registrada' });
+      toast({ title: 'Transferência registrada com sucesso!' });
     },
     onError: (err: any) =>
       toast({
@@ -121,11 +143,34 @@ export function useUpdateStockTransfer() {
 
   return useMutation({
     mutationFn: async ({ id, ...patch }: { id: string } & Partial<CreateTransferInput>) => {
-      const { error } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('stock_transfers')
         .update(patch)
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
       if (error) throw error;
+
+      if (patch.status === 'concluida') {
+        const vehiclePatch: Record<string, any> = {};
+        if (patch.to_store_id) {
+          vehiclePatch.store_id = patch.to_store_id;
+          vehiclePatch.reseller_id = patch.to_reseller_id || null;
+        } else if (patch.to_reseller_id) {
+          vehiclePatch.reseller_id = patch.to_reseller_id;
+        }
+        const targetVehicleId = patch.vehicle_id || data?.vehicle_id;
+        if (targetVehicleId && Object.keys(vehiclePatch).length > 0) {
+          try {
+            await (supabase as any)
+              .from('vehicles')
+              .update(vehiclePatch)
+              .eq('id', targetVehicleId);
+          } catch (updateErr) {
+            console.warn('Falha ao atualizar pátio do veículo pós-transferência:', updateErr);
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-transfers'] });

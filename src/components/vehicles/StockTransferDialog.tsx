@@ -32,9 +32,17 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultVehicleId?: string;
+  defaultToStoreId?: string;
+  defaultType?: TransferType;
 }
 
-export function StockTransferDialog({ open, onOpenChange, defaultVehicleId }: Props) {
+export function StockTransferDialog({
+  open,
+  onOpenChange,
+  defaultVehicleId,
+  defaultToStoreId,
+  defaultType,
+}: Props) {
   const { data: vehicles } = useVehicles();
   const { data: stores } = useStores();
   const { data: resellers } = useResellers();
@@ -54,8 +62,8 @@ export function StockTransferDialog({ open, onOpenChange, defaultVehicleId }: Pr
   useEffect(() => {
     if (open) {
       setVehicleId(defaultVehicleId || '');
-      setType('loja_para_revendedor');
-      setToStore('');
+      setType(defaultType || (defaultToStoreId ? 'loja_para_loja' : 'loja_para_revendedor'));
+      setToStore(defaultToStoreId || '');
       setToReseller('');
       setPartnerName('');
       setAgreed('');
@@ -64,7 +72,7 @@ export function StockTransferDialog({ open, onOpenChange, defaultVehicleId }: Pr
       setDate(new Date().toISOString().slice(0, 10));
       setNotes('');
     }
-  }, [open, defaultVehicleId]);
+  }, [open, defaultVehicleId, defaultToStoreId, defaultType]);
 
   const available = useMemo(
     () => (vehicles || []).filter((v) => v.status === 'disponivel' || v.status === 'reservado'),
@@ -131,6 +139,21 @@ export function StockTransferDialog({ open, onOpenChange, defaultVehicleId }: Pr
             </Select>
           </div>
 
+          {vehicle && (
+            <div className="p-3 rounded-xl bg-muted/40 border text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Pátio Atual / Origem:</span>
+                <strong className="text-foreground font-semibold">
+                  {stores?.find((s) => s.id === vehicle.store_id)?.name || 'Pátio Principal'}
+                </strong>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>Chassi: {vehicle.chassis || 'Dispensado'}</span>
+                <span>{vehicle.color || 'Cor padrão'}</span>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Tipo de transferência *</Label>
             <Select value={type} onValueChange={(v) => setType(v as TransferType)}>
@@ -152,14 +175,16 @@ export function StockTransferDialog({ open, onOpenChange, defaultVehicleId }: Pr
               <Label>Loja de destino {needsStore && '*'}</Label>
               <Select value={toStore} onValueChange={setToStore}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione a loja" />
+                  <SelectValue placeholder="Selecione a loja de destino" />
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
-                  {stores?.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
+                  {stores
+                    ?.filter((s) => !vehicle?.store_id || s.id !== vehicle.store_id)
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
