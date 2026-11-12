@@ -6,6 +6,7 @@ export type PermissionGroup = { key: string; label: string; items: PermissionDef
 export const PAGE_PERMISSIONS: Record<string, string> = {
   '/': 'page.dashboard',
   '/vehicles': 'page.vehicles',
+  '/catalog-control': 'page.catalog',
   '/inbound-cargo': 'page.inbound_cargo',
   '/sales': 'page.sales',
   '/external-sales': 'page.external_sales',
@@ -30,6 +31,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     items: [
       { key: 'page.dashboard', label: 'Dashboard' },
       { key: 'page.vehicles', label: 'Estoque' },
+      { key: 'page.catalog', label: 'Catálogo L1MA' },
       { key: 'page.inbound_cargo', label: 'Controle de Entrada (Caminhão)' },
       { key: 'page.sales', label: 'Vendas' },
       { key: 'page.external_sales', label: 'Vendas Externas' },

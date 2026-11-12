@@ -1163,8 +1163,8 @@ export default function Dashboard() {
               <span className="hidden sm:inline">Exportar</span>
             </Button>
 
-            {/* Atalho Planilha Oficial */}
-            {canCreateSales && (
+            {/* Atalho Planilha Oficial (Apenas Administração) */}
+            {(isAdmin || auth.roles.includes('gerente')) && (
               <Button
                 size="sm"
                 onClick={() => navigate('/spreadsheets')}

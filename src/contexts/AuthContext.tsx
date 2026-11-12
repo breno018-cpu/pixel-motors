@@ -745,14 +745,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 const LEGACY: Record<string, string[]> = {
+  admin: ['*'],
   gerente: ['*'],
-  vendedor: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','page.spreadsheets','sales.create','sales.edit','vehicles.create','logistics.calculate_freight'],
-  vendedor_plus: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.financing','page.settings','page.spreadsheets','sales.create','sales.edit','sales.delete','vehicles.create','logistics.calculate_freight'],
-  vendedor_externo: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.external_sales','page.financing','page.settings','page.spreadsheets','sales.create','vehicles.create','vehicles.unlock_year','logistics.calculate_freight','logistics.view_routes'],
-  coordenador_logistica: ['page.dashboard','page.vehicles','page.sales','page.moto_invoices','page.inspections','page.settings','page.spreadsheets','logistics.view_routes','logistics.manage_methods','logistics.dispatch','logistics.fleet_audit','logistics.calculate_freight'],
+  vendedor: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','vehicles.create','logistics.calculate_freight'],
+  vendedor_plus: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','vehicles.create','logistics.calculate_freight'],
+  vendedor_externo: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','vehicles.create','logistics.calculate_freight'],
+  coordenador_logistica: ['page.dashboard','page.vehicles','page.sales','page.inspections','page.settings','logistics.view_routes','logistics.manage_methods','logistics.dispatch','logistics.fleet_audit','logistics.calculate_freight'],
   motorista: ['page.dashboard','page.vehicles','page.inspections','page.settings','logistics.view_routes','logistics.driver_orders','logistics.delivery_checklist','logistics.calculate_freight'],
-  revendedor: ['page.dashboard','page.vehicles','page.inspections','page.settings','page.spreadsheets'],
-  visualizador: ['page.dashboard','page.vehicles','page.inspections','page.settings','page.spreadsheets'],
+  revendedor: ['page.dashboard','page.vehicles','page.inspections','page.settings'],
+  visualizador: ['page.dashboard','page.vehicles','page.inspections','page.settings'],
 };
 
 function legacyCan(roles: string[], permission: string) {

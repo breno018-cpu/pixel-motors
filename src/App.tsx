@@ -74,7 +74,7 @@ const App = () => (
               <Route
                 path="/catalog-control"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.catalog">
                     <MainLayout>
                       <CatalogControl />
                     </MainLayout>
@@ -97,7 +97,7 @@ const App = () => (
               <Route
                 path="/organization"
                 element={
-                  <ProtectedRoute permission="page.organization">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.organization">
                     <MainLayout>
                       <Organization />
                     </MainLayout>
@@ -110,7 +110,7 @@ const App = () => (
               <Route
                 path="/contracts"
                 element={
-                  <ProtectedRoute permission="page.contracts">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.contracts">
                     <MainLayout>
                       <Contracts />
                     </MainLayout>
@@ -144,7 +144,7 @@ const App = () => (
               <Route
                 path="/external-sales"
                 element={
-                  <ProtectedRoute permission="page.external_sales">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.external_sales">
                     <MainLayout>
                       <ExternalSales />
                     </MainLayout>
@@ -154,7 +154,7 @@ const App = () => (
               <Route
                 path="/consignments"
                 element={
-                  <ProtectedRoute permission="page.consignments">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.consignments">
                     <MainLayout>
                       <Consignments />
                     </MainLayout>
@@ -164,7 +164,7 @@ const App = () => (
               <Route
                 path="/payroll"
                 element={
-                  <ProtectedRoute permission="page.payroll">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.payroll">
                     <MainLayout>
                       <Payroll />
                     </MainLayout>
@@ -174,7 +174,7 @@ const App = () => (
               <Route
                 path="/moto-invoices"
                 element={
-                  <ProtectedRoute permission="page.moto_invoices">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.moto_invoices">
                     <MainLayout>
                       <MotoInvoices />
                     </MainLayout>
@@ -184,7 +184,7 @@ const App = () => (
               <Route
                 path="/financing"
                 element={
-                  <ProtectedRoute permission="page.financing">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.financing">
                     <MainLayout>
                       <Financing />
                     </MainLayout>
@@ -194,7 +194,7 @@ const App = () => (
               <Route
                 path="/reports"
                 element={
-                  <ProtectedRoute permission="page.reports">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.reports">
                     <MainLayout>
                       <Reports />
                     </MainLayout>
@@ -204,7 +204,7 @@ const App = () => (
               <Route
                 path="/ads"
                 element={
-                  <ProtectedRoute permission="page.ads">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.ads">
                     <MainLayout>
                       <Ads />
                     </MainLayout>
@@ -214,7 +214,7 @@ const App = () => (
               <Route
                 path="/spreadsheets"
                 element={
-                  <ProtectedRoute permission="page.spreadsheets">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.spreadsheets">
                     <MainLayout>
                       <Spreadsheets />
                     </MainLayout>
@@ -224,7 +224,7 @@ const App = () => (
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute permission="page.admin">
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.admin">
                     <MainLayout>
                       <AdminMaster />
                     </MainLayout>

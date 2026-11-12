@@ -37,7 +37,7 @@ function load(key: string): SidebarConfig {
 }
 
 export function useSidebarConfig() {
-  const { profile, can } = useAuth();
+  const { profile, roles, can } = useAuth();
   const key = `${STORAGE_PREFIX}${profile?.id ?? 'anon'}`;
   const [config, setConfig] = useState<SidebarConfig>(() => load(key));
 
@@ -88,8 +88,16 @@ export function useSidebarConfig() {
 
   const reset = useCallback(() => persist(defaultConfig()), [persist]);
 
+  const isMaster = roles.includes('admin') || roles.includes('gerente');
+
   // Items the current user is allowed to see (role filter)
   const allowedItems: SidebarMenuItem[] = ALL_MENU_ITEMS.filter((item) => {
+    // Se o item exige cargos específicos e o usuário não for admin/gerente, bloqueia
+    if (item.roles && item.roles.length > 0) {
+      if (!isMaster && !item.roles.some((r) => roles.includes(r as any))) {
+        return false;
+      }
+    }
     const perm = PAGE_PERMISSIONS[item.path];
     return perm ? can(perm) : true;
   });
