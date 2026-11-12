@@ -573,17 +573,64 @@ export function CreateSaleModal({
 
         if (targetStoreUuid) {
           contractPayload.store_id = targetStoreUuid;
+        } else {
+          // Fallback seguro para as lojas padrão do banco de dados
+          contractPayload.store_id = isMoc ? 'e8254a81-d669-464b-9806-457ba25ce7f0' : 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
         }
         if (user?.id && isUuid(user.id)) {
           contractPayload.created_by = user.id;
         }
-        if (selectedVehicleId && isUuid(selectedVehicleId)) {
-          contractPayload.vehicle_id = selectedVehicleId;
-          await supabase.from('vehicles').update({ status: saleType === 'concluido' ? 'vendido' : 'reservado' }).eq('id', selectedVehicleId);
+
+        let finalVehicleId = selectedVehicleId && isUuid(selectedVehicleId) ? selectedVehicleId : null;
+
+        // Se o usuário digitou o chassi manualmente, tenta localizar o veículo no estoque do Supabase
+        if (!finalVehicleId && vehicleChassis && vehicleChassis.trim().length >= 4) {
+          const cleanChassis = vehicleChassis.trim().toLowerCase();
+          const { data: foundV } = await supabase
+            .from('vehicles')
+            .select('id')
+            .ilike('chassis', `%${cleanChassis}%`)
+            .limit(1)
+            .maybeSingle();
+          if (foundV?.id) {
+            finalVehicleId = foundV.id;
+          }
         }
 
+        // Se o veículo ainda não existe no pátio (ou chassi novo digitado), cadastra-o no Supabase para manter integridade referencial
+        if (!finalVehicleId) {
+          const { data: newV, error: newVErr } = await supabase
+            .from('vehicles')
+            .insert([{
+              brand: 'SHINERAY',
+              model: vehicleModel || 'MOTO SHINERAY',
+              chassis: vehicleChassis ? vehicleChassis.trim().toUpperCase() : null,
+              color: vehicleColor || 'Padrão',
+              status: saleType === 'concluido' ? 'vendido' : 'reservado',
+              store_id: contractPayload.store_id,
+              year: new Date().getFullYear(),
+              sale_price: totalValNum || null,
+            }])
+            .select('id')
+            .single();
+
+          if (!newVErr && newV?.id) {
+            finalVehicleId = newV.id;
+          }
+        } else {
+          // Atualiza status do veículo existente
+          await supabase.from('vehicles').update({ status: saleType === 'concluido' ? 'vendido' : 'reservado' }).eq('id', finalVehicleId);
+        }
+
+        contractPayload.vehicle_id = finalVehicleId;
+
         if (contractPayload.store_id && contractPayload.vehicle_id) {
-          await (supabase as any).from('contracts').insert([contractPayload]);
+          const { error: insErr } = await (supabase as any).from('contracts').insert([contractPayload]);
+          if (insErr) {
+            console.warn('[CreateSaleModal] Erro ao inserir contrato no Supabase:', insErr);
+          } else {
+            console.log('[CreateSaleModal] Contrato persistido com sucesso no Supabase!');
+          }
         }
       } catch (err) {
         console.warn('Registro em Supabase contratos salvo localmente:', err);

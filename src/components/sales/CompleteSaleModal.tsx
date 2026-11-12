@@ -632,12 +632,13 @@ export function CompleteSaleModal({
       if (templateId && isUuid(templateId)) {
         payload.template_id = templateId;
       }
-      const effectiveStoreId = isUuid(targetStoreId)
+      let effectiveStoreId = isUuid(targetStoreId)
         ? targetStoreId
         : (isUuid(selectedStoreData?.storeId) ? selectedStoreData.storeId : null);
-      if (effectiveStoreId) {
-        payload.store_id = effectiveStoreId;
+      if (!effectiveStoreId) {
+        effectiveStoreId = isMoc ? 'e8254a81-d669-464b-9806-457ba25ce7f0' : 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
       }
+      payload.store_id = effectiveStoreId;
 
       try {
         if (selectedPreSaleId && isUuid(selectedPreSaleId)) {
@@ -645,8 +646,45 @@ export function CompleteSaleModal({
         } else {
           payload.contract_number = `CTR-${Date.now().toString().slice(-6)}`;
           if (user?.id && isUuid(user.id)) payload.created_by = user.id;
-          if (vehicleId && isUuid(vehicleId)) payload.vehicle_id = vehicleId;
-          await supabase.from('contracts').insert(payload);
+
+          let finalVehicleId = vehicleId && isUuid(vehicleId) ? vehicleId : null;
+
+          // Se não encontrou veículo selecionado, busca por chassi se houver
+          if (!finalVehicleId && vehicleChassis && vehicleChassis.trim().length >= 4) {
+            const cleanChassis = vehicleChassis.trim().toLowerCase();
+            const { data: foundV } = await supabase
+              .from('vehicles')
+              .select('id')
+              .ilike('chassis', `%${cleanChassis}%`)
+              .limit(1)
+              .maybeSingle();
+            if (foundV?.id) finalVehicleId = foundV.id;
+          }
+
+          // Se ainda não existir no pátio, insere um veículo no banco para preservar integridade
+          if (!finalVehicleId) {
+            const { data: newV } = await supabase
+              .from('vehicles')
+              .insert([{
+                brand: 'SHINERAY',
+                model: vehicleModel || 'MOTO SHINERAY',
+                chassis: vehicleChassis ? vehicleChassis.trim().toUpperCase() : null,
+                color: vehicleColor || 'Padrão',
+                status: 'vendido',
+                store_id: effectiveStoreId,
+                year: new Date().getFullYear(),
+                sale_price: totalValNum || null,
+              }])
+              .select('id')
+              .single();
+            if (newV?.id) finalVehicleId = newV.id;
+          }
+
+          payload.vehicle_id = finalVehicleId;
+          const { error: insErr } = await supabase.from('contracts').insert(payload);
+          if (insErr) {
+            console.warn('[CompleteSaleModal] Erro ao inserir contrato no Supabase:', insErr);
+          }
         }
 
         // Marca o veículo como vendido no pátio se for UUID válido
