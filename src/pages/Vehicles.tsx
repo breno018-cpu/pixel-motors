@@ -129,6 +129,54 @@ type ModelGroup = {
 type ViewMode = 'grouped' | 'units';
 type SortBy = 'default' | 'qty_desc' | 'aging_desc' | 'price_asc' | 'price_desc';
 
+/**
+ * Normaliza e compara identificadores de loja aceitando tanto UUIDs quanto slugs locais
+ * ('store-divinopolis', 'store-montesclaros'), além de lidar com estoque sem loja vinculada (null/unassigned).
+ */
+export function isMatchingStore(vehicleStoreId: string | null | undefined, filterStoreId: string): boolean {
+  if (!filterStoreId || filterStoreId === 'all') return true;
+  if (vehicleStoreId === filterStoreId) return true;
+
+  const cleanFilter = filterStoreId.toLowerCase().trim();
+  const cleanVehicleStore = (vehicleStoreId || '').toLowerCase().trim();
+
+  // Matriz / Divinópolis
+  const isDivinopolisFilter =
+    cleanFilter === 'store-divinopolis' ||
+    cleanFilter === 'ccf8e097-09d7-4305-8077-5c16fc8b5634' ||
+    cleanFilter.includes('divinopolis') ||
+    cleanFilter.includes('matriz');
+
+  if (isDivinopolisFilter) {
+    // Veículos legados ou importados sem store_id pertencem ao pátio matriz/principal
+    if (!vehicleStoreId) return true;
+    if (
+      cleanVehicleStore === 'store-divinopolis' ||
+      cleanVehicleStore === 'ccf8e097-09d7-4305-8077-5c16fc8b5634' ||
+      cleanVehicleStore.includes('divinopolis') ||
+      cleanVehicleStore.includes('matriz')
+    ) {
+      return true;
+    }
+  }
+
+  // Montes Claros
+  const isMontesFilter =
+    cleanFilter === 'store-montesclaros' ||
+    cleanFilter.includes('montes');
+
+  if (isMontesFilter) {
+    if (
+      cleanVehicleStore === 'store-montesclaros' ||
+      cleanVehicleStore.includes('montes')
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export default function Vehicles() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -189,14 +237,24 @@ export default function Vehicles() {
   const { toast } = useToast();
   const confirm = useConfirm();
 
-  // Inicializa o filtro com a loja local do usuário para manter as lojas independentes por padrão
+  // Inicializa o filtro com a loja local do usuário se houver estoque; caso contrário, abre como 'all' (Rede Integrada)
   const hasInitializedStoreRef = useRef(false);
   useEffect(() => {
-    if (!hasInitializedStoreRef.current && userStore?.id && !searchParams.get('store')) {
-      setStoreFilter(userStore.id);
+    if (!hasInitializedStoreRef.current && !searchParams.get('store')) {
+      const allVehicles = vehicles || [];
+      if (userStore?.id && allVehicles.length > 0) {
+        const hasLocalStock = allVehicles.some((v) => isMatchingStore(v.store_id, userStore.id));
+        if (hasLocalStock) {
+          setStoreFilter(userStore.id);
+        } else {
+          setStoreFilter('all');
+        }
+      } else {
+        setStoreFilter('all');
+      }
       hasInitializedStoreRef.current = true;
     }
-  }, [userStore?.id, searchParams]);
+  }, [userStore?.id, searchParams, vehicles]);
 
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
@@ -209,7 +267,7 @@ export default function Vehicles() {
   const handleRequestTransfer = (vehicle: Vehicle) => {
     setTransferVehicleId(vehicle.id);
     setTransferType('loja_para_loja');
-    if (userStore?.id && vehicle.store_id !== userStore.id) {
+    if (userStore?.id && !isMatchingStore(vehicle.store_id, userStore.id)) {
       setTransferToStoreId(userStore.id);
     } else {
       setTransferToStoreId(undefined);
@@ -219,7 +277,7 @@ export default function Vehicles() {
 
   // Se o veículo for de outra loja, exige transferência antes de iniciar venda
   const handleInitiateSale = async (vehicle: Vehicle) => {
-    const isOtherStore = Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id);
+    const isOtherStore = Boolean(userStore?.id && vehicle.store_id && !isMatchingStore(vehicle.store_id, userStore.id));
     if (isOtherStore) {
       const originStore = stores?.find((s) => s.id === vehicle.store_id)?.name || 'Outro Pátio';
       const myStore = userStore?.name || 'sua loja';
@@ -241,7 +299,7 @@ export default function Vehicles() {
   // Lista base de veículos ativos no escopo de loja/revendedor (para contadores globais)
   const scopedVehicles = useMemo(() => {
     return (vehicles || []).filter((vehicle) => {
-      const matchesStore = storeFilter === 'all' || vehicle.store_id === storeFilter;
+      const matchesStore = isMatchingStore(vehicle.store_id, storeFilter);
       const matchesReseller =
         resellerFilter === 'all' ||
         (resellerFilter === 'loja'
@@ -516,7 +574,7 @@ export default function Vehicles() {
     statusFilter !== 'active' ||
     typeFilter !== 'all' ||
     colorFilter !== 'all' ||
-    (hasElevatedAccess && storeFilter !== 'all') ||
+    storeFilter !== 'all' ||
     resellerFilter !== 'all';
 
   const resetAllFilters = () => {
@@ -524,7 +582,7 @@ export default function Vehicles() {
     setStatusFilter('active');
     setTypeFilter('all');
     setColorFilter('all');
-    if (hasElevatedAccess) setStoreFilter('all');
+    setStoreFilter('all');
     setResellerFilter('all');
     setSortBy('default');
   };
@@ -949,7 +1007,7 @@ export default function Vehicles() {
           </div>
 
           {/* BANNER INFORMATIVO DE CONSULTA ENTRE LOJAS */}
-          {storeFilter !== 'all' && userStore?.id && storeFilter !== userStore.id && (
+          {storeFilter !== 'all' && userStore?.id && !isMatchingStore(storeFilter, userStore.id) && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-950 dark:text-amber-200 text-xs animate-scale-in">
               <div className="flex items-center gap-2.5">
                 <Store className="w-4 h-4 text-amber-600 shrink-0" />
@@ -1108,7 +1166,7 @@ export default function Vehicles() {
                               <span className="text-xs text-foreground font-medium">
                                 {store?.name || 'Loja Principal'}
                               </span>
-                              {Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id) && (
+                              {Boolean(userStore?.id && vehicle.store_id && !isMatchingStore(vehicle.store_id, userStore.id)) && (
                                 <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/40 font-bold">
                                   Outro Pátio
                                 </Badge>
@@ -1143,7 +1201,7 @@ export default function Vehicles() {
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               {canCreateSales && vehicle.status !== 'vendido' && (
-                                Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id) ? (
+                                Boolean(userStore?.id && vehicle.store_id && !isMatchingStore(vehicle.store_id, userStore.id)) ? (
                                   <Button
                                     type="button"
                                     size="sm"
@@ -1389,7 +1447,7 @@ export default function Vehicles() {
                                       Placa: {vehicle.plate}
                                     </span>
                                   )}
-                                  {Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id) ? (
+                                  {Boolean(userStore?.id && vehicle.store_id && !isMatchingStore(vehicle.store_id, userStore.id)) ? (
                                     <Badge variant="outline" className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/30">
                                       Pátio: {store?.name || 'Outro'}
                                     </Badge>
@@ -1412,7 +1470,7 @@ export default function Vehicles() {
                                     {formatCurrency(vehicle.sale_price)}
                                   </span>
                                   {canCreateSales && vehicle.status !== 'vendido' && (
-                                    Boolean(userStore?.id && vehicle.store_id && vehicle.store_id !== userStore.id) ? (
+                                    Boolean(userStore?.id && vehicle.store_id && !isMatchingStore(vehicle.store_id, userStore.id)) ? (
                                       <Button
                                         type="button"
                                         size="sm"
@@ -1582,7 +1640,7 @@ function UnitList({
                 <p>
                   {vehicle.plate ? `Placa ${vehicle.plate}` : 'Sem placa'}
                   {store ? ` · ${store.name}` : ''}
-                  {Boolean(userStoreId && vehicle.store_id && vehicle.store_id !== userStoreId) && (
+                  {Boolean(userStoreId && vehicle.store_id && !isMatchingStore(vehicle.store_id, userStoreId)) && (
                     <span className="ml-1.5 inline-block text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
                       Outro Pátio
                     </span>
@@ -1613,7 +1671,7 @@ function UnitList({
 
               <div className="flex items-center justify-end gap-1.5">
                 {canCreateSales && vehicle.status !== 'vendido' && (
-                  Boolean(userStoreId && vehicle.store_id && vehicle.store_id !== userStoreId) ? (
+                  Boolean(userStoreId && vehicle.store_id && !isMatchingStore(vehicle.store_id, userStoreId)) ? (
                     <Button
                       type="button"
                       size="sm"

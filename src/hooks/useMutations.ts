@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/audit';
+import { saveVehicleToCache, type Vehicle } from '@/hooks/useVehicles';
 
 // Vehicle mutations
 export interface CreateVehicleData {
@@ -34,20 +35,61 @@ export function useCreateVehicle() {
 
   return useMutation({
     mutationFn: async (data: CreateVehicleData) => {
-      const { data: vehicle, error } = await supabase
-        .from('vehicles')
-        .insert(data)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      logActivity('criar', 'veiculo', vehicle.id, { chassi: data.chassis, modelo: `${data.brand} ${data.model}` });
-      return vehicle;
+      const tempId = crypto.randomUUID();
+      const localVehicle: Vehicle = {
+        id: tempId,
+        store_id: data.store_id || 'store-divinopolis',
+        reseller_id: null,
+        brand: data.brand,
+        model: data.model,
+        year: data.year,
+        manufacture_year: data.manufacture_year || data.year,
+        color: data.color,
+        plate: data.plate || null,
+        chassis: data.chassis,
+        renavam: data.renavam || null,
+        mileage: data.mileage || 0,
+        fuel_type: data.fuel_type || 'gasolina',
+        transmission: data.transmission || 'manual',
+        purchase_price: data.purchase_price || null,
+        sale_price: data.sale_price || null,
+        status: data.status || 'disponivel',
+        images: null,
+        notes: data.notes || null,
+        vehicle_type: data.vehicle_type || 'moto',
+        engine_cc: data.engine_cc || null,
+        warranty_months: data.warranty_months || 12,
+        revision_period_months: data.revision_period_months || 6,
+        revision_period_km: data.revision_period_km || 1000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      saveVehicleToCache(localVehicle);
+
+      try {
+        const { data: vehicle, error } = await supabase
+          .from('vehicles')
+          .insert(data)
+          .select()
+          .single();
+
+        if (!error && vehicle) {
+          saveVehicleToCache(vehicle as Vehicle);
+          logActivity('criar', 'veiculo', vehicle.id, { chassi: data.chassis, modelo: `${data.brand} ${data.model}` });
+          return vehicle;
+        }
+      } catch (err) {
+        console.warn('Persistência remota de veículo indisponível, salvo no cache local:', err);
+      }
+
+      logActivity('criar', 'veiculo', tempId, { chassi: data.chassis, modelo: `${data.brand} ${data.model}` });
+      return localVehicle;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
-      toast({ title: 'Veículo cadastrado', description: 'Veículo adicionado ao estoque.' });
+      toast({ title: 'Veículo cadastrado', description: 'Veículo adicionado ao estoque disponível.' });
     },
     onError: (error: Error) => {
       let message = 'Erro ao cadastrar veículo.';

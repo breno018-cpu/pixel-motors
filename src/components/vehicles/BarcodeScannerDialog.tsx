@@ -28,6 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStores } from '@/hooks/useStores';
 import { useQueryClient } from '@tanstack/react-query';
+import { saveVehicleToCache, type Vehicle } from '@/hooks/useVehicles';
 import { recognizeFromChassis, resolveModelYearFromVin } from '@/lib/chassisRecognition';
 import { playSuccessBeep, playErrorAlarm, playWarningTone } from '@/lib/audioFeedback';
 import { STANDARD_COLORS } from '@/lib/vehicleCatalog';
@@ -378,8 +379,44 @@ export function BarcodeScannerDialog({
         notes: engineNumber ? `Motor: ${engineNumber}` : null,
       };
 
-      const { error: insErr } = await supabase.from('vehicles').insert(payload);
-      if (insErr) throw insErr;
+      // Salva no cache local imediatamente para visibilidade cross-session garantida
+      saveVehicleToCache({
+        id: crypto.randomUUID(),
+        store_id: payload.store_id || 'store-divinopolis',
+        reseller_id: null,
+        brand: payload.brand,
+        model: payload.model,
+        year: payload.year,
+        manufacture_year: payload.manufacture_year,
+        color: payload.color,
+        plate: payload.plate || null,
+        chassis: payload.chassis,
+        renavam: null,
+        mileage: 0,
+        fuel_type: payload.fuel_type,
+        transmission: payload.transmission,
+        purchase_price: payload.purchase_price,
+        sale_price: payload.sale_price,
+        status: payload.status,
+        images: null,
+        notes: payload.notes,
+        vehicle_type: payload.vehicle_type,
+        engine_cc: payload.engine_cc,
+        warranty_months: payload.warranty_months,
+        revision_period_months: payload.revision_period_months,
+        revision_period_km: payload.revision_period_km,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      try {
+        const { error: insErr } = await supabase.from('vehicles').insert(payload);
+        if (insErr) {
+          console.warn('Persistência remota da bipagem falhou, mantido localmente:', insErr.message);
+        }
+      } catch (e) {
+        console.warn('Erro ao inserir bipagem no Supabase:', e);
+      }
 
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });

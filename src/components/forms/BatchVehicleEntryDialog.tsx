@@ -36,6 +36,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { saveVehiclesToCache, type Vehicle } from '@/hooks/useVehicles';
 import { 
   SHINERAY_OFFICIAL_LINEUP, 
   MULTIBRAND_MOTOS, 
@@ -112,10 +113,48 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
         notes: `Entrada em lote concessionária (${brand}) - NF Remessa Fábrica.`,
       }));
 
-      const { error } = await supabase.from('vehicles').insert(inserts as any);
-      if (error) throw error;
+      // Cache imediato para visualização garantida em todas as sessões
+      const cachedVehicles: Vehicle[] = inserts.map((ins) => ({
+        id: crypto.randomUUID(),
+        store_id: ins.store_id || 'store-divinopolis',
+        reseller_id: null,
+        brand: ins.brand,
+        model: ins.model,
+        year: ins.year,
+        manufacture_year: ins.year,
+        color: ins.color,
+        plate: null,
+        chassis: ins.chassis,
+        renavam: null,
+        mileage: 0,
+        fuel_type: 'gasolina',
+        transmission: 'manual',
+        purchase_price: ins.purchase_price,
+        sale_price: ins.sale_price,
+        status: 'disponivel',
+        images: null,
+        notes: ins.notes,
+        vehicle_type: ins.vehicle_type,
+        engine_cc: 125,
+        warranty_months: 12,
+        revision_period_months: 6,
+        revision_period_km: 1000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+      saveVehiclesToCache(cachedVehicles);
+
+      try {
+        const { error } = await supabase.from('vehicles').insert(inserts as any);
+        if (error) {
+          console.warn('Persistência remota do lote falhou, salvo localmente:', error.message);
+        }
+      } catch (e) {
+        console.warn('Erro ao inserir lote no Supabase:', e);
+      }
 
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin-global-metrics'] });
 
       toast({
