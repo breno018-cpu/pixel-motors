@@ -29,10 +29,17 @@ const STORAGE_URL_KEY = "dealflow_catalog_api_url";
 const STORAGE_TOKEN_KEY = "dealflow_catalog_sync_token";
 
 export function getCatalogApiSettings() {
-  const envUrl = (import.meta.env.VITE_CATALOG_API_URL as string) || "http://localhost:5173";
+  const isBrowser = typeof window !== 'undefined';
+  const isLocalHost = isBrowser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const defaultUrl = isBrowser ? (isLocalHost ? "http://localhost:5173" : window.location.origin) : "http://localhost:5173";
+
+  const envUrl = (import.meta.env.VITE_CATALOG_API_URL as string) || defaultUrl;
   const envToken = (import.meta.env.VITE_CATALOG_SYNC_TOKEN as string) || "l1ma-dev-token";
 
-  const savedUrl = localStorage.getItem(STORAGE_URL_KEY);
+  let savedUrl = localStorage.getItem(STORAGE_URL_KEY);
+  if (savedUrl && !isLocalHost && (savedUrl.includes('localhost') || savedUrl.includes('127.0.0.1'))) {
+    savedUrl = null;
+  }
   const savedToken = localStorage.getItem(STORAGE_TOKEN_KEY);
 
   return {
