@@ -53,7 +53,7 @@ function checkAndApplyGlobalLogout() {
         }
       }
 
-      localStorage.setItem('df_explicit_signout', 'true');
+      localStorage.removeItem('df_explicit_signout');
       localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
 
       try {
@@ -87,7 +87,7 @@ const DEFAULT_ACTIVE_ADMIN: CachedUserData = {
     must_change_password: false,
   },
   roles: ['admin'],
-  userStore: { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS' },
+  userStore: { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS' },
   permissions: ['*'],
   dataScope: 'all',
   customRoleName: null,
