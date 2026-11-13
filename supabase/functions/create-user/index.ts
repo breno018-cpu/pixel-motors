@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, user_id, email, full_name, role, store_id } = body;
+    const { action, user_id, email, full_name, role, store_id, password } = body;
 
     // Handle password reset
     if (action === 'reset_password' && user_id) {
@@ -212,12 +212,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate a temporary password
-    const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+    // Use provided password or generate a secure temporary password
+    const tempPassword = (password && String(password).trim().length >= 6)
+      ? String(password).trim()
+      : Math.random().toString(36).slice(-8) + 'A1!';
 
-    console.log(`Creating user: ${email} with role: ${role}`);
+    console.log(`Creating/updating user: ${email} with role: ${role}`);
 
     // Create user in auth.users
+    let userId: string;
     const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: tempPassword,
@@ -226,14 +229,34 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      console.error('Error creating auth user:', createError);
-      return new Response(
-        JSON.stringify({ error: createError.message }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (createError.message.includes('already') || createError.message.includes('exists')) {
+        // Find existing user and update password & unban
+        const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+        const existingAuthUser = listData?.users?.find(u => u.email?.toLowerCase().trim() === email.toLowerCase().trim());
+        if (existingAuthUser) {
+          userId = existingAuthUser.id;
+          await supabaseAdmin.auth.admin.updateUserById(userId, {
+            password: tempPassword,
+            email_confirm: true,
+            ban_duration: 'none',
+            user_metadata: { full_name }
+          });
+        } else {
+          return new Response(
+            JSON.stringify({ error: createError.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } else {
+        console.error('Error creating auth user:', createError);
+        return new Response(
+          JSON.stringify({ error: createError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      userId = authData.user.id;
     }
-
-    const userId = authData.user.id;
     console.log(`User created with ID: ${userId}`);
 
     // Create user role
