@@ -32,7 +32,7 @@ import { useUpdateVehicle } from '@/hooks/useVehicleMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import { ModelCatalogSelect } from '@/components/vehicles/ModelCatalogSelect';
-import { STANDARD_COLORS } from '@/lib/vehicleCatalog';
+import { STANDARD_COLORS, isElectricVehicle } from '@/lib/vehicleCatalog';
 
 const vehicleSchema = z.object({
   chassis: z.string().max(50).optional().or(z.literal('')),
@@ -205,29 +205,37 @@ export function VehicleEditDialog({ vehicle, open, onOpenChange }: VehicleEditDi
                 <FormField
                   control={form.control}
                   name="chassis"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel>
-                        Chassi (VIN) / Nº de Série do Quadro
-                        {!isAdmin && (
+                  render={({ field }) => {
+                    const isElectric = isElectricVehicle({
+                      fuel_type: form.watch('fuel_type') || vehicle?.fuel_type,
+                      model: form.watch('model') || vehicle?.model,
+                      brand: form.watch('brand') || vehicle?.brand,
+                      notes: form.watch('notes') || vehicle?.notes,
+                    });
+                    return (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>
+                          {isElectric ? 'Número da Moto / Motor' : 'Chassi (VIN) / Identificação'}
                           <span className="ml-2 text-[10px] text-muted-foreground font-normal">
-                            (Bicicletas e elétricas podem usar número do quadro ou 'DISPENSADO')
+                            {isElectric
+                              ? '(Motos elétricas: cadastre o número da moto/motor gravado no veículo)'
+                              : '(17 caracteres para motos a combustão)'}
                           </span>
-                        )}
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder="17 caracteres ou Nº Série do Quadro (ex: DISPENSADO)"
-                          className="h-9 uppercase font-mono"
-                          maxLength={50}
-                          disabled={!isAdmin && Boolean(field.value && field.value.length === 17)}
-                          readOnly={!isAdmin && Boolean(field.value && field.value.length === 17)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder={isElectric ? 'Número da moto / motor...' : '17 caracteres (ex: 99HSHF...)'}
+                            className="h-9 uppercase font-mono"
+                            maxLength={50}
+                            disabled={!isAdmin && Boolean(field.value && field.value.length === 17 && !isElectric)}
+                            readOnly={!isAdmin && Boolean(field.value && field.value.length === 17 && !isElectric)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 <FormField
                   control={form.control}

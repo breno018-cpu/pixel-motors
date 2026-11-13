@@ -50,7 +50,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const [storeId, setStoreId] = useState<string>('');
   const [vehicleType, setVehicleType] = useState<'moto' | 'carro'>('moto');
   const [chassis, setChassis] = useState<string>('');
-  const [isNoChassis, setIsNoChassis] = useState<boolean>(false);
+  const [isElectric, setIsElectric] = useState<boolean>(false);
   const [brand, setBrand] = useState<string>('');
   const [model, setModel] = useState<string>('');
   const [year, setYear] = useState<string>('');
@@ -82,7 +82,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   // Reset COMPLETO de todas as abas e campos sempre que o modal abre
   const resetForm = useCallback(() => {
     setChassis('');
-    setIsNoChassis(false);
+    setIsElectric(false);
     setBrand('');
     setModel('');
     setYear('');
@@ -142,7 +142,12 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
           if (pattern.model) setModel(pattern.model);
           if (pattern.vehicle_type) setVehicleType(pattern.vehicle_type);
           if (pattern.engine_cc) setEngineCc(String(pattern.engine_cc));
-          if (pattern.fuel_type) setFuelType(pattern.fuel_type);
+          if (pattern.fuel_type) {
+            setFuelType(pattern.fuel_type);
+            if (pattern.fuel_type.toLowerCase().includes('eletri')) {
+              setIsElectric(true);
+            }
+          }
           if (pattern.transmission) setTransmission(pattern.transmission);
           if (pattern.warranty_months) setWarrantyMonths(String(pattern.warranty_months));
           if (pattern.default_sale_price) setSalePrice(String(pattern.default_sale_price));
@@ -195,26 +200,27 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
     }
   }, [open, initialChassis, triggerChassisRecognition]);
 
-  const toggleNoChassis = (checked: boolean) => {
-    setIsNoChassis(checked);
+  const toggleElectric = (checked: boolean) => {
+    setIsElectric(checked);
     if (checked) {
       setPatternLocked(false);
       setChassisRecognized(null);
       setFuelType('eletrico');
       setTransmission('automatico');
+      setEngineCc('0');
       lastDecodedVinRef.current = '';
-      if (chassis.length === 17) {
-        setChassis('');
-      }
+    } else {
+      setFuelType('gasolina');
+      setTransmission('manual');
     }
   };
 
   const handleChassisChange = (val: string) => {
     const upper = val.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     setChassis(upper);
-    if (!isNoChassis && upper.length >= 4) {
+    if (!isElectric && upper.length >= 4) {
       triggerChassisRecognition(upper);
-    } else if (!isNoChassis) {
+    } else if (!isElectric) {
       setPatternLocked(false);
       setChassisRecognized(null);
       lastDecodedVinRef.current = '';
@@ -231,11 +237,13 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
 
     const cleanChassis = chassis.trim().toUpperCase();
 
-    if (!isNoChassis && (!cleanChassis || cleanChassis.length < 5)) {
+    if (!cleanChassis || cleanChassis.length < 3) {
       toast({
         variant: 'destructive',
-        title: 'Chassi Obrigatório',
-        description: 'Digite o chassi do veículo para prosseguir com o cadastro, ou ative a opção de Bicicleta / Elétrica sem Chassi.',
+        title: isElectric ? 'Número da Moto Obrigatório' : 'Chassi Obrigatório',
+        description: isElectric
+          ? 'Informe o número da moto ou do motor para prosseguir com o cadastro.'
+          : 'Digite o chassi do veículo para prosseguir com o cadastro, ou ative a opção de Moto Elétrica.',
       });
       return;
     }
@@ -244,8 +252,8 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
       toast({
         variant: 'destructive',
         title: 'Marca e Modelo obrigatórios',
-        description: isNoChassis
-          ? 'Informe a marca e o modelo da bicicleta ou equipamento elétrico.'
+        description: isElectric
+          ? 'Informe a marca e o modelo da moto elétrica.'
           : 'Aguarde o reconhecimento do padrão pelo chassi ou informe o modelo.',
       });
       return;
@@ -260,16 +268,12 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
       return;
     }
 
-    const finalChassis = isNoChassis
-      ? (cleanChassis || 'DISPENSADO')
-      : cleanChassis;
+    const finalChassis = cleanChassis;
 
     const confirmed = await confirm({
       title: 'Confirmar Cadastro no Estoque?',
       description: `Deseja registrar ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) - ${
-        isNoChassis
-          ? (finalChassis === 'DISPENSADO' ? 'Sem Chassi (Dispensado Res. CONTRAN 996/23)' : `Nº Quadro/Série: ${finalChassis}`)
-          : `Chassi ${finalChassis}`
+        isElectric ? `Nº da Moto: ${finalChassis}` : `Chassi ${finalChassis}`
       } no estoque disponível?`,
       confirmText: 'Sim, Cadastrar Veículo',
       cancelText: 'Revisar',
@@ -290,13 +294,13 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
       plate: plate.trim() ? plate.trim().toUpperCase() : undefined,
       renavam: renavam.trim() || undefined,
       mileage: parseInt(mileage, 10) || 0,
-      engine_cc: vehicleType === 'moto' && !isNoChassis ? parseInt(engineCc, 10) || 125 : (parseInt(engineCc, 10) || undefined),
-      fuel_type: fuelType || (isNoChassis ? 'eletrico' : 'gasolina'),
-      transmission: transmission || (isNoChassis ? 'automatico' : 'manual'),
+      engine_cc: isElectric ? 0 : (parseInt(engineCc, 10) || undefined),
+      fuel_type: isElectric ? 'eletrico' : (fuelType || 'gasolina'),
+      transmission: isElectric ? 'automatico' : (transmission || 'manual'),
       purchase_price: costNum > 0 ? costNum : undefined,
       sale_price: saleNum,
       warranty_months: parseInt(warrantyMonths, 10) || 12,
-      notes: notes.trim() || (isNoChassis ? 'Equipamento elétrico / bicicleta sem chassi VIN (Resolução CONTRAN 996/2023)' : undefined),
+      notes: notes.trim() || (isElectric ? `Moto Elétrica - Número de Motor/Moto: ${finalChassis}` : undefined),
       status: 'disponivel',
     });
 
@@ -344,46 +348,46 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* ========================================================================= */}
-          {/* SELETOR: MULTIMARCAS - BICICLETA / PATINETE / ELÉTRICA SEM CHASSI         */}
+          {/* SELETOR: MOTO ELÉTRICA (NÚMERO DA MOTO / MOTOR) VS A COMBUSTÃO (CHASSI)   */}
           {/* ========================================================================= */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl border-2 border-amber-500/40 bg-amber-500/10 shadow-xs">
+          <div className="flex items-center justify-between p-3.5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/10 shadow-xs">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
                 <Zap className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
-                  Bicicleta / Patinete / Elétrica sem Chassi VIN
+                <p className="text-xs font-black uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                  Moto Elétrica (Cadastrar Número de Moto / Motor)
                 </p>
-                <p className="text-[11px] text-amber-900/80 dark:text-amber-300/80">
-                  Dispensa chassi de 17 dígitos (Resolução CONTRAN 996/23 Multimarcas) e usa Nº de Série do Quadro.
+                <p className="text-[11px] text-emerald-900/80 dark:text-emerald-300/80">
+                  Para motos elétricas, cadastre o Número da Moto / Motor ao invés de chassi tradicional.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-bold text-amber-900 dark:text-amber-200 hidden sm:inline">
-                {isNoChassis ? 'Sem Chassi VIN' : 'Veículo com Chassi'}
+              <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 hidden sm:inline">
+                {isElectric ? 'Moto Elétrica (Nº da Moto)' : 'Moto a Combustão (Chassi)'}
               </span>
               <Switch
-                checked={isNoChassis}
-                onCheckedChange={toggleNoChassis}
+                checked={isElectric}
+                onCheckedChange={toggleElectric}
               />
             </div>
           </div>
 
           {/* ========================================================================= */}
-          {/* PASSO 1: O PRIMEIRO CAMPO A PREENCHER É O CHASSI (OU NÚMERO DO QUADRO)    */}
+          {/* PASSO 1: CHASSI (COMBUSTÃO) OU NÚMERO DA MOTO / MOTOR (ELÉTRICA)           */}
           {/* ========================================================================= */}
           <div className="p-4 sm:p-5 rounded-2xl border-2 border-primary/40 bg-primary/5 space-y-3 shadow-xs">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
                 <Hash className="w-4 h-4 text-primary" />
-                {isNoChassis
-                  ? '1. Nº de Série do Quadro / Motor (Opcional)'
+                {isElectric
+                  ? '1. Número da Moto / Motor * — Campo Obrigatório'
                   : '1. Chassi do Veículo (VIN) * — Primeiro Campo a Preencher'}
               </Label>
               <div className="flex items-center gap-2">
-                {!isNoChassis ? (
+                {!isElectric ? (
                   <>
                     <Button
                       type="button"
@@ -401,8 +405,9 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                     </span>
                   </>
                 ) : (
-                  <Badge variant="outline" className="text-[10px] font-bold text-amber-600 border-amber-500/40 bg-amber-500/10">
-                    DISPENSADO / OPCIONAL
+                  <Badge variant="outline" className="text-[10px] font-bold text-emerald-700 border-emerald-500/40 bg-emerald-500/15 gap-1">
+                    <Zap className="w-3 h-3 text-emerald-600" />
+                    MOTO ELÉTRICA / MOTOR
                   </Badge>
                 )}
               </div>
@@ -414,15 +419,15 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 value={chassis}
                 onChange={(e) => handleChassisChange(e.target.value)}
                 placeholder={
-                  isNoChassis
-                    ? 'DIGITE O Nº DE SÉRIE DO QUADRO (OU DEIXE EM BRANCO PARA DISPENSADO)...'
+                  isElectric
+                    ? 'DIGITE O NÚMERO DA MOTO (EX: NÚMERO DO MOTOR / SÉRIE)...'
                     : 'DIGITE O CHASSI (EX: 99HSHF250VS001288)...'
                 }
                 className="h-12 text-base sm:text-lg font-mono font-black tracking-widest bg-background border-primary/40 focus-visible:ring-primary shadow-xs uppercase placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:tracking-normal"
-                maxLength={isNoChassis ? 40 : 17}
-                required={!isNoChassis}
+                maxLength={isElectric ? 40 : 17}
+                required
               />
-              {!isNoChassis && isDecodingChassis && (
+              {!isElectric && isDecodingChassis && (
                 <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5 text-xs text-primary font-bold">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   <span>Analisando padrão...</span>
@@ -430,28 +435,28 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               )}
             </div>
 
-            {/* Banner de Bicicleta / Elétrica sem Chassi */}
-            {isNoChassis && (
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-950 dark:text-amber-200 animate-scale-in">
+            {/* Banner de Moto Elétrica com Número de Moto */}
+            {isElectric && (
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-200 animate-scale-in">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <CheckCircle2 className="w-5 h-5 text-amber-600 shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                   <div className="min-w-0">
                     <p className="font-black text-xs uppercase tracking-wide truncate">
-                      Modo Veículo Elétrico / Bicicleta Ativo
+                      Modo Moto Elétrica Ativo
                     </p>
                     <p className="text-[11px] opacity-90 truncate">
-                      Chassi registrado como <strong>{chassis.trim() || 'DISPENSADO'}</strong>. Ficha técnica totalmente desbloqueada.
+                      Identificação cadastrada pelo <strong>Número da Moto / Motor</strong>: <strong>{chassis.trim() || 'Aguardando digitação...'}</strong>
                     </p>
                   </div>
                 </div>
-                <Badge className="bg-amber-600 text-white font-mono text-[10px] shrink-0 ml-2">
-                  RES. CONTRAN 996/23
+                <Badge className="bg-emerald-600 text-white font-mono text-[10px] shrink-0 ml-2">
+                  MOTO ELÉTRICA
                 </Badge>
               </div>
             )}
 
             {/* Banner de Padrão Identificado */}
-            {!isNoChassis && patternLocked && chassisRecognized && (
+            {!isElectric && patternLocked && chassisRecognized && (
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-300 animate-scale-in">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -470,7 +475,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               </div>
             )}
 
-            {!isNoChassis && !patternLocked && chassis.length >= 4 && !isDecodingChassis && (
+            {!isElectric && !patternLocked && chassis.length >= 4 && !isDecodingChassis && (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 Digite os primeiros 8 a 10 dígitos do chassi para o sistema identificar o modelo automaticamente.
@@ -684,7 +689,19 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                   Combustível
                   {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
                 </Label>
-                <Select value={fuelType} onValueChange={setFuelType} disabled={patternLocked}>
+                <Select
+                  value={fuelType}
+                  onValueChange={(val) => {
+                    setFuelType(val);
+                    if (val === 'eletrico') {
+                      setIsElectric(true);
+                      setTransmission('automatico');
+                      setEngineCc('0');
+                      setPatternLocked(false);
+                    }
+                  }}
+                  disabled={patternLocked}
+                >
                   <SelectTrigger className={`h-10 text-xs mt-1 ${patternLocked ? 'bg-muted/70 cursor-not-allowed' : ''}`}>
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>

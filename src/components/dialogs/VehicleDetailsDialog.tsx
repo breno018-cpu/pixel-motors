@@ -8,6 +8,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { isElectricVehicle } from '@/lib/vehicleCatalog';
 
 interface Vehicle {
   id: string;
@@ -152,7 +153,7 @@ export function VehicleDetailsDialog({ vehicle, storeName, resellerName, open, o
                 <span className="font-mono font-medium">{vehicle.plate || 'Não informada'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Chassi</span>
+                <span className="text-muted-foreground">{isElectricVehicle(vehicle) ? 'Número da Moto / Motor' : 'Chassi'}</span>
                 <span className="font-mono text-xs">{vehicle.chassis || 'Não informado'}</span>
               </div>
               <div className="flex justify-between">

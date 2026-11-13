@@ -1057,52 +1057,66 @@ export function CreateSaleModal({
               </div>
 
               <div>
-                <ChassisSearchInput
-                  label="Chassi (Pesquise ou Digite)"
-                  value={vehicleChassis}
-                  onChange={(val) => setVehicleChassis(val)}
-                  onSelectVehicle={(veh) => {
-                    setVehicleChassis(veh.chassis || '');
-                    if (veh.brand || veh.model) {
-                      setVehicleModel(`${veh.brand || ''} ${veh.model || ''}`.trim());
-                    }
-                    if (veh.year) {
-                      setVehicleYear(String(veh.year));
-                    }
-                    if (veh.color) {
-                      setVehicleColor(veh.color);
-                    }
-                    if (veh.sale_price) {
-                      const pStr = String(veh.sale_price);
-                      setSaleValue(pStr);
-                      if (paymentMethodCategory === 'a_vista_pix') setPixVal(pStr);
-                      else if (paymentMethodCategory === 'a_vista_dinheiro') setCashVal(pStr);
-                      else if (paymentMethodCategory === 'financiamento_100') setFinVal(pStr);
-                    }
-                    if (veh.id) {
-                      setSelectedVehicleId(veh.id);
-                      setVehicleSource('inventory');
-                    }
-                    if (veh.store_id && !isRestrictedSeller) {
-                      const isMoc =
-                        veh.store_id === 'store-montesclaros' ||
-                        veh.store_id === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-                        veh.store_id.toLowerCase().includes('montes');
-                      setStoreId(isMoc ? 'store-montesclaros' : 'store-divinopolis');
-                    }
-                  }}
-                  filterStoreId={storeId}
-                />
-                <div className="flex items-center justify-between mt-1 px-0.5">
-                  <span className="text-[10px] text-muted-foreground">Elétricas / Bicicletas</span>
-                  <button
-                    type="button"
-                    onClick={() => setVehicleChassis('DISPENSADO')}
-                    className="text-[10px] text-amber-600 hover:underline font-bold"
-                  >
-                    Sem Chassi (Dispensado)
-                  </button>
-                </div>
+                {(() => {
+                  const isElectric =
+                    (vehicleModel || '').toUpperCase().includes('ELÉTRIC') ||
+                    (vehicleModel || '').toUpperCase().includes('ELETRIC') ||
+                    (vehicleModel || '').toUpperCase().includes('SCOOTER') ||
+                    (vehicleModel || '').toUpperCase().includes('SHE S');
+                  return (
+                    <>
+                      <ChassisSearchInput
+                        label={isElectric ? 'Número da Moto / Motor (Elétrica)' : 'Chassi (Pesquise ou Digite)'}
+                        placeholder={isElectric ? 'Digite o número da moto ou do motor...' : 'Digite o chassi ou final...'}
+                        value={vehicleChassis}
+                        onChange={(val) => setVehicleChassis(val)}
+                        onSelectVehicle={(veh) => {
+                          setVehicleChassis(veh.chassis || '');
+                          if (veh.brand || veh.model) {
+                            setVehicleModel(`${veh.brand || ''} ${veh.model || ''}`.trim());
+                          }
+                          if (veh.year) {
+                            setVehicleYear(String(veh.year));
+                          }
+                          if (veh.color) {
+                            setVehicleColor(veh.color);
+                          }
+                          if (veh.sale_price) {
+                            const pStr = String(veh.sale_price);
+                            setSaleValue(pStr);
+                            if (paymentMethodCategory === 'a_vista_pix') setPixVal(pStr);
+                            else if (paymentMethodCategory === 'a_vista_dinheiro') setCashVal(pStr);
+                            else if (paymentMethodCategory === 'financiamento_100') setFinVal(pStr);
+                          }
+                          if (veh.id) {
+                            setSelectedVehicleId(veh.id);
+                            setVehicleSource('inventory');
+                          }
+                          if (veh.store_id && !isRestrictedSeller) {
+                            const isMoc =
+                              veh.store_id === 'store-montesclaros' ||
+                              veh.store_id === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+                              veh.store_id.toLowerCase().includes('montes');
+                            setStoreId(isMoc ? 'store-montesclaros' : 'store-divinopolis');
+                          }
+                        }}
+                        filterStoreId={storeId}
+                      />
+                      <div className="flex items-center justify-between mt-1 px-0.5">
+                        <span className="text-[10px] text-muted-foreground">
+                          {isElectric ? 'Moto Elétrica (Identificação por motor)' : 'Elétricas / Bicicletas'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setVehicleChassis('DISPENSADO')}
+                          className="text-[10px] text-amber-600 hover:underline font-bold"
+                        >
+                          Sem Chassi (Dispensado)
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

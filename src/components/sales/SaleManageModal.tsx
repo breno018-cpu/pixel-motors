@@ -745,19 +745,26 @@ export function SaleManageModal({
 
                 <div className="space-y-1.5 md:col-span-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs font-bold">Número de Chassi / Série do Quadro</Label>
+                    <Label className="text-xs font-bold">
+                      {(vehicleModel || '').toUpperCase().includes('ELÉTRIC') ||
+                      (vehicleModel || '').toUpperCase().includes('ELETRIC') ||
+                      (vehicleModel || '').toUpperCase().includes('SCOOTER') ||
+                      (vehicleModel || '').toUpperCase().includes('SHE S')
+                        ? 'Número da Moto / Motor (Elétrica)'
+                        : 'Número de Chassi / Identificação'}
+                    </Label>
                     <button
                       type="button"
                       onClick={() => setVehicleChassis('DISPENSADO')}
                       className="text-[10px] text-amber-600 hover:underline font-bold"
                     >
-                      Bicicleta / Elétrica (Dispensado)
+                      Elétrica / Bicicleta (Dispensado)
                     </button>
                   </div>
                   <Input
                     value={vehicleChassis}
                     onChange={(e) => setVehicleChassis(e.target.value.toUpperCase())}
-                    placeholder="Ex: 95V... ou Nº Quadro / DISPENSADO"
+                    placeholder="Ex: 99H... (Chassi) ou Nº Motor / DISPENSADO"
                     className="h-10 text-xs font-mono font-bold uppercase"
                   />
                 </div>

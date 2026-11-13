@@ -91,3 +91,43 @@ export function formatPlate(plate: string): string {
   if (clean.length <= 3) return clean;
   return `${clean.slice(0, 3)}-${clean.slice(3)}`;
 }
+
+/** Identifica se o veículo é uma moto/scooter/ciclomotor elétrico */
+export function isElectricVehicle(v?: {
+  fuel_type?: string | null;
+  model?: string | null;
+  brand?: string | null;
+  vehicle_type?: string | null;
+  notes?: string | null;
+  chassis?: string | null;
+} | null): boolean {
+  if (!v) return false;
+  const fuel = (v.fuel_type || '').toLowerCase();
+  if (fuel === 'eletrico' || fuel === 'elétrico' || fuel === 'electric') return true;
+  const model = (v.model || '').toLowerCase();
+  if (
+    model.includes('elétric') ||
+    model.includes('eletric') ||
+    model.includes('scooter') ||
+    model.includes('she s') ||
+    model.includes('se1') ||
+    model.includes('se2') ||
+    model.includes('se3') ||
+    model.includes('pt1') ||
+    model.includes('pt2') ||
+    model.includes('pt3') ||
+    model.includes('pt4')
+  ) {
+    return true;
+  }
+  const notes = (v.notes || '').toLowerCase();
+  if (notes.includes('elétrica') || notes.includes('eletrica') || notes.includes('contran 996')) {
+    return true;
+  }
+  return false;
+}
+
+export function getVehicleIdentifierLabel(isElectric: boolean, short = false): string {
+  if (short) return isElectric ? 'Nº da Moto' : 'Chassi';
+  return isElectric ? 'Número da Moto / Motor' : 'Chassi do Veículo (VIN)';
+}

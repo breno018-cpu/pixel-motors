@@ -33,6 +33,7 @@ import { recognizeFromChassis, resolveModelYearFromVin } from '@/lib/chassisReco
 import { BarcodeScannerDialog } from '@/components/vehicles/BarcodeScannerDialog';
 import { SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { isMatchingStore } from '@/lib/storeResolution';
+import { isElectricVehicle } from '@/lib/vehicleCatalog';
 import { cn } from '@/lib/utils';
 
 export function getStoreDisplayName(storeId?: string | null): string {
@@ -79,9 +80,9 @@ export function ChassisSearchInput({
   value,
   onChange,
   onSelectVehicle,
-  placeholder = 'Digite o chassi ou final (ex: 99HSHF... ou 001704)',
+  placeholder = 'Digite o chassi ou número da moto...',
   className,
-  label,
+  label = 'Chassi / Número da Moto',
   required = false,
   filterStoreId,
   autoRecognize = true,

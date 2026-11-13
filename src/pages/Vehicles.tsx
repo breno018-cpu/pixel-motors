@@ -47,7 +47,7 @@ import {
 } from '@/components/ui/table';
 import { useVehicles, type Vehicle } from '@/hooks/useVehicles';
 import { useVehicleModels, effectiveModelPrice } from '@/hooks/useVehicleModels';
-import { normalizeName } from '@/lib/vehicleCatalog';
+import { normalizeName, isElectricVehicle } from '@/lib/vehicleCatalog';
 import { useStores } from '@/hooks/useStores';
 import { useResellers } from '@/hooks/useResellers';
 import {
@@ -811,7 +811,7 @@ export default function Vehicles() {
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por modelo, cor, placa, final do chassi ou RENAVAM..."
+                  placeholder="Buscar por modelo, cor, placa, chassi ou número da moto..."
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   className="h-9 pl-9 text-xs sm:text-sm"
@@ -1098,21 +1098,29 @@ export default function Vehicles() {
                           </TableCell>
                           <TableCell>
                             <div className="space-y-0.5 font-mono text-xs">
-                              {vehicle.chassis && vehicle.chassis.toUpperCase() !== 'DISPENSADO' && !vehicle.chassis.toUpperCase().startsWith('DISPENSADO') ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyText('Chassi', vehicle.chassis!)}
-                                  className="flex items-center gap-1 text-foreground hover:text-primary transition-colors"
-                                  title="Clique para copiar o chassi"
-                                >
-                                  <span>{vehicle.chassis}</span>
-                                  <Copy className="h-3 w-3 opacity-60" />
-                                </button>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30">
-                                  Sem Chassi (Elétrica / Bicicleta)
-                                </Badge>
-                              )}
+                              {(() => {
+                                const isElectric = isElectricVehicle(vehicle);
+                                const hasIdentifier = vehicle.chassis && vehicle.chassis.toUpperCase() !== 'DISPENSADO' && !vehicle.chassis.toUpperCase().startsWith('DISPENSADO');
+                                if (hasIdentifier) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyText(isElectric ? 'Nº da Moto' : 'Chassi', vehicle.chassis!)}
+                                      className="flex items-center gap-1 text-foreground hover:text-primary transition-colors"
+                                      title={isElectric ? 'Clique para copiar o número da moto' : 'Clique para copiar o chassi'}
+                                    >
+                                      {isElectric && <span className="text-[10px] font-bold text-emerald-600">⚡ Nº Moto:</span>}
+                                      <span>{vehicle.chassis}</span>
+                                      <Copy className="h-3 w-3 opacity-60" />
+                                    </button>
+                                  );
+                                }
+                                return (
+                                  <Badge variant="outline" className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
+                                    {isElectric ? '⚡ Moto Elétrica (S/ Número)' : 'Sem Chassi'}
+                                  </Badge>
+                                );
+                              })()}
                               <div className="text-[11px] text-muted-foreground flex items-center gap-2">
                                 <span>{vehicle.plate ? `Placa ${vehicle.plate}` : 'Zero KM / S/ Placa'}</span>
                                 {vehicle.renavam && <span>· RENAVAM {vehicle.renavam}</span>}
@@ -1385,21 +1393,28 @@ export default function Vehicles() {
                                       ? `${vehicle.manufacture_year}/${vehicle.year}`
                                       : vehicle.year}
                                   </span>
-                                  {vehicle.chassis && vehicle.chassis.toUpperCase() !== 'DISPENSADO' && !vehicle.chassis.toUpperCase().startsWith('DISPENSADO') ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopyText('Chassi', vehicle.chassis!)}
-                                      className="inline-flex items-center gap-1 font-mono text-[11px] bg-muted/50 px-2 py-0.5 rounded border border-border/60 hover:border-primary/40"
-                                      title="Copiar chassi"
-                                    >
-                                      Chassi: {vehicle.chassis}
-                                      <Copy className="h-2.5 w-2.5 opacity-60" />
-                                    </button>
-                                  ) : (
-                                    <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                                      Sem Chassi (Elétrica)
-                                    </span>
-                                  )}
+                                  {(() => {
+                                    const isElectric = isElectricVehicle(vehicle);
+                                    const hasIdentifier = vehicle.chassis && vehicle.chassis.toUpperCase() !== 'DISPENSADO' && !vehicle.chassis.toUpperCase().startsWith('DISPENSADO');
+                                    if (hasIdentifier) {
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyText(isElectric ? 'Nº da Moto' : 'Chassi', vehicle.chassis!)}
+                                          className="inline-flex items-center gap-1 font-mono text-[11px] bg-muted/50 px-2 py-0.5 rounded border border-border/60 hover:border-primary/40"
+                                          title={isElectric ? 'Copiar número da moto' : 'Copiar chassi'}
+                                        >
+                                          {isElectric ? `⚡ Nº Moto: ${vehicle.chassis}` : `Chassi: ${vehicle.chassis}`}
+                                          <Copy className="h-2.5 w-2.5 opacity-60" />
+                                        </button>
+                                      );
+                                    }
+                                    return (
+                                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                        {isElectric ? '⚡ Moto Elétrica (S/ Número)' : 'Sem Chassi'}
+                                      </span>
+                                    );
+                                  })()}
                                   {vehicle.plate && (
                                     <span className="font-mono text-muted-foreground">
                                       Placa: {vehicle.plate}
@@ -1583,18 +1598,22 @@ function UnitList({
               </div>
 
               <div className="text-xs text-muted-foreground space-y-0.5">
-                {vehicle.chassis ? (
-                  <button
-                    type="button"
-                    onClick={() => onCopy('Chassi', vehicle.chassis)}
-                    className="flex items-center gap-1 font-mono text-foreground hover:text-primary transition-colors"
-                  >
-                    <span>Chassi {vehicle.chassis}</span>
-                    <Copy className="h-3 w-3 opacity-60" />
-                  </button>
-                ) : (
-                  <p>Chassi não informado</p>
-                )}
+                {(() => {
+                  const isElectric = isElectricVehicle(vehicle);
+                  if (vehicle.chassis) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => onCopy(isElectric ? 'Nº da Moto' : 'Chassi', vehicle.chassis)}
+                        className="flex items-center gap-1 font-mono text-foreground hover:text-primary transition-colors"
+                      >
+                        <span>{isElectric ? `⚡ Nº Moto ${vehicle.chassis}` : `Chassi ${vehicle.chassis}`}</span>
+                        <Copy className="h-3 w-3 opacity-60" />
+                      </button>
+                    );
+                  }
+                  return <p>{isElectric ? 'Nº da moto não informado' : 'Chassi não informado'}</p>;
+                })()}
                 <p>
                   {vehicle.plate ? `Placa ${vehicle.plate}` : 'Sem placa'}
                   {store ? ` · ${store.name}` : ''}

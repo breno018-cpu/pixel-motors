@@ -2,6 +2,7 @@ import _jsPDF from 'jspdf';
 const jsPDF: any = (_jsPDF as any).jsPDF || _jsPDF;
 import { renderPickupAuthorization, type PickupPerson } from './pickupAuthorization';
 import { DEFAULT_CONTRACT_WATERMARK } from '@/assets/contractWatermark';
+import { isElectricVehicle } from '@/lib/vehicleCatalog';
 
 export interface OptionalClauseRenderable {
   id: string;
@@ -199,7 +200,14 @@ function replaceVariables(text: string, data: ContractGenerationData): string {
       brand: vehicle.brand || 'SHINERAY', model: vehicle.model || 'MOTO', year: vehicle.year || 2026,
       color: vehicle.color, chassis: vehicle.chassis, plate: vehicle.plate,
       price: payment.total || 0,
-    }]).map((v, i) => `${i + 1}) ${v.brand} ${v.model}${v.year ? ' ' + v.year : ''}${v.color ? ' - ' + v.color : ''}${v.chassis ? (v.chassis.toUpperCase().includes('DISPENSADO') ? ' - ' + v.chassis : ' - Chassi ' + v.chassis) : ' - Chassi Dispensado (Res. 996/23)'}${v.price ? ' - ' + formatCurrency(Number(v.price)) : ''}`).join('\n'),
+    }]).map((v, i) => {
+      const isElec = isElectricVehicle(v);
+      const idLabel = isElec ? ' - Nº da Moto/Motor ' : ' - Chassi ';
+      const chassisText = v.chassis
+        ? (v.chassis.toUpperCase().includes('DISPENSADO') ? ' - ' + v.chassis : `${idLabel}${v.chassis}`)
+        : (isElec ? ' - Nº Moto Dispensado' : ' - Chassi Dispensado (Res. 996/23)');
+      return `${i + 1}) ${v.brand} ${v.model}${v.year ? ' ' + v.year : ''}${v.color ? ' - ' + v.color : ''}${chassisText}${v.price ? ' - ' + formatCurrency(Number(v.price)) : ''}`;
+    }).join('\n'),
     '{{GARANTIA_MESES}}': vehicle.warranty_months ? String(vehicle.warranty_months) : '—',
     '{{REVISAO_MESES}}': vehicle.revision_period_months ? String(vehicle.revision_period_months) : '—',
     '{{REVISAO_KM}}': vehicle.revision_period_km ? vehicle.revision_period_km.toLocaleString('pt-BR') : '—',

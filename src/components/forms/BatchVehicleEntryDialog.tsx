@@ -66,11 +66,18 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
   const [chassisListRaw, setChassisListRaw] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Lista de chassis parseada da caixa de texto
+  // Detecta se o modelo selecionado é elétrico
+  const isElectricModel =
+    model.toUpperCase().includes('ELÉTRIC') ||
+    model.toUpperCase().includes('ELETRIC') ||
+    model.toUpperCase().includes('SCOOTER') ||
+    model.toUpperCase().includes('SHE S');
+
+  // Lista de chassis/números de moto parseada da caixa de texto
   const parsedChassisList = chassisListRaw
     .split(/[\n,;]+/)
     .map((c) => c.trim().toUpperCase())
-    .filter((c) => c.length >= 6);
+    .filter((c) => c.length >= (isElectricModel ? 3 : 5));
 
   const handleModelSelect = (selectedModel: string) => {
     setModel(selectedModel);
@@ -86,7 +93,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
       return;
     }
     if (parsedChassisList.length === 0) {
-      alert('Informe ou cole ao menos um número de chassi válido.');
+      alert(isElectricModel ? 'Informe ou cole ao menos um número de moto/motor válido.' : 'Informe ou cole ao menos um número de chassi válido.');
       return;
     }
 
@@ -104,13 +111,18 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
         manufacture_year: Number(year),
         color: color.toUpperCase(),
         chassis: chassis,
+        fuel_type: isElectricModel ? 'eletrico' : 'gasolina',
+        transmission: isElectricModel ? 'automatico' : 'manual',
+        engine_cc: isElectricModel ? 0 : 125,
         cost_price: cost > 0 ? cost : null,
         purchase_price: cost > 0 ? cost : null,
         sale_price: sale > 0 ? sale : null,
         status: 'disponivel',
         store_id: finalStoreId,
         condition: 'novo',
-        notes: `Entrada em lote concessionária (${brand}) - NF Remessa Fábrica.`,
+        notes: isElectricModel
+          ? `Entrada em lote moto elétrica (${brand}) - Nº da Moto/Motor: ${chassis}`
+          : `Entrada em lote concessionária (${brand}) - NF Remessa Fábrica.`,
       }));
 
       // Cache imediato para visualização garantida em todas as sessões
@@ -335,18 +347,24 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
             </div>
           </div>
 
-          {/* Lista de Chassis em Massa */}
+          {/* Lista de Chassis ou Números de Moto em Massa */}
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold text-foreground">
-                Lista de Números de Chassi (Cole da NF ou digite 1 por linha) *
+                {isElectricModel
+                  ? 'Lista de Números da Moto / Motor (Cole da NF ou digite 1 por linha) *'
+                  : 'Lista de Números de Chassi (Cole da NF ou digite 1 por linha) *'}
               </Label>
               <Badge variant="secondary" className="text-[10px] font-mono">
-                {parsedChassisList.length} chassi{parsedChassisList.length > 1 ? 's' : ''} identificado{parsedChassisList.length > 1 ? 's' : ''}
+                {parsedChassisList.length} {isElectricModel ? 'moto(s) elétrica(s)' : `chassi${parsedChassisList.length > 1 ? 's' : ''}`}
               </Badge>
             </div>
             <Textarea
-              placeholder={`Cole aqui os números de chassi, por exemplo:\n9F2W125A0P000101\n9F2W125A0P000102\n9F2W125A0P000103\n...`}
+              placeholder={
+                isElectricModel
+                  ? `Cole aqui os números da moto/motor, por exemplo:\nQS60V2000W001\nQS60V2000W002\nQS60V2000W003\n...`
+                  : `Cole aqui os números de chassi, por exemplo:\n9F2W125A0P000101\n9F2W125A0P000102\n9F2W125A0P000103\n...`
+              }
               value={chassisListRaw}
               onChange={(e) => setChassisListRaw(e.target.value)}
               className="font-mono text-xs h-28 resize-none bg-background uppercase"
