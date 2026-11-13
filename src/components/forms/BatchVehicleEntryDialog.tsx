@@ -202,7 +202,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:w-full max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-primary/10 text-primary">
@@ -362,7 +362,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
 
           {/* Opção Rápida para Elétricas Sem Chassi */}
           {isElectricModel && (
-            <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-scale-in">
+            <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />

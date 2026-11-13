@@ -317,20 +317,22 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl border bg-card shadow-2xl">
+      <DialogContent className="w-[95vw] sm:w-full max-w-2xl max-h-[90vh] overflow-hidden p-0 gap-0 rounded-2xl border bg-card shadow-2xl flex flex-col">
         {/* Topo do Diálogo */}
-        <div className="p-6 border-b bg-muted/20">
+        <div className="p-4 sm:p-5 border-b bg-muted/20 shrink-0">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
                 {vehicleType === 'moto' ? <Bike className="h-5 w-5" /> : <Car className="h-5 w-5" />}
               </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-foreground">
+              <div className="min-w-0">
+                <DialogTitle className="text-base sm:text-lg font-bold text-foreground truncate">
                   Cadastrar Veículo no Estoque
                 </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
-                  Preencha o Chassi como 1º campo para carregar o modelo e travar as especificações técnicas pelo padrão.
+                <DialogDescription className="text-xs text-muted-foreground truncate">
+                  {isElectric
+                    ? 'Moto elétrica: chassi/motor é opcional e pode ser informado na venda.'
+                    : 'Preencha o Chassi como 1º campo para carregar as especificações.'}
                 </DialogDescription>
               </div>
             </div>
@@ -340,7 +342,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               variant="outline"
               size="sm"
               onClick={resetForm}
-              className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
+              className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground shrink-0"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Limpar
@@ -348,47 +350,35 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* ========================================================================= */}
-          {/* SELETOR: MOTO ELÉTRICA (NÚMERO DA MOTO / MOTOR) VS A COMBUSTÃO (CHASSI)   */}
-          {/* ========================================================================= */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/10 shadow-xs">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
-                <Zap className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
-                  Moto Elétrica (Cadastrar Número de Moto / Motor)
-                </p>
-                <p className="text-[11px] text-emerald-900/80 dark:text-emerald-300/80">
-                  Para motos elétricas, cadastre o Número da Moto / Motor ao invés de chassi tradicional.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 hidden sm:inline">
-                {isElectric ? 'Moto Elétrica (Nº da Moto)' : 'Moto a Combustão (Chassi)'}
-              </span>
-              <Switch
-                checked={isElectric}
-                onCheckedChange={toggleElectric}
-              />
-            </div>
-          </div>
-
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto overflow-x-hidden flex-1">
           {/* ========================================================================= */}
           {/* PASSO 1: CHASSI (COMBUSTÃO) OU NÚMERO DA MOTO / MOTOR (ELÉTRICA)           */}
           {/* ========================================================================= */}
-          <div className="p-4 sm:p-5 rounded-2xl border-2 border-primary/40 bg-primary/5 space-y-3 shadow-xs">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                <Hash className="w-4 h-4 text-primary" />
-                {isElectric
-                  ? '1. Número da Moto / Motor (Opcional no cadastro — inserir na venda)'
-                  : '1. Chassi do Veículo (VIN) * — Primeiro Campo a Preencher'}
+          <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-2.5 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5 min-w-0">
+                <Hash className="w-4 h-4 text-primary shrink-0" />
+                <span className="truncate">
+                  {isElectric ? '1. Nº da Moto / Motor' : '1. Chassi do Veículo (VIN) *'}
+                </span>
               </Label>
-              <div className="flex items-center gap-2">
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Botão Seletor Elétrica / Combustão */}
+                <button
+                  type="button"
+                  onClick={() => toggleElectric(!isElectric)}
+                  className={`h-7 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border cursor-pointer ${
+                    isElectric
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                      : 'bg-background text-muted-foreground border-border hover:bg-muted/60'
+                  }`}
+                  title="Alternar entre moto elétrica e moto a combustão"
+                >
+                  <Zap className={`w-3.5 h-3.5 ${isElectric ? 'text-white' : 'text-emerald-600'}`} />
+                  <span>{isElectric ? '⚡ Elétrica Ativa' : 'Moto Elétrica?'}</span>
+                </button>
+
                 {!isElectric ? (
                   <>
                     <Button
@@ -400,16 +390,15 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                       title="Escanear com câmera ou leitor de código de barras"
                     >
                       <ScanLine className="w-3.5 h-3.5" />
-                      <span>Bipar Chassi</span>
+                      <span>Bipar</span>
                     </Button>
-                    <span className="text-xs font-mono font-bold text-primary">
-                      {chassis.length}/17 dígitos
+                    <span className="text-xs font-mono font-bold text-primary hidden sm:inline">
+                      {chassis.length}/17
                     </span>
                   </>
                 ) : (
-                  <Badge variant="outline" className="text-[10px] font-bold text-emerald-700 border-emerald-500/40 bg-emerald-500/15 gap-1">
-                    <Zap className="w-3 h-3 text-emerald-600" />
-                    OPCIONAL NO CADASTRO
+                  <Badge variant="outline" className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 border-emerald-500/40 bg-emerald-500/15">
+                    OPCIONAL
                   </Badge>
                 )}
               </div>
@@ -422,59 +411,44 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 onChange={(e) => handleChassisChange(e.target.value)}
                 placeholder={
                   isElectric
-                    ? 'DEIXE EM BRANCO PARA INSERIR NA HORA DA VENDA (OU DIGITE O Nº DA MOTO/MOTOR)...'
+                    ? 'Opcional: nº da moto/motor (ou deixe em branco para a venda)...'
                     : 'DIGITE O CHASSI (EX: 99HSHF250VS001288)...'
                 }
-                className="h-12 text-base sm:text-lg font-mono font-black tracking-widest bg-background border-primary/40 focus-visible:ring-primary shadow-xs uppercase placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:tracking-normal"
+                className="h-11 text-sm sm:text-base font-mono font-bold tracking-wide bg-background border-primary/40 focus-visible:ring-primary shadow-xs uppercase placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:tracking-normal"
                 maxLength={isElectric ? 40 : 17}
                 required={!isElectric}
               />
               {!isElectric && isDecodingChassis && (
-                <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5 text-xs text-primary font-bold">
+                <div className="absolute right-3.5 top-3 flex items-center gap-1.5 text-xs text-primary font-bold">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <span>Analisando padrão...</span>
+                  <span>Analisando...</span>
                 </div>
               )}
             </div>
 
-            {/* Banner de Moto Elétrica com Número de Moto */}
+            {/* Aviso Compacto de Moto Elétrica */}
             {isElectric && (
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-950 dark:text-emerald-200 animate-scale-in">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-black text-xs uppercase tracking-wide truncate">
-                      Modo Moto Elétrica Ativo
-                    </p>
-                    <p className="text-[11px] opacity-90 truncate">
-                      {chassis.trim()
-                        ? `Número da moto registrado: ${chassis.trim()}`
-                        : 'Você pode cadastrar agora sem chassi/motor — o vendedor poderá informar o chassi ou motor na hora da venda!'}
-                    </p>
-                  </div>
-                </div>
-                <Badge className="bg-emerald-600 text-white font-mono text-[10px] shrink-0 ml-2">
-                  {chassis.trim() ? 'Nº INFORMADO' : 'INSERIR NA VENDA'}
-                </Badge>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 dark:text-emerald-200 text-xs">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="truncate">
+                  {chassis.trim()
+                    ? `Nº registrado: ${chassis.trim()}`
+                    : 'Sem chassi agora: o chassi ou motor será inserido na hora da venda.'}
+                </span>
               </div>
             )}
 
             {/* Banner de Padrão Identificado */}
             {!isElectric && patternLocked && chassisRecognized && (
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-300 animate-scale-in">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="font-black text-xs uppercase tracking-wide truncate">
-                      Padrão Reconhecido: {brand} {model} {engineCc ? `(${engineCc}cc)` : ''}
-                    </p>
-                    <p className="text-[11px] opacity-90 truncate">
-                      Ficha técnica preenchida e bloqueada. Preencha apenas os campos liberados abaixo.
-                    </p>
-                  </div>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-900 dark:text-emerald-300 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <p className="font-bold truncate">
+                    Padrão: {brand} {model} {engineCc ? `(${engineCc}cc)` : ''}
+                  </p>
                 </div>
                 <Badge className="bg-emerald-600 text-white font-mono text-[10px] shrink-0 ml-2">
-                  PADRÃO APLICADO
+                  APLICADO
                 </Badge>
               </div>
             )}
@@ -482,7 +456,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
             {!isElectric && !patternLocked && chassis.length >= 4 && !isDecodingChassis && (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                Digite os primeiros 8 a 10 dígitos do chassi para o sistema identificar o modelo automaticamente.
+                Digite os primeiros 8 a 10 dígitos do chassi para identificar o modelo automaticamente.
               </p>
             )}
           </div>

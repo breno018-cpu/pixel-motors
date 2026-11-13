@@ -322,14 +322,6 @@
     animation: fadeOut 0.15s ease-out forwards;
   }
 
-  [data-state="open"][data-radix-dialog-content] {
-    animation: scaleIn 0.16s ease-out;
-  }
-
-  [data-state="closed"][data-radix-dialog-content] {
-    animation: fadeOut 0.12s ease-out;
-  }
-
   tbody tr {
     @apply transition-colors duration-100;
   }
