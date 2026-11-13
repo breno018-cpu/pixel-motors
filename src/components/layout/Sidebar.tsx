@@ -1,4 +1,4 @@
-import { useState, forwardRef } from 'react';
+import { useState, forwardRef, useRef, useLayoutEffect, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -50,6 +50,11 @@ const ForwardedLink = forwardRef<HTMLAnchorElement, React.ComponentProps<typeof 
 );
 ForwardedLink.displayName = 'ForwardedLink';
 
+// Persistência estática da rolagem do menu lateral entre trocas de rota e remontagens de tela
+let persistedSidebarScrollTop = 0;
+let persistedMobileSidebarScrollTop = 0;
+const SIDEBAR_SCROLL_STORAGE_KEY = 'pixel_motors_sidebar_scroll_top';
+
 export function Sidebar() {
   const { collapsed, setCollapsed, toggleCollapsed } = useSidebarCollapse();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -61,6 +66,41 @@ export function Sidebar() {
   const { visibleItems } = useSidebarConfig();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  const desktopNavRef = useRef<HTMLElement | null>(null);
+  const mobileNavRef = useRef<HTMLElement | null>(null);
+
+  // Restaura a posição da rolagem exatamente onde o usuário deixou, sem pular para o topo
+  const restoreSidebarScroll = () => {
+    let target = persistedSidebarScrollTop;
+    if (target <= 0 && typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem(SIDEBAR_SCROLL_STORAGE_KEY);
+        if (saved) target = Number(saved);
+      } catch {}
+    }
+    if (target > 0 && desktopNavRef.current) {
+      desktopNavRef.current.scrollTop = target;
+    }
+  };
+
+  useLayoutEffect(() => {
+    restoreSidebarScroll();
+    const frameId = requestAnimationFrame(restoreSidebarScroll);
+    const t1 = setTimeout(restoreSidebarScroll, 25);
+    const t2 = setTimeout(restoreSidebarScroll, 100);
+    return () => {
+      cancelAnimationFrame(frameId);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [location.pathname, collapsed, visibleItems.length]);
+
+  useEffect(() => {
+    if (mobileOpen && mobileNavRef.current && persistedMobileSidebarScrollTop > 0) {
+      mobileNavRef.current.scrollTop = persistedMobileSidebarScrollTop;
+    }
+  }, [mobileOpen]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -95,6 +135,13 @@ export function Sidebar() {
   const roleBadge = getRoleBadge();
 
   const handleNavClick = (path: string) => {
+    if (desktopNavRef.current) {
+      const top = desktopNavRef.current.scrollTop;
+      persistedSidebarScrollTop = top;
+      try {
+        sessionStorage.setItem(SIDEBAR_SCROLL_STORAGE_KEY, String(top));
+      } catch {}
+    }
     navigate(path);
     if (isMobile) setMobileOpen(false);
   };
@@ -195,7 +242,21 @@ export function Sidebar() {
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 p-2 space-y-2 overflow-y-auto w-full max-w-full overflow-x-hidden">
+      <nav
+        ref={mobile ? mobileNavRef : desktopNavRef}
+        onScroll={(e) => {
+          const top = e.currentTarget.scrollTop;
+          if (mobile) {
+            persistedMobileSidebarScrollTop = top;
+          } else {
+            persistedSidebarScrollTop = top;
+            try {
+              sessionStorage.setItem(SIDEBAR_SCROLL_STORAGE_KEY, String(top));
+            } catch {}
+          }
+        }}
+        className="flex-1 p-2 space-y-2 overflow-y-auto w-full max-w-full overflow-x-hidden"
+      >
         {SIDEBAR_GROUPS.map((group) => {
           const items = menuItems.filter((i) => i.group === group.key);
           if (items.length === 0) return null;
