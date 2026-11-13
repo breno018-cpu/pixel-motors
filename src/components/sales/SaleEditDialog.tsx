@@ -34,6 +34,7 @@ import {
 import { cn } from '@/lib/utils';
 import { AdPicker } from '@/components/ads/AdPicker';
 import { ReceiptAttachmentManager } from '@/components/sales/ReceiptAttachmentManager';
+import { AddressFormFields } from './AddressFormFields';
 
 interface SaleEditDialogProps {
   sale: {
@@ -380,8 +381,11 @@ export function SaleEditDialog({ sale, open, onOpenChange, reviewMode = false }:
                 />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <Label className="text-xs">Endereço completo</Label>
-                <Input value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} className="h-9" />
+                <AddressFormFields
+                  value={buyerAddress}
+                  onChange={(_addr, formatted) => setBuyerAddress(formatted)}
+                  title="Endereço do Comprador"
+                />
               </div>
             </div>
           </section>

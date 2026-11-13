@@ -48,6 +48,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useStores } from '@/hooks/useStores';
+import { AddressFormFields } from './AddressFormFields';
 import { useFinancingBanks } from '@/hooks/useFinancingBanks';
 import { useActiveTemplates } from '@/hooks/useContractTemplates';
 import { maskCPFCNPJ, maskCurrency, maskPhone, parseCurrency } from '@/lib/masks';
@@ -653,12 +654,11 @@ export function SaleManageModal({
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
-                  <Label className="text-xs font-bold">Endereço Completo (Rua, Nº, Bairro, Cidade/UF, CEP)</Label>
-                  <Textarea
+                  <AddressFormFields
                     value={buyerAddress}
-                    onChange={(e) => setBuyerAddress(e.target.value)}
-                    placeholder="Ex: Rua das Flores, 120, Centro, Divinópolis/MG - CEP 35500-000"
-                    className="text-xs min-h-[70px] resize-none"
+                    required
+                    onChange={(_addr, formatted) => setBuyerAddress(formatted)}
+                    title="Endereço Completo do Cliente"
                   />
                 </div>
 

@@ -48,6 +48,7 @@ import { useEmployees } from '@/hooks/useEmployees';
 import { useFinancingBanks } from '@/hooks/useFinancingBanks';
 import { useActiveTemplates } from '@/hooks/useContractTemplates';
 import { useAuth } from '@/contexts/AuthContext';
+import { AddressFormFields } from './AddressFormFields';
 import { isUserSellerRestricted, filterSalesBySellerScope, resolveUserSellerStore } from '@/lib/salesScope';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
@@ -924,26 +925,17 @@ export function CompleteSaleModal({
                 />
               </div>
 
-              <div>
-                <Label className="text-xs font-semibold">CEP</Label>
-                <Input
-                  value={buyerCep}
-                  onChange={(e) => setBuyerCep(maskCEP(e.target.value))}
-                  placeholder="35500-000"
-                  className="h-10 mt-1 text-xs font-mono"
-                />
-              </div>
-
               <div className="sm:col-span-2 md:col-span-3">
-                <Label className="text-xs font-semibold flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-muted-foreground" />
-                  Endereço Completo de Faturamento & Entrega <span className="text-destructive">*</span>
-                </Label>
-                <Input
+                <AddressFormFields
                   value={buyerAddress}
-                  onChange={(e) => setBuyerAddress(e.target.value)}
-                  placeholder="Rua, Número, Bairro, Cidade - UF"
-                  className="h-10 mt-1 text-xs"
+                  required
+                  onChange={(addr, formatted) => {
+                    setBuyerAddress(formatted);
+                    setBuyerCep(addr.cep);
+                    setBuyerCity(addr.city);
+                    setBuyerState(addr.state);
+                  }}
+                  title="Endereço de Faturamento & Entrega (Contrato)"
                 />
               </div>
             </div>

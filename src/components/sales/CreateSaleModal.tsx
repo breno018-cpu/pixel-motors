@@ -53,6 +53,8 @@ import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { getMonthlySheetRows } from '@/hooks/useContracts';
 import { cn } from '@/lib/utils';
+import { AddressFormFields } from './AddressFormFields';
+import { type AddressData, INITIAL_ADDRESS } from '@/lib/cepService';
 
 interface CreateSaleModalProps {
   open: boolean;
@@ -162,6 +164,8 @@ export function CreateSaleModal({
   const [buyerDoc, setBuyerDoc] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
   const [buyerCity, setBuyerCity] = useState('');
+  const [buyerAddressData, setBuyerAddressData] = useState<AddressData>(INITIAL_ADDRESS);
+  const [buyerAddress, setBuyerAddress] = useState<string>('');
 
   // Método de Fechamento & Condições Comerciais
   const [paymentMethodCategory, setPaymentMethodCategory] = useState<string>('a_vista_pix');
@@ -310,6 +314,8 @@ export function CreateSaleModal({
       setBuyerDoc('');
       setBuyerPhone('');
       setBuyerCity('');
+      setBuyerAddressData(INITIAL_ADDRESS);
+      setBuyerAddress('');
       setVehicleModel('');
       setVehicleChassis('');
       setVehicleYear('');
@@ -527,7 +533,7 @@ export function CreateSaleModal({
           buyer_name: buyerName.trim(),
           buyer_cpf: buyerDoc.replace(/\D/g, '') || '00000000000',
           buyer_phone: buyerPhone || null,
-          buyer_address: `${buyerCity} - MG`,
+          buyer_address: buyerAddress || (buyerCity ? `${buyerCity} - MG` : 'Não informado'),
           sale_price: totalValNum,
           down_payment: cashValNum + pixValNum + cardValNum + consValNum + tradeInValNum,
           installments: finValNum > 0 ? finInstallments : 1,
@@ -549,6 +555,13 @@ export function CreateSaleModal({
             chassis: vehicleChassis,
             regiao: buyerCity,
             buyer_city: buyerCity,
+            buyer_address: buyerAddress || (buyerCity ? `${buyerCity} - MG` : 'Não informado'),
+            buyer_cep: buyerAddressData.cep || '',
+            buyer_street: buyerAddressData.street || '',
+            buyer_number: buyerAddressData.number || '',
+            buyer_neighborhood: buyerAddressData.neighborhood || '',
+            buyer_complement: buyerAddressData.complement || '',
+            buyer_state: buyerAddressData.state || 'MG',
             contact_platform: leadSource,
             seller_name: effectiveSeller,
             sale_date: effectiveSaleDate,
@@ -643,8 +656,8 @@ export function CreateSaleModal({
             {
               nomeCompleto: buyerName.trim().toUpperCase(),
               cpf: buyerDoc || '—',
-              cep: '35500-000',
-              endereco: `${buyerCity} - MG`,
+              cep: buyerAddressData.cep || '35500-000',
+              endereco: buyerAddress || `${buyerCity} - MG`,
               chassi: vehicleChassis.trim().toUpperCase() || 'EM ESTOQUE / A DEFINIR',
               modeloMoto: vehicleModel.trim().toUpperCase(),
               valorNF: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValNum),
@@ -696,6 +709,8 @@ export function CreateSaleModal({
       setBuyerDoc('');
       setBuyerPhone('');
       setBuyerCity('');
+      setBuyerAddressData(INITIAL_ADDRESS);
+      setBuyerAddress('');
       setVehicleModel('');
       setVehicleChassis('');
       setVehicleYear('');
@@ -1040,13 +1055,17 @@ export function CreateSaleModal({
               </div>
 
               <div className="sm:col-span-2">
-                <Label className="text-xs font-semibold">Cidade / Região (Para o Mapa de Vendas)</Label>
-                <Input
-                  placeholder="Ex: Divinópolis, Belo Horizonte, Montes Claros, Itaúna..."
-                  value={buyerCity}
-                  onChange={(e) => setBuyerCity(e.target.value)}
-                  className="h-10 text-xs mt-1 font-semibold"
+                <AddressFormFields
+                  value={buyerAddressData}
                   required
+                  onChange={(data, formatted) => {
+                    setBuyerAddressData(data);
+                    setBuyerAddress(formatted);
+                    if (data.city) {
+                      setBuyerCity(data.city);
+                    }
+                  }}
+                  title="Endereço Residencial do Comprador"
                 />
               </div>
             </div>
