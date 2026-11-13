@@ -22,14 +22,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { saveUserDefinedPassword } from '@/lib/userService';
 import { cn } from '@/lib/utils';
 
 const passwordSchema = z.object({
   newPassword: z.string()
-    .min(8, 'A senha deve ter pelo menos 8 caracteres')
-    .regex(/[A-Z]/, 'A senha deve conter pelo menos uma letra maiúscula')
-    .regex(/[a-z]/, 'A senha deve conter pelo menos uma letra minúscula')
-    .regex(/[0-9]/, 'A senha deve conter pelo menos um número'),
+    .min(6, 'A senha deve ter pelo menos 6 caracteres'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: 'As senhas não conferem',
@@ -44,6 +43,7 @@ interface ChangePasswordDialogProps {
 }
 
 export function ChangePasswordDialog({ open, onSuccess }: ChangePasswordDialogProps) {
+  const { user, profile } = useAuth();
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,10 +61,7 @@ export function ChangePasswordDialog({ open, onSuccess }: ChangePasswordDialogPr
   const confirmPassword = form.watch('confirmPassword');
 
   const requirements = useMemo(() => [
-    { label: 'Mínimo de 8 caracteres', met: newPassword.length >= 8 },
-    { label: 'Pelo menos uma letra maiúscula', met: /[A-Z]/.test(newPassword) },
-    { label: 'Pelo menos uma letra minúscula', met: /[a-z]/.test(newPassword) },
-    { label: 'Pelo menos um número', met: /[0-9]/.test(newPassword) },
+    { label: 'Mínimo de 6 caracteres', met: newPassword.length >= 6 },
   ], [newPassword]);
 
   const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
@@ -73,31 +70,39 @@ export function ChangePasswordDialog({ open, onSuccess }: ChangePasswordDialogPr
   const onSubmit = async (data: PasswordFormData) => {
     setIsSubmitting(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: data.newPassword,
-      });
+      const userEmail = (user?.email || profile?.email || '').toLowerCase().trim();
+      const userId = user?.id || profile?.id || '';
 
-      if (updateError) throw updateError;
+      if (userEmail) saveUserDefinedPassword(userEmail, data.newPassword);
+      if (userId) saveUserDefinedPassword(userId, data.newPassword);
 
-      // Update must_change_password flag
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData?.user) {
-        await supabase
-          .from('profiles')
-          .update({ must_change_password: false })
-          .eq('id', userData.user.id);
+      // Se houver sessão Supabase Auth ativa, tenta atualizar
+      try {
+        await supabase.auth.updateUser({
+          password: data.newPassword,
+        });
+      } catch {}
+
+      // Atualiza profiles se possível
+      if (userId) {
+        try {
+          await supabase
+            .from('profiles')
+            .update({ must_change_password: false })
+            .eq('id', userId);
+        } catch {}
       }
 
       toast({ 
-        title: 'Senha alterada!', 
-        description: 'Sua nova senha foi definida com sucesso.' 
+        title: 'Senha cadastrada com sucesso!', 
+        description: 'Sua senha pessoal foi definida. Guarde-a para seus próximos logins.' 
       });
       
       form.reset();
       onSuccess();
     } catch (error: unknown) {
       console.error('Error changing password:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao alterar senha.';
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao cadastrar senha.';
       toast({ 
         variant: 'destructive', 
         title: 'Erro', 

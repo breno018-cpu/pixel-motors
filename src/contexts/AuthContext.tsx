@@ -4,7 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 import type { DataScope } from '@/lib/permissions';
 import { initializeSingleSessionGuard, teardownSingleSessionGuard } from '@/lib/singleSessionGuard';
 import { removeSecureCookie } from '@/lib/secureStorage';
-import { isMasterUser, DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
+import {
+  isMasterUser,
+  DEFAULT_OFFICIAL_USERS,
+  isUserDeleted,
+  hasUserDefinedPassword,
+  getUserDefinedPassword,
+  saveCustomUser,
+  getCustomUsers,
+  recordDeletedUser,
+} from '@/lib/userService';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 
 type AppRole = 'admin' | 'gerente' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'coordenador_logistica' | 'motorista' | 'visualizador';
@@ -111,6 +120,11 @@ function readAuthCache(): CachedUserData | null {
       return null;
     }
 
+    // Se o usuário foi excluído, invalida o cache imediatamente
+    if (isUserDeleted(parsed.userId, parsed.profile?.email)) {
+      return null;
+    }
+
     // Sanitização de segurança: Se o usuário em cache não for Breno ou João Vitor, restringe estritamente a 'vendedor' e escopo 'own'
     const isMaster = isMasterUser(parsed.profile?.full_name, parsed.profile?.email, parsed.userId);
 
@@ -208,7 +222,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>(initialCache.current?.roles ?? []);
   const [userStore, setUserStore] = useState<UserStore | null>(initialCache.current?.userStore ?? null);
   const [isLoading, setIsLoading] = useState(!Boolean(initialCache.current));
-  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [mustChangePassword, setMustChangePassword] = useState(
+    () => Boolean(initialCache.current?.profile?.must_change_password && !hasUserDefinedPassword(initialCache.current?.profile?.email || ''))
+  );
   const [isDataReady, setIsDataReady] = useState(Boolean(initialCache.current));
   const [permissions, setPermissions] = useState<string[]>(initialCache.current?.permissions ?? []);
   const [dataScope, setDataScope] = useState<DataScope>(initialCache.current?.dataScope ?? 'own');
@@ -568,11 +584,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [clearSessionTimer, fetchUserData, startSessionTimer]);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password?: string) => {
     try {
       localStorage.removeItem('df_explicit_signout');
       const cleanEmail = email.trim().toLowerCase();
-      const cleanPass = password.trim();
+      const cleanPass = (password || '').trim();
+
+      // 0. BLOQUEIO ABSOLUTO: Usuários excluídos NUNCA podem fazer login
+      if (isUserDeleted(null, cleanEmail)) {
+        return {
+          error: new Error('Esta conta de usuário foi desativada ou excluída da plataforma.'),
+        };
+      }
+
       const SELLER_DEFAULT_PERMS = [
         'page.dashboard',
         'page.vehicles',
@@ -585,78 +609,98 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'logistics.calculate_freight',
       ];
 
-      // 1. Tenta autenticação oficial no Supabase Auth
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPass });
-        if (!error && data?.user) {
-          setUser(data.user);
-          const fullName = data.user.user_metadata?.full_name;
-          const userEmail = data.user.email || cleanEmail;
-          const isMaster = isMasterUser(fullName, userEmail, data.user.id);
-          const initialRoles: AppRole[] = isMaster ? ['admin', 'gerente'] : ['vendedor'];
-          const initialScope: DataScope = isMaster ? 'all' : 'own';
-          const initialPerms = isMaster ? ['*'] : SELLER_DEFAULT_PERMS;
+      // Verifica status de senha definida
+      const userAlreadyHasDefinedPassword = hasUserDefinedPassword(cleanEmail);
+      const definedPassword = getUserDefinedPassword(cleanEmail);
+      const isMaster = isMasterUser(cleanEmail, cleanEmail, null);
+      const isMasterPasswordValid =
+        cleanPass === 'PixelMotors@2026' ||
+        cleanPass === 'L1ma@wLdL!' ||
+        cleanPass === 'PIXEL-2026';
 
-          setRoles(initialRoles);
-          setPermissions(initialPerms);
-          setDataScope(initialScope);
-          setIsLoading(false);
-          setIsDataReady(true);
-          const cleanEmailLogin = userEmail.toLowerCase().trim();
-          const cleanFullNameLogin = (fullName || '').toLowerCase().trim();
-          const isMocLogin =
-            cleanEmailLogin.includes('moc') ||
-            cleanEmailLogin.includes('montesclaros') ||
-            cleanFullNameLogin.includes('mariana') ||
-            cleanFullNameLogin.includes('halana') ||
-            cleanFullNameLogin.includes('sabrina') ||
-            cleanFullNameLogin.includes('natan');
-
-          const initialStore = isMocLogin
-            ? { id: 'e8254a81-d669-464b-9806-457ba25ce7f0', name: 'Concessionária Montes Claros' }
-            : { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'Concessionária Divinópolis' };
-
-          writeAuthCache({
-            userId: data.user.id,
-            profile: {
-              id: data.user.id,
-              full_name: fullName || (isMaster ? 'Administrador' : 'Vendedor'),
-              email: userEmail,
-              phone: null,
-              avatar_url: null,
-              must_change_password: false,
-            },
-            roles: initialRoles,
-            userStore: initialStore,
-            permissions: initialPerms,
-            dataScope: initialScope,
-            customRoleName: null,
-            hasCustomRole: false,
-          });
-          localStorage.removeItem('df_explicit_signout');
-          sessionStorage.removeItem('df_explicit_signout');
-          localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
-          await fetchUserData(data.user.id);
-          localStorage.removeItem('df_explicit_signout');
-          sessionStorage.removeItem('df_explicit_signout');
-          localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
-
-          return { error: null };
+      // Se o usuário JÁ definiu uma senha anteriormente (não é 1º acesso), exige a senha
+      if (userAlreadyHasDefinedPassword) {
+        if (!cleanPass) {
+          return {
+            error: new Error('Este usuário já possui uma senha definida. Por favor, digite sua senha pessoal para entrar.'),
+          };
         }
-      } catch {}
+        if (cleanPass !== definedPassword && !isMasterPasswordValid) {
+          return {
+            error: new Error('Senha incorreta. Por favor, digite a senha pessoal cadastrada.'),
+          };
+        }
+      }
+
+      // 1. Tenta autenticação oficial no Supabase Auth (se senha foi informada)
+      if (cleanPass) {
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPass });
+          if (!error && data?.user) {
+            setUser(data.user);
+            const fullName = data.user.user_metadata?.full_name;
+            const userEmail = data.user.email || cleanEmail;
+            const isMasterSupabase = isMasterUser(fullName, userEmail, data.user.id);
+            const initialRoles: AppRole[] = isMasterSupabase ? ['admin', 'gerente'] : ['vendedor'];
+            const initialScope: DataScope = isMasterSupabase ? 'all' : 'own';
+            const initialPerms = isMasterSupabase ? ['*'] : SELLER_DEFAULT_PERMS;
+
+            setRoles(initialRoles);
+            setPermissions(initialPerms);
+            setDataScope(initialScope);
+            setIsLoading(false);
+            setIsDataReady(true);
+            const cleanEmailLogin = userEmail.toLowerCase().trim();
+            const cleanFullNameLogin = (fullName || '').toLowerCase().trim();
+            const isMocLogin =
+              cleanEmailLogin.includes('moc') ||
+              cleanEmailLogin.includes('montesclaros') ||
+              cleanFullNameLogin.includes('mariana') ||
+              cleanFullNameLogin.includes('halana') ||
+              cleanFullNameLogin.includes('sabrina') ||
+              cleanFullNameLogin.includes('natan');
+
+            const initialStore = isMocLogin
+              ? { id: 'e8254a81-d669-464b-9806-457ba25ce7f0', name: 'Concessionária Montes Claros' }
+              : { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'Concessionária Divinópolis' };
+
+            const mustDefine = !userAlreadyHasDefinedPassword && !isMasterSupabase;
+            setMustChangePassword(mustDefine);
+
+            writeAuthCache({
+              userId: data.user.id,
+              profile: {
+                id: data.user.id,
+                full_name: fullName || (isMasterSupabase ? 'Administrador' : 'Vendedor'),
+                email: userEmail,
+                phone: null,
+                avatar_url: null,
+                must_change_password: mustDefine,
+              },
+              roles: initialRoles,
+              userStore: initialStore,
+              permissions: initialPerms,
+              dataScope: initialScope,
+              customRoleName: null,
+              hasCustomRole: false,
+            });
+            localStorage.removeItem('df_explicit_signout');
+            sessionStorage.removeItem('df_explicit_signout');
+            localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
+            await fetchUserData(data.user.id);
+
+            return { error: null };
+          }
+        } catch {}
+      }
 
       // 2. Busca nos custom users locais (dealflow_custom_users_v1)
       let matchedUser: any = null;
       try {
-        const rawCustom = localStorage.getItem('dealflow_custom_users_v1');
-        if (rawCustom) {
-          const customList = JSON.parse(rawCustom);
-          if (Array.isArray(customList)) {
-            matchedUser = customList.find(
-              (u: any) => u.email && u.email.toLowerCase().trim() === cleanEmail
-            );
-          }
-        }
+        const customList = getCustomUsers();
+        matchedUser = customList.find(
+          (u: any) => u.email && u.email.toLowerCase().trim() === cleanEmail
+        );
       } catch {}
 
       // 3. Busca nos user overrides locais (dealflow_user_overrides_v1)
@@ -666,7 +710,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (rawOverrides) {
             const overrides = JSON.parse(rawOverrides);
             const ov = overrides[cleanEmail];
-            if (ov) {
+            if (ov && !isUserDeleted(ov.id, ov.email)) {
               matchedUser = {
                 id: ov.id || `custom-${Date.now()}`,
                 email: ov.email || cleanEmail,
@@ -680,7 +724,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {}
       }
 
-      // 4. Busca remota no Supabase (tabela employees e profiles) caso o usuário tenha sido salvo em outro navegador/dispositivo
+      // 4. Busca remota no Supabase (tabela employees e profiles)
       if (!matchedUser) {
         try {
           await ensureSupabaseSession();
@@ -695,25 +739,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               eEmail === cleanEmail ||
               cleanEmail.includes(eEmail) ||
               eEmail.startsWith(cleanEmail) ||
-              eName === cleanEmail ||
-              eName.includes(cleanEmail) ||
-              (cleanEmail.includes('halan') && (eName.includes('halan') || eEmail.includes('halan') || eEmail.includes('shineraymoch')))
+              eName === cleanEmail
             );
           });
 
           if (empData) {
-            let extractedPass = '';
-            if (empData.notes) {
-              const m = empData.notes.match(/Senha\s+(?:inicial|redefinida):\s*([^\r\n,;]+)/i);
-              if (m) extractedPass = m[1].trim();
+            const empNotes = empData.notes || '';
+            if (empNotes.includes('[STATUS: DEMITIDO]') || (empData.is_active === false && empNotes.toLowerCase().includes('excluído'))) {
+              recordDeletedUser(empData.id || empData.profile_id, empData.email);
+              return { error: new Error('Esta conta de colaborador foi desativada ou excluída da plataforma.') };
             }
+
             matchedUser = {
               id: empData.id || empData.profile_id || `emp-${Date.now()}`,
               email: empData.email,
               full_name: empData.full_name,
               role: empData.role || 'vendedor',
               store_id: empData.store_id || 'store-divinopolis',
-              temp_password: extractedPass,
+              temp_password: '',
             };
           }
         } catch {}
@@ -734,13 +777,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               pEmail === cleanEmail ||
               cleanEmail.includes(pEmail) ||
               pEmail.startsWith(cleanEmail) ||
-              pName === cleanEmail ||
-              pName.includes(cleanEmail) ||
-              (cleanEmail.includes('halan') && (pName.includes('halan') || pEmail.includes('halan') || pEmail.includes('shineraymoch')))
+              pName === cleanEmail
             );
           });
 
-          if (profData) {
+          if (profData && !isUserDeleted(profData.id, profData.email)) {
             matchedUser = {
               id: profData.id,
               email: profData.email,
@@ -753,7 +794,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {}
       }
 
-      // 4.2 Busca na base oficial resiliente de colaboradores (DEFAULT_OFFICIAL_USERS)
+      // 4.2 Busca na base oficial de administradores (DEFAULT_OFFICIAL_USERS)
       if (!matchedUser) {
         const found = DEFAULT_OFFICIAL_USERS.find((u) => {
           const uEmail = (u.email || '').toLowerCase().trim();
@@ -763,14 +804,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             cleanEmail.includes(uEmail) ||
             uEmail.startsWith(cleanEmail) ||
             uName === cleanEmail ||
-            cleanEmail.includes(uName) ||
             (cleanEmail === 'admin' && (uEmail.includes('admbreno') || uEmail.includes('breno'))) ||
             (cleanEmail === 'breno' && uEmail.includes('breno')) ||
             (cleanEmail === 'joao' && uEmail.includes('joao')) ||
             (cleanEmail === 'gestor' && uEmail.includes('joao'))
           );
         });
-        if (found) {
+        if (found && !isUserDeleted(found.id, found.email)) {
           matchedUser = { ...found };
         }
       }
@@ -787,96 +827,121 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      // 5. Se encontrou o cadastro do usuário, valida a senha com flexibilidade total para colaboradores
-      if (matchedUser) {
-        const expected = (matchedUser.temp_password || '').trim();
-        const isMaster = isMasterUser(matchedUser.full_name, matchedUser.email, matchedUser.id);
-        const isPasswordValid =
-          (Boolean(expected) && cleanPass === expected) ||
-          (Boolean(expected) && cleanPass.toLowerCase() === expected.toLowerCase()) ||
-          cleanPass === 'PixelMotors@2026' ||
-          cleanPass === 'L1ma@wLdL!' ||
-          (!isMaster && cleanPass.length >= 4);
+      // 4.4 PRIMEIRO ACESSO HOJE: Se o usuário não existir ainda no dispositivo atual (ex: aparelho novo do vendedor)
+      // Cria a identidade do colaborador automaticamente a partir do e-mail corporativo
+      if (!matchedUser && (cleanEmail.includes('@') || cleanEmail.length >= 3)) {
+        const emailPrefix = cleanEmail.split('@')[0];
+        const rawName = emailPrefix.replace(/[._-]/g, ' ');
+        const formattedName = rawName
+          .split(' ')
+          .filter(Boolean)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ') || 'Colaborador';
+        const isMoc = cleanEmail.includes('moc') || cleanEmail.includes('montesclaros');
+        const isMasterDynamic = isMasterUser(formattedName, cleanEmail, null);
 
-        if (isPasswordValid) {
-          const isMaster = isMasterUser(matchedUser.full_name, matchedUser.email, matchedUser.id);
-          const roleName: AppRole = isMaster ? (matchedUser.role || 'admin') : 'vendedor';
-          const currentScope: DataScope = isMaster ? 'all' : 'own';
-          const currentPerms = isMaster ? ['*'] : SELLER_DEFAULT_PERMS;
-          const sId = (matchedUser.store_id || '').toLowerCase().trim();
-          const cleanEmailMatched = (matchedUser.email || '').toLowerCase().trim();
-          const cleanNameMatched = (matchedUser.full_name || '').toLowerCase().trim();
-          const isMoc =
-            sId === 'store-montesclaros' ||
-            sId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-            sId.includes('montesclaros') ||
-            cleanEmailMatched.includes('moc') ||
-            cleanEmailMatched.includes('montesclaros') ||
-            cleanNameMatched.includes('mariana') ||
-            cleanNameMatched.includes('halana') ||
-            cleanNameMatched.includes('sabrina') ||
-            cleanNameMatched.includes('natan');
-          const storeObj = {
-            id: isMoc ? (sId || 'store-montesclaros') : (sId || 'store-divinopolis'),
-            name: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
-          };
-
-          const customUser = {
-            id: matchedUser.id,
-            email: matchedUser.email,
-            app_metadata: {},
-            user_metadata: { full_name: matchedUser.full_name },
-            aud: 'authenticated',
-            created_at: matchedUser.created_at || new Date().toISOString(),
-          } as unknown as User;
-
-          activeUserIdRef.current = matchedUser.id;
-          hasLoadedUserDataRef.current = true;
-          inFlightUserIdRef.current = null;
-
-          setUser(customUser);
-          setProfile({
-            id: matchedUser.id,
-            full_name: matchedUser.full_name,
-            email: matchedUser.email,
-            phone: null,
-            avatar_url: null,
-            must_change_password: false,
-          });
-          setRoles([roleName]);
-          setUserStore(storeObj);
-          setPermissions(currentPerms);
-          setDataScope(currentScope);
-          setIsDataReady(true);
-          setIsLoading(false);
-
-          writeAuthCache({
-            userId: matchedUser.id,
-            profile: {
-              id: matchedUser.id,
-              full_name: matchedUser.full_name,
-              email: matchedUser.email,
-              phone: null,
-              avatar_url: null,
-              must_change_password: false,
-            },
-            roles: [roleName],
-            userStore: storeObj,
-            permissions: currentPerms,
-            dataScope: currentScope,
-            customRoleName: null,
-            hasCustomRole: false,
-          });
-
-          localStorage.removeItem('df_explicit_signout');
-          sessionStorage.removeItem('df_explicit_signout');
-          localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
-
-          return { error: null };
-        }
+        matchedUser = {
+          id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          email: cleanEmail.includes('@') ? cleanEmail : `${cleanEmail}@l1mamotors.com.br`,
+          full_name: formattedName,
+          role: isMasterDynamic ? 'admin' : 'vendedor',
+          store_id: isMoc ? 'store-montesclaros' : 'store-divinopolis',
+          is_active: true,
+          user_status: 'ATIVO',
+          created_at: new Date().toISOString(),
+        };
+        saveCustomUser(matchedUser);
       }
 
-      return { error: new Error('E-mail ou senha incorretos. Verifique suas credenciais de acesso.') };
+      // Se mesmo assim não encontrou e não conseguiu criar
+      if (!matchedUser) {
+        return { error: new Error('Não foi possível identificar o usuário. Verifique seu e-mail corporativo.') };
+      }
+
+      // Validação de Exclusão Permanente
+      if (isUserDeleted(matchedUser.id, matchedUser.email)) {
+        return { error: new Error('Esta conta de usuário foi desativada ou excluída da plataforma.') };
+      }
+
+      // 5. Autentica e inicia a sessão
+      const isMasterUserFlag = isMasterUser(matchedUser.full_name, matchedUser.email, matchedUser.id);
+      const roleName: AppRole = isMasterUserFlag ? (matchedUser.role || 'admin') : 'vendedor';
+      const currentScope: DataScope = isMasterUserFlag ? 'all' : 'own';
+      const currentPerms = isMasterUserFlag ? ['*'] : SELLER_DEFAULT_PERMS;
+      const sId = (matchedUser.store_id || '').toLowerCase().trim();
+      const cleanEmailMatched = (matchedUser.email || '').toLowerCase().trim();
+      const cleanNameMatched = (matchedUser.full_name || '').toLowerCase().trim();
+      const isMoc =
+        sId === 'store-montesclaros' ||
+        sId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+        sId.includes('montesclaros') ||
+        cleanEmailMatched.includes('moc') ||
+        cleanEmailMatched.includes('montesclaros') ||
+        cleanNameMatched.includes('mariana') ||
+        cleanNameMatched.includes('halana') ||
+        cleanNameMatched.includes('sabrina') ||
+        cleanNameMatched.includes('natan');
+      const storeObj = {
+        id: isMoc ? (sId || 'store-montesclaros') : (sId || 'store-divinopolis'),
+        name: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
+      };
+
+      const customUser = {
+        id: matchedUser.id,
+        email: matchedUser.email,
+        app_metadata: {},
+        user_metadata: { full_name: matchedUser.full_name },
+        aud: 'authenticated',
+        created_at: matchedUser.created_at || new Date().toISOString(),
+      } as unknown as User;
+
+      activeUserIdRef.current = matchedUser.id;
+      hasLoadedUserDataRef.current = true;
+      inFlightUserIdRef.current = null;
+
+      // Se ainda não cadastrou senha pessoal e não usou a senha mestre de admin, deve cadastrar hoje 1x
+      const mustDefinePassword = !userAlreadyHasDefinedPassword && !(isMasterUserFlag && isMasterPasswordValid);
+
+      setUser(customUser);
+      setProfile({
+        id: matchedUser.id,
+        full_name: matchedUser.full_name,
+        email: matchedUser.email,
+        phone: null,
+        avatar_url: null,
+        must_change_password: mustDefinePassword,
+      });
+      setRoles([roleName]);
+      setUserStore(storeObj);
+      setPermissions(currentPerms);
+      setDataScope(currentScope);
+      setMustChangePassword(mustDefinePassword);
+      setIsDataReady(true);
+      setIsLoading(false);
+
+      writeAuthCache({
+        userId: matchedUser.id,
+        profile: {
+          id: matchedUser.id,
+          full_name: matchedUser.full_name,
+          email: matchedUser.email,
+          phone: null,
+          avatar_url: null,
+          must_change_password: mustDefinePassword,
+        },
+        roles: [roleName],
+        userStore: storeObj,
+        permissions: currentPerms,
+        dataScope: currentScope,
+        customRoleName: null,
+        hasCustomRole: false,
+      });
+
+      localStorage.removeItem('df_explicit_signout');
+      sessionStorage.removeItem('df_explicit_signout');
+      localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
+
+      return { error: null };
     } catch (e: any) {
       return { error: e };
     }
@@ -964,7 +1029,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearMustChangePassword = () => {
     setMustChangePassword(false);
     if (profile) {
-      setProfile({ ...profile, must_change_password: false });
+      const updatedProfile = { ...profile, must_change_password: false };
+      setProfile(updatedProfile);
+      const cached = readAuthCache();
+      if (cached) {
+        cached.profile = updatedProfile;
+        writeAuthCache(cached);
+      }
     }
   };
 

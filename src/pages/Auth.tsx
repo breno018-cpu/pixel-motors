@@ -25,7 +25,7 @@ import bridgeDither from '@/assets/bridge-dither.png';
 
 const loginSchema = z.object({
   email: z.string().trim().min(3, { message: 'Informe seu e-mail ou usuário corporativo' }).max(255),
-  password: z.string().min(4, { message: 'A senha deve ter no mínimo 4 caracteres' }).max(100),
+  password: z.string().max(100).optional().or(z.literal('')),
 });
 
 const REMEMBER_EMAIL_KEY = 'pixel_motors_remember_email';
@@ -248,6 +248,18 @@ export default function Auth() {
               </div>
             )}
 
+            {authMode === 'email' && (
+              <div className="rounded-2xl border border-blue-200/90 bg-blue-50/70 p-3 text-xs text-blue-900 flex items-start gap-2.5">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold text-[11px] text-blue-950 uppercase tracking-wider">Acesso Unificado Hoje</p>
+                  <p className="text-[11px] text-blue-800 leading-snug">
+                    Digite apenas seu e-mail para entrar e definir sua senha pessoal no primeiro acesso.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {authMode === 'email' ? (
               <>
                 {/* Campo de E-mail */}
@@ -281,7 +293,7 @@ export default function Auth() {
                       htmlFor="password"
                       className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-600"
                     >
-                      Senha
+                      Senha <span className="font-normal lowercase text-neutral-400">(opcional no 1º acesso)</span>
                     </Label>
                     <button
                       type="button"
@@ -295,7 +307,7 @@ export default function Auth() {
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="••••••••"
+                      placeholder="•••••••• (deixe vazio se 1º acesso)"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       onKeyDown={handleKeyActivity}

@@ -162,6 +162,66 @@ export function generateRandomPassword(): string {
   return pass;
 }
 
+export const USER_PASSWORDS_STORAGE_KEY = 'dealflow_user_passwords_v1';
+
+export function getUserDefinedPasswords(): Record<string, { password: string; defined_at: string }> {
+  try {
+    const raw = localStorage.getItem(USER_PASSWORDS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === 'object' && parsed !== null) return parsed;
+    }
+  } catch {}
+  return {};
+}
+
+export function saveUserDefinedPassword(emailOrId: string, password: string) {
+  try {
+    const all = getUserDefinedPasswords();
+    const cleanKey = emailOrId.toLowerCase().trim();
+    all[cleanKey] = {
+      password,
+      defined_at: new Date().toISOString(),
+    };
+    localStorage.setItem(USER_PASSWORDS_STORAGE_KEY, JSON.stringify(all));
+
+    const customUsers = getCustomUsers();
+    const updated = customUsers.map((u) => {
+      if (u.id.toLowerCase() === cleanKey || (u.email && u.email.toLowerCase().trim() === cleanKey)) {
+        return { ...u, temp_password: password };
+      }
+      return u;
+    });
+    localStorage.setItem(CUSTOM_USERS_STORAGE_KEY, JSON.stringify(updated));
+
+    saveUserOverride(cleanKey, { temp_password: password });
+  } catch {}
+}
+
+export function hasUserDefinedPassword(emailOrId: string): boolean {
+  if (!emailOrId) return false;
+  const all = getUserDefinedPasswords();
+  const cleanKey = emailOrId.toLowerCase().trim();
+  return Boolean(all[cleanKey]?.password);
+}
+
+export function getUserDefinedPassword(emailOrId: string): string | null {
+  if (!emailOrId) return null;
+  const all = getUserDefinedPasswords();
+  const cleanKey = emailOrId.toLowerCase().trim();
+  return all[cleanKey]?.password || null;
+}
+
+export function removeUserDefinedPassword(emailOrId: string) {
+  if (!emailOrId) return;
+  try {
+    const all = getUserDefinedPasswords();
+    const cleanKey = emailOrId.toLowerCase().trim();
+    delete all[cleanKey];
+    localStorage.setItem(USER_PASSWORDS_STORAGE_KEY, JSON.stringify(all));
+  } catch {}
+}
+
 export const DEFAULT_OFFICIAL_USERS: (UserWithRole & { temp_password?: string })[] = [
   {
     id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
@@ -199,106 +259,33 @@ export const DEFAULT_OFFICIAL_USERS: (UserWithRole & { temp_password?: string })
     created_at: '2026-01-01T00:00:00.000Z',
     temp_password: 'PixelMotors@2026',
   },
-  {
-    id: 'emp-lilian-div',
-    email: 'lilian@l1mamotors.com.br',
-    full_name: 'Lilian',
-    role: 'vendedor',
-    store_id: 'store-divinopolis',
-    store_name: 'Concessionária Divinópolis',
-    is_active: true,
-    user_status: 'ATIVO',
-    created_at: '2026-01-01T00:00:00.000Z',
-    temp_password: 'PixelMotors@2026',
-  },
-  {
-    id: 'emp-geibriel-div',
-    email: 'geibriel@l1mamotors.com.br',
-    full_name: 'Geibriel',
-    role: 'vendedor',
-    store_id: 'store-divinopolis',
-    store_name: 'Concessionária Divinópolis',
-    is_active: true,
-    user_status: 'ATIVO',
-    created_at: '2026-01-01T00:00:00.000Z',
-    temp_password: 'PixelMotors@2026',
-  },
-  {
-    id: 'emp-daniel-div',
-    email: 'daniel@l1mamotors.com.br',
-    full_name: 'Daniel',
-    role: 'vendedor',
-    store_id: 'store-divinopolis',
-    store_name: 'Concessionária Divinópolis',
-    is_active: true,
-    user_status: 'ATIVO',
-    created_at: '2026-01-01T00:00:00.000Z',
-    temp_password: 'PixelMotors@2026',
-  },
-  {
-    id: 'emp-mariana-moc',
-    email: 'mariana@l1mamotors.com.br',
-    full_name: 'Mariana',
-    role: 'vendedor',
-    store_id: 'store-montesclaros',
-    store_name: 'Concessionária Montes Claros',
-    is_active: true,
-    user_status: 'ATIVO',
-    created_at: '2026-01-01T00:00:00.000Z',
-    temp_password: 'PixelMotors@2026',
-  },
-  {
-    id: 'emp-halana-moc',
-    email: 'halana@l1mamotors.com.br',
-    full_name: 'Halana',
-    role: 'vendedor',
-    store_id: 'store-montesclaros',
-    store_name: 'Concessionária Montes Claros',
-    is_active: true,
-    user_status: 'ATIVO',
-    created_at: '2026-01-01T00:00:00.000Z',
-    temp_password: 'PixelMotors@2026',
-  },
-  {
-    id: 'emp-sabrina-moc',
-    email: 'sabrina@l1mamotors.com.br',
-    full_name: 'Sabrina',
-    role: 'vendedor',
-    store_id: 'store-montesclaros',
-    store_name: 'Concessionária Montes Claros',
-    is_active: true,
-    user_status: 'ATIVO',
-    created_at: '2026-01-01T00:00:00.000Z',
-    temp_password: 'PixelMotors@2026',
-  },
-  {
-    id: 'emp-natan-moc',
-    email: 'natan@l1mamotors.com.br',
-    full_name: 'Natan',
-    role: 'vendedor',
-    store_id: 'store-montesclaros',
-    store_name: 'Concessionária Montes Claros',
-    is_active: true,
-    user_status: 'ATIVO',
-    created_at: '2026-01-01T00:00:00.000Z',
-    temp_password: 'PixelMotors@2026',
-  },
 ];
 
 export function getCustomUsers(): UserWithRole[] {
+  const deletedSet = new Set(getDeletedUserIdentifiers());
+
   try {
     const raw = localStorage.getItem(CUSTOM_USERS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Filtra estritamente qualquer usuário que tenha sido excluído!
+        const filtered = parsed.filter(
+          (u) =>
+            !deletedSet.has((u.id || '').toLowerCase().trim()) &&
+            !deletedSet.has((u.email || '').toLowerCase().trim())
+        );
+        return filtered;
+      }
     }
   } catch {}
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(CUSTOM_USERS_STORAGE_KEY, JSON.stringify(DEFAULT_OFFICIAL_USERS));
-    }
-  } catch {}
-  return [...DEFAULT_OFFICIAL_USERS];
+
+  // Apenas administradores oficiais, filtrando excluídos
+  return DEFAULT_OFFICIAL_USERS.filter(
+    (u) =>
+      !deletedSet.has((u.id || '').toLowerCase().trim()) &&
+      !deletedSet.has((u.email || '').toLowerCase().trim())
+  );
 }
 
 export function saveCustomUser(user: UserWithRole & { temp_password?: string }) {
@@ -438,6 +425,12 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
     const profileIdKey = (e.profile_id || '').toLowerCase().trim();
 
     if (deletedSet.has(emailKey) || (idKey && deletedSet.has(idKey)) || (profileIdKey && deletedSet.has(profileIdKey))) {
+      continue;
+    }
+
+    const notes = e.notes || '';
+    if (notes.includes('[STATUS: DEMITIDO]') || (e.is_active === false && notes.toLowerCase().includes('excluído'))) {
+      recordDeletedUser(e.id, e.email);
       continue;
     }
 
@@ -925,9 +918,11 @@ export async function permanentDeleteUserAccount(userId: string, email?: string)
   recordDeletedUser(userId, email);
   removeCustomUser(userId);
   removeUserOverride(userId);
+  removeUserDefinedPassword(userId);
   if (email) {
     removeCustomUser(email);
     removeUserOverride(email);
+    removeUserDefinedPassword(email);
   }
 
   // 2. Remove vínculos no banco de dados Supabase
