@@ -2,6 +2,8 @@
 // Garante que todos os menus, formulários, cadastros, edições e exclusões funcionem instantaneamente
 // mesmo sem sessão JWT remota ou quando políticas RLS/tabelas do Supabase bloquearem a escrita.
 
+import officialVehiclesSeed from '@/data/officialVehiclesSeed.json';
+
 const STORAGE_PREFIX = 'df_local_table_v5_';
 
 export function purgeFictitiousData(): void {
@@ -10,7 +12,6 @@ export function purgeFictitiousData(): void {
     const wipedTables = [
       'contracts',
       'sales',
-      'vehicles',
       'invoices',
       'resellers',
       'financing_simulations',
@@ -105,7 +106,7 @@ export const INITIAL_SEED: Record<string, any[]> = {
     },
   ],
 
-  vehicles: [],
+  vehicles: (officialVehiclesSeed as any[]) || [],
   contracts: [],
   sales: [],
 

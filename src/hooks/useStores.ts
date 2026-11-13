@@ -18,6 +18,9 @@ export interface Store {
   updated_at: string;
 }
 
+export const STORE_DIVINOPOLIS_UUID = 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
+export const STORE_MONTESCLAROS_UUID = 'e8254a81-d669-464b-9806-457ba25ce7f0';
+
 export const DEFAULT_DEALERSHIP_STORES: Store[] = [
   {
     id: 'store-divinopolis',
@@ -36,6 +39,36 @@ export const DEFAULT_DEALERSHIP_STORES: Store[] = [
   },
   {
     id: 'store-montesclaros',
+    name: 'Concessionária Montes Claros (Polo Norte)',
+    city: 'Montes Claros',
+    state: 'MG',
+    cnpj: '18.456.789/0002-82',
+    address: 'Av. Deputado Esteves Rodrigues, 850 - Centro, Montes Claros/MG',
+    phone: '(38) 3221-2000',
+    email: 'montesclaros@pixelmotors.com.br',
+    instagram_handle: '@concessionaria.moc',
+    manager_id: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: STORE_DIVINOPOLIS_UUID,
+    name: 'Concessionária Divinópolis (Matriz Oeste)',
+    city: 'Divinópolis',
+    state: 'MG',
+    cnpj: '18.456.789/0001-01',
+    address: 'Av. Autorama, 1200 - Judeia, Divinópolis/MG',
+    phone: '(37) 3222-1000',
+    email: 'divinopolis@pixelmotors.com.br',
+    instagram_handle: '@concessionaria.divinopolis',
+    manager_id: null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: STORE_MONTESCLAROS_UUID,
     name: 'Concessionária Montes Claros (Polo Norte)',
     city: 'Montes Claros',
     state: 'MG',

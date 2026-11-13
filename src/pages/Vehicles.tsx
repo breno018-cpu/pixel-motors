@@ -129,6 +129,9 @@ type ModelGroup = {
 type ViewMode = 'grouped' | 'units';
 type SortBy = 'default' | 'qty_desc' | 'aging_desc' | 'price_asc' | 'price_desc';
 
+export const STORE_DIVINOPOLIS_UUID = 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
+export const STORE_MONTESCLAROS_UUID = 'e8254a81-d669-464b-9806-457ba25ce7f0';
+
 /**
  * Normaliza e compara identificadores de loja aceitando tanto UUIDs quanto slugs locais
  * ('store-divinopolis', 'store-montesclaros'), além de lidar com estoque sem loja vinculada (null/unassigned).
@@ -143,7 +146,7 @@ export function isMatchingStore(vehicleStoreId: string | null | undefined, filte
   // Matriz / Divinópolis
   const isDivinopolisFilter =
     cleanFilter === 'store-divinopolis' ||
-    cleanFilter === 'ccf8e097-09d7-4305-8077-5c16fc8b5634' ||
+    cleanFilter === STORE_DIVINOPOLIS_UUID ||
     cleanFilter.includes('divinopolis') ||
     cleanFilter.includes('matriz');
 
@@ -152,7 +155,7 @@ export function isMatchingStore(vehicleStoreId: string | null | undefined, filte
     if (!vehicleStoreId) return true;
     if (
       cleanVehicleStore === 'store-divinopolis' ||
-      cleanVehicleStore === 'ccf8e097-09d7-4305-8077-5c16fc8b5634' ||
+      cleanVehicleStore === STORE_DIVINOPOLIS_UUID ||
       cleanVehicleStore.includes('divinopolis') ||
       cleanVehicleStore.includes('matriz')
     ) {
@@ -163,12 +166,16 @@ export function isMatchingStore(vehicleStoreId: string | null | undefined, filte
   // Montes Claros
   const isMontesFilter =
     cleanFilter === 'store-montesclaros' ||
-    cleanFilter.includes('montes');
+    cleanFilter === STORE_MONTESCLAROS_UUID ||
+    cleanFilter.includes('montes') ||
+    cleanFilter.includes('moc');
 
   if (isMontesFilter) {
     if (
       cleanVehicleStore === 'store-montesclaros' ||
-      cleanVehicleStore.includes('montes')
+      cleanVehicleStore === STORE_MONTESCLAROS_UUID ||
+      cleanVehicleStore.includes('montes') ||
+      cleanVehicleStore.includes('moc')
     ) {
       return true;
     }
