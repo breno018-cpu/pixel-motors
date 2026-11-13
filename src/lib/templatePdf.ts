@@ -41,6 +41,7 @@ export interface ContractGenerationData {
     watermark_data_url?: string | null;
     signature_data_url?: string | null;
     watermark_opacity?: number | null;
+    accent_color?: [number, number, number] | string | null;
   };
   activeClauseIds?: string[];
   clauseVariables?: Record<string, Record<string, string>>;
@@ -825,6 +826,21 @@ export function generateTemplatePreviewPDF(
   return doc.output('dataurlstring');
 }
 
+
+function parseAccentColor(c?: [number, number, number] | string | null): [number, number, number] {
+  if (Array.isArray(c) && c.length === 3) return c as [number, number, number];
+  if (typeof c === 'string') {
+    const hex = c.replace('#', '').trim();
+    if (hex.length === 6) {
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) return [r, g, b];
+    }
+  }
+  return [237, 28, 36];
+}
+
 export function generateContractFromTemplate(data: ContractGenerationData): jsPDF {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -858,9 +874,11 @@ export function generateContractFromTemplate(data: ContractGenerationData): jsPD
   doc.text(`Contrato Nº: ${data.contractNumber}  •  Data: ${data.contractDate}`, pageWidth / 2, y, { align: 'center' });
   y += 4;
 
+  const [accentR, accentG, accentB] = parseAccentColor(template.accent_color);
+
   // Separator
-  doc.setDrawColor(237, 28, 36);
-  doc.setLineWidth(0.4);
+  doc.setDrawColor(accentR, accentG, accentB);
+  doc.setLineWidth(0.5);
   doc.line(margin, y, pageWidth - margin, y);
   y += 4;
   doc.setTextColor(0, 0, 0);
@@ -1035,8 +1053,8 @@ export function generateContractFromTemplate(data: ContractGenerationData): jsPD
   }
 
   // Bottom accent line
-  doc.setDrawColor(237, 28, 36);
-  doc.setLineWidth(1);
+  doc.setDrawColor(accentR, accentG, accentB);
+  doc.setLineWidth(1.2);
   doc.line(margin, doc.internal.pageSize.getHeight() - 8, pageWidth - margin, doc.internal.pageSize.getHeight() - 8);
 
   // Watermark + signature image overlays on every page

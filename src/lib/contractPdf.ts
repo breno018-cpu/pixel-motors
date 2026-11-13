@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import { generateContractFromTemplate, type ContractGenerationData } from './templatePdf';
 import type { PickupPerson } from './pickupAuthorization';
 import { DEFAULT_CONTRACT_WATERMARK } from '@/assets/contractWatermark';
+import { SEMINOVOS_CONTRACT_WATERMARK } from '@/assets/seminovosWatermark';
 
 export interface ContractVehicleLine {
   brand: string;
@@ -97,21 +98,21 @@ export const CLASSIC_SALE_TEMPLATE = {
 
 
 export const CLASSIC_SEMINOVOS_TEMPLATE = {
-  header_content: '[center][b][size:12]CONTRATO DE COMPRA E VENDA DE VEÍCULO SEMINOVO[/size][/b][/center]',
+  header_content: '[center][b][size:12]CONTRATO DE COMPRA E VENDA DE VEÍCULO SEMINOVO & MULTIMARCAS[/size][/b][/center]',
   body_content:
-    'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda do veículo seminovo/usado abaixo caracterizado:\n\n' +
-    '[b]VEÍCULO:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}\n' +
+    'Pelo presente instrumento particular de compra e venda, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], inscrita no CNPJ sob o nº [b]{{LOJA_CNPJ}}[/b], estabelecida em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, doravante denominada simplesmente [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente e domiciliado(a) em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e convencionado a compra e venda do veículo seminovo/usado abaixo caracterizado:\n\n' +
+    '[b]VEÍCULO SEMINOVO:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano Fabricação/Modelo:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}\n' +
     '[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}\n\n' +
-    '[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}',
+    '[b]VALOR DA TRANSAÇÃO:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Saldo Parcelado:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}',
   clauses_content:
-    '[center][b]TERMO DE VISTORIA, GARANTIA LEGAL E RESPONSABILIDADE (SEMINOVOS / MULTIMARCAS)[/b][/center]\n' +
-    'O(A) COMPRADOR(A) declara que vistoriou previamente o veículo seminovo acima identificado, aprovando integralmente seu estado mecânico, estético, funilaria e tapeçaria, ciente de que se trata de bem usado com quilometragem rodada e desgaste natural.\n\n' +
-    '[b]CLÁUSULAS CONTRATUAIS:[/b]\n' +
-    '[b]1.[/b] A VENDEDORA transfere a posse e propriedade do veículo acima descrito, livre e desembaraçado de ônus, dívidas fiscais ou gravames anteriores à presente data.\n' +
-    '[b]2.[/b] GARANTIA LEGAL DE 90 DIAS: Em conformidade com o Art. 26, inciso II da Lei nº 8.078/90 (Código de Defesa do Consumidor), a VENDEDORA concede garantia legal de 90 (noventa) dias a contar da entrega física, restrita e exclusivamente aos componentes internos lubrificados de motor e caixa de câmbio. Itens de desgaste natural (freios, pneus, suspensão, bateria, lâmpadas e estofamento) não possuem garantia.\n' +
-    '[b]3.[/b] A partir da presente data e horário de retirada, todas as responsabilidades civis, administrativas, criminais e pontuações de infrações de trânsito (multas) passam a ser de exclusiva responsabilidade do(a) COMPRADOR(A).\n' +
-    '[b]4.[/b] O(A) COMPRADOR(A) compromete-se a providenciar a transferência do registro do veículo junto ao DETRAN no prazo impreterível de 30 (trinta) dias.\n' +
-    '[b]5.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer controvérsias decorrentes deste contrato.',
+    '[center][b]TERMO DE VISTORIA CAUTELAR, PROCEDÊNCIA E GARANTIA LEGAL DE MOTOR E CÂMBIO[/b][/center]\n' +
+    'O(A) COMPRADOR(A) declara para todos os fins de direito que realizou prévia e minuciosa vistoria física e mecânica no veículo seminovo acima descrito, conferindo o estado da funilaria, pintura, mecânica, tapeçaria, conjunto elétrico, numeração de agregados e quilometragem do hodômetro, recebendo-o no exato estado em que se encontra.\n\n' +
+    '[b]CLÁUSULAS CONTRATUAIS ESPECÍFICAS:[/b]\n' +
+    '[b]1. PROCEDÊNCIA E POSSE:[/b] A VENDEDORA transmite ao(à) COMPRADOR(A) a posse e propriedade do veículo, livre e desembaraçado de gravames financeiros, multas, débitos fiscais ou quaisquer ônus pretéritos à data da entrega.\n' +
+    '[b]2. GARANTIA LEGAL DE 90 DIAS (CDC ART. 26, II):[/b] A VENDEDORA concede garantia legal estrita de 90 (noventa) dias, a contar da entrega do veículo, limitada EXCLUSIVAMENTE aos componentes internos lubrificados de MOTOR e CAIXA DE CÂMBIO. Ficam expressamente EXCLUÍDOS da garantia componentes de desgaste natural pelo uso (pneus, pastilhas/lonas de freio, discos, lâmpadas, bateria, palhetas, suspensão, amortecedores, embreagem e fluidos), bem como defeitos decorrentes de má condução, sobrecarga, adulteração de combustível ou revisões fora dos padrões técnicos.\n' +
+    '[b]3. RESPONSABILIDADE CIVIL E DE TRÂNSITO:[/b] A partir do ato de entrega e saída do veículo do pátio da concessionária, todas as responsabilidades cíveis, criminais, administrativas e pontuações por infrações de trânsito (multas) passam a ser de integral responsabilidade do(a) COMPRADOR(A).\n' +
+    '[b]4. TRANSFERÊNCIA NO DETRAN:[/b] O(A) COMPRADOR(A) assume a obrigação formal de transferir o registro de propriedade do veículo junto ao DETRAN no prazo legal improrrogável de 30 (trinta) dias.\n' +
+    '[b]5. FORO:[/b] As partes elegem o foro da comarca de {{LOJA_CIDADE}} para dirimir qualquer dúvida fundada neste instrumento.',
   signature_content:
     '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]\n\n' +
     '[signatures]\nVENDEDORA | {{LOJA_RAZAO_SOCIAL}} || COMPRADOR(A) | {{CLIENTE_NOME}}\n[/signatures]',
@@ -161,9 +162,20 @@ function formatPaymentMethodLabel(method?: string): string {
 export function generateContractPDF(data: ContractData): jsPDF {
   const isRepasse = data.contractType === 'repasse';
   const isSeminovo = data.contractType === 'seminovo' || (data.notes && data.notes.toLowerCase().includes('seminov'));
-  const baseTemplate = isRepasse
-    ? CLASSIC_REPASSE_TEMPLATE
-    : (isSeminovo ? CLASSIC_SEMINOVOS_TEMPLATE : CLASSIC_SALE_TEMPLATE);
+  
+  let baseTemplate = CLASSIC_SALE_TEMPLATE;
+  let accentColor: [number, number, number] = [237, 28, 36]; // Vermelho Oficial Shineray
+  let watermarkDataUrl: string | null = DEFAULT_CONTRACT_WATERMARK;
+
+  if (isSeminovo) {
+    baseTemplate = CLASSIC_SEMINOVOS_TEMPLATE;
+    accentColor = [15, 44, 89]; // Azul Marinho Executivo / Navy Blue (#0F2C59)
+    watermarkDataUrl = SEMINOVOS_CONTRACT_WATERMARK; // Selo exclusivo "SEMINOVOS & MULTIMARCAS GRUPO L1MA"
+  } else if (isRepasse) {
+    baseTemplate = CLASSIC_REPASSE_TEMPLATE;
+    accentColor = [51, 65, 85]; // Grafite Slate Industrial (#334155)
+    watermarkDataUrl = null; // Sem logotipo para repasse no estado
+  }
 
   // Resolve cidade da loja com fallback inteligente
   const rawCity =
@@ -195,12 +207,11 @@ export function generateContractPDF(data: ContractData): jsPDF {
     template: {
       ...baseTemplate,
       clauses_content: extraClauses,
+      accent_color: (data as any).accentColor || accentColor,
       watermark_data_url: (data as any).watermarkUrl !== undefined
         ? (data as any).watermarkUrl
-        : (((data.vehicleBrand || '').toUpperCase().includes('SHINERAY') || (data.storeName || '').toUpperCase().includes('SHINERAY'))
-            ? DEFAULT_CONTRACT_WATERMARK
-            : null),
-      watermark_opacity: (data as any).watermarkOpacity ?? 0.10,
+        : watermarkDataUrl,
+      watermark_opacity: (data as any).watermarkOpacity ?? (isSeminovo ? 0.14 : 0.10),
     },
     client: {
       name: data.buyerName ? data.buyerName.toUpperCase() : 'COMPRADOR',
