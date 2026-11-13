@@ -64,6 +64,7 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
+import { isMatchingStore } from '@/pages/Vehicles';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { useVehicles, useVehicleStats } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
@@ -620,7 +621,7 @@ export default function Dashboard() {
           },
           employees
         );
-        if (resolved.storeId !== storeFilter) return false;
+        if (!isMatchingStore(resolved.storeId, storeFilter)) return false;
       }
       if (sellerFilter !== 'all') {
         const seller = (

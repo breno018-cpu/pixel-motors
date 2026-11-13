@@ -24,6 +24,7 @@ import { useEmployees } from '@/hooks/useEmployees';
 import { resolveSaleStore } from '@/lib/storeResolution';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
+import { isMatchingStore } from '@/pages/Vehicles';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -473,7 +474,7 @@ export default function Sales() {
       }
 
       // 2. Filtro de Concessionária
-      const matchesStore = storeFilter === 'all' || sale.store_id === storeFilter;
+      const matchesStore = storeFilter === 'all' || isMatchingStore(sale.store_id, storeFilter);
       if (!matchesStore) return false;
 
       // 3. Filtro de Vendedor / Operador

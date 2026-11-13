@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { INITIAL_USER_BACKUP_CSV, parseBackupCsv, SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { resolveSaleStore } from '@/lib/storeResolution';
+import officialContractsSeed from '@/data/officialContractsSeed.json';
 
 export interface ContractVehicle {
   id: string;
@@ -208,28 +209,38 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
 }
 
 async function fetchConsolidatedContracts(): Promise<Contract[]> {
-  await ensureSupabaseSession();
-  const { data } = await supabase
-    .from('contracts')
-    .select(`
-      *,
-      vehicle:vehicles(id, brand, model, year, color, plate, chassis, vehicle_type, status),
-      store:stores(id, name),
-      reseller:resellers(id, full_name)
-    `)
-    .order('created_at', { ascending: false });
+  let dbContracts: Contract[] = [];
+  try {
+    await ensureSupabaseSession();
+    const { data } = await supabase
+      .from('contracts')
+      .select(`
+        *,
+        vehicle:vehicles(id, brand, model, year, color, plate, chassis, vehicle_type, status),
+        store:stores(id, name),
+        reseller:resellers(id, full_name)
+      `)
+      .order('created_at', { ascending: false });
 
-  const dbContracts = (data || []) as Contract[];
+    if (data && Array.isArray(data)) {
+      dbContracts = data as Contract[];
+    }
+  } catch (err) {
+    console.warn('Consulta ao Supabase contracts falhou, usando base consolidada:', err);
+  }
+
   const createdByIds = [...new Set(dbContracts.filter((c) => c.created_by).map((c) => c.created_by as string))];
   let operatorMap: Record<string, string> = {};
   if (createdByIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', createdByIds);
-    if (profiles) {
-      operatorMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.full_name]));
-    }
+    try {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', createdByIds);
+      if (profiles) {
+        operatorMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.full_name]));
+      }
+    } catch {}
   }
 
   const hydratedDb = dbContracts.map((c) => ({
@@ -243,8 +254,12 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
   const fromSheet = sheetRows
     .map(sheetRowToContract)
     .filter((sc) => !seenIds.has(sc.id));
+  fromSheet.forEach((sc) => seenIds.add(sc.id));
 
-  return [...hydratedDb, ...fromSheet];
+  const typedSeed = (officialContractsSeed as unknown as Contract[]) || [];
+  const fromSeed = typedSeed.filter((sc) => !seenIds.has(sc.id));
+
+  return [...hydratedDb, ...fromSheet, ...fromSeed];
 }
 
 export function useContracts() {

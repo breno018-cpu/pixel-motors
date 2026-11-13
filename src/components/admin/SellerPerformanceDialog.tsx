@@ -12,8 +12,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useContracts } from '@/hooks/useContracts';
+import { isContractFromSeller } from '@/pages/Sellers';
 
 interface SellerPerformanceDialogProps {
   open: boolean;
@@ -29,39 +29,12 @@ export function SellerPerformanceDialog({ open, onOpenChange, user }: SellerPerf
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
 
-  const { data: sellerContracts, isLoading } = useQuery({
-    queryKey: ['seller-performance', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
+  const { data: allContracts = [], isLoading } = useContracts();
 
-      // Find the reseller record for this user (if any)
-      const { data: reseller } = await supabase
-        .from('resellers')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      let query = supabase
-        .from('contracts')
-        .select(`
-          *,
-          vehicle:vehicles(id, brand, model, year, color, plate, vehicle_type),
-          store:stores(id, name)
-        `);
-
-      if (reseller?.id) {
-        query = query.or(`reseller_id.eq.${reseller.id},created_by.eq.${user.id}`);
-      } else {
-        query = query.eq('created_by', user.id);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: open && !!user,
-  });
+  const sellerContracts = useMemo(() => {
+    if (!user) return [];
+    return allContracts.filter(c => isContractFromSeller(c, user));
+  }, [allContracts, user]);
 
   const months = useMemo(() => {
     const m = [];
@@ -76,12 +49,13 @@ export function SellerPerformanceDialog({ open, onOpenChange, user }: SellerPerf
   }, []);
 
   const filteredContracts = useMemo(() => {
-    if (!sellerContracts) return [];
+    if (!sellerContracts || !sellerContracts.length) return [];
     const [year, month] = selectedMonth.split('-').map(Number);
-    return sellerContracts.filter(c => {
-      const d = new Date(c.created_at);
+    const byMonth = sellerContracts.filter(c => {
+      const d = new Date(c.signed_at || c.created_at);
       return d.getFullYear() === year && d.getMonth() + 1 === month;
     });
+    return byMonth.length > 0 ? byMonth : sellerContracts;
   }, [sellerContracts, selectedMonth]);
 
   const stats = useMemo(() => {

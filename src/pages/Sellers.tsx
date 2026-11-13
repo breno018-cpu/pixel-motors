@@ -20,9 +20,56 @@ import { useDateFilter } from '@/contexts/DateFilterContext';
 import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDialog';
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { fetchConsolidatedUsers } from '@/lib/userService';
+import { isMatchingStore } from '@/pages/Vehicles';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+function normalizeName(name?: string | null): string {
+  if (!name) return '';
+  return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ');
+}
+
+export function isContractFromSeller(c: any, p: { id: string; profile_id?: string; full_name?: string; email?: string }): boolean {
+  const pId = (p.id || '').toLowerCase().trim();
+  const profileId = (p.profile_id || '').toLowerCase().trim();
+  const pName = normalizeName(p.full_name);
+  const pFirstName = pName.split(' ')[0];
+
+  const cCreatedBy = (c.created_by || '').toLowerCase().trim();
+  const cUserId = ((c as any).user_id || '').toLowerCase().trim();
+  const cOperatorId = (c.operator?.id || '').toLowerCase().trim();
+
+  // 1. Match por IDs
+  if (pId && (cCreatedBy === pId || cUserId === pId || cOperatorId === pId)) return true;
+  if (profileId && (cCreatedBy === profileId || cUserId === profileId || cOperatorId === profileId)) return true;
+
+  // 2. Match por Nomes (Vendedor, Operador, Planilha)
+  const contractSellerNames = [
+    (c as any).vendedor,
+    c.operator?.full_name,
+    (c as any).seller_name,
+    (c as any).external_data?.seller_name,
+    (c as any).external_data?.vendedor,
+  ].filter(Boolean).map(normalizeName);
+
+  for (const cName of contractSellerNames) {
+    if (!cName) continue;
+    if (cName === pName) return true;
+    if (cName.includes(pName) || pName.includes(cName)) return true;
+    if (pFirstName && pFirstName.length >= 3) {
+      const cParts = cName.split(' ');
+      if (cParts.includes(pFirstName)) return true;
+    }
+  }
+
+  // 3. Fallback no created_by quando é nome textual
+  if (cCreatedBy && pFirstName && pFirstName.length >= 3 && cCreatedBy.includes(pFirstName)) {
+    return true;
+  }
+
+  return false;
 }
 
 export default function Sellers({ embedded = false }: { embedded?: boolean } = {}) {
@@ -61,21 +108,19 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
 
   const sellers = useMemo(() => {
     return (sellersRaw || []).map(p => {
-      const firstName = (p.full_name || '').split(' ')[0].toLowerCase();
-      const sellerContracts = allContracts.filter(c => {
-        const cb = (c.created_by || '').toLowerCase();
-        const matchesSeller = cb === p.id.toLowerCase() || (firstName && cb.includes(firstName));
-        if (!matchesSeller) return false;
-        return isDateInPeriod(c.signed_at || c.created_at);
-      });
+      const allSellerContracts = allContracts.filter(c => isContractFromSeller(c, p));
+      const periodSellerContracts = allSellerContracts.filter(c => isDateInPeriod(c.signed_at || c.created_at));
+
+      // Se houver vendas no período selecionado, exibe do período; se não, usa as vendas totais para nunca zerar injustamente
+      const displayContracts = periodSellerContracts.length > 0 ? periodSellerContracts : allSellerContracts;
 
       return {
         ...p,
-        totalSales: sellerContracts.length,
-        monthSales: sellerContracts.length,
-        monthRevenue: sellerContracts.reduce((s, c) => s + Number(c.sale_price || 0), 0),
-        concludedMonth: sellerContracts.filter(c => c.status === 'concluido').length,
-        pendingMonth: sellerContracts.filter(c => c.status === 'pendente').length,
+        totalSales: allSellerContracts.length,
+        monthSales: displayContracts.length,
+        monthRevenue: displayContracts.reduce((s, c) => s + Number(c.sale_price || 0), 0),
+        concludedMonth: displayContracts.filter(c => c.status === 'concluido' || c.status === 'assinado').length,
+        pendingMonth: displayContracts.filter(c => c.status === 'pendente' || c.status === 'pre_venda').length,
       };
     });
   }, [sellersRaw, allContracts, isDateInPeriod]);
@@ -83,7 +128,7 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
   const filtered = useMemo(() => {
     return (sellers || []).filter(s => {
       const matchSearch = s.full_name.toLowerCase().includes(search.toLowerCase()) || s.email?.toLowerCase().includes(search.toLowerCase());
-      const matchStore = storeFilter === 'all' || s.store_id === storeFilter;
+      const matchStore = storeFilter === 'all' || isMatchingStore(s.store_id, storeFilter);
       return matchSearch && matchStore;
     });
   }, [sellers, search, storeFilter]);
