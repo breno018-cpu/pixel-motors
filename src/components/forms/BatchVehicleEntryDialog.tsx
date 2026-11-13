@@ -366,10 +366,10 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
               <div className="space-y-0.5">
                 <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Cadastrar Elétricas Sem Chassi
+                  Cadastro em Massa de Elétricas (Esperando Código)
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  O chassi ou motor será inserido pelo vendedor no momento da venda de cada unidade.
+                  Adicione uma quantidade do mesmo produto: elas entrarão no estoque e ficarão separadas no catálogo esperando o código na venda.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">

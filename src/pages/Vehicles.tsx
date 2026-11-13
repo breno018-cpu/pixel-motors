@@ -29,6 +29,7 @@ import {
   User,
   X,
   Truck,
+  Zap,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -129,7 +130,25 @@ type ModelGroup = {
   maxAgingDays: number;
   avgAgingDays: number;
   totalValue: number;
+  waitingCodeCount: number;
 };
+
+export function isWaitingElectricCode(vehicle: Vehicle): boolean {
+  if (vehicle.status === 'vendido') return false;
+  const isElectric =
+    vehicle.fuel_type === 'eletrico' ||
+    isElectricVehicle(vehicle);
+  if (!isElectric) return false;
+  const ch = (vehicle.chassis || '').trim().toUpperCase();
+  return (
+    !ch ||
+    ch === 'A DEFINIR NA VENDA' ||
+    ch === 'PENDENTE' ||
+    ch.includes('DEFINIR') ||
+    ch.includes('DISPENSADO') ||
+    ch.includes('PROVISORIO')
+  );
+}
 
 type ViewMode = 'grouped' | 'units';
 type SortBy = 'default' | 'qty_desc' | 'aging_desc' | 'price_asc' | 'price_desc';
@@ -279,6 +298,12 @@ export default function Vehicles() {
     [scopedVehicles],
   );
 
+  // Contagem de elétricas aguardando código
+  const waitingElectricCount = useMemo(
+    () => scopedVehicles.filter(isWaitingElectricCode).length,
+    [scopedVehicles],
+  );
+
   // Todas as cores disponíveis para filtro rápido
   const availableColors = useMemo(() => {
     const counts = new Map<string, number>();
@@ -299,6 +324,8 @@ export default function Vehicles() {
         if (vehicle.status === 'vendido' || getDaysInStock(vehicle.created_at) <= 60) {
           return false;
         }
+      } else if (statusFilter === 'aguardando_codigo') {
+        if (!isWaitingElectricCode(vehicle)) return false;
       } else if (vehicle.status !== statusFilter) {
         return false;
       }
@@ -391,6 +418,7 @@ export default function Vehicles() {
         maxAgingDays: maxAging,
         avgAgingDays: list.length > 0 ? Math.round(agingSum / list.length) : 0,
         totalValue: totalVal,
+        waitingCodeCount: list.filter(isWaitingElectricCode).length,
       };
     });
 
@@ -924,6 +952,7 @@ export default function Vehicles() {
                   { id: 'active', label: `Estoque Ativo (${activeInventory.length})` },
                   { id: 'disponivel', label: 'Disponíveis' },
                   { id: 'reservado', label: 'Reservados' },
+                  { id: 'aguardando_codigo', label: `⚡ Elétricas Esperando Código (${waitingElectricCount})` },
                   { id: 'aging60', label: `Pátio > 60d (${kpis.aging60Count})` },
                   { id: 'vendido', label: 'Histórico Vendidos' },
                 ].map((st) => (
@@ -932,10 +961,14 @@ export default function Vehicles() {
                     type="button"
                     onClick={() => setStatusFilter(st.id)}
                     className={cn(
-                      'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                      'rounded-md px-2.5 py-1 text-xs font-medium transition-colors flex items-center gap-1.5',
                       statusFilter === st.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted/40 text-muted-foreground hover:text-foreground',
+                        ? (st.id === 'aguardando_codigo'
+                            ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                            : 'bg-primary text-primary-foreground')
+                        : (st.id === 'aguardando_codigo'
+                            ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 font-semibold'
+                            : 'bg-muted/40 text-muted-foreground hover:text-foreground'),
                     )}
                   >
                     {st.label}
@@ -1105,6 +1138,15 @@ export default function Vehicles() {
                             <div className="space-y-0.5 font-mono text-xs">
                               {(() => {
                                 const isElectric = isElectricVehicle(vehicle);
+                                const isWaiting = isWaitingElectricCode(vehicle);
+                                if (isWaiting) {
+                                  return (
+                                    <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40 gap-1">
+                                      <Zap className="h-3 w-3 text-amber-600 shrink-0" />
+                                      ⚡ Esperando Código (Venda)
+                                    </Badge>
+                                  );
+                                }
                                 const hasIdentifier =
                                   vehicle.chassis &&
                                   vehicle.chassis.toUpperCase() !== 'DISPENSADO' &&
@@ -1125,8 +1167,8 @@ export default function Vehicles() {
                                   );
                                 }
                                 return (
-                                  <Badge variant="outline" className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-                                    {isElectric ? '⚡ Elétrica (Inserir na venda)' : 'Sem Chassi'}
+                                  <Badge variant="outline" className="text-[10px] font-semibold text-muted-foreground">
+                                    Sem Chassi
                                   </Badge>
                                 );
                               })()}
@@ -1274,13 +1316,24 @@ export default function Vehicles() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              {group.type === 'moto' ? 'Moto' : 'Carro'} ·{' '}
+                            <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-1.5 mt-0.5">
+                              <span>{group.type === 'moto' ? 'Moto' : 'Carro'}</span>
+                              <span>·</span>
                               <span className="text-success font-medium">{group.available} disp.</span>
                               {group.reserved > 0 && (
-                                <span className="text-warning font-medium"> · {group.reserved} res.</span>
+                                <>
+                                  <span>·</span>
+                                  <span className="text-warning font-medium">{group.reserved} res.</span>
+                                </>
                               )}
-                              {' · '}Giro médio {group.avgAgingDays}d
+                              {group.waitingCodeCount > 0 && (
+                                <Badge variant="outline" className="text-[10px] font-bold border-amber-500/40 bg-amber-500/15 text-amber-800 dark:text-amber-300 gap-1">
+                                  <Zap className="w-3 h-3 text-amber-600" />
+                                  {group.waitingCodeCount} esperando código
+                                </Badge>
+                              )}
+                              <span>·</span>
+                              <span>Giro médio {group.avgAgingDays}d</span>
                             </p>
                           </div>
                         </div>
@@ -1404,6 +1457,15 @@ export default function Vehicles() {
                                   </span>
                                   {(() => {
                                     const isElectric = isElectricVehicle(vehicle);
+                                    const isWaiting = isWaitingElectricCode(vehicle);
+                                    if (isWaiting) {
+                                      return (
+                                        <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-300 gap-1">
+                                          <Zap className="h-3 w-3 text-amber-600 shrink-0" />
+                                          ⚡ Esperando Código / Chassi (Inserir na Venda)
+                                        </Badge>
+                                      );
+                                    }
                                     const hasIdentifier =
                                       vehicle.chassis &&
                                       vehicle.chassis.toUpperCase() !== 'DISPENSADO' &&
@@ -1423,8 +1485,8 @@ export default function Vehicles() {
                                       );
                                     }
                                     return (
-                                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                        {isElectric ? '⚡ Elétrica (Inserir na venda)' : 'Sem Chassi'}
+                                      <span className="text-[11px] font-semibold text-muted-foreground">
+                                        Sem Chassi
                                       </span>
                                     );
                                   })()}
@@ -1613,6 +1675,15 @@ function UnitList({
               <div className="text-xs text-muted-foreground space-y-0.5">
                 {(() => {
                   const isElectric = isElectricVehicle(vehicle);
+                  const isWaiting = isWaitingElectricCode(vehicle);
+                  if (isWaiting) {
+                    return (
+                      <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-300 gap-1">
+                        <Zap className="h-3 w-3 text-amber-600 shrink-0" />
+                        ⚡ Esperando Código / Chassi (Inserir na Venda)
+                      </Badge>
+                    );
+                  }
                   if (vehicle.chassis) {
                     return (
                       <button

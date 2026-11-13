@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Bike, Car, Building2, DollarSign, Wrench, CheckCircle2, 
-  Loader2, Sparkles, Lock, Hash, Calendar, Palette, ShieldCheck, RefreshCw, ScanLine, Zap 
+  Loader2, Sparkles, Lock, Hash, Calendar, Palette, ShieldCheck, RefreshCw, ScanLine, Zap, Boxes 
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { recognizeFromChassis, resolveModelYearFromVin, extractYearFromVIN } from '@/lib/chassisRecognition';
@@ -51,6 +51,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const [vehicleType, setVehicleType] = useState<'moto' | 'carro'>('moto');
   const [chassis, setChassis] = useState<string>('');
   const [isElectric, setIsElectric] = useState<boolean>(false);
+  const [massQuantity, setMassQuantity] = useState<number>(1);
   const [brand, setBrand] = useState<string>('');
   const [model, setModel] = useState<string>('');
   const [year, setYear] = useState<string>('');
@@ -83,6 +84,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const resetForm = useCallback(() => {
     setChassis('');
     setIsElectric(false);
+    setMassQuantity(1);
     setBrand('');
     setModel('');
     setYear('');
@@ -203,6 +205,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const toggleElectric = (checked: boolean) => {
     setIsElectric(checked);
     if (checked) {
+      if (!brand) setBrand('SHINERAY');
       setPatternLocked(false);
       setChassisRecognized(null);
       setFuelType('eletrico');
@@ -212,6 +215,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
     } else {
       setFuelType('gasolina');
       setTransmission('manual');
+      setMassQuantity(1);
     }
   };
 
@@ -268,48 +272,82 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
       return;
     }
 
+    const finalQuantity = isElectric ? Math.max(1, massQuantity) : 1;
     const finalChassis = cleanChassis || (isElectric ? 'A DEFINIR NA VENDA' : '');
 
     const confirmed = await confirm({
-      title: 'Confirmar Cadastro no Estoque?',
-      description: `Deseja registrar ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) - ${
-        isElectric
-          ? (finalChassis === 'A DEFINIR NA VENDA' ? 'Sem chassi (será inserido na venda)' : `Nº da Moto/Motor: ${finalChassis}`)
-          : `Chassi ${finalChassis}`
-      } no estoque disponível?`,
-      confirmText: 'Sim, Cadastrar Veículo',
+      title: finalQuantity > 1 ? `Confirmar Cadastro em Massa (${finalQuantity} Unidades)?` : 'Confirmar Cadastro no Estoque?',
+      description: finalQuantity > 1
+        ? `Deseja registrar ${finalQuantity} unidades idênticas de ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) no estoque? Elas ficarão separadas no catálogo aguardando código para venda.`
+        : `Deseja registrar ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) - ${
+            isElectric
+              ? (finalChassis === 'A DEFINIR NA VENDA' ? 'Sem chassi (será inserido na venda)' : `Nº da Moto/Motor: ${finalChassis}`)
+              : `Chassi ${finalChassis}`
+          } no estoque disponível?`,
+      confirmText: finalQuantity > 1 ? `Sim, Cadastrar ${finalQuantity} Unidades` : 'Sim, Cadastrar Veículo',
       cancelText: 'Revisar',
       variant: 'default',
     });
 
     if (!confirmed) return;
 
-    await createVehicle.mutateAsync({
-      store_id: storeId || 'store-divinopolis',
-      vehicle_type: vehicleType,
-      brand: brand.trim().toUpperCase(),
-      model: model.trim().toUpperCase(),
-      year: parseInt(year, 10) || new Date().getFullYear(),
-      manufacture_year: parseInt(manufactureYear, 10) || new Date().getFullYear(),
-      color: color.trim() || 'Preta',
-      chassis: finalChassis,
-      plate: plate.trim() ? plate.trim().toUpperCase() : undefined,
-      renavam: renavam.trim() || undefined,
-      mileage: parseInt(mileage, 10) || 0,
-      engine_cc: isElectric ? 0 : (parseInt(engineCc, 10) || undefined),
-      fuel_type: isElectric ? 'eletrico' : (fuelType || 'gasolina'),
-      transmission: isElectric ? 'automatico' : (transmission || 'manual'),
-      purchase_price: costNum > 0 ? costNum : undefined,
-      sale_price: saleNum,
-      warranty_months: parseInt(warrantyMonths, 10) || 12,
-      notes: notes.trim() || (isElectric ? `Moto Elétrica - Número de Motor/Moto: ${finalChassis}` : undefined),
-      status: 'disponivel',
-    });
+    if (finalQuantity > 1) {
+      for (let i = 0; i < finalQuantity; i++) {
+        await createVehicle.mutateAsync({
+          store_id: storeId || 'store-divinopolis',
+          vehicle_type: vehicleType,
+          brand: brand.trim().toUpperCase(),
+          model: model.trim().toUpperCase(),
+          year: parseInt(year, 10) || new Date().getFullYear(),
+          manufacture_year: parseInt(manufactureYear, 10) || new Date().getFullYear(),
+          color: color.trim() || 'Preta',
+          chassis: 'A DEFINIR NA VENDA',
+          plate: undefined,
+          renavam: undefined,
+          mileage: 0,
+          engine_cc: 0,
+          fuel_type: 'eletrico',
+          transmission: 'automatico',
+          purchase_price: costNum > 0 ? costNum : undefined,
+          sale_price: saleNum,
+          warranty_months: parseInt(warrantyMonths, 10) || 12,
+          notes: notes.trim() || `Moto Elétrica em lote (${i + 1}/${finalQuantity}) - Aguardando código na venda.`,
+          status: 'disponivel',
+        });
+      }
 
-    toast({
-      title: 'Veículo Cadastrado com Sucesso!',
-      description: `${brand} ${model} adicionado ao estoque disponível da concessionária.`,
-    });
+      toast({
+        title: 'Cadastro em Massa Concluído!',
+        description: `${finalQuantity} unidades de ${brand} ${model} adicionadas ao estoque e separadas no catálogo aguardando código para a venda.`,
+      });
+    } else {
+      await createVehicle.mutateAsync({
+        store_id: storeId || 'store-divinopolis',
+        vehicle_type: vehicleType,
+        brand: brand.trim().toUpperCase(),
+        model: model.trim().toUpperCase(),
+        year: parseInt(year, 10) || new Date().getFullYear(),
+        manufacture_year: parseInt(manufactureYear, 10) || new Date().getFullYear(),
+        color: color.trim() || 'Preta',
+        chassis: finalChassis,
+        plate: plate.trim() ? plate.trim().toUpperCase() : undefined,
+        renavam: renavam.trim() || undefined,
+        mileage: parseInt(mileage, 10) || 0,
+        engine_cc: isElectric ? 0 : (parseInt(engineCc, 10) || undefined),
+        fuel_type: isElectric ? 'eletrico' : (fuelType || 'gasolina'),
+        transmission: isElectric ? 'automatico' : (transmission || 'manual'),
+        purchase_price: costNum > 0 ? costNum : undefined,
+        sale_price: saleNum,
+        warranty_months: parseInt(warrantyMonths, 10) || 12,
+        notes: notes.trim() || (isElectric ? `Moto Elétrica - Número de Motor/Moto: ${finalChassis}` : undefined),
+        status: 'disponivel',
+      });
+
+      toast({
+        title: 'Veículo Cadastrado com Sucesso!',
+        description: `${brand} ${model} adicionado ao estoque disponível da concessionária.`,
+      });
+    }
 
     resetForm();
     onOpenChange(false);
@@ -426,15 +464,67 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               )}
             </div>
 
-            {/* Aviso Compacto de Moto Elétrica */}
+            {/* Aviso Compacto de Moto Elétrica e Controle de Massa */}
             {isElectric && (
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 dark:text-emerald-200 text-xs">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="truncate">
-                  {chassis.trim()
-                    ? `Nº registrado: ${chassis.trim()}`
-                    : 'Sem chassi agora: o chassi ou motor será inserido na hora da venda.'}
-                </span>
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 dark:text-emerald-200">
+                  <div className="min-w-0 pr-2">
+                    <p className="text-xs font-bold flex items-center gap-1.5">
+                      <Boxes className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Cadastro em Massa (Mesmo Produto)</span>
+                    </p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {massQuantity > 1
+                        ? `${massQuantity} unidades ficarão separadas no catálogo aguardando o código na venda.`
+                        : 'Aumente a quantidade para cadastrar várias motos idênticas de uma vez.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Label className="text-xs font-semibold whitespace-nowrap">Qtd:</Label>
+                    <div className="flex items-center rounded-lg border bg-background overflow-hidden h-8">
+                      <button
+                        type="button"
+                        onClick={() => setMassQuantity((prev) => Math.max(1, prev - 1))}
+                        className="px-2.5 py-1 text-xs font-bold hover:bg-muted text-muted-foreground hover:text-foreground h-full"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={massQuantity}
+                        onChange={(e) => {
+                          const val = Math.max(1, Math.min(100, parseInt(e.target.value) || 1));
+                          setMassQuantity(val);
+                          if (val > 1) setChassis('');
+                        }}
+                        className="w-12 text-center text-xs font-bold bg-transparent border-0 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMassQuantity((prev) => Math.min(100, prev + 1));
+                          setChassis('');
+                        }}
+                        className="px-2.5 py-1 text-xs font-bold hover:bg-muted text-muted-foreground hover:text-foreground h-full"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-muted/40 border border-border/50 text-muted-foreground text-[11px]">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="truncate">
+                    {massQuantity > 1
+                      ? `As ${massQuantity} unidades serão criadas no catálogo aguardando a inserção de chassi/motor na venda.`
+                      : (chassis.trim()
+                          ? `Nº registrado: ${chassis.trim()}`
+                          : 'Sem chassi no cadastro: o vendedor digitará o chassi ou motor na hora da venda.')}
+                  </span>
+                </div>
               </div>
             )}
 
@@ -777,7 +867,9 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  Cadastrar no Estoque
+                  {isElectric && massQuantity > 1
+                    ? `Cadastrar ${massQuantity} Unidades em Massa`
+                    : 'Cadastrar no Estoque'}
                 </>
               )}
             </Button>
