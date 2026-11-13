@@ -65,14 +65,13 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
-import { isMatchingStore } from '@/pages/Vehicles';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { useVehicles, useVehicleStats } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
 import { useContracts } from '@/hooks/useContracts';
 import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
-import { resolveSaleStore, OFFICIAL_STORES } from '@/lib/storeResolution';
+import { isMatchingStore, resolveSaleStore, OFFICIAL_STORES } from '@/lib/storeResolution';
 import { exportToXLSX } from '@/lib/export';
 import {
   SheetRowV9,

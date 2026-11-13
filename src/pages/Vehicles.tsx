@@ -75,6 +75,11 @@ import { useInspections } from '@/hooks/useInspections';
 import { LaudosTabPanel } from '@/components/inspections/LaudosTabPanel';
 import InboundCargo from '@/pages/InboundCargo';
 import { cn } from '@/lib/utils';
+import {
+  STORE_DIVINOPOLIS_UUID,
+  STORE_MONTESCLAROS_UUID,
+  isMatchingStore,
+} from '@/lib/storeResolution';
 
 const statusConfig = {
   disponivel: { label: 'Disponível', class: 'bg-success/10 text-success border-success/20' },
@@ -133,7 +138,7 @@ export {
   STORE_DIVINOPOLIS_UUID,
   STORE_MONTESCLAROS_UUID,
   isMatchingStore,
-} from '@/lib/storeResolution';
+};
 
 export default function Vehicles() {
   const navigate = useNavigate();

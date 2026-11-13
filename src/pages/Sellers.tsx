@@ -20,7 +20,7 @@ import { useDateFilter } from '@/contexts/DateFilterContext';
 import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDialog';
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { fetchConsolidatedUsers } from '@/lib/userService';
-import { isMatchingStore } from '@/pages/Vehicles';
+import { isMatchingStore } from '@/lib/storeResolution';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
