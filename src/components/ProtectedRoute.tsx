@@ -16,7 +16,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole, allowedRoles, permission }: ProtectedRouteProps) {
-  const { user, profile, roles, can, signOut, isLoading, isDataReady, mustChangePassword, clearMustChangePassword } = useAuth();
+  const { user, profile, roles, can, signOut, isLoading, isDataReady, mustChangePassword, clearMustChangePassword, hasElevatedAccess } = useAuth();
   const location = useLocation();
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const { needsAcceptance, isChecking, markAccepted } = useEulaAcceptance();
@@ -73,11 +73,15 @@ export function ProtectedRoute({ children, requiredRole, allowedRoles, permissio
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  const isMasterUser = roles.includes('admin') || roles.includes('gerente') || roles.length === 0;
-  const hasRequiredRole = requiredRole ? (isMasterUser || roles.includes(requiredRole)) : true;
-  const hasAnyAllowedRole = allowedRoles ? (isMasterUser || allowedRoles.some((role) => roles.includes(role))) : true;
+  const hasExecutiveAccess = Boolean(hasElevatedAccess);
+  const hasRequiredRole = requiredRole
+    ? (hasExecutiveAccess || roles.includes(requiredRole))
+    : true;
+  const hasAnyAllowedRole = allowedRoles
+    ? (hasExecutiveAccess || allowedRoles.some((role) => roles.includes(role)))
+    : true;
 
-  const hasPermission = permission ? (isMasterUser || can(permission)) : true;
+  const hasPermission = permission ? (hasExecutiveAccess || can(permission)) : true;
 
   if (!hasRequiredRole || !hasAnyAllowedRole || !hasPermission) {
     return (

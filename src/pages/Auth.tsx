@@ -275,10 +275,10 @@ export default function Auth() {
                     </Label>
                     <button
                       type="button"
-                      className="text-[11px] font-semibold text-[#ED1C24] hover:underline"
+                      className="text-[11px] font-medium text-neutral-400 hover:text-neutral-700 transition-colors"
                       onClick={() => setAuthMode('key')}
                     >
-                      Usar Chave Mestra
+                      Acesso contingência
                     </button>
                   </div>
                   <div className="relative">
@@ -367,13 +367,13 @@ export default function Auth() {
                   </Button>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-0.5">
-                  <span>Código corporativo de contingência</span>
+                  <span>Chave corporativa de contingência</span>
                   <button
                     type="button"
-                    onClick={() => setMasterKey('PIXEL-2026')}
-                    className="font-mono text-[10px] font-bold text-[#5B42F3] hover:underline cursor-pointer"
+                    onClick={() => setAuthMode('email')}
+                    className="text-[11px] font-semibold text-neutral-500 hover:text-neutral-900 cursor-pointer"
                   >
-                    Preencher: PIXEL-2026
+                    Voltar ao e-mail
                   </button>
                 </div>
               </div>

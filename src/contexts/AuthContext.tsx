@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { DataScope } from '@/lib/permissions';
 import { initializeSingleSessionGuard, teardownSingleSessionGuard } from '@/lib/singleSessionGuard';
 import { removeSecureCookie } from '@/lib/secureStorage';
+import { isMasterUser } from '@/lib/userService';
 
 type AppRole = 'admin' | 'gerente' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'coordenador_logistica' | 'motorista' | 'visualizador';
 
@@ -68,22 +69,24 @@ function readAuthCache(): CachedUserData | null {
     }
 
     // Sanitização de segurança: Se o usuário em cache não for Breno ou João Vitor, restringe estritamente a 'vendedor' e escopo 'own'
-    const cleanName = (parsed.profile?.full_name || '').toLowerCase();
-    const cleanEmail = (parsed.profile?.email || '').toLowerCase();
-    const isMaster =
-      cleanName.includes('breno') ||
-      cleanEmail.includes('breno') ||
-      cleanName.includes('joão') ||
-      cleanName.includes('joao') ||
-      cleanEmail.includes('gestor') ||
-      parsed.userId === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
-      parsed.userId === 'def5409c-f9cc-47ae-b45e-9e15fd52727f' ||
-      parsed.userId === '63f4c11a-7675-4209-bcc5-770bd7e514a3';
+    const isMaster = isMasterUser(parsed.profile?.full_name, parsed.profile?.email, parsed.userId);
 
     if (!isMaster) {
       parsed.roles = ['vendedor'];
       parsed.dataScope = 'own';
-      parsed.permissions = ['vendas', 'clientes', 'catalogo'];
+      parsed.permissions = [
+        'page.dashboard',
+        'page.vehicles',
+        'page.inspections',
+        'page.sales',
+        'page.settings',
+        'sales.create',
+        'sales.edit',
+        'vehicles.create',
+        'logistics.calculate_freight',
+      ];
+      parsed.hasCustomRole = false;
+      parsed.customRoleName = null;
     }
 
     return parsed;
@@ -232,21 +235,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // REGRA MASTER: Apenas Breno e João Vitor podem possuir cargos administrativos (admin / gerente).
       // Todos os demais usuários da concessionária têm estritamente o cargo de 'vendedor'.
-      const cleanName = (nextProfile?.full_name || '').toLowerCase();
-      const cleanEmail = (nextProfile?.email || '').toLowerCase();
-      const isMasterUser =
-        cleanName.includes('breno') ||
-        cleanEmail.includes('breno') ||
-        cleanName.includes('joão') ||
-        cleanName.includes('joao') ||
-        cleanEmail.includes('gestor') ||
-        userId === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
-        userId === 'def5409c-f9cc-47ae-b45e-9e15fd52727f' ||
-        userId === '63f4c11a-7675-4209-bcc5-770bd7e514a3';
+      const isMaster = isMasterUser(nextProfile?.full_name, nextProfile?.email, userId);
 
-      if (!isMasterUser) {
+      if (!isMaster) {
         userRoles = ['vendedor'];
       } else if (!userRoles || userRoles.length === 0) {
+        const cleanEmail = (nextProfile?.email || '').toLowerCase();
+        const cleanName = (nextProfile?.full_name || '').toLowerCase();
         userRoles = cleanEmail.includes('gestor') || cleanName.includes('joão') || cleanName.includes('joao')
           ? ['gerente']
           : ['admin', 'gerente'];
@@ -381,15 +376,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Verifica quem está autenticado no aplicativo (cache da sessão do usuário)
       const cached = readAuthCache();
-      const isCachedSeller =
-        cached &&
-        cached.roles.includes('vendedor') &&
-        !cached.roles.includes('admin') &&
-        !cached.roles.includes('gerente');
+      const isCachedMaster = cached && isMasterUser(cached.profile?.full_name, cached.profile?.email, cached.userId);
+      const isCachedSeller = cached && !isCachedMaster;
 
       // Se um vendedor está ativo no DealFlow e o Supabase usa a credencial técnica de dados (admbreno),
       // MANTÉM estritamente a identidade e permissões do VENDEDOR!
-      if (isCachedSeller && nextUser?.email === 'admbreno@index.com') {
+      if (isCachedSeller && (nextUser?.email === 'admbreno@index.com' || nextUser?.id !== cached.userId)) {
         const defaultUser = {
           id: cached.userId,
           email: cached.profile?.email || 'vendedor@concessionaria.com.br',
@@ -404,8 +396,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserStore(cached.userStore);
         setPermissions(cached.permissions);
         setDataScope('own');
-        setCustomRoleName(cached.customRoleName);
-        setHasCustomRole(cached.hasCustomRole);
+        setCustomRoleName(null);
+        setHasCustomRole(false);
         setIsDataReady(true);
         setIsLoading(false);
         return;
@@ -511,14 +503,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       localStorage.removeItem('df_explicit_signout');
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const cleanEmail = email.trim().toLowerCase();
+      const SELLER_DEFAULT_PERMS = [
+        'page.dashboard',
+        'page.vehicles',
+        'page.inspections',
+        'page.sales',
+        'page.settings',
+        'sales.create',
+        'sales.edit',
+        'vehicles.create',
+        'logistics.calculate_freight',
+      ];
+
+      // 1. Tenta autenticação oficial no Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
       if (!error && data?.user) {
         setUser(data.user);
-        const userEmail = email.trim().toLowerCase();
-        const isMaster = userEmail.includes('breno') || userEmail.includes('gestor') || userEmail.includes('joao') || userEmail.includes('joão') || userEmail.includes('admin');
+        const fullName = data.user.user_metadata?.full_name;
+        const userEmail = data.user.email || cleanEmail;
+        const isMaster = isMasterUser(fullName, userEmail, data.user.id);
         const initialRoles: AppRole[] = isMaster ? ['admin', 'gerente'] : ['vendedor'];
         const initialScope: DataScope = isMaster ? 'all' : 'own';
-        const initialPerms = isMaster ? ['*'] : ['vendas', 'clientes', 'catalogo'];
+        const initialPerms = isMaster ? ['*'] : SELLER_DEFAULT_PERMS;
 
         setRoles(initialRoles);
         setPermissions(initialPerms);
@@ -529,8 +536,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userId: data.user.id,
           profile: {
             id: data.user.id,
-            full_name: data.user.user_metadata?.full_name || (isMaster ? 'Administrador' : 'Vendedor'),
-            email: email.trim(),
+            full_name: fullName || (isMaster ? 'Administrador' : 'Vendedor'),
+            email: userEmail,
             phone: null,
             avatar_url: null,
             must_change_password: false,
@@ -545,77 +552,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await fetchUserData(data.user.id);
         return { error: null };
       }
-      
-      // Fallback de acesso com credencial oficial
-      if (email.trim().toLowerCase() === 'admin@pixelmotors.com.br' || email.trim().toLowerCase().includes('admin') || email.trim().toLowerCase() === 'admbreno@index.com') {
-        try {
-          const { data: adminAuth, error: adminErr } = await supabase.auth.signInWithPassword({
-            email: 'admbreno@index.com',
-            password: 'PixelMotors@2026',
-          });
-          if (!adminErr && adminAuth?.session) {
-            handleSession(adminAuth.session);
-            return { error: null };
-          }
-        } catch {}
-        const devUser = {
-          id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
-          email: email.trim(),
-          app_metadata: {},
-          user_metadata: {},
-          aud: 'authenticated',
-          created_at: new Date().toISOString(),
-        } as unknown as User;
 
-        setUser(devUser);
-        setProfile({
-          id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
-          full_name: 'Breno',
-          email: email.trim(),
-          phone: '(37) 99999-0000',
-          avatar_url: null,
-          must_change_password: false,
-        });
-        setRoles(['admin']);
-        setPermissions(['*']);
-        setIsDataReady(true);
-        setIsLoading(false);
-        writeAuthCache({
-          userId: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
-          profile: {
-            id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
-            full_name: 'Breno',
-            email: email.trim(),
-            phone: '(37) 99999-0000',
-            avatar_url: null,
-            must_change_password: false,
-          },
-          roles: ['admin'],
-          userStore: { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS' },
-          permissions: ['*'],
-          dataScope: 'all',
-          customRoleName: null,
-          hasCustomRole: false,
-        });
-        return { error: null };
-      }
-
-      // Fallback de acesso com custom users criados no sistema
+      // 2. Fallback de acesso com usuários gerenciados localmente (dealflow_custom_users_v1)
       try {
         const rawCustom = localStorage.getItem('dealflow_custom_users_v1');
         if (rawCustom) {
           const customList = JSON.parse(rawCustom);
           if (Array.isArray(customList)) {
             const matched = customList.find(
-              (u: any) => u.email && u.email.toLowerCase().trim() === email.toLowerCase().trim()
+              (u: any) => u.email && u.email.toLowerCase().trim() === cleanEmail
             );
             if (matched) {
               const expectedPass = matched.temp_password || 'PixelMotors@2026';
-              if (password === expectedPass || password === 'PixelMotors@2026' || !matched.temp_password) {
+              const isPasswordValid = password === expectedPass;
+              if (isPasswordValid) {
                 const isMaster = isMasterUser(matched.full_name, matched.email, matched.id);
                 const roleName: AppRole = isMaster ? (matched.role || 'admin') : 'vendedor';
                 const currentScope: DataScope = isMaster ? 'all' : 'own';
-                const currentPerms = isMaster ? ['*'] : ['vendas', 'clientes', 'catalogo'];
+                const currentPerms = isMaster ? ['*'] : SELLER_DEFAULT_PERMS;
                 const sId = matched.store_id || 'store-divinopolis';
                 const isMoc = sId.includes('montesclaros');
                 const storeObj = {
@@ -677,7 +631,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {}
 
-      return { error };
+      return { error: error || new Error('Credenciais inválidas. Verifique seu e-mail e senha.') };
     } catch (e: any) {
       return { error: e };
     }
@@ -740,9 +694,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     removeSecureCookie('df_fingerprint');
     try {
       localStorage.setItem('df_explicit_signout', 'true');
+      localStorage.removeItem(AUTH_CACHE_KEY);
+      sessionStorage.removeItem(AUTH_CACHE_KEY);
+      localStorage.removeItem('dealflow_active_role');
     } catch {}
     writeAuthCache(null);
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {}
     activeUserIdRef.current = null;
     hasLoadedUserDataRef.current = false;
     inFlightUserIdRef.current = null;
@@ -751,6 +710,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles([]);
     setUserStore(null);
     setMustChangePassword(false);
+    setPermissions([]);
+    setDataScope('own');
+    setCustomRoleName(null);
+    setHasCustomRole(false);
   };
 
   const clearMustChangePassword = () => {
@@ -760,27 +723,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const cleanName = (profile?.full_name || '').toLowerCase();
+  const cleanName = (profile?.full_name || user?.user_metadata?.full_name || '').toLowerCase();
   const cleanEmail = (profile?.email || user?.email || '').toLowerCase();
-  const isVendedor = roles.includes('vendedor') && !roles.includes('admin') && !roles.includes('gerente');
+  const isMaster = isMasterUser(cleanName, cleanEmail, user?.id || profile?.id);
+  const isVendedor = !isMaster;
 
-  const isBreno =
-    !isVendedor &&
-    (cleanName.includes('breno') ||
-      cleanEmail.includes('breno') ||
-      user?.id === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
-      user?.id === 'def5409c-f9cc-47ae-b45e-9e15fd52727f');
+  const isBreno = isMaster && (
+    cleanName.includes('breno') ||
+    cleanEmail.includes('breno') ||
+    user?.id === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' ||
+    user?.id === 'def5409c-f9cc-47ae-b45e-9e15fd52727f'
+  );
 
-  const isJoao =
-    !isVendedor &&
-    (cleanName.includes('joão') ||
-      cleanName.includes('joao') ||
-      cleanEmail.includes('gestor') ||
-      user?.id === '63f4c11a-7675-4209-bcc5-770bd7e514a3');
+  const isJoao = isMaster && (
+    cleanName.includes('joão') ||
+    cleanName.includes('joao') ||
+    cleanEmail.includes('gestor') ||
+    user?.id === '63f4c11a-7675-4209-bcc5-770bd7e514a3'
+  );
 
-  const isAdmin = !isVendedor && isBreno;
-  const isManager = !isVendedor && isJoao;
-  const hasElevatedAccess = !isVendedor && (isBreno || isJoao);
+  const isAdmin = Boolean(isBreno);
+  const isManager = Boolean(isJoao);
+  const hasElevatedAccess = Boolean(isBreno || isJoao);
   const isSellerPlus = !hasElevatedAccess && roles.includes('vendedor_plus');
   const isExternalSeller = !hasElevatedAccess && roles.includes('vendedor_externo');
   const isDriver = !hasElevatedAccess && roles.includes('motorista');
@@ -797,7 +761,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   const canCreateSales = hasElevatedAccess || isSeller || can('sales.create');
   const canRegisterVehicles = hasElevatedAccess || isSeller || can('vehicles.create');
-  const canViewMargins = hasElevatedAccess || can('finance.view_margins');
+  const canViewMargins = hasElevatedAccess;
 
   return (
     <AuthContext.Provider
