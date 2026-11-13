@@ -77,8 +77,8 @@ export function buildLogisticsDeliveries(sales: any[]): DeliveryRecord[] {
 
     const poloOrigemId = isMoc ? 'store-montesclaros' : 'store-divinopolis';
     const poloOrigemNome = isMoc
-      ? 'Concessionária Montes Claros (Polo Norte)'
-      : 'Concessionária Divinópolis (Matriz Oeste)';
+      ? 'Concessionária Montes Claros'
+      : 'Concessionária Divinópolis';
     const hubLat = isMoc ? -16.7282 : -20.1444;
     const hubLng = isMoc ? -43.8644 : -44.8872;
 

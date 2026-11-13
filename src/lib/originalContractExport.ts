@@ -168,6 +168,11 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
 
   // 6. Geração do Contrato Original
   const isRepasse = (sale as any).contract_type === 'repasse';
+  const isShineray =
+    vehicleBrand.toUpperCase().includes('SHINERAY') ||
+    vehicleModel.toUpperCase().includes('SHINERAY') ||
+    !vehicleBrand ||
+    isMotoItem;
   const defaultTemplate = isRepasse ? CLASSIC_REPASSE_TEMPLATE : CLASSIC_SALE_TEMPLATE;
 
   const fallbackDownload = () => {
@@ -200,11 +205,17 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
       installmentValue: sale.installment_value ? Number(sale.installment_value) : undefined,
       resellerName: sale.reseller?.full_name || resellerData?.full_name || undefined,
       operatorName,
-      notes: sale.notes || undefined,
+      notes: (sale.notes && !sale.notes.includes('Modelo: Contrato') && !sale.notes.includes('Financiamento bancário')) ? sale.notes : undefined,
       signedAt: (sale as any).signed_at || undefined,
       status: sale.status,
     });
   };
+
+  // REGRA MASTER: Para motos Shineray, utiliza impreterivelmente o modelo original exato limpo
+  if (isShineray || !templateData) {
+    fallbackDownload();
+    return;
+  }
 
   if (templateData) {
     try {

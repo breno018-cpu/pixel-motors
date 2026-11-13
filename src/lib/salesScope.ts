@@ -67,7 +67,7 @@ export function resolveUserSellerStore(
   if (isDirectMocSeller) {
     return {
       storeId: 'store-montesclaros',
-      storeName: 'Concessionária Montes Claros (Polo Norte)',
+      storeName: 'Concessionária Montes Claros',
     };
   }
 
@@ -90,7 +90,7 @@ export function resolveUserSellerStore(
       sName.includes('MOC') ||
       sName.includes('POLO NORTE');
     const storeId = isMoc ? 'store-montesclaros' : 'store-divinopolis';
-    const storeName = isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)';
+    const storeName = isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis';
     return { storeId, storeName };
   }
 
@@ -106,7 +106,7 @@ export function resolveUserSellerStore(
       sName.includes('MOC') ||
       sName.includes('POLO NORTE');
     const storeId = isMoc ? 'store-montesclaros' : 'store-divinopolis';
-    const storeName = isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)';
+    const storeName = isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis';
     return { storeId, storeName };
   }
 
@@ -116,15 +116,15 @@ export function resolveUserSellerStore(
       const isMoc = mappedStore === 'store-montesclaros' || mappedStore === 'e8254a81-d669-464b-9806-457ba25ce7f0';
       return {
         storeId: isMoc ? 'store-montesclaros' : 'store-divinopolis',
-        storeName: isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)',
+        storeName: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
       };
     }
   }
 
-  // Padrão: Concessionária Divinópolis (Matriz Oeste)
+  // Padrão: Concessionária Divinópolis
   return {
     storeId: 'store-divinopolis',
-    storeName: 'Concessionária Divinópolis (Matriz Oeste)',
+    storeName: 'Concessionária Divinópolis',
   };
 }
 

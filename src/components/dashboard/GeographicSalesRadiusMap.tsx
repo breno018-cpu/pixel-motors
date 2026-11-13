@@ -122,8 +122,8 @@ export function GeographicSalesRadiusMap({
       {
         id: 'store-divinopolis',
         key: 'divinopolis' as const,
-        name: 'Concessionária Divinópolis (Matriz Oeste)',
-        shortName: 'Polo Divinópolis',
+        name: 'Concessionária Divinópolis',
+        shortName: 'Divinópolis',
         city: 'DIVINOPOLIS',
         displayCity: 'Divinópolis',
         uf: 'MG',
@@ -136,8 +136,8 @@ export function GeographicSalesRadiusMap({
       {
         id: 'store-montesclaros',
         key: 'montesclaros' as const,
-        name: 'Concessionária Montes Claros (Polo Norte)',
-        shortName: 'Polo Montes Claros',
+        name: 'Concessionária Montes Claros',
+        shortName: 'Montes Claros',
         city: 'MONTES CLAROS',
         displayCity: 'Montes Claros',
         uf: 'MG',
@@ -1013,7 +1013,7 @@ export function GeographicSalesRadiusMap({
                         </span>
                       </TableCell>
                       <TableCell className="text-xs text-center font-mono py-2">
-                        {city.distanceKm === 0 ? 'Sede' : `${city.routeInfo.roadKm} km`}
+                        {city.distanceKm === 0 ? 'Local' : `${city.routeInfo.roadKm} km`}
                       </TableCell>
                       <TableCell className="text-xs text-center font-bold font-mono py-2">
                         {city.totalVendas}

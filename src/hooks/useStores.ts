@@ -24,7 +24,7 @@ export const STORE_MONTESCLAROS_UUID = 'e8254a81-d669-464b-9806-457ba25ce7f0';
 export const DEFAULT_DEALERSHIP_STORES: Store[] = [
   {
     id: 'store-divinopolis',
-    name: 'Concessionária Divinópolis (Matriz Oeste)',
+    name: 'Concessionária Divinópolis',
     city: 'Divinópolis',
     state: 'MG',
     cnpj: '18.456.789/0001-01',
@@ -39,7 +39,7 @@ export const DEFAULT_DEALERSHIP_STORES: Store[] = [
   },
   {
     id: 'store-montesclaros',
-    name: 'Concessionária Montes Claros (Polo Norte)',
+    name: 'Concessionária Montes Claros',
     city: 'Montes Claros',
     state: 'MG',
     cnpj: '18.456.789/0002-82',
@@ -54,7 +54,7 @@ export const DEFAULT_DEALERSHIP_STORES: Store[] = [
   },
   {
     id: STORE_DIVINOPOLIS_UUID,
-    name: 'Concessionária Divinópolis (Matriz Oeste)',
+    name: 'Concessionária Divinópolis',
     city: 'Divinópolis',
     state: 'MG',
     cnpj: '18.456.789/0001-01',
@@ -69,7 +69,7 @@ export const DEFAULT_DEALERSHIP_STORES: Store[] = [
   },
   {
     id: STORE_MONTESCLAROS_UUID,
-    name: 'Concessionária Montes Claros (Polo Norte)',
+    name: 'Concessionária Montes Claros',
     city: 'Montes Claros',
     state: 'MG',
     cnpj: '18.456.789/0002-82',

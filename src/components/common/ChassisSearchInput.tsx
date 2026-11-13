@@ -36,7 +36,7 @@ import { isMatchingStore } from '@/lib/storeResolution';
 import { cn } from '@/lib/utils';
 
 export function getStoreDisplayName(storeId?: string | null): string {
-  if (!storeId) return 'Matriz';
+  if (!storeId) return 'Divinópolis';
   const clean = storeId.toLowerCase().trim();
   if (
     clean === 'store-montesclaros' ||

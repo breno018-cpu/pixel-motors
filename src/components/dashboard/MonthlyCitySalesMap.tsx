@@ -134,8 +134,8 @@ export function MonthlyCitySalesMap({
     () => [
       {
         id: 'store-divinopolis',
-        name: 'Concessionária Divinópolis (Matriz Oeste)',
-        shortName: 'Polo Divinópolis',
+        name: 'Concessionária Divinópolis',
+        shortName: 'Divinópolis',
         city: 'Divinópolis',
         cityKey: 'DIVINOPOLIS',
         uf: 'MG',
@@ -144,12 +144,12 @@ export function MonthlyCitySalesMap({
         color: '#2563eb',
         accentLight: '#60a5fa',
         accentDark: '#1e3a8a',
-        badge: 'Matriz Oeste',
+        badge: 'Divinópolis',
       },
       {
         id: 'store-montesclaros',
-        name: 'Concessionária Montes Claros (Polo Norte)',
-        shortName: 'Polo Montes Claros',
+        name: 'Concessionária Montes Claros',
+        shortName: 'Montes Claros',
         city: 'Montes Claros',
         cityKey: 'MONTES CLAROS',
         uf: 'MG',
@@ -158,7 +158,7 @@ export function MonthlyCitySalesMap({
         color: '#dc2626',
         accentLight: '#f87171',
         accentDark: '#7f1d1d',
-        badge: 'Polo Norte',
+        badge: 'Montes Claros',
       },
     ],
     [],
@@ -800,7 +800,7 @@ export function MonthlyCitySalesMap({
         `
         <div style="font-size: 11px; padding: 4px 6px; line-height: 1.45;">
           <strong style="color: ${hub.color};">&#9672; ${hub.name}</strong><br/>
-          <span>Vendas na sede (${hub.city}): <strong>${localCount} un.</strong> (${formatCurrencyBRL(localRevenue)})</span><br/>
+          <span>Vendas locais (${hub.city}): <strong>${localCount} un.</strong> (${formatCurrencyBRL(localRevenue)})</span><br/>
           <span>Total expedido pelo polo: <strong>${totalPoloCount} un.</strong></span>
         </div>
       `,
@@ -1403,7 +1403,7 @@ export function MonthlyCitySalesMap({
                       {c.routeInfo.highway}
                     </TableCell>
                     <TableCell className="text-center font-mono py-2">
-                      {c.distanceKm === 0 ? 'Sede' : `${c.routeInfo.roadKm} km`}
+                      {c.distanceKm === 0 ? 'Local' : `${c.routeInfo.roadKm} km`}
                     </TableCell>
                     <TableCell className="text-center font-mono font-bold py-2">
                       {c.count}

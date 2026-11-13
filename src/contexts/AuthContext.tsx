@@ -387,12 +387,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isMoc) {
           nextStore = {
             id: 'e8254a81-d669-464b-9806-457ba25ce7f0',
-            name: 'Concessionária Montes Claros (Polo Norte)',
+            name: 'Concessionária Montes Claros',
           };
         } else if (!nextStore) {
           nextStore = {
             id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634',
-            name: 'Concessionária Divinópolis (Matriz Oeste)',
+            name: 'Concessionária Divinópolis',
           };
         }
         setUserStore(nextStore);
@@ -613,8 +613,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             cleanFullNameLogin.includes('natan');
 
           const initialStore = isMocLogin
-            ? { id: 'e8254a81-d669-464b-9806-457ba25ce7f0', name: 'Concessionária Montes Claros (Polo Norte)' }
-            : { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'Concessionária Divinópolis (Matriz Oeste)' };
+            ? { id: 'e8254a81-d669-464b-9806-457ba25ce7f0', name: 'Concessionária Montes Claros' }
+            : { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'Concessionária Divinópolis' };
 
           writeAuthCache({
             userId: data.user.id,
@@ -784,7 +784,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             cleanNameMatched.includes('natan');
           const storeObj = {
             id: isMoc ? (sId || 'store-montesclaros') : (sId || 'store-divinopolis'),
-            name: isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)',
+            name: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
           };
 
           const customUser = {

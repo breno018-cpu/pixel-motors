@@ -207,16 +207,6 @@ export function DealershipsSettingsManager({ embedded = false }: DealershipsSett
                       >
                         {store.is_active ? 'Ativa' : 'Inativa'}
                       </Badge>
-                      {isDivinopolis && (
-                        <Badge variant="outline" className="text-[10px] border-primary text-primary font-bold rounded-lg">
-                          Matriz Oeste
-                        </Badge>
-                      )}
-                      {isMontesClaros && (
-                        <Badge variant="outline" className="text-[10px] border-sky-500 text-sky-600 font-bold rounded-lg">
-                          Polo Norte
-                        </Badge>
-                      )}
                       <StoreActionsMenu store={store} />
                     </div>
                   </div>

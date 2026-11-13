@@ -53,45 +53,25 @@ export interface ContractData {
 }
 
 export const CLASSIC_SALE_TEMPLATE = {
-
   header_content: '[center][b][size:12]CONTRATO DE COMPRA E VENDA DE VEÍCULO[/size][/b][/center]',
-
   body_content:
-
-    'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:\n\n' +
-
+    'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], estabelecida em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:\n\n' +
     '[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}\n' +
-
     '[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}\n\n' +
-
     '[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}',
-
   clauses_content:
-
     '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA[/b][/center]\n' +
-
     'Declaro que estou vendendo o veículo acima descrito e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a presente data de venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza. A partir desta venda, tais responsabilidades passam a ser integralmente do comprador acima identificado. Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do comprador a partir desta data.\n\n' +
-
     '[b]CLÁUSULAS:[/b]\n' +
-
     '[b]1.[/b] A VENDEDORA transfere ao(à) COMPRADOR(A) a propriedade e posse da motocicleta acima descrita, livre de ônus, na presente data.\n' +
-
     '[b]2.[/b] O(A) COMPRADOR(A) declara ter vistoriado a motocicleta e a recebe no estado em que se encontra, sem direito a reclamações posteriores quanto a defeitos aparentes.\n' +
-
     '[b]3.[/b] A partir desta data, todas as responsabilidades civis, criminais e tributárias (multas, IPVA, licenciamento) passam a ser exclusivas do(a) COMPRADOR(A).\n' +
-
     '[b]4.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.',
-
   signature_content:
-
     '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]\n\n' +
-
     '[signatures]\nVENDEDORA | {{LOJA_RAZAO_SOCIAL}} || COMPRADOR(A) | {{CLIENTE_NOME}}\n[/signatures]',
-
   fixed_clauses: [] as string[],
-
   optional_clauses: [] as any[],
-
 };
 
 
@@ -123,7 +103,7 @@ export const CLASSIC_SEMINOVOS_TEMPLATE = {
 export const CLASSIC_REPASSE_TEMPLATE = {
   header_content: '[center][b][size:12]CONTRATO DE REPASSE DE VEÍCULO[/size][/b][/center]',
   body_content:
-    'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]CEDENTE[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]CESSIONÁRIO(A)[/b], têm entre si justo e contratado o repasse do veículo no estado em que se encontra:\n\n' +
+    'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], estabelecida em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]CEDENTE[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]CESSIONÁRIO(A)[/b], têm entre si justo e contratado o repasse do veículo no estado em que se encontra:\n\n' +
     '[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}\n' +
     '[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}\n\n' +
     '[b]VALOR DO REPASSE:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}',
@@ -161,20 +141,23 @@ function formatPaymentMethodLabel(method?: string): string {
  */
 export function generateContractPDF(data: ContractData): jsPDF {
   const isRepasse = data.contractType === 'repasse';
-  const isSeminovo = data.contractType === 'seminovo' || (data.notes && data.notes.toLowerCase().includes('seminov'));
-  
+  const brand = (data.vehicleBrand || '').toUpperCase().trim();
+  const model = (data.vehicleModel || '').toUpperCase().trim();
+  const isShineray = brand.includes('SHINERAY') || model.includes('SHINERAY') || !brand;
+
   let baseTemplate = CLASSIC_SALE_TEMPLATE;
   let accentColor: [number, number, number] = [237, 28, 36]; // Vermelho Oficial Shineray
   let watermarkDataUrl: string | null = DEFAULT_CONTRACT_WATERMARK;
 
-  if (isSeminovo) {
-    baseTemplate = CLASSIC_SEMINOVOS_TEMPLATE;
-    accentColor = [15, 44, 89]; // Azul Marinho Executivo / Navy Blue (#0F2C59)
-    watermarkDataUrl = SEMINOVOS_CONTRACT_WATERMARK; // Selo exclusivo "SEMINOVOS & MULTIMARCAS GRUPO L1MA"
-  } else if (isRepasse) {
+  if (isRepasse) {
     baseTemplate = CLASSIC_REPASSE_TEMPLATE;
     accentColor = [51, 65, 85]; // Grafite Slate Industrial (#334155)
     watermarkDataUrl = null; // Sem logotipo para repasse no estado
+  } else if (!isShineray && data.contractType === 'seminovo') {
+    // Apenas seminovos de OUTRA marca (multimarcas) utilizam template de seminovos
+    baseTemplate = CLASSIC_SEMINOVOS_TEMPLATE;
+    accentColor = [15, 44, 89]; // Azul Marinho Executivo / Navy Blue (#0F2C59)
+    watermarkDataUrl = SEMINOVOS_CONTRACT_WATERMARK; // Selo exclusivo "SEMINOVOS & MULTIMARCAS GRUPO L1MA"
   }
 
   // Resolve cidade da loja com fallback inteligente
@@ -197,9 +180,31 @@ export function generateContractPDF(data: ContractData): jsPDF {
       .trim();
   }
 
-  // Monta notas / observações se houver
+  // Nome da loja limpo (sem Matriz, sem Sede, sem Polo Norte)
+  let cleanStoreName = (data.storeName || 'CONCESSIONÁRIA').trim();
+  cleanStoreName = cleanStoreName
+    .replace(/\s*\(Matriz\s*Oeste\)/gi, '')
+    .replace(/\s*\(Polo\s*Norte\)/gi, '')
+    .replace(/\s*\(Matriz\)/gi, '')
+    .trim();
+
+  // Para motos Shineray, padroniza a razão social oficial exatamente como no contrato original
+  if (isShineray) {
+    if (storeCity.includes('MONTES') || cleanStoreName.toUpperCase().includes('MONTES')) {
+      cleanStoreName = 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS';
+    } else if (storeCity.includes('DIVIN') || cleanStoreName.toUpperCase().includes('DIVIN')) {
+      cleanStoreName = 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS';
+    }
+  }
+
+  // Cláusulas: para Shineray, utiliza estritamente o texto clássico original sem poluí-lo com notas de sistema
   let extraClauses = baseTemplate.clauses_content;
-  if (data.notes && data.notes.trim()) {
+  if (
+    data.notes &&
+    data.notes.trim() &&
+    !data.notes.includes('Modelo: Contrato') &&
+    !data.notes.includes('Financiamento bancário')
+  ) {
     extraClauses += `\n\n[b]OBSERVAÇÕES ADICIONAIS:[/b]\n${data.notes.trim()}`;
   }
 
@@ -211,7 +216,7 @@ export function generateContractPDF(data: ContractData): jsPDF {
       watermark_data_url: (data as any).watermarkUrl !== undefined
         ? (data as any).watermarkUrl
         : watermarkDataUrl,
-      watermark_opacity: (data as any).watermarkOpacity ?? (isSeminovo ? 0.14 : 0.10),
+      watermark_opacity: (data as any).watermarkOpacity ?? (!isShineray && data.contractType === 'seminovo' ? 0.14 : 0.10),
     },
     client: {
       name: data.buyerName ? data.buyerName.toUpperCase() : 'COMPRADOR',
@@ -231,7 +236,7 @@ export function generateContractPDF(data: ContractData): jsPDF {
     },
     vehicles: data.vehicles,
     store: {
-      name: data.storeName ? data.storeName.toUpperCase() : 'CONCESSIONÁRIA',
+      name: cleanStoreName.toUpperCase(),
       cnpj: data.storeCnpj || '',
       address: cleanStoreAddress || 'AV. JOAO XXIII, Nº 990',
       city: storeCity,

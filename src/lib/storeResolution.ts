@@ -76,7 +76,7 @@ export interface ResolvedStore {
 export const OFFICIAL_STORES: Record<string, ResolvedStore> = {
   'store-divinopolis': {
     storeId: 'store-divinopolis',
-    storeName: 'Concessionária Divinópolis (Matriz Oeste)',
+    storeName: 'Concessionária Divinópolis',
     city: 'Divinópolis',
     state: 'MG',
     cnpj: '18.456.789/0001-01',
@@ -86,7 +86,7 @@ export const OFFICIAL_STORES: Record<string, ResolvedStore> = {
   },
   'store-montesclaros': {
     storeId: 'store-montesclaros',
-    storeName: 'Concessionária Montes Claros (Polo Norte)',
+    storeName: 'Concessionária Montes Claros',
     city: 'Montes Claros',
     state: 'MG',
     cnpj: '18.456.789/0002-82',
@@ -96,7 +96,7 @@ export const OFFICIAL_STORES: Record<string, ResolvedStore> = {
   },
   'ccf8e097-09d7-4305-8077-5c16fc8b5634': {
     storeId: 'store-divinopolis',
-    storeName: 'Concessionária Divinópolis (Matriz Oeste)',
+    storeName: 'Concessionária Divinópolis',
     city: 'Divinópolis',
     state: 'MG',
     cnpj: '18.456.789/0001-01',
@@ -106,7 +106,7 @@ export const OFFICIAL_STORES: Record<string, ResolvedStore> = {
   },
   'e8254a81-d669-464b-9806-457ba25ce7f0': {
     storeId: 'store-montesclaros',
-    storeName: 'Concessionária Montes Claros (Polo Norte)',
+    storeName: 'Concessionária Montes Claros',
     city: 'Montes Claros',
     state: 'MG',
     cnpj: '18.456.789/0002-82',
@@ -165,7 +165,7 @@ export function getStoreFromDatabase(
         (found.id || '').toLowerCase() === 'store-montesclaros';
       return {
         storeId: isMontes ? 'store-montesclaros' : 'store-divinopolis',
-        storeName: found.name || (isMontes ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)'),
+        storeName: found.name || (isMontes ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
         city: found.city || (isMontes ? 'Montes Claros' : 'Divinópolis'),
         state: found.state || 'MG',
         cnpj: found.cnpj || (isMontes ? '18.456.789/0002-82' : '18.456.789/0001-01'),
@@ -313,6 +313,6 @@ export function resolveSaleStore(
     }
   }
 
-  // 5. Padrão contábil: Concessionária Divinópolis (Matriz Oeste)
+  // 5. Padrão contábil: Concessionária Divinópolis
   return OFFICIAL_STORES['store-divinopolis'];
 }

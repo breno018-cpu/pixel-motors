@@ -44,17 +44,17 @@ interface Props {
 
 // Cidades de referência e distâncias rodoviárias médias a partir dos hubs (Divinópolis / Montes Claros)
 const PRESET_CITIES = [
-  { city: 'Nova Serrana - MG', km: 45, hub: 'Divinópolis (Matriz Oeste)' },
-  { city: 'Itaúna - MG', km: 42, hub: 'Divinópolis (Matriz Oeste)' },
-  { city: 'Pará de Minas - MG', km: 58, hub: 'Divinópolis (Matriz Oeste)' },
-  { city: 'Bom Despacho - MG', km: 82, hub: 'Divinópolis (Matriz Oeste)' },
-  { city: 'Belo Horizonte - MG', km: 125, hub: 'Divinópolis (Matriz Oeste)' },
-  { city: 'Betim / Contagem - MG', km: 95, hub: 'Divinópolis (Matriz Oeste)' },
-  { city: 'Sete Lagoas - MG', km: 165, hub: 'Divinópolis (Matriz Oeste)' },
-  { city: 'Bocaiúva - MG', km: 48, hub: 'Montes Claros (Polo Norte)' },
-  { city: 'Janaúba - MG', km: 132, hub: 'Montes Claros (Polo Norte)' },
-  { city: 'Pirapora - MG', km: 165, hub: 'Montes Claros (Polo Norte)' },
-  { city: 'Salinas - MG', km: 218, hub: 'Montes Claros (Polo Norte)' },
+  { city: 'Nova Serrana - MG', km: 45, hub: 'Divinópolis' },
+  { city: 'Itaúna - MG', km: 42, hub: 'Divinópolis' },
+  { city: 'Pará de Minas - MG', km: 58, hub: 'Divinópolis' },
+  { city: 'Bom Despacho - MG', km: 82, hub: 'Divinópolis' },
+  { city: 'Belo Horizonte - MG', km: 125, hub: 'Divinópolis' },
+  { city: 'Betim / Contagem - MG', km: 95, hub: 'Divinópolis' },
+  { city: 'Sete Lagoas - MG', km: 165, hub: 'Divinópolis' },
+  { city: 'Bocaiúva - MG', km: 48, hub: 'Montes Claros' },
+  { city: 'Janaúba - MG', km: 132, hub: 'Montes Claros' },
+  { city: 'Pirapora - MG', km: 165, hub: 'Montes Claros' },
+  { city: 'Salinas - MG', km: 218, hub: 'Montes Claros' },
   { city: 'Montes Claros ⇄ Divinópolis (Interlojas)', km: 475, hub: 'Corredor Corporativo BR-135' },
 ];
 

@@ -463,8 +463,8 @@ export function CreateSaleModal({
         cleanSeller.includes('natan') ||
         (buyerCity || '').toUpperCase().includes('MONTES CLAROS');
       const storeName = isMoc
-        ? 'Concessionária Montes Claros (Polo Norte)'
-        : 'Concessionária Divinópolis (Matriz Oeste)';
+        ? 'Concessionária Montes Claros'
+        : 'Concessionária Divinópolis';
 
       const dateParts = effectiveSaleDate.split('-');
       const formattedDateBR = dateParts.length === 3
@@ -905,8 +905,8 @@ export function CreateSaleModal({
                       <SelectValue placeholder="Selecione a loja" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="store-divinopolis">Divinópolis (Matriz Oeste)</SelectItem>
-                      <SelectItem value="store-montesclaros">Montes Claros (Polo Norte)</SelectItem>
+                      <SelectItem value="store-divinopolis">Concessionária Divinópolis</SelectItem>
+                      <SelectItem value="store-montesclaros">Concessionária Montes Claros</SelectItem>
                     </SelectContent>
                   </Select>
                 )}

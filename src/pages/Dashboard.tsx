@@ -1054,8 +1054,8 @@ export default function Dashboard() {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1 max-w-3xl leading-relaxed">
-              Gestão executiva de <strong className="text-foreground">Divinópolis (Matriz Oeste)</strong> e{' '}
-              <strong className="text-foreground">Montes Claros (Polo Norte)</strong> com rastreabilidade total de contratos, F&I e estoque.
+              Gestão executiva de <strong className="text-foreground">Divinópolis</strong> e{' '}
+              <strong className="text-foreground">Montes Claros</strong> com rastreabilidade total de contratos, F&I e estoque.
             </p>
           </div>
         </div>
@@ -1074,10 +1074,10 @@ export default function Dashboard() {
             <SelectContent>
               <SelectItem value="all">Todas as Concessionárias (MG)</SelectItem>
               <SelectItem value="store-divinopolis">
-                Concessionária Divinópolis (Matriz Oeste)
+                Concessionária Divinópolis
               </SelectItem>
               <SelectItem value="store-montesclaros">
-                Concessionária Montes Claros (Polo Norte)
+                Concessionária Montes Claros
               </SelectItem>
               {stores
                 .filter((s) => s.id !== 'store-montesclaros' && s.id !== 'store-divinopolis')
@@ -1729,9 +1729,9 @@ export default function Dashboard() {
             }
             storeName={
               storeFilter === 'store-montesclaros'
-                ? 'Concessionária Montes Claros (Polo Norte)'
+                ? 'Concessionária Montes Claros'
                 : stores.find((s) => s.id === storeFilter)?.name ||
-                  'Concessionária Divinópolis (Matriz Oeste)'
+                  'Concessionária Divinópolis'
             }
           />
         </TabsContent>

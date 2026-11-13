@@ -343,7 +343,7 @@ function HoleriteModalContent({ dados, onClose }: HoleriteModalProps) {
     const isMontes = (st?.name || st?.city || storeIdFuncionario || '').toLowerCase().includes('montes');
     const base: Partial<EmpresaFolhaConfig> = (empresaInicial as any) || {};
     return {
-      razaoSocial: st?.name || base.razaoSocial || (isMontes ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)'),
+      razaoSocial: st?.name || base.razaoSocial || (isMontes ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
       nomeFantasia: st?.name || base.nomeFantasia || (isMontes ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
       cnpj: (st?.cnpj && !st.cnpj.startsWith('00.000')) ? st.cnpj : (base.cnpj && !base.cnpj.startsWith('00.000')) ? base.cnpj : (isMontes ? '18.456.789/0002-82' : '18.456.789/0001-01'),
       inscricaoEstadual: base.inscricaoEstadual || '',

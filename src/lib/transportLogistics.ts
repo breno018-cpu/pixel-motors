@@ -88,10 +88,10 @@ export const TRANSPORT_LOGISTICS_METHODS: TransportLogisticsMethod[] = [
   },
   {
     id: 'transferencia_polo',
-    nome: 'Shuttle Interlojas Matriz Divinópolis ⇄ Polo Montes Claros',
+    nome: 'Shuttle Interlojas Divinópolis ⇄ Montes Claros',
     subtitulo: 'Transferência corporativa entre centros de distribuição',
     descricao:
-      'Corredor logístico regular de abastecimento entre Matriz Oeste (Divinópolis) e Polo Norte (Montes Claros) via BR-135 e BR-040.',
+      'Corredor logístico regular de abastecimento entre Divinópolis e Montes Claros via BR-135 e BR-040.',
     tipo: 'INTERLOJAS',
     tarifaBaseKm: 1.40,
     taxaFixaExpedicao: 60,

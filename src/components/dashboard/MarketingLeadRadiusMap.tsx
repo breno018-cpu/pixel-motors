@@ -56,7 +56,7 @@ interface RadiusBand {
 }
 
 const RADIUS_BANDS: RadiusBand[] = [
-  { minKm: 0, maxKm: 50, label: 'Raio Local (0 - 50 km • Ø 100 km)', color: '#2563eb', tag: 'Metropolitano / Sede' },
+  { minKm: 0, maxKm: 50, label: 'Raio Local (0 - 50 km • Ø 100 km)', color: '#2563eb', tag: 'Metropolitano / Local' },
   { minKm: 51, maxKm: 150, label: 'Raio Regional (51 - 150 km • Ø 300 km)', color: '#10b981', tag: 'Microrregional' },
   { minKm: 151, maxKm: 300, label: 'Raio Expandido (151 - 300 km • Ø 600 km)', color: '#f59e0b', tag: 'Polo Secundário' },
   { minKm: 301, maxKm: 9999, label: 'Raio Remoto (> 300 km • Ø > 600 km)', color: '#8b5cf6', tag: 'Longa Distância' },
@@ -417,7 +417,7 @@ export function MarketingLeadRadiusMap({
                     {activeItemDetail.clientName}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    {activeItemDetail.city} ({activeItemDetail.uf}) • {activeItemDetail.distanceKm === 0 ? 'Sede' : `${activeItemDetail.distanceKm} km`}
+                    {activeItemDetail.city} ({activeItemDetail.uf}) • {activeItemDetail.distanceKm === 0 ? 'Local' : `${activeItemDetail.distanceKm} km`}
                   </p>
                 </div>
                 <div className="text-right">

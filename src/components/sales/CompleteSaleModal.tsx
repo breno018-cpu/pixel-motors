@@ -498,6 +498,10 @@ export function CompleteSaleModal({
       const selectedStoreData = getStoreFromDatabase(targetStoreId, stores);
 
       // REGRA: Ao finalizar a venda, GERA O CONTRATO PDF DEFINITIVO!
+      const isShineray =
+        vehicleModel.toUpperCase().includes('SHINERAY') ||
+        (selectedVehicle?.brand || '').toUpperCase().includes('SHINERAY') ||
+        !selectedVehicle?.brand;
       const selectedTemplate = templates.find((t) => t.id === templateId) || templates[0];
       let pdfGenerated = false;
 
@@ -528,7 +532,9 @@ export function CompleteSaleModal({
         pdfGenerated = true;
       };
 
-      if (selectedTemplate) {
+      if (isShineray) {
+        fallbackEmitContract();
+      } else if (selectedTemplate) {
         try {
           const assets = await loadTemplateAssets(selectedTemplate as any);
           const contractPayloadForPdf: any = {

@@ -48,7 +48,7 @@ export function downloadInvoicePDF(inv: Invoice) {
   doc.text('EMITENTE (CONCESSIONÁRIA)', m, y);
   y += 4;
   doc.setFont('helvetica', 'normal');
-  const storeName = inv.store?.name || 'Concessionária Divinópolis (Matriz Oeste)';
+  const storeName = inv.store?.name || 'Concessionária Divinópolis';
   const storeCnpj = inv.store?.cnpj ? `CNPJ: ${inv.store.cnpj}` : 'CNPJ: 18.456.789/0001-01';
   const storeAddr = inv.store?.address ? `${inv.store.address} - ${inv.store.city || ''}/${inv.store.state || ''}` : '';
   doc.text(`${storeName}  |  ${storeCnpj}`, m, y);

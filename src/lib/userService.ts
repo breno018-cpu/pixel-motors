@@ -238,10 +238,10 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
 
   // Lojas conhecidas
   const storeMap = new Map((storesList || []).map((s) => [s.id, s.name]));
-  storeMap.set('store-divinopolis', 'Concessionária Divinópolis (Matriz Oeste)');
-  storeMap.set('store-montesclaros', 'Concessionária Montes Claros (Polo Norte)');
-  storeMap.set(STORE_UUIDS['store-divinopolis'], 'Concessionária Divinópolis (Matriz Oeste)');
-  storeMap.set(STORE_UUIDS['store-montesclaros'], 'Concessionária Montes Claros (Polo Norte)');
+  storeMap.set('store-divinopolis', 'Concessionária Divinópolis');
+  storeMap.set('store-montesclaros', 'Concessionária Montes Claros');
+  storeMap.set(STORE_UUIDS['store-divinopolis'], 'Concessionária Divinópolis');
+  storeMap.set(STORE_UUIDS['store-montesclaros'], 'Concessionária Montes Claros');
 
   const userMap = new Map<string, UserWithRole>();
 
@@ -269,7 +269,7 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
     const rawStoreId = emp?.store_id || res?.store_id;
     const resolvedStoreId = rawStoreId || (isMocUser ? STORE_UUIDS['store-montesclaros'] : undefined);
     const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) ||
-      (isMocUser ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)');
+      (isMocUser ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
 
     const notes = emp?.notes || '';
     let userStatus: 'ATIVO' | 'SUSPENSO' | 'DEMITIDO' = 'ATIVO';
@@ -324,7 +324,7 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
 
       const resolvedStoreId = e.store_id || (isMocUser ? STORE_UUIDS['store-montesclaros'] : undefined);
       const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) ||
-        (isMocUser ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)');
+        (isMocUser ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
 
       const notes = e.notes || '';
       let userStatus: 'ATIVO' | 'SUSPENSO' | 'DEMITIDO' = e.is_active === false ? 'SUSPENSO' : 'ATIVO';
@@ -381,7 +381,7 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
 
     const resolvedStoreId = cu.store_id || (existing?.store_id) || (isMocCustom ? STORE_UUIDS['store-montesclaros'] : undefined);
     const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) ||
-      (isMocCustom ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)');
+      (isMocCustom ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
     const effectiveRole = isMasterUser(cu.full_name || existing?.full_name, cu.email, cu.id || existing?.id)
       ? (cu.role || existing?.role || 'vendedor')
       : 'vendedor';

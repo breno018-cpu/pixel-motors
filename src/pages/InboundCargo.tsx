@@ -764,7 +764,7 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
                 <SelectContent>
                   {stores.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name} ({s.city || 'Matriz'})
+                      {s.name} {s.city ? `(${s.city})` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>

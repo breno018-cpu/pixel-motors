@@ -346,8 +346,8 @@ export function CatalogProductDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as Lojas / Rede (Disponível em Divinópolis e Montes Claros)</SelectItem>
-                  <SelectItem value="store-divinopolis">Concessionária Divinópolis (Matriz Oeste)</SelectItem>
-                  <SelectItem value="store-montesclaros">Concessionária Montes Claros (Polo Norte)</SelectItem>
+                  <SelectItem value="store-divinopolis">Concessionária Divinópolis</SelectItem>
+                  <SelectItem value="store-montesclaros">Concessionária Montes Claros</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground">

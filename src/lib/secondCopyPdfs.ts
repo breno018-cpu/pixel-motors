@@ -187,7 +187,7 @@ function _legacyCustomSecondCopyPDF(data: SecondCopySaleData): void {
 
   // SEÇÃO 1: CONCESSIONÁRIA (VENDEDORA)
   renderSectionHeader('1. Identificação da Concessionária Vendedora');
-  renderField('Razão Social / Nome', data.storeName || 'Concessionária Divinópolis (Matriz Oeste)', m, cw * 0.5);
+  renderField('Razão Social / Nome', data.storeName || 'Concessionária Divinópolis', m, cw * 0.5);
   renderField('CNPJ', data.storeCnpj || '18.456.789/0001-01', m + cw * 0.55, cw * 0.45);
   y += 8;
   renderField('Endereço', data.storeAddress || 'Av. Autorama, 1200 - Judeia, Divinópolis/MG', m, cw * 0.5);
