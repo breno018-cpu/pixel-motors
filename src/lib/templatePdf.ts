@@ -1,4 +1,5 @@
-import jsPDF from 'jspdf';
+import _jsPDF from 'jspdf';
+const jsPDF: any = (_jsPDF as any).jsPDF || _jsPDF;
 import { renderPickupAuthorization, type PickupPerson } from './pickupAuthorization';
 import { DEFAULT_CONTRACT_WATERMARK } from '@/assets/contractWatermark';
 

@@ -536,27 +536,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       handleSession(nextSession);
     });
 
-    const globalSecurityChannel = supabase.channel('global-dealflow-security');
-    globalSecurityChannel
-      .on('broadcast', { event: 'FORCE_GLOBAL_LOGOUT' }, () => {
-        void signOut();
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED' && !localStorage.getItem('df_force_logout_broadcast_sent_20261113')) {
-          localStorage.setItem('df_force_logout_broadcast_sent_20261113', 'true');
-          void globalSecurityChannel.send({
-            type: 'broadcast',
-            event: 'FORCE_GLOBAL_LOGOUT',
-            payload: { timestamp: new Date().toISOString() },
-          });
-        }
-      });
-
     return () => {
       subscription.unsubscribe();
-      try {
-        supabase.removeChannel(globalSecurityChannel);
-      } catch {}
       clearSessionTimer();
     };
   }, [clearSessionTimer, fetchUserData, startSessionTimer]);
@@ -612,7 +593,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             customRoleName: null,
             hasCustomRole: false,
           });
+          localStorage.removeItem('df_explicit_signout');
+          sessionStorage.removeItem('df_explicit_signout');
+          localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
           await fetchUserData(data.user.id);
+          localStorage.removeItem('df_explicit_signout');
+          sessionStorage.removeItem('df_explicit_signout');
+          localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
+
           return { error: null };
         }
       } catch {}
@@ -744,6 +732,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             customRoleName: null,
             hasCustomRole: false,
           });
+
+          localStorage.removeItem('df_explicit_signout');
+          sessionStorage.removeItem('df_explicit_signout');
+          localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
 
           return { error: null };
         }
