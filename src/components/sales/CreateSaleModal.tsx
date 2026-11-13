@@ -161,6 +161,7 @@ export function CreateSaleModal({
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(initialVehicleId || '');
   const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleChassis, setVehicleChassis] = useState('');
+  const [vehicleColor, setVehicleColor] = useState('');
   const [vehicleYear, setVehicleYear] = useState('');
 
   // Cliente
@@ -272,8 +273,10 @@ export function CreateSaleModal({
 
   // Veículos disponíveis para seleção
   const availableVehicles = useMemo(() => {
-    return vehicles.filter((v) => v.status === 'disponivel' || v.id === initialVehicleId);
-  }, [vehicles, initialVehicleId]);
+    return vehicles.filter(
+      (v) => v.status === 'disponivel' || v.id === initialVehicleId || v.id === selectedVehicleId
+    );
+  }, [vehicles, initialVehicleId, selectedVehicleId]);
 
   // Atualiza campos se selecionar do estoque
   const handleSelectVehicle = (id: string) => {
@@ -283,6 +286,7 @@ export function CreateSaleModal({
       setVehicleModel(`${found.brand} ${found.model}`.trim());
       setVehicleChassis(found.chassis || '');
       setVehicleYear(found.year ? String(found.year) : '');
+      if (found.color) setVehicleColor(found.color);
       if (found.sale_price) {
         const pStr = String(found.sale_price);
         setSaleValue(pStr);
@@ -290,7 +294,13 @@ export function CreateSaleModal({
         else if (paymentMethodCategory === 'a_vista_dinheiro') setCashVal(pStr);
         else if (paymentMethodCategory === 'financiamento_100') setFinVal(pStr);
       }
-      if (found.store_id && !isRestrictedSeller) setStoreId(found.store_id);
+      if (found.store_id && !isRestrictedSeller) {
+        const isMoc =
+          found.store_id === 'store-montesclaros' ||
+          found.store_id === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+          found.store_id.toLowerCase().includes('montes');
+        setStoreId(isMoc ? 'store-montesclaros' : 'store-divinopolis');
+      }
     }
   };
 
@@ -609,17 +619,27 @@ export function CreateSaleModal({
 
         let finalVehicleId = selectedVehicleId && isUuid(selectedVehicleId) ? selectedVehicleId : null;
 
-        // Se o usuário digitou o chassi manualmente, tenta localizar o veículo no estoque do Supabase
+        // Se o usuário digitou o chassi manualmente, tenta localizar o veículo no estoque (memória / Supabase)
         if (!finalVehicleId && vehicleChassis && vehicleChassis.trim().length >= 4) {
-          const cleanChassis = vehicleChassis.trim().toLowerCase();
-          const { data: foundV } = await supabase
-            .from('vehicles')
-            .select('id')
-            .ilike('chassis', `%${cleanChassis}%`)
-            .limit(1)
-            .maybeSingle();
-          if (foundV?.id) {
-            finalVehicleId = foundV.id;
+          const cleanCh = vehicleChassis.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const localMatch = vehicles.find((v) => {
+            const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            return vCh && (vCh === cleanCh || vCh.endsWith(cleanCh) || cleanCh.endsWith(vCh));
+          });
+
+          if (localMatch && isUuid(localMatch.id)) {
+            finalVehicleId = localMatch.id;
+          } else {
+            const cleanChassis = vehicleChassis.trim().toLowerCase();
+            const { data: foundV } = await supabase
+              .from('vehicles')
+              .select('id')
+              .ilike('chassis', `%${cleanChassis}%`)
+              .limit(1)
+              .maybeSingle();
+            if (foundV?.id) {
+              finalVehicleId = foundV.id;
+            }
           }
         }
 
@@ -1021,6 +1041,9 @@ export function CreateSaleModal({
                     if (veh.year) {
                       setVehicleYear(String(veh.year));
                     }
+                    if (veh.color) {
+                      setVehicleColor(veh.color);
+                    }
                     if (veh.sale_price) {
                       const pStr = String(veh.sale_price);
                       setSaleValue(pStr);
@@ -1031,6 +1054,13 @@ export function CreateSaleModal({
                     if (veh.id) {
                       setSelectedVehicleId(veh.id);
                       setVehicleSource('inventory');
+                    }
+                    if (veh.store_id && !isRestrictedSeller) {
+                      const isMoc =
+                        veh.store_id === 'store-montesclaros' ||
+                        veh.store_id === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+                        veh.store_id.toLowerCase().includes('montes');
+                      setStoreId(isMoc ? 'store-montesclaros' : 'store-divinopolis');
                     }
                   }}
                   filterStoreId={storeId}

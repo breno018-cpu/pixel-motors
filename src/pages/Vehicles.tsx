@@ -129,60 +129,11 @@ type ModelGroup = {
 type ViewMode = 'grouped' | 'units';
 type SortBy = 'default' | 'qty_desc' | 'aging_desc' | 'price_asc' | 'price_desc';
 
-export const STORE_DIVINOPOLIS_UUID = 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
-export const STORE_MONTESCLAROS_UUID = 'e8254a81-d669-464b-9806-457ba25ce7f0';
-
-/**
- * Normaliza e compara identificadores de loja aceitando tanto UUIDs quanto slugs locais
- * ('store-divinopolis', 'store-montesclaros'), além de lidar com estoque sem loja vinculada (null/unassigned).
- */
-export function isMatchingStore(vehicleStoreId: string | null | undefined, filterStoreId: string): boolean {
-  if (!filterStoreId || filterStoreId === 'all') return true;
-  if (vehicleStoreId === filterStoreId) return true;
-
-  const cleanFilter = filterStoreId.toLowerCase().trim();
-  const cleanVehicleStore = (vehicleStoreId || '').toLowerCase().trim();
-
-  // Matriz / Divinópolis
-  const isDivinopolisFilter =
-    cleanFilter === 'store-divinopolis' ||
-    cleanFilter === STORE_DIVINOPOLIS_UUID ||
-    cleanFilter.includes('divinopolis') ||
-    cleanFilter.includes('matriz');
-
-  if (isDivinopolisFilter) {
-    // Veículos legados ou importados sem store_id pertencem ao pátio matriz/principal
-    if (!vehicleStoreId) return true;
-    if (
-      cleanVehicleStore === 'store-divinopolis' ||
-      cleanVehicleStore === STORE_DIVINOPOLIS_UUID ||
-      cleanVehicleStore.includes('divinopolis') ||
-      cleanVehicleStore.includes('matriz')
-    ) {
-      return true;
-    }
-  }
-
-  // Montes Claros
-  const isMontesFilter =
-    cleanFilter === 'store-montesclaros' ||
-    cleanFilter === STORE_MONTESCLAROS_UUID ||
-    cleanFilter.includes('montes') ||
-    cleanFilter.includes('moc');
-
-  if (isMontesFilter) {
-    if (
-      cleanVehicleStore === 'store-montesclaros' ||
-      cleanVehicleStore === STORE_MONTESCLAROS_UUID ||
-      cleanVehicleStore.includes('montes') ||
-      cleanVehicleStore.includes('moc')
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-}
+export {
+  STORE_DIVINOPOLIS_UUID,
+  STORE_MONTESCLAROS_UUID,
+  isMatchingStore,
+} from '@/lib/storeResolution';
 
 export default function Vehicles() {
   const navigate = useNavigate();

@@ -30,7 +30,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { recognizeFromChassis, resolveModelYearFromVin } from '@/lib/chassisRecognition';
 import { BarcodeScannerDialog } from '@/components/vehicles/BarcodeScannerDialog';
 import { SheetRowV9 } from '@/lib/dealershipSheetParser';
+import { isMatchingStore } from '@/lib/storeResolution';
 import { cn } from '@/lib/utils';
+
+export function getStoreDisplayName(storeId?: string | null): string {
+  if (!storeId) return 'Matriz';
+  const clean = storeId.toLowerCase().trim();
+  if (
+    clean === 'store-montesclaros' ||
+    clean === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+    clean.includes('montes') ||
+    clean.includes('moc') ||
+    clean.includes('polo norte')
+  ) {
+    return 'Montes Claros';
+  }
+  return 'Divinópolis';
+}
 
 export interface SelectedChassisVehicle {
   id: string;
@@ -172,25 +188,48 @@ export function ChassisSearchInput({
 
   // Lista unificada de sugestões rápidas
   const searchResults = useMemo(() => {
+    const rawQ = (value || '').trim().toUpperCase();
     const q = cleanVin(value);
-    if (!q || q.length < 2) return [];
+    if (!q && !rawQ) return [];
 
-    const isStoreMatch = (sId?: string | null) => {
-      if (!filterStoreId || filterStoreId === 'all') return true;
-      if (!sId) return true;
-      return sId === filterStoreId || sId.toLowerCase().includes(filterStoreId.toLowerCase());
+    const isMatch = (itemChassis?: string | null, itemPlate?: string | null, itemModel?: string | null, itemBrand?: string | null) => {
+      const ch = cleanVin(itemChassis || '');
+      const pl = cleanVin(itemPlate || '');
+      const fullMd = `${itemBrand || ''} ${itemModel || ''}`.toUpperCase().trim();
+      const cleanMd = cleanVin(fullMd);
+
+      return (
+        (q && ch.includes(q)) ||
+        (q && pl.includes(q)) ||
+        (q && cleanMd.includes(q)) ||
+        (rawQ && fullMd.includes(rawQ))
+      );
     };
 
     // 1. Veículos no Estoque (Pátio)
     const matchedVehicles = vehicles
-      .filter((v) => {
-        if (!isStoreMatch(v.store_id)) return false;
-        const ch = cleanVin(v.chassis || '');
-        const pl = cleanVin(v.plate || '');
-        const md = `${v.brand} ${v.model}`.toUpperCase();
-        return ch.includes(q) || pl.includes(q) || md.includes(q);
+      .filter((v) => isMatch(v.chassis, v.plate, v.model, v.brand))
+      .sort((a, b) => {
+        // Prioriza veículos da loja ativa
+        const aStore = isMatchingStore(a.store_id, filterStoreId || 'all') ? 1 : 0;
+        const bStore = isMatchingStore(b.store_id, filterStoreId || 'all') ? 1 : 0;
+        if (aStore !== bStore) return bStore - aStore;
+
+        // Se o chassi terminar exatamente com o termo digitado (ex: últimos 6 dígitos)
+        const aCh = cleanVin(a.chassis || '');
+        const bCh = cleanVin(b.chassis || '');
+        const aEnds = q && aCh.endsWith(q) ? 1 : 0;
+        const bEnds = q && bCh.endsWith(q) ? 1 : 0;
+        if (aEnds !== bEnds) return bEnds - aEnds;
+
+        // Veículos disponíveis antes de vendidos
+        const aDisp = a.status === 'disponivel' ? 1 : 0;
+        const bDisp = b.status === 'disponivel' ? 1 : 0;
+        if (aDisp !== bDisp) return bDisp - aDisp;
+
+        return 0;
       })
-      .slice(0, 5)
+      .slice(0, 10)
       .map((v) => ({
         type: 'stock' as const,
         id: v.id,
@@ -207,12 +246,14 @@ export function ChassisSearchInput({
       }));
 
     // 2. Chassi de vendas recentes na Planilha
-    const seenChassis = new Set(matchedVehicles.map((m) => m.chassis));
+    const seenChassis = new Set(matchedVehicles.map((m) => cleanVin(m.chassis)));
     const matchedSheet = sheetRows
       .filter((r) => {
         const ch = cleanVin(r.chassi || '');
-        const md = (r.modelo || '').toUpperCase();
-        return ch && !seenChassis.has(ch) && (ch.includes(q) || md.includes(q));
+        const fullMd = (r.modelo || '').toUpperCase().trim();
+        const cleanMd = cleanVin(fullMd);
+        const matches = (q && ch.includes(q)) || (q && cleanMd.includes(q)) || (rawQ && fullMd.includes(rawQ));
+        return ch && !seenChassis.has(ch) && matches;
       })
       .slice(0, 3)
       .map((r) => ({
@@ -225,7 +266,7 @@ export function ChassisSearchInput({
         color: undefined,
         sale_price: r.valor,
         plate: undefined,
-        store_id: undefined,
+        store_id: (r as any).store_id,
         vehicle_type: 'moto',
         status: r.is_permitted ? 'faturada' : 'pre_venda',
       }));
@@ -236,7 +277,10 @@ export function ChassisSearchInput({
         const wmi = cleanVin(p.wmi_code || '');
         const pat = cleanVin(p.model_pattern || '');
         const name = `${p.brand} ${p.model_name || ''}`.toUpperCase();
-        return q.startsWith(wmi) || q.includes(pat) || wmi.includes(q) || name.includes(q);
+        return (
+          (q && (q.startsWith(wmi) || q.includes(pat) || wmi.includes(q) || cleanVin(name).includes(q))) ||
+          (rawQ && name.includes(rawQ))
+        );
       })
       .slice(0, 3)
       .map((p) => ({
@@ -260,33 +304,55 @@ export function ChassisSearchInput({
 
   // Lista completa de busca dentro do Modal Avançado
   const modalResults = useMemo(() => {
-    const q = cleanVin(modalSearch) || modalSearch.trim().toUpperCase();
+    const rawSearch = (modalSearch || '').trim().toUpperCase();
+    const cleanSearch = cleanVin(modalSearch);
 
-    const stockList = vehicles.filter((v) => {
-      if (!q) return true;
-      const ch = cleanVin(v.chassis || '');
-      const pl = cleanVin(v.plate || '');
-      const md = `${v.brand} ${v.model} ${v.color || ''}`.toUpperCase();
-      return ch.includes(q) || pl.includes(q) || md.includes(q);
-    });
+    const isMatch = (itemChassis?: string | null, itemPlate?: string | null, itemModel?: string | null, itemBrand?: string | null, itemExtra?: string | null) => {
+      if (!rawSearch && !cleanSearch) return true;
+      const ch = cleanVin(itemChassis || '');
+      const pl = cleanVin(itemPlate || '');
+      const fullMd = `${itemBrand || ''} ${itemModel || ''} ${itemExtra || ''}`.toUpperCase().trim();
+      const cleanMd = cleanVin(fullMd);
 
-    const sheetList = sheetRows.filter((r) => {
-      if (!q) return true;
-      const ch = cleanVin(r.chassi || '');
-      const md = `${r.modelo} ${r.cliente}`.toUpperCase();
-      return ch.includes(q) || md.includes(q);
-    });
+      return (
+        (cleanSearch && ch.includes(cleanSearch)) ||
+        (cleanSearch && pl.includes(cleanSearch)) ||
+        (cleanSearch && cleanMd.includes(cleanSearch)) ||
+        (rawSearch && fullMd.includes(rawSearch))
+      );
+    };
+
+    const stockList = vehicles
+      .filter((v) => isMatch(v.chassis, v.plate, v.model, v.brand, v.color))
+      .sort((a, b) => {
+        const aStore = isMatchingStore(a.store_id, filterStoreId || 'all') ? 1 : 0;
+        const bStore = isMatchingStore(b.store_id, filterStoreId || 'all') ? 1 : 0;
+        if (aStore !== bStore) return bStore - aStore;
+
+        const aCh = cleanVin(a.chassis || '');
+        const bCh = cleanVin(b.chassis || '');
+        const aEnds = cleanSearch && aCh.endsWith(cleanSearch) ? 1 : 0;
+        const bEnds = cleanSearch && bCh.endsWith(cleanSearch) ? 1 : 0;
+        if (aEnds !== bEnds) return bEnds - aEnds;
+
+        return 0;
+      });
+
+    const sheetList = sheetRows.filter((r) => isMatch(r.chassi, null, r.modelo, 'SHINERAY', r.cliente));
 
     const patternList = chassisPatterns.filter((p) => {
-      if (!q) return true;
+      if (!rawSearch && !cleanSearch) return true;
       const wmi = cleanVin(p.wmi_code || '');
       const pat = cleanVin(p.model_pattern || '');
       const md = `${p.brand} ${p.model_name || ''}`.toUpperCase();
-      return wmi.includes(q) || pat.includes(q) || md.includes(q);
+      return (
+        (cleanSearch && (wmi.includes(cleanSearch) || pat.includes(cleanSearch) || cleanSearch.startsWith(wmi))) ||
+        (rawSearch && md.includes(rawSearch))
+      );
     });
 
     return { stockList, sheetList, patternList };
-  }, [modalSearch, vehicles, sheetRows, chassisPatterns]);
+  }, [modalSearch, vehicles, sheetRows, chassisPatterns, filterStoreId]);
 
   const handleSelectVehicle = (item: any) => {
     const chassisToSet = item.type === 'pattern' ? value : (item.chassis || '');
@@ -459,8 +525,23 @@ export function ChassisSearchInput({
                       {item.chassis || 'SEM CHASSI'}
                     </span>
                     {item.type === 'stock' && (
-                      <Badge variant="outline" className="text-[9px] px-1 py-0 border-emerald-500/30 text-emerald-600 bg-emerald-500/5">
-                        Em Estoque
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-[9px] px-1 py-0 font-bold',
+                          item.status === 'disponivel'
+                            ? 'border-emerald-500/30 text-emerald-600 bg-emerald-500/5'
+                            : item.status === 'reservado'
+                            ? 'border-amber-500/30 text-amber-600 bg-amber-500/5'
+                            : 'border-blue-500/30 text-blue-600 bg-blue-500/5'
+                        )}
+                      >
+                        {item.status === 'disponivel' ? 'Disponível' : item.status === 'reservado' ? 'Reservado' : 'Estoque'}
+                      </Badge>
+                    )}
+                    {item.type === 'stock' && item.store_id && (
+                      <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/20 text-foreground bg-muted/40 font-medium">
+                        {getStoreDisplayName(item.store_id)}
                       </Badge>
                     )}
                     {item.type === 'sheet' && (
@@ -479,6 +560,7 @@ export function ChassisSearchInput({
                     <strong className="text-foreground">{item.brand} {item.model}</strong>
                     {item.color && <span> • {item.color}</span>}
                     {item.year && <span> • {item.year}</span>}
+                    {item.type === 'stock' && <span> • Loja: {getStoreDisplayName(item.store_id)}</span>}
                   </p>
                 </div>
               </div>
@@ -625,8 +707,18 @@ export function ChassisSearchInput({
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 text-[9px] px-1.5 py-0 font-bold">
-                            ESTOQUE
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'text-[9px] px-1.5 py-0 font-bold',
+                              v.status === 'disponivel'
+                                ? 'border-emerald-500/40 text-emerald-600 bg-emerald-500/5'
+                                : v.status === 'reservado'
+                                ? 'border-amber-500/40 text-amber-600 bg-amber-500/5'
+                                : 'border-blue-500/40 text-blue-600 bg-blue-500/5'
+                            )}
+                          >
+                            {v.status === 'disponivel' ? 'DISPONÍVEL' : v.status === 'reservado' ? 'RESERVADO' : 'ESTOQUE'}
                           </Badge>
                           <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary">
                             {v.chassis || 'SEM CHASSI'}
@@ -641,7 +733,7 @@ export function ChassisSearchInput({
                           <strong className="text-foreground">{v.brand} {v.model}</strong>
                           {v.color && <span>• {v.color}</span>}
                           {v.year && <span>• {v.year}</span>}
-                          <span className="text-[10px]">• Loja: {v.store_id === 'store-montesclaros' ? 'Montes Claros' : 'Divinópolis'}</span>
+                          <span className="text-[10px]">• Loja: {getStoreDisplayName(v.store_id)}</span>
                         </div>
                       </div>
 

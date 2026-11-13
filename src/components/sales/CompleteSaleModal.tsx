@@ -667,14 +667,23 @@ export function CompleteSaleModal({
 
           // Se não encontrou veículo selecionado, busca por chassi se houver
           if (!finalVehicleId && vehicleChassis && vehicleChassis.trim().length >= 4) {
-            const cleanChassis = vehicleChassis.trim().toLowerCase();
-            const { data: foundV } = await supabase
-              .from('vehicles')
-              .select('id')
-              .ilike('chassis', `%${cleanChassis}%`)
-              .limit(1)
-              .maybeSingle();
-            if (foundV?.id) finalVehicleId = foundV.id;
+            const cleanCh = vehicleChassis.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const localMatch = vehicles.find((v) => {
+              const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+              return vCh && (vCh === cleanCh || vCh.endsWith(cleanCh) || cleanCh.endsWith(vCh));
+            });
+            if (localMatch && isUuid(localMatch.id)) {
+              finalVehicleId = localMatch.id;
+            } else {
+              const cleanChassis = vehicleChassis.trim().toLowerCase();
+              const { data: foundV } = await supabase
+                .from('vehicles')
+                .select('id')
+                .ilike('chassis', `%${cleanChassis}%`)
+                .limit(1)
+                .maybeSingle();
+              if (foundV?.id) finalVehicleId = foundV.id;
+            }
           }
 
           // Se ainda não existir no pátio, insere um veículo no banco para preservar integridade
@@ -1010,6 +1019,7 @@ export function CompleteSaleModal({
                   onChange={(val) => setVehicleChassis(val)}
                   onSelectVehicle={(veh) => {
                     setVehicleChassis(veh.chassis || '');
+                    if (veh.id) setVehicleId(veh.id);
                     if (veh.model) setVehicleModel(veh.model);
                     if (veh.color) setVehicleColor(veh.color);
                     if (veh.year) setVehicleYear(String(veh.year));
