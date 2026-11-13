@@ -20,6 +20,7 @@ import Payroll from "./pages/Payroll";
 import MotoInvoices from "./pages/MotoInvoices";
 import Financing from "./pages/Financing";
 import Reports from "./pages/Reports";
+import OwnerDashboard from "./pages/OwnerDashboard";
 import Ads from "./pages/Ads";
 import Settings from "./pages/Settings";
 import AdminMaster from "./pages/AdminMaster";
@@ -201,6 +202,17 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/owner-dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.reports">
+                    <MainLayout>
+                      <OwnerDashboard />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/painel-dono" element={<Navigate to="/owner-dashboard" replace />} />
               <Route
                 path="/ads"
                 element={

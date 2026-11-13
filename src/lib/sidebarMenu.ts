@@ -18,6 +18,7 @@ import {
   FileSpreadsheet,
   Truck,
   Boxes,
+  Crown,
 } from 'lucide-react';
 
 export type SidebarGroup = 'operacao' | 'documentos' | 'gestao' | 'sistema';
@@ -53,6 +54,7 @@ export const ALL_MENU_ITEMS: SidebarMenuItem[] = [
   { icon: Wallet, label: 'Folha de Pagamento', path: '/payroll', roles: ['admin', 'gerente'], group: 'gestao' },
   { icon: Megaphone, label: 'Anúncios', path: '/ads', roles: ['admin', 'gerente'], group: 'gestao' },
   { icon: BarChart3, label: 'Relatórios e Metas', path: '/reports', roles: ['admin', 'gerente'], group: 'gestao' },
+  { icon: Crown, label: 'Painel do Dono', path: '/owner-dashboard', roles: ['admin', 'gerente'], group: 'gestao' },
   { icon: FileSpreadsheet, label: 'Planilhas', path: '/spreadsheets', roles: ['admin', 'gerente'], group: 'gestao' },
   { icon: ShieldCheck, label: 'Ala Master', path: '/admin', roles: ['admin', 'gerente'], group: 'gestao' },
   { icon: Settings, label: 'Configurações', path: '/settings', group: 'sistema' },

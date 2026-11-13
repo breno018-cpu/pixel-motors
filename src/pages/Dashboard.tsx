@@ -32,6 +32,7 @@ import {
   Building2,
   Car,
   Truck,
+  Crown,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1168,14 +1169,26 @@ export default function Dashboard() {
 
             {/* Atalho Planilha Oficial (Apenas Administração) */}
             {(isAdmin || auth.roles.includes('gerente')) && (
-              <Button
-                size="sm"
-                onClick={() => navigate('/spreadsheets')}
-                className="h-9 px-3 text-xs gap-1.5 font-bold bg-primary text-white shadow-sm shadow-primary/20 rounded-xl"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
-                <span className="hidden xs:inline">Planilha v9.0</span>
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/owner-dashboard')}
+                  className="h-9 px-3 text-xs gap-1.5 font-bold bg-gradient-to-r from-amber-600 via-amber-500 to-indigo-600 hover:from-amber-700 hover:to-indigo-700 text-white shadow-sm shadow-amber-500/20 rounded-xl"
+                  title="Abrir Centro de Comando do Dono da Loja (Visão 360°)"
+                >
+                  <Crown className="w-3.5 h-3.5 text-amber-200" />
+                  <span className="hidden xs:inline">Painel do Dono</span>
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/spreadsheets')}
+                  className="h-9 px-3 text-xs gap-1.5 font-bold bg-primary text-white shadow-sm shadow-primary/20 rounded-xl"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
+                  <span className="hidden xs:inline">Planilha v9.0</span>
+                </Button>
+              </>
             )}
           </div>
         </GlassView>
