@@ -25,6 +25,44 @@ interface UserStore {
 
 const SESSION_MAX_AGE_MS = 7 * 60 * 60 * 1000; // 7 hours
 const AUTH_CACHE_KEY = 'df_auth_user_cache_v1';
+const GLOBAL_FORCE_LOGOUT_KEY = 'df_force_logout_all_epoch_20261113_v1';
+
+/**
+ * Força a desconexão global de todas as sessões em todos os aparelhos/navegadores.
+ * Todos os usuários terão que reinserir suas credenciais para entrar.
+ */
+function checkAndApplyGlobalLogout() {
+  if (typeof window === 'undefined') return;
+  try {
+    const applied = localStorage.getItem(GLOBAL_FORCE_LOGOUT_KEY);
+    if (!applied) {
+      localStorage.removeItem(AUTH_CACHE_KEY);
+      sessionStorage.removeItem(AUTH_CACHE_KEY);
+      localStorage.removeItem('dealflow_auth_profile');
+      localStorage.removeItem('dealflow_active_role');
+      localStorage.removeItem('df_active_device_session_token');
+      sessionStorage.removeItem('df_active_device_session_token');
+      removeSecureCookie('session_token');
+      removeSecureCookie('df_fingerprint');
+
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('sb-') || k.startsWith('supabase.') || k.startsWith('df_auth_'))) {
+          localStorage.removeItem(k);
+        }
+      }
+
+      localStorage.setItem('df_explicit_signout', 'true');
+      localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
+
+      try {
+        void supabase.auth.signOut({ scope: 'local' });
+      } catch {}
+    }
+  } catch {}
+}
+
+checkAndApplyGlobalLogout();
 
 interface CachedUserData {
   userId: string;
@@ -57,6 +95,10 @@ const DEFAULT_ACTIVE_ADMIN: CachedUserData = {
 
 function readAuthCache(): CachedUserData | null {
   try {
+    if (!localStorage.getItem(GLOBAL_FORCE_LOGOUT_KEY)) {
+      checkAndApplyGlobalLogout();
+      return null;
+    }
     if (localStorage.getItem('df_explicit_signout') === 'true') {
       return null;
     }
@@ -494,8 +536,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       handleSession(nextSession);
     });
 
+    const globalSecurityChannel = supabase.channel('global-dealflow-security');
+    globalSecurityChannel
+      .on('broadcast', { event: 'FORCE_GLOBAL_LOGOUT' }, () => {
+        void signOut();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED' && !localStorage.getItem('df_force_logout_broadcast_sent_20261113')) {
+          localStorage.setItem('df_force_logout_broadcast_sent_20261113', 'true');
+          void globalSecurityChannel.send({
+            type: 'broadcast',
+            event: 'FORCE_GLOBAL_LOGOUT',
+            payload: { timestamp: new Date().toISOString() },
+          });
+        }
+      });
+
     return () => {
       subscription.unsubscribe();
+      try {
+        supabase.removeChannel(globalSecurityChannel);
+      } catch {}
       clearSessionTimer();
     };
   }, [clearSessionTimer, fetchUserData, startSessionTimer]);
