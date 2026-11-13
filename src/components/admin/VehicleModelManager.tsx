@@ -154,9 +154,13 @@ export function VehicleModelManager({ embedded = false }: { embedded?: boolean }
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {[
-                      m.engine_cc ? `${m.engine_cc}cc` : null,
+                      m.engine_cc
+                        ? (m.fuel_type?.toLowerCase().includes('elet') || m.model.toLowerCase().includes('elét') || m.model.toLowerCase().includes('elet')
+                            ? `${m.engine_cc}W`
+                            : `${m.engine_cc}cc`)
+                        : null,
                       m.fuel_type,
-                      m.transmission,
+                      m.fuel_type?.toLowerCase().includes('elet') ? null : m.transmission,
                       m.warranty_months ? `Garantia ${m.warranty_months}m` : null,
                       m.default_sale_price ? `Venda ${maskCurrency(String(Math.round(m.default_sale_price * 100)))}` : null,
                     ].filter(Boolean).join(' · ') || 'Sem padrões definidos'}

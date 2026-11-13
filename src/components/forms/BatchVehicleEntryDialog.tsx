@@ -125,8 +125,8 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
         color: color.toUpperCase(),
         chassis: chassis,
         fuel_type: isElectricModel ? 'eletrico' : 'gasolina',
-        transmission: isElectricModel ? 'automatico' : 'manual',
-        engine_cc: isElectricModel ? 0 : 125,
+        transmission: isElectricModel ? 'direta' : 'manual',
+        engine_cc: isElectricModel ? 2000 : 125,
         cost_price: cost > 0 ? cost : null,
         purchase_price: cost > 0 ? cost : null,
         sale_price: sale > 0 ? sale : null,
@@ -281,7 +281,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
                   <SelectContent>
                     {SHINERAY_OFFICIAL_LINEUP.map((m) => (
                       <SelectItem key={m.model} value={m.model} className="text-xs">
-                        {m.model} ({m.engine_cc ? `${m.engine_cc}cc` : 'Elétrica'})
+                        {m.model} ({m.fuel_type === 'Elétrico' ? `${m.engine_cc || 2000}W` : `${m.engine_cc}cc`})
                       </SelectItem>
                     ))}
                   </SelectContent>

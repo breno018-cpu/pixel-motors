@@ -138,7 +138,7 @@ export function ModelCatalogSelect({ vehicleType, brand, model, locked = false, 
             <SelectContent className="bg-background z-50">
               {modelsOfBrand.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
-                  {m.model}{m.engine_cc ? ` · ${m.engine_cc}cc` : ''}
+                  {m.model}{m.engine_cc ? (m.fuel_type?.toLowerCase().includes('elétr') || m.fuel_type?.toLowerCase().includes('eletr') ? ` · ${m.engine_cc}W` : ` · ${m.engine_cc}cc`) : ''}
                 </SelectItem>
               ))}
             </SelectContent>

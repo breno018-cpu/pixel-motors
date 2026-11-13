@@ -1112,8 +1112,10 @@ export default function Vehicles() {
                                   {vehicle.brand} {vehicle.model}
                                 </div>
                                 <div className="text-[11px] text-muted-foreground">
-                                  {vehicle.vehicle_type === 'moto' ? 'Moto' : 'Carro'}
-                                  {vehicle.engine_cc ? ` · ${vehicle.engine_cc}cc` : ''}
+                                  {vehicle.vehicle_type === 'moto' ? (isElectricVehicle(vehicle) ? 'Moto Elétrica' : 'Moto') : 'Carro'}
+                                  {isElectricVehicle(vehicle)
+                                    ? (vehicle.engine_cc && vehicle.engine_cc > 0 ? ` · ${vehicle.engine_cc}W` : ' · 100% Elétrica')
+                                    : (vehicle.engine_cc ? ` · ${vehicle.engine_cc}cc` : '')}
                                 </div>
                               </div>
                             </div>
@@ -1668,7 +1670,9 @@ function UnitList({
                   {vehicle.manufacture_year
                     ? `${vehicle.manufacture_year}/${vehicle.year}`
                     : vehicle.year}
-                  {vehicle.engine_cc ? ` · ${vehicle.engine_cc}cc` : ''}
+                  {isElectricVehicle(vehicle)
+                    ? (vehicle.engine_cc && vehicle.engine_cc > 0 ? ` · ${vehicle.engine_cc}W` : ' · 100% Elétrica')
+                    : (vehicle.engine_cc ? ` · ${vehicle.engine_cc}cc` : '')}
                 </p>
               </div>
 

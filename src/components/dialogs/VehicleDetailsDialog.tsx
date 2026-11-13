@@ -69,6 +69,7 @@ export function VehicleDetailsDialog({ vehicle, storeName, resellerName, open, o
   if (!vehicle) return null;
 
   const isMoto = vehicle.vehicle_type === 'moto';
+  const isElectric = isElectricVehicle(vehicle);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -113,11 +114,14 @@ export function VehicleDetailsDialog({ vehicle, storeName, resellerName, open, o
             <div className="flex items-center gap-2">
               <Gauge className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-muted-foreground">{isMoto ? 'Cilindrada' : 'Quilometragem'}</p>
+                <p className="text-muted-foreground">{isElectric ? 'Potência' : (isMoto ? 'Cilindrada' : 'Quilometragem')}</p>
                 <p className="font-medium">
-                  {isMoto 
-                    ? `${vehicle.engine_cc || 0} cc`
-                    : `${vehicle.mileage?.toLocaleString() || 0} km`
+                  {isElectric
+                    ? `${vehicle.engine_cc && vehicle.engine_cc > 0 ? `${vehicle.engine_cc} W` : '100% Elétrica'}`
+                    : (isMoto 
+                        ? `${vehicle.engine_cc || 0} cc`
+                        : `${vehicle.mileage?.toLocaleString() || 0} km`
+                      )
                   }
                 </p>
               </div>
@@ -126,16 +130,16 @@ export function VehicleDetailsDialog({ vehicle, storeName, resellerName, open, o
             <div className="flex items-center gap-2">
               <Fuel className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-muted-foreground">Combustível</p>
-                <p className="font-medium capitalize">{vehicle.fuel_type || 'Não informado'}</p>
+                <p className="text-muted-foreground">Propulsão / Combustível</p>
+                <p className="font-medium capitalize">{isElectric ? '⚡ 100% Elétrica' : (vehicle.fuel_type || 'Não informado')}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <Settings2 className="w-4 h-4 text-muted-foreground" />
               <div>
-                <p className="text-muted-foreground">Câmbio</p>
-                <p className="font-medium capitalize">{vehicle.transmission || 'Não informado'}</p>
+                <p className="text-muted-foreground">Transmissão</p>
+                <p className="font-medium capitalize">{isElectric ? 'Direta (Sem Câmbio)' : (vehicle.transmission || 'Não informado')}</p>
               </div>
             </div>
           </div>

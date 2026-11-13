@@ -209,12 +209,13 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
       setPatternLocked(false);
       setChassisRecognized(null);
       setFuelType('eletrico');
-      setTransmission('automatico');
-      setEngineCc('0');
+      setTransmission('direta');
+      if (!engineCc || engineCc === '0') setEngineCc('2000');
       lastDecodedVinRef.current = '';
     } else {
       setFuelType('gasolina');
       setTransmission('manual');
+      setEngineCc('125');
       setMassQuantity(1);
     }
   };
@@ -305,9 +306,9 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
           plate: undefined,
           renavam: undefined,
           mileage: 0,
-          engine_cc: 0,
+          engine_cc: parseInt(engineCc, 10) || 2000,
           fuel_type: 'eletrico',
-          transmission: 'automatico',
+          transmission: 'direta',
           purchase_price: costNum > 0 ? costNum : undefined,
           sale_price: saleNum,
           warranty_months: parseInt(warrantyMonths, 10) || 12,
@@ -333,9 +334,9 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
         plate: plate.trim() ? plate.trim().toUpperCase() : undefined,
         renavam: renavam.trim() || undefined,
         mileage: parseInt(mileage, 10) || 0,
-        engine_cc: isElectric ? 0 : (parseInt(engineCc, 10) || undefined),
+        engine_cc: isElectric ? (parseInt(engineCc, 10) || 2000) : (parseInt(engineCc, 10) || undefined),
         fuel_type: isElectric ? 'eletrico' : (fuelType || 'gasolina'),
-        transmission: isElectric ? 'automatico' : (transmission || 'manual'),
+        transmission: isElectric ? 'direta' : (transmission || 'manual'),
         purchase_price: costNum > 0 ? costNum : undefined,
         sale_price: saleNum,
         warranty_months: parseInt(warrantyMonths, 10) || 12,
@@ -734,71 +735,109 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs font-semibold flex items-center gap-1">
-                  Cilindrada (cc)
-                  {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-                </Label>
-                <Input
-                  type="number"
-                  value={engineCc}
-                  onChange={(e) => setEngineCc(e.target.value)}
-                  disabled={patternLocked}
-                  placeholder="Preenchido pelo padrão..."
-                  className={`h-10 text-xs mt-1 ${
-                    patternLocked ? 'bg-muted/70 text-muted-foreground cursor-not-allowed select-none' : ''
-                  }`}
-                />
-              </div>
+            {isElectric ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1 text-emerald-800 dark:text-emerald-200">
+                    <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                    Potência do Motor (Watts) *
+                  </Label>
+                  <Input
+                    type="number"
+                    value={engineCc}
+                    onChange={(e) => setEngineCc(e.target.value)}
+                    placeholder="Ex: 2000 Watts"
+                    className="h-10 text-xs mt-1 font-bold text-emerald-700 dark:text-emerald-300 bg-background"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Motos elétricas usam Watts (W), não cilindradas.</p>
+                </div>
 
-              <div>
-                <Label className="text-xs font-semibold flex items-center gap-1">
-                  Combustível
-                  {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-                </Label>
-                <Select
-                  value={fuelType}
-                  onValueChange={(val) => {
-                    setFuelType(val);
-                    if (val === 'eletrico') {
-                      setIsElectric(true);
-                      setTransmission('automatico');
-                      setEngineCc('0');
-                      setPatternLocked(false);
-                    }
-                  }}
-                  disabled={patternLocked}
-                >
-                  <SelectTrigger className={`h-10 text-xs mt-1 ${patternLocked ? 'bg-muted/70 cursor-not-allowed' : ''}`}>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gasolina">Gasolina</SelectItem>
-                    <SelectItem value="flex">Flex</SelectItem>
-                    <SelectItem value="eletrico">Elétrico</SelectItem>
-                    <SelectItem value="diesel">Diesel</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1 text-muted-foreground">
+                    Propulsão
+                  </Label>
+                  <div className="h-10 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 flex items-center text-xs font-bold text-emerald-800 dark:text-emerald-200 mt-1">
+                    ⚡ 100% Elétrica
+                  </div>
+                </div>
 
-              <div>
-                <Label className="text-xs font-semibold flex items-center gap-1">
-                  Câmbio / Transmissão
-                  {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-                </Label>
-                <Select value={transmission} onValueChange={setTransmission} disabled={patternLocked}>
-                  <SelectTrigger className={`h-10 text-xs mt-1 ${patternLocked ? 'bg-muted/70 cursor-not-allowed' : ''}`}>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">Manual</SelectItem>
-                    <SelectItem value="semi_automatico">Semi-automático</SelectItem>
-                    <SelectItem value="automatico">Automático / CVT</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1 text-muted-foreground">
+                    Câmbio / Marchas
+                  </Label>
+                  <div className="h-10 px-3 rounded-md border bg-muted/50 flex items-center text-xs text-muted-foreground mt-1">
+                    Direta (Sem Câmbio)
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Moto elétrica não possui câmbio.</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1">
+                    Cilindrada (cc)
+                    {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={engineCc}
+                    onChange={(e) => setEngineCc(e.target.value)}
+                    disabled={patternLocked}
+                    placeholder="Preenchido pelo padrão..."
+                    className={`h-10 text-xs mt-1 ${
+                      patternLocked ? 'bg-muted/70 text-muted-foreground cursor-not-allowed select-none' : ''
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1">
+                    Combustível
+                    {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
+                  </Label>
+                  <Select
+                    value={fuelType}
+                    onValueChange={(val) => {
+                      setFuelType(val);
+                      if (val === 'eletrico') {
+                        setIsElectric(true);
+                        setTransmission('direta');
+                        setEngineCc('2000');
+                        setPatternLocked(false);
+                      }
+                    }}
+                    disabled={patternLocked}
+                  >
+                    <SelectTrigger className={`h-10 text-xs mt-1 ${patternLocked ? 'bg-muted/70 cursor-not-allowed' : ''}`}>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gasolina">Gasolina</SelectItem>
+                      <SelectItem value="flex">Flex</SelectItem>
+                      <SelectItem value="eletrico">Elétrico</SelectItem>
+                      <SelectItem value="diesel">Diesel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1">
+                    Câmbio / Transmissão
+                    {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
+                  </Label>
+                  <Select value={transmission} onValueChange={setTransmission} disabled={patternLocked}>
+                    <SelectTrigger className={`h-10 text-xs mt-1 ${patternLocked ? 'bg-muted/70 cursor-not-allowed' : ''}`}>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Manual</SelectItem>
+                      <SelectItem value="semi_automatico">Semi-automático</SelectItem>
+                      <SelectItem value="automatico">Automático / CVT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>

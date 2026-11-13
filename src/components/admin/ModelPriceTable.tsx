@@ -158,8 +158,12 @@ export function ModelPriceTable() {
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {[
-                    m.engine_cc ? `${m.engine_cc}cc` : null,
-                    m.transmission,
+                    m.engine_cc
+                      ? (m.fuel_type?.toLowerCase().includes('elet') || m.model.toLowerCase().includes('elét') || m.model.toLowerCase().includes('elet')
+                          ? `${m.engine_cc}W`
+                          : `${m.engine_cc}cc`)
+                      : null,
+                    m.fuel_type?.toLowerCase().includes('elet') ? null : m.transmission,
                     isPromo && m.promo_ends_on
                       ? `Até ${new Date(`${m.promo_ends_on}T12:00:00`).toLocaleDateString('pt-BR')}`
                       : null,
