@@ -771,7 +771,7 @@ export default function Payroll() {
               {(
                 [
                   { id: 'DASHBOARD', label: 'Folha Mensal', icon: BarChart3 },
-                  { id: 'LANCAMENTO_RAPIDO', label: '⚡ Fim de Mês (Por Qtd)', icon: Zap },
+                  { id: 'LANCAMENTO_RAPIDO', label: 'Fim de Mês (Por Qtd)', icon: Zap },
                   { id: 'FUNCIONARIOS', label: `Equipe (${funcionarios.length})`, icon: Users },
                   { id: 'COMISSOES_CARGOS', label: 'Comissões por Cargo', icon: Briefcase },
                   { id: 'CONFIG', label: 'Dados da Unidade', icon: Sliders },

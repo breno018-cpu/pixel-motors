@@ -100,15 +100,15 @@ export function FreightCalculatorDialog({
     const custName = customerName ? `Olá, ${customerName}! ` : 'Olá! ';
     return `${custName}Segue a simulação oficial de logística e entrega da sua *${vehicleModel}* pela Pixel Motors:
 
-📍 *Destino:* ${destinationCity || 'Endereço Indicado'}
-🛣️ *Distância Rodoviária Estimada:* ${roadKm} km
-🚚 *Modalidade:* ${activeMethodDef.nome}
-⏱️ *Prazo de Entrega:* ${activeMethodDef.prazoFormatado}
-🛡️ *Seguro de Carga:* ${activeMethodDef.seguroCarga} (100% Coberto)
-🔍 *Rastreamento:* ${activeMethodDef.rastreamentoGps ? 'GPS Ativo em Tempo Real' : 'Acompanhamento pela Loja'}
+*Destino:* ${destinationCity || 'Endereço Indicado'}
+*Distância Rodoviária Estimada:* ${roadKm} km
+*Modalidade:* ${activeMethodDef.nome}
+*Prazo de Entrega:* ${activeMethodDef.prazoFormatado}
+*Seguro de Carga:* ${activeMethodDef.seguroCarga} (100% Coberto)
+*Rastreamento:* ${activeMethodDef.rastreamentoGps ? 'GPS Ativo em Tempo Real' : 'Acompanhamento pela Loja'}
 
-💰 *Valor do Frete:* ${activeSimulation.formattedTotal}
-${vehicleCount > 1 ? `📦 *Lote:* ${vehicleCount} motocicletas com desconto especial aplicado.\n` : ''}
+*Valor do Frete:* ${activeSimulation.formattedTotal}
+${vehicleCount > 1 ? `*Lote:* ${vehicleCount} motocicletas com desconto especial aplicado.\n` : ''}
 Qualquer dúvida estamos à disposição para agendar a expedição do seu veículo!`;
   }, [customerName, vehicleModel, destinationCity, roadKm, activeMethodDef, activeSimulation, vehicleCount]);
 

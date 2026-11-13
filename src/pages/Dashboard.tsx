@@ -11,6 +11,8 @@ import {
   Package,
   Landmark,
   Award,
+  Trophy,
+  Medal,
   RefreshCw,
   Download,
   Activity,
@@ -1551,14 +1553,23 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="space-y-2.5">
                 {sellerRankings.slice(0, 5).map((seller, idx) => {
-                  const medals = ['🥇', '🥈', '🥉', '4º', '5º'];
                   return (
                     <div
                       key={seller.name}
                       className="p-3 rounded-2xl border bg-muted/20 hover:bg-muted/40 transition-all flex items-center justify-between text-xs"
                     >
                       <div className="flex items-center gap-2.5">
-                        <span className="text-base font-bold text-muted-foreground">{medals[idx] || `${idx + 1}º`}</span>
+                        <div className="w-6 h-6 rounded-lg bg-card border border-border/80 flex items-center justify-center shrink-0">
+                          {idx === 0 ? (
+                            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                          ) : idx === 1 ? (
+                            <Medal className="w-3.5 h-3.5 text-slate-400" />
+                          ) : idx === 2 ? (
+                            <Medal className="w-3.5 h-3.5 text-amber-700" />
+                          ) : (
+                            <span className="font-bold text-[10px] text-muted-foreground">{idx + 1}º</span>
+                          )}
+                        </div>
                         <div>
                           <strong className="text-foreground text-sm">{seller.name}</strong>
                           <div className="text-[11px] text-muted-foreground">

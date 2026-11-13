@@ -61,7 +61,7 @@ export function CatalogChatTestDialog({
         ...nextMessages,
         {
           role: "assistant",
-          content: `⚠️ Não foi possível obter resposta do servidor da IA (${e.message}). Verifique a conexão com a API Node.js.`,
+          content: `Não foi possível obter resposta do servidor da IA (${e.message}). Verifique a conexão com a API Node.js.`,
         },
       ]);
     } finally {

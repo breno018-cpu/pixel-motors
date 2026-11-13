@@ -847,7 +847,7 @@ export default function Vehicles() {
                 </SelectTrigger>
                 <SelectContent className="bg-background z-50">
                   <SelectItem value="all" className="font-bold text-primary">
-                    🌐 Todas as Lojas (Rede Integrada)
+                    Todas as Lojas (Rede Integrada)
                   </SelectItem>
                   {stores?.map((store) => {
                     const isMyStore = store.id === userStore?.id;

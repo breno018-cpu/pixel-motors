@@ -448,9 +448,9 @@ export function UnifiedVehicleCatalog() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as Situações</SelectItem>
-              <SelectItem value="promo">Com Promoção Ativa 🏷️</SelectItem>
-              <SelectItem value="has_vin">Com Padrão VIN 🔍</SelectItem>
-              <SelectItem value="no_vin">Sem Padrão VIN ⚠️</SelectItem>
+              <SelectItem value="promo">Com Promoção Ativa</SelectItem>
+              <SelectItem value="has_vin">Com Padrão VIN</SelectItem>
+              <SelectItem value="no_vin">Sem Padrão VIN</SelectItem>
               <SelectItem value="no_price">Sem Preço de Venda</SelectItem>
             </SelectContent>
           </Select>

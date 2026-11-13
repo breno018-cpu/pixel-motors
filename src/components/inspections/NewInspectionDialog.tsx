@@ -357,9 +357,9 @@ export function NewInspectionDialog({
             }
             className="text-xs font-bold"
           >
-            {calculatedFinalStatus === 'aprovado' && '🟢 APROVADA'}
-            {calculatedFinalStatus === 'aprovado_com_apontamentos' && '🟡 COM RESSALVAS'}
-            {calculatedFinalStatus === 'reprovado' && '🔴 REPROVADA'}
+            {calculatedFinalStatus === 'aprovado' && 'APROVADA'}
+            {calculatedFinalStatus === 'aprovado_com_apontamentos' && 'COM RESSALVAS'}
+            {calculatedFinalStatus === 'reprovado' && 'REPROVADA'}
             {' '}• Score {calculatedScore}/100
           </Badge>
         </DialogHeader>
@@ -534,8 +534,8 @@ export function NewInspectionDialog({
                 <Select value={theftStatus} onValueChange={(v) => setTheftStatus(v as TheftStatus)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="nada_consta">✓ Nada Consta</SelectItem>
-                    <SelectItem value="alerta_furto_roubo">🚨 QUEIXA ATIVA</SelectItem>
+                    <SelectItem value="nada_consta">Nada Consta</SelectItem>
+                    <SelectItem value="alerta_furto_roubo">QUEIXA ATIVA</SelectItem>
                     <SelectItem value="recuperado">Recuperado</SelectItem>
                   </SelectContent>
                 </Select>
@@ -546,8 +546,8 @@ export function NewInspectionDialog({
                 <Select value={renajudStatus} onValueChange={(v) => setRenajudStatus(v as RenajudStatus)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="nada_consta">✓ Nada Consta</SelectItem>
-                    <SelectItem value="bloqueio_transferencia">🚨 Bloqueio Judicial</SelectItem>
+                    <SelectItem value="nada_consta">Nada Consta</SelectItem>
+                    <SelectItem value="bloqueio_transferencia">Bloqueio Judicial</SelectItem>
                     <SelectItem value="penhora">Penhora Ativa</SelectItem>
                   </SelectContent>
                 </Select>
@@ -558,10 +558,10 @@ export function NewInspectionDialog({
                 <Select value={auctionStatus} onValueChange={(v) => setAuctionStatus(v as AuctionStatus)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sem_passagem">✓ Sem Leilão</SelectItem>
+                    <SelectItem value="sem_passagem">Sem Leilão</SelectItem>
                     <SelectItem value="recuperado_financeira">Financeira</SelectItem>
                     <SelectItem value="leilao_seguradora">Seguradora</SelectItem>
-                    <SelectItem value="sinistro_grave">🚨 Sinistro Grave</SelectItem>
+                    <SelectItem value="sinistro_grave">Sinistro Grave</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -571,7 +571,7 @@ export function NewInspectionDialog({
                 <Select value={financeStatus} onValueChange={(v) => setFinanceStatus(v as FinanceStatus)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="quitado">✓ Quitado / Livre</SelectItem>
+                    <SelectItem value="quitado">Quitado / Livre</SelectItem>
                     <SelectItem value="alienacao_fiduciaria">Alienação Ativa</SelectItem>
                   </SelectContent>
                 </Select>
@@ -641,9 +641,9 @@ export function NewInspectionDialog({
                 <Select value={frameChassis} onValueChange={(v) => setFrameChassis(v as never)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alinhado_original">✓ Alinhado e Original</SelectItem>
-                    <SelectItem value="soldado_reparado">⚡ Soldado / Reparado</SelectItem>
-                    <SelectItem value="empenado_batido">🚨 Empenado / Batido</SelectItem>
+                    <SelectItem value="alinhado_original">Alinhado e Original</SelectItem>
+                    <SelectItem value="soldado_reparado">Soldado / Reparado</SelectItem>
+                    <SelectItem value="empenado_batido">Empenado / Batido</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -653,10 +653,10 @@ export function NewInspectionDialog({
                 <Select value={engineCondition} onValueChange={(v) => setEngineCondition(v as never)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="otimo_silencioso">✓ Sereno / Sem Ruído</SelectItem>
-                    <SelectItem value="fumando_queimando_oleo">🚨 Fumando / Baixando Óleo</SelectItem>
-                    <SelectItem value="vazamento_junta">⚠️ Vazamento em Junta</SelectItem>
-                    <SelectItem value="barulho_biela">🚨 Barulho de Biela/Válvula</SelectItem>
+                    <SelectItem value="otimo_silencioso">Sereno / Sem Ruído</SelectItem>
+                    <SelectItem value="fumando_queimando_oleo">Fumando / Baixando Óleo</SelectItem>
+                    <SelectItem value="vazamento_junta">Vazamento em Junta</SelectItem>
+                    <SelectItem value="barulho_biela">Barulho de Biela/Válvula</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -666,9 +666,9 @@ export function NewInspectionDialog({
                 <Select value={frontFork} onValueChange={(v) => setFrontFork(v as never)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="alinhada_sem_vazamento">✓ Alinhada / Sem Vazamento</SelectItem>
-                    <SelectItem value="retentor_vazando">⚠️ Retentor Vazando Óleo</SelectItem>
-                    <SelectItem value="empenada">🚨 Bengala Empenada</SelectItem>
+                    <SelectItem value="alinhada_sem_vazamento">Alinhada / Sem Vazamento</SelectItem>
+                    <SelectItem value="retentor_vazando">Retentor Vazando Óleo</SelectItem>
+                    <SelectItem value="empenada">Bengala Empenada</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -678,9 +678,9 @@ export function NewInspectionDialog({
                 <Select value={chainKit} onValueChange={(v) => setChainKit(v as never)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="otimo">✓ Ótima / Nova</SelectItem>
+                    <SelectItem value="otimo">Ótima / Nova</SelectItem>
                     <SelectItem value="meia_vida">Meia-vida</SelectItem>
-                    <SelectItem value="gasto_trocar">⚠️ Gasta (Trocar na loja)</SelectItem>
+                    <SelectItem value="gasto_trocar">Gasta (Trocar na loja)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -692,9 +692,9 @@ export function NewInspectionDialog({
                 <Select value={tires} onValueChange={(v) => setTires(v as never)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="bons">✓ Bons</SelectItem>
+                    <SelectItem value="bons">Bons</SelectItem>
                     <SelectItem value="meia_vida">Meia-vida</SelectItem>
-                    <SelectItem value="gastos_trocar">⚠️ Gastos (Trocar)</SelectItem>
+                    <SelectItem value="gastos_trocar">Gastos (Trocar)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -704,9 +704,9 @@ export function NewInspectionDialog({
                 <Select value={fairingsPaint} onValueChange={(v) => setFairingsPaint(v as never)}>
                   <SelectTrigger className="h-8 rounded-lg mt-1 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="original_impecavel">✓ Original Impecável</SelectItem>
+                    <SelectItem value="original_impecavel">Original Impecável</SelectItem>
                     <SelectItem value="riscos_ralados_leves">Riscos Leves de Uso</SelectItem>
-                    <SelectItem value="carenagens_quebradas">⚠️ Quebrada / Ralada</SelectItem>
+                    <SelectItem value="carenagens_quebradas">Quebrada / Ralada</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -720,7 +720,7 @@ export function NewInspectionDialog({
                   className="h-8 text-xs font-semibold w-full mt-1"
                   onClick={() => setNumbersMatch(!numbersMatch)}
                 >
-                  {numbersMatch ? '✓ Chassi e Motor Conferem' : '✗ Numeração Adulterada'}
+                  {numbersMatch ? 'Chassi e Motor Conferem' : 'Numeração Adulterada'}
                 </Button>
               </div>
             </div>

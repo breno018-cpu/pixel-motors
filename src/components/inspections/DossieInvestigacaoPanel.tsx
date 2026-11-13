@@ -472,7 +472,7 @@ export function DossieInvestigacaoPanel() {
                     {activeDossie.debts.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center py-4 text-xs text-emerald-600 font-medium">
-                          ✓ Nenhum débito, autuação de trânsito ou pendência tributária encontrada.
+                          Nenhum débito, autuação de trânsito ou pendência tributária encontrada.
                         </TableCell>
                       </TableRow>
                     ) : (

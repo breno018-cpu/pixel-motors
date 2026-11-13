@@ -734,7 +734,7 @@ export function CompleteSaleModal({
       queryClient.invalidateQueries({ queryKey: ['cloud-monthly-sheet-v9'] });
 
       toast({
-        title: '🎉 Cadastro Concluído & Venda Finalizada!',
+        title: 'Cadastro Concluído & Venda Finalizada!',
         description: nfAlreadyRequested
           ? 'Contrato de venda gerado e baixado. Registro migrado com sucesso de Pré-NF para Venda Quitado!'
           : 'Imagem da NF e Contrato de Venda gerados com sucesso (Ambos concluídos)!',
@@ -810,8 +810,8 @@ export function CompleteSaleModal({
                 )}
                 <span className="text-xs font-bold">
                   {isRegistrationComplete
-                    ? '✓ Cadastro 100% Concluído — Venda Liberada para Finalização'
-                    : `⚠️ Cadastro Incompleto (${validationErrors.length} ${validationErrors.length === 1 ? 'pendência' : 'pendências'} para virar venda)`}
+                    ? 'Cadastro 100% Concluído — Venda Liberada para Finalização'
+                    : `Cadastro Incompleto (${validationErrors.length} ${validationErrors.length === 1 ? 'pendência' : 'pendências'} para virar venda)`}
                 </span>
               </div>
               <Badge
@@ -957,7 +957,7 @@ export function CompleteSaleModal({
                   <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-muted/40 flex items-center justify-between text-xs font-medium text-foreground">
                     <span className="truncate">{sellerStore.storeName}</span>
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
-                      🔒 Bloqueado
+                      Bloqueado
                     </Badge>
                   </div>
                 ) : (

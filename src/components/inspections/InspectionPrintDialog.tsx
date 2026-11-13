@@ -206,24 +206,24 @@ export function InspectionPrintDialog({
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Furto / Roubo:</span>
                 <strong className={inspection.theft_status === 'nada_consta' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-                  {inspection.theft_status === 'nada_consta' ? '✓ Nada Consta' : '🚨 ALERTA ATIVO'}
+                  {inspection.theft_status === 'nada_consta' ? 'Nada Consta' : 'ALERTA ATIVO'}
                 </strong>
               </div>
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Bloqueio RENAJUD:</span>
                 <strong className={inspection.renajud_status === 'nada_consta' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-                  {inspection.renajud_status === 'nada_consta' ? '✓ Livre / Sem Bloqueio' : '🚨 Bloqueio Judicial'}
+                  {inspection.renajud_status === 'nada_consta' ? 'Livre / Sem Bloqueio' : 'Bloqueio Judicial'}
                 </strong>
               </div>
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Histórico Leilão:</span>
                 <strong className={inspection.auction_status === 'sem_passagem' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
-                  {inspection.auction_status === 'sem_passagem' ? '✓ Sem Leilão' : 'Consta Registro'}
+                  {inspection.auction_status === 'sem_passagem' ? 'Sem Leilão' : 'Consta Registro'}
                 </strong>
               </div>
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Gravame:</span>
-                <strong>{inspection.finance_status === 'quitado' ? '✓ Quitada' : 'Financiada'}</strong>
+                <strong>{inspection.finance_status === 'quitado' ? 'Quitada' : 'Financiada'}</strong>
               </div>
             </div>
 
@@ -254,47 +254,47 @@ export function InspectionPrintDialog({
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Quadro / Canote:</span>
                 <strong className={inspection.frame_chassis === 'alinhado_original' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-                  {inspection.frame_chassis === 'alinhado_original' ? '✓ Alinhado e Original' : '⚡ Soldado / Empenado'}
+                  {inspection.frame_chassis === 'alinhado_original' ? 'Alinhado e Original' : 'Soldado / Empenado'}
                 </strong>
               </div>
 
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Motor:</span>
                 <strong className={inspection.engine_condition === 'otimo_silencioso' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-                  {inspection.engine_condition === 'otimo_silencioso' ? '✓ Sereno / Sem Fumaça' : inspection.engine_condition.replace(/_/g, ' ')}
+                  {inspection.engine_condition === 'otimo_silencioso' ? 'Sereno / Sem Fumaça' : inspection.engine_condition.replace(/_/g, ' ')}
                 </strong>
               </div>
 
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Bengalas / Suspensão:</span>
                 <strong className={inspection.front_fork === 'alinhada_sem_vazamento' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
-                  {inspection.front_fork === 'alinhada_sem_vazamento' ? '✓ Sem Vazamento' : 'Retentor Vazando'}
+                  {inspection.front_fork === 'alinhada_sem_vazamento' ? 'Sem Vazamento' : 'Retentor Vazando'}
                 </strong>
               </div>
 
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Kit Relação:</span>
                 <strong className={inspection.chain_kit === 'otimo' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
-                  {inspection.chain_kit === 'otimo' ? '✓ Ótima' : inspection.chain_kit === 'meia_vida' ? 'Meia-vida' : '⚠️ Gasta / Trocar'}
+                  {inspection.chain_kit === 'otimo' ? 'Ótima' : inspection.chain_kit === 'meia_vida' ? 'Meia-vida' : 'Gasta / Trocar'}
                 </strong>
               </div>
 
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Pneus:</span>
                 <strong className={inspection.tires === 'bons' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
-                  {inspection.tires === 'bons' ? '✓ Bons' : inspection.tires === 'meia_vida' ? 'Meia-vida' : '⚠️ Trocar'}
+                  {inspection.tires === 'bons' ? 'Bons' : inspection.tires === 'meia_vida' ? 'Meia-vida' : 'Trocar'}
                 </strong>
               </div>
 
               <div className="p-2 rounded-xl border bg-background">
                 <span className="text-muted-foreground block text-[10px]">Carenagens:</span>
-                <strong>{inspection.fairings_paint === 'original_impecavel' ? '✓ Impecáveis' : 'Riscos Normais'}</strong>
+                <strong>{inspection.fairings_paint === 'original_impecavel' ? 'Impecáveis' : 'Riscos Normais'}</strong>
               </div>
 
               <div className="p-2 rounded-xl border bg-background sm:col-span-2">
                 <span className="text-muted-foreground block text-[10px]">Numeração Canote e Motor:</span>
                 <strong className={inspection.numbers_match ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-                  {inspection.numbers_match ? '✓ Chassi e Motor Conferem 100%' : '✗ Numeração Adulterada'}
+                  {inspection.numbers_match ? 'Chassi e Motor Conferem 100%' : 'Numeração Adulterada'}
                 </strong>
               </div>
             </div>
@@ -366,7 +366,7 @@ export function InspectionPrintDialog({
                 Autenticidade #{inspection.id.slice(0, 8).toUpperCase()}
               </div>
               <div className="text-[7.5px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight">
-                ✓ Conforme CRLV-e Gov.br
+                Conforme CRLV-e Gov.br
               </div>
             </div>
           </div>

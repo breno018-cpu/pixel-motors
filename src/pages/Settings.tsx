@@ -517,7 +517,7 @@ export default function Settings() {
                       req.met ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-muted-foreground'
                     }`}
                   >
-                    {req.met ? '✓' : '○'} {req.label}
+                    {req.met ? '•' : '○'} {req.label}
                   </p>
                 ))}
               </div>

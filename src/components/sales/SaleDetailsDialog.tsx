@@ -390,7 +390,7 @@ export function SaleDetailsDialog({
           {/* Standard Clause */}
           <div className="p-3 border border-warning/30 bg-warning/5 rounded-lg">
             <p className="text-xs text-muted-foreground">
-              ⚠️ <strong>Cláusula padrão:</strong> "O emplacamento é de responsabilidade do cliente."
+              <strong>Cláusula padrão:</strong> "O emplacamento é de responsabilidade do cliente."
             </p>
           </div>
 

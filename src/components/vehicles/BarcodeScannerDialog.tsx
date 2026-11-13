@@ -387,7 +387,7 @@ export function BarcodeScannerDialog({
       if (soundEnabled) playSuccessBeep();
 
       toast({
-        title: '✅ Moto Cadastrada com Sucesso!',
+        title: 'Moto Cadastrada com Sucesso!',
         description: `${payload.brand} ${payload.model} (${payload.color}) adicionada ao estoque.`,
       });
 

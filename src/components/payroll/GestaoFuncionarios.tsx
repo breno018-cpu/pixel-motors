@@ -1583,7 +1583,7 @@ export default function GestaoFuncionarios({
                     </div>
                   </div>
                   <p className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
-                    ⚠️ Durante a Pausa Administrativa, a emissão de novos contratos e propostas fica suspensa preventivamente até a reativação formal.
+                    Durante a Pausa Administrativa, a emissão de novos contratos e propostas fica suspensa preventivamente até a reativação formal.
                   </p>
                 </div>
               )}
@@ -1678,7 +1678,7 @@ export default function GestaoFuncionarios({
                     </div>
                   </div>
                   <p className="text-[11px] text-rose-800 dark:text-rose-300 font-medium">
-                    🚫 O acesso ao sistema é revogado e a ficha do colaborador é encaminhada para liquidação na aba de Rescisões.
+                    O acesso ao sistema é revogado e a ficha do colaborador é encaminhada para liquidação na aba de Rescisões.
                   </p>
                 </div>
               )}

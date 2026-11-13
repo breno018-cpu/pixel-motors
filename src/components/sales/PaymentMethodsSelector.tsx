@@ -3,6 +3,7 @@ import {
   QrCode,
   Banknote,
   CreditCard,
+  Landmark,
   Building2,
   Bike,
   FileCheck2,
@@ -532,13 +533,14 @@ export function PaymentMethodsSelector({
             variant="outline"
             onClick={() => applyPreset('pix_100')}
             className={cn(
-              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all',
+              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all gap-1.5 flex items-center',
               activeMethods.pix && activeCount === 1
                 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/40 ring-1 ring-emerald-500/30'
                 : 'hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30'
             )}
           >
-            ⚡ 100% À Vista (PIX)
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            100% À Vista (PIX)
           </Button>
 
           <Button
@@ -547,13 +549,14 @@ export function PaymentMethodsSelector({
             variant="outline"
             onClick={() => applyPreset('cash_100')}
             className={cn(
-              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all',
+              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all gap-1.5 flex items-center',
               activeMethods.dinheiro && activeCount === 1
                 ? 'bg-green-600/15 text-green-700 dark:text-green-300 border-green-600/40 ring-1 ring-green-600/30'
                 : 'hover:bg-green-600/10 hover:text-green-700 hover:border-green-600/30'
             )}
           >
-            💵 100% Dinheiro
+            <Banknote className="w-3.5 h-3.5 text-emerald-500" />
+            100% Dinheiro
           </Button>
 
           <Button
@@ -562,13 +565,14 @@ export function PaymentMethodsSelector({
             variant="outline"
             onClick={() => applyPreset('fin_down')}
             className={cn(
-              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all',
+              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all gap-1.5 flex items-center',
               activeMethods.financiamento && activeMethods.pix
                 ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-500/40 ring-1 ring-indigo-500/30'
                 : 'hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-500/30'
             )}
           >
-            🏦 Financiamento + Entrada (70/30)
+            <Landmark className="w-3.5 h-3.5 text-indigo-500" />
+            Financiamento + Entrada (70/30)
           </Button>
 
           <Button
@@ -577,13 +581,14 @@ export function PaymentMethodsSelector({
             variant="outline"
             onClick={() => applyPreset('fin_100')}
             className={cn(
-              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all',
+              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all gap-1.5 flex items-center',
               activeMethods.financiamento && activeCount === 1
                 ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-500/40 ring-1 ring-indigo-500/30'
                 : 'hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-500/30'
             )}
           >
-            🏦 Financiamento 100%
+            <Landmark className="w-3.5 h-3.5 text-indigo-500" />
+            Financiamento 100%
           </Button>
 
           <Button
@@ -592,13 +597,14 @@ export function PaymentMethodsSelector({
             variant="outline"
             onClick={() => applyPreset('card_100')}
             className={cn(
-              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all',
+              'h-7 text-xs px-2.5 rounded-lg border font-semibold transition-all gap-1.5 flex items-center',
               activeMethods.cartao_credito && activeCount === 1
                 ? 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/40 ring-1 ring-blue-500/30'
                 : 'hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30'
             )}
           >
-            💳 100% Cartão
+            <CreditCard className="w-3.5 h-3.5 text-blue-500" />
+            100% Cartão
           </Button>
         </div>
       </div>
@@ -1042,7 +1048,7 @@ export function PaymentMethodsSelector({
                     title="Remover Financiamento"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    ✕ Fechar Financiamento
+                    Fechar Financiamento
                   </Button>
                 </div>
               </div>

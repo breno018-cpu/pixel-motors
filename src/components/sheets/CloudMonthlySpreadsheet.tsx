@@ -360,7 +360,7 @@ export function CloudMonthlySpreadsheet({
       saveRowsMutation.mutate(updated);
 
       toast({
-        title: `✨ ${count} comprovante(s) anexado(s) com sucesso!`,
+        title: `${count} comprovante(s) anexado(s) com sucesso!`,
         description: `Vinculado à venda #${targetRow.qt} (${targetRow.cliente}).`,
       });
     } catch (err) {
@@ -1045,9 +1045,9 @@ export function CloudMonthlySpreadsheet({
               <SelectValue placeholder="Concessionária" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">🏢 Todas as Lojas</SelectItem>
-              <SelectItem value="MOC">📍 Concessionária MOC (Montes Claros)</SelectItem>
-              <SelectItem value="MATRIZ">🏢 Demais Lojas / Matriz</SelectItem>
+              <SelectItem value="all">Todas as Lojas</SelectItem>
+              <SelectItem value="MOC">Concessionária MOC (Montes Claros)</SelectItem>
+              <SelectItem value="MATRIZ">Demais Lojas / Matriz</SelectItem>
             </SelectContent>
           </Select>
 
@@ -1115,7 +1115,7 @@ export function CloudMonthlySpreadsheet({
               onClick={() => setSelectedSellerFilter('all')}
               className="h-9 text-xs gap-1 rounded-xl font-semibold"
             >
-              Vendedor: {selectedSellerFilter} ✕
+              Vendedor: {selectedSellerFilter} ×
             </Button>
           )}
         </div>
@@ -2276,7 +2276,7 @@ export function CloudMonthlySpreadsheet({
           >
             <ImageIcon className="w-3.5 h-3.5" />
             {receipts.length > 0 ? (
-              <span>📷 {receipts.length}</span>
+              <span>Anexos: {receipts.length}</span>
             ) : hasReceipts ? (
               <span>Ver Comp.</span>
             ) : (

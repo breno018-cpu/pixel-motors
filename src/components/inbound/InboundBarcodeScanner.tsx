@@ -535,7 +535,7 @@ export function InboundBarcodeScanner({
               <ShieldAlert className="w-10 h-10 stroke-[2.5]" />
             </div>
             <span className="font-display font-black text-white text-xl tracking-wide uppercase drop-shadow-md text-center px-4">
-              ⛔ NÃO PERTENCE A ESTA LOJA! DEIXE NO CAMINHÃO
+              NÃO PERTENCE A ESTA LOJA! DEIXE NO CAMINHÃO
             </span>
           </div>
         )}
@@ -592,7 +592,7 @@ export function InboundBarcodeScanner({
                   Chassi: <strong className="text-foreground">{lastScanResult.item.chassis}</strong> • Motor: {lastScanResult.item.engine_number}
                 </p>
                 <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
-                  ✓ Moto validada com 100% de precisão para {lastScanResult.item.destination_store}.
+                  Moto validada com 100% de precisão para {lastScanResult.item.destination_store}.
                 </p>
               </div>
             </div>
@@ -603,7 +603,7 @@ export function InboundBarcodeScanner({
               <ShieldAlert className="w-6 h-6 text-red-600 shrink-0 mt-0.5 " />
               <div className="flex-1">
                 <p className="font-extrabold text-red-600 dark:text-red-400 text-sm font-display tracking-tight">
-                  ⛔ ATENÇÃO! ESTA MOTO NÃO DEVE DESCER DO CAMINHÃO!
+                  ATENÇÃO! ESTA MOTO NÃO DEVE DESCER DO CAMINHÃO!
                 </p>
                 <p className="text-xs text-foreground mt-0.5">
                   O código ou chassi <strong className="font-mono text-red-600">{lastScanResult.scannedCode}</strong> NÃO consta no manifesto de entrega de <strong>{batch.destination_store}</strong>.
@@ -667,7 +667,7 @@ export function InboundBarcodeScanner({
                 </div>
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-mono text-[10px] font-black uppercase tracking-wider mb-1">
-                    ✓ MOTO DESTA LOJA CONFIRMADA
+                    MOTO DESTA LOJA CONFIRMADA
                   </div>
                   <h3 className="font-display font-black text-xl text-foreground tracking-tight leading-tight">
                     AUTORIZADA PARA DESCER!
@@ -753,7 +753,7 @@ export function InboundBarcodeScanner({
                 </div>
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600 text-white font-mono text-[10px] font-black uppercase tracking-wider mb-1">
-                    ⛔ BLOQUEIO DE SEGURANÇA
+                    BLOQUEIO DE SEGURANÇA
                   </div>
                   <h3 className="font-display font-black text-xl text-red-600 dark:text-red-400 tracking-tight leading-tight">
                     ESTA MOTO NÃO É DESTA LOJA!
@@ -801,7 +801,7 @@ export function InboundBarcodeScanner({
                 </div>
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-600 text-white font-mono text-[10px] font-black uppercase tracking-wider mb-1">
-                    ⚠️ MOTO JÁ CONFERIDA
+                    MOTO JÁ CONFERIDA
                   </div>
                   <h3 className="font-display font-black text-xl text-foreground tracking-tight leading-tight">
                     Caixa Já Descarregada

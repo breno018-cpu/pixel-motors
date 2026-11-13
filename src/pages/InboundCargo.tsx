@@ -438,7 +438,7 @@ export default function InboundCargo({ embedded = false }: InboundCargoProps) {
                 onConfirmUnload={(itemId) => {
                   confirmUnloadItem(activeBatch.id, itemId);
                   toast({
-                    title: '✅ Moto Confirmada para Descida!',
+                    title: 'Moto Confirmada para Descida!',
                     description: 'Caixa validada e registrada no lote da loja.',
                   });
                 }}

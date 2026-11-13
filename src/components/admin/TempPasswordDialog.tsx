@@ -76,13 +76,13 @@ export function TempPasswordDialog({ open, onOpenChange, tempPassword, userName,
 
           {copied && (
             <p className="text-xs text-success text-center font-medium">
-              ✓ Senha copiada para a área de transferência!
+              Senha copiada para a área de transferência!
             </p>
           )}
 
           <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
             <p className="text-xs text-warning">
-              ⚠️ Esta senha será exibida apenas uma vez. Certifique-se de copiá-la antes de fechar.
+              Atenção: Esta senha será exibida apenas uma vez. Certifique-se de copiá-la antes de fechar.
             </p>
           </div>
 

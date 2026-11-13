@@ -3,7 +3,7 @@ import { useCustomRoles } from '@/hooks/useCustomRoles';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Pencil } from 'lucide-react';
+import { Pencil, AlertTriangle, UserX } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -226,13 +226,13 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="ATIVO" className="text-emerald-600 font-semibold">
-                        🟢 Ativo (Acesso Liberado & Comercial)
+                        Ativo (Acesso Liberado & Comercial)
                       </SelectItem>
                       <SelectItem value="SUSPENSO" className="text-amber-600 font-semibold">
-                        🟠 Suspenso (Afastamento / Trava de Acesso)
+                        Suspenso (Afastamento / Trava de Acesso)
                       </SelectItem>
                       <SelectItem value="DEMITIDO" className="text-rose-600 font-semibold">
-                        🔴 Demitido / Desligado (Rescisão Definitiva)
+                        Demitido / Desligado (Rescisão Definitiva)
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -243,7 +243,7 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
               {watchedStatus === 'SUSPENSO' && (
                 <div className="space-y-3 pt-2 border-t border-border/60 animate-in fade-in duration-200">
                   <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300">
-                    ⚠️ <strong>Colaborador Suspenso:</strong> O acesso ao sistema será imediatamente bloqueado e novas vendas não poderão ser vinculadas durante a suspensão.
+                    <AlertTriangle className="w-4 h-4 text-amber-500 inline mr-1" /> <strong>Colaborador Suspenso:</strong> O acesso ao sistema será imediatamente bloqueado e novas vendas não poderão ser vinculadas durante a suspensão.
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <FormField control={form.control} name="status_date" render={({ field }) => (
@@ -273,7 +273,7 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
               {watchedStatus === 'DEMITIDO' && (
                 <div className="space-y-3 pt-2 border-t border-border/60 animate-in fade-in duration-200">
                   <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300">
-                    🚫 <strong>Colaborador Demitido:</strong> O acesso será cancelado definitivamente e o histórico preservado para cálculo rescisório (TRCT) e auditoria.
+                    <UserX className="w-4 h-4 text-rose-500 inline mr-1" /> <strong>Colaborador Demitido:</strong> O acesso será cancelado definitivamente e o histórico preservado para cálculo rescisório (TRCT) e auditoria.
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <FormField control={form.control} name="status_date" render={({ field }) => (

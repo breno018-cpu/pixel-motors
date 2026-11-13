@@ -1267,7 +1267,7 @@ function HoleriteModalContent({ dados, onClose }: HoleriteModalProps) {
                 {/* 7. CANHOTO OFICIAL DE QUITAÇÃO E ASSINATURA (ALINHAMENTO PERFEITO SEM CORTES) */}
                 <div className="mt-4 pt-3.5 border-t-2 border-dashed border-slate-400 text-[10px]">
                   <div className="text-[9px] font-mono text-slate-400 uppercase text-center mb-2.5 tracking-wider">
-                    ✂ ------------------------------------- CORTE AQUI • RECIBO DE QUITAÇÃO ------------------------------------- ✂
+                    --------------------------------------- CORTE AQUI • RECIBO DE QUITAÇÃO ---------------------------------------
                   </div>
                   <div className="flex flex-col sm:flex-row justify-between items-end gap-6 pt-1">
                     <div className="max-w-md text-slate-600 leading-relaxed text-[9.5px]">

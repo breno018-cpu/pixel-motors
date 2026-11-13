@@ -67,6 +67,8 @@ import {
   ChevronDown,
   Boxes,
   Link2,
+  Compass,
+  CheckCircle2,
 } from "lucide-react";
 import { useVehicles } from "@/hooks/useVehicles";
 import {
@@ -344,10 +346,10 @@ export default function CatalogControl() {
   // MUDAR PARTE NO CATÁLOGO (Shineray, Elétricas, Off-Road, Semi-novos)
   const handleMoveCategory = (p: CatalogProduct, newCat: "shineray" | "ele" | "off" | "semi") => {
     const catLabels: Record<string, string> = {
-      shineray: "🟢 Concessionária Shineray",
-      ele: "⚡ Elétricas Multimarcas",
-      off: "🏁 Off-Road & Quadriciclos",
-      semi: "🔄 Semi-Novos Selecionados",
+      shineray: "Concessionária Shineray",
+      ele: "Elétricas Multimarcas",
+      off: "Off-Road & Quadriciclos",
+      semi: "Semi-Novos Selecionados",
     };
     const action: CatalogSyncAction = {
       action: "create",
@@ -665,12 +667,12 @@ export default function CatalogControl() {
                   >
                     <span>
                       {p.cat === "shineray"
-                        ? "🟢 Shineray"
+                        ? "Shineray"
                         : p.cat === "ele"
-                        ? "⚡ Elétricas"
+                        ? "Elétricas"
                         : p.cat === "semi"
-                        ? "🔄 Semi-novos"
-                        : "🏁 Off-Road"}
+                        ? "Semi-novos"
+                        : "Off-Road"}
                     </span>
                     <ChevronDown className="w-2.5 h-2.5 opacity-60" />
                   </Button>
@@ -683,25 +685,25 @@ export default function CatalogControl() {
                     onClick={() => handleMoveCategory(p, "shineray")}
                     className="gap-2 text-xs font-semibold cursor-pointer text-emerald-600 dark:text-emerald-400"
                   >
-                    🟢 Concessionária Shineray
+                    Concessionária Shineray
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => handleMoveCategory(p, "ele")}
                     className="gap-2 text-xs font-semibold cursor-pointer text-cyan-600 dark:text-cyan-400"
                   >
-                    ⚡ Elétricas Multimarcas
+                    Elétricas Multimarcas
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => handleMoveCategory(p, "off")}
                     className="gap-2 text-xs font-semibold cursor-pointer text-amber-600 dark:text-amber-400"
                   >
-                    🏁 Off-Road & Quadriciclos
+                    Off-Road & Quadriciclos
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => handleMoveCategory(p, "semi")}
                     className="gap-2 text-xs font-semibold cursor-pointer text-purple-600 dark:text-purple-400"
                   >
-                    🔄 Semi-Novos Selecionados
+                    Semi-Novos Selecionados
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -951,25 +953,25 @@ export default function CatalogControl() {
                       onClick={() => handleMoveCategory(p, "shineray")}
                       className="gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
                     >
-                      🟢 Concessionária Shineray
+                      Concessionária Shineray
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleMoveCategory(p, "ele")}
                       className="gap-2 text-xs font-semibold text-cyan-600 dark:text-cyan-400"
                     >
-                      ⚡ Elétricas Multimarcas
+                      Elétricas Multimarcas
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleMoveCategory(p, "off")}
                       className="gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400"
                     >
-                      🏁 Off-Road & Quadriciclos
+                      Off-Road & Quadriciclos
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => handleMoveCategory(p, "semi")}
                       className="gap-2 text-xs font-semibold text-purple-600 dark:text-purple-400"
                     >
-                      🔄 Semi-Novos Selecionados
+                      Semi-Novos Selecionados
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
@@ -1109,12 +1111,12 @@ export default function CatalogControl() {
               >
                 <span>
                   {p.cat === "shineray"
-                    ? "🟢 Shineray"
+                    ? "Shineray"
                     : p.cat === "ele"
-                    ? "⚡ Elétricas"
+                    ? "Elétricas"
                     : p.cat === "semi"
-                    ? "🔄 Semi-novos"
-                    : "🏁 Off-Road"}
+                    ? "Semi-novos"
+                    : "Off-Road"}
                 </span>
                 <ChevronDown className="w-3 h-3 opacity-60" />
               </Button>
@@ -1127,25 +1129,25 @@ export default function CatalogControl() {
                 onClick={() => handleMoveCategory(p, "shineray")}
                 className="gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
               >
-                🟢 Concessionária Shineray
+                Concessionária Shineray
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleMoveCategory(p, "ele")}
                 className="gap-2 text-xs font-semibold text-cyan-600 dark:text-cyan-400"
               >
-                ⚡ Elétricas Multimarcas
+                Elétricas Multimarcas
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleMoveCategory(p, "off")}
                 className="gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400"
               >
-                🏁 Off-Road & Quadriciclos
+                Off-Road & Quadriciclos
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleMoveCategory(p, "semi")}
                 className="gap-2 text-xs font-semibold text-purple-600 dark:text-purple-400"
               >
-                🔄 Semi-Novos Selecionados
+                Semi-Novos Selecionados
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1480,7 +1482,8 @@ export default function CatalogControl() {
               }}
               className="h-8 text-xs gap-1.5 rounded-xl font-bold"
             >
-              🌟 Todo o Catálogo ({totalCount})
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              Todo o Catálogo ({totalCount})
             </Button>
 
             <Button
@@ -1492,7 +1495,8 @@ export default function CatalogControl() {
               }}
               className="h-8 text-xs gap-1.5 rounded-xl font-bold text-emerald-600 dark:text-emerald-400"
             >
-              🟢 Shineray ({countShineray})
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              Shineray ({countShineray})
             </Button>
 
             <Button
@@ -1504,7 +1508,8 @@ export default function CatalogControl() {
               }}
               className="h-8 text-xs gap-1.5 rounded-xl font-bold text-cyan-600 dark:text-cyan-400"
             >
-              ⚡ Elétricas ({countEle})
+              <Zap className="w-3.5 h-3.5 text-cyan-500" />
+              Elétricas ({countEle})
             </Button>
 
             <Button
@@ -1516,7 +1521,8 @@ export default function CatalogControl() {
               }}
               className="h-8 text-xs gap-1.5 rounded-xl font-bold text-amber-600 dark:text-amber-400"
             >
-              🏁 Off-road ({countOff})
+              <Compass className="w-3.5 h-3.5 text-amber-500" />
+              Off-road ({countOff})
             </Button>
 
             <Button
@@ -1528,7 +1534,8 @@ export default function CatalogControl() {
               }}
               className="h-8 text-xs gap-1.5 rounded-xl font-bold text-purple-600 dark:text-purple-400"
             >
-              🔄 Semi-novos ({countSemi})
+              <RefreshCw className="w-3.5 h-3.5 text-purple-500" />
+              Semi-novos ({countSemi})
             </Button>
           </div>
         </div>

@@ -1044,7 +1044,7 @@ export function generateContractFromTemplate(data: ContractGenerationData): jsPD
     doc.setFontSize(7.5);
     doc.setTextColor(237, 28, 36);
     doc.text(
-      `✓ Aceito digitalmente em ${dt}${nm}${ip}`,
+      `Aceito digitalmente em ${dt}${nm}${ip}`,
       pageWidth / 2,
       footerY - 4,
       { align: 'center' },

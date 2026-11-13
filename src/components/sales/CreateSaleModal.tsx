@@ -811,7 +811,7 @@ export function CreateSaleModal({
               </h4>
               {isRestrictedSeller && (
                 <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border border-primary/20">
-                  🔒 Dados Oficiais Bloqueados pelo Sistema
+                  Dados Oficiais Bloqueados pelo Sistema
                 </Badge>
               )}
             </div>
@@ -835,7 +835,7 @@ export function CreateSaleModal({
                       <span className="truncate">{sellerStore.storeName}</span>
                     </span>
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
-                      🔒 Bloqueado
+                      Bloqueado
                     </Badge>
                   </div>
                 ) : (
@@ -860,7 +860,7 @@ export function CreateSaleModal({
                       <span className="truncate">{profile?.full_name || 'Seu Usuário'}</span>
                     </span>
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
-                      🔒 Bloqueado
+                      Bloqueado
                     </Badge>
                   </div>
                 ) : (
@@ -900,7 +900,7 @@ export function CreateSaleModal({
                       <span>{new Date().toLocaleDateString('pt-BR')} (Hoje)</span>
                     </span>
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
-                      🔒 Bloqueado
+                      Bloqueado
                     </Badge>
                   </div>
                 ) : (
@@ -1154,7 +1154,7 @@ export function CreateSaleModal({
                       className="h-7 text-xs text-destructive hover:bg-destructive/10 border border-destructive/20 gap-1 font-semibold rounded-lg px-2"
                       title="Fechar e remover financiamento"
                     >
-                      ✕ Fechar Financiamento (Ir para À Vista)
+                      Fechar Financiamento (Ir para À Vista)
                     </Button>
                   </div>
                 </div>
@@ -1273,7 +1273,7 @@ export function CreateSaleModal({
                       className="h-7 text-xs text-destructive hover:bg-destructive/10 border border-destructive/20 gap-1 font-semibold rounded-lg px-2"
                       title="Fechar e remover cartão"
                     >
-                      ✕ Fechar Cartão
+                      Fechar Cartão
                     </Button>
                   </div>
                 </div>
@@ -1452,7 +1452,7 @@ export function CreateSaleModal({
                 <div>
                   {isBalanced ? (
                     <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
-                      ✓ Valores 100% Conciliados
+                      Valores 100% Conciliados
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-bold">

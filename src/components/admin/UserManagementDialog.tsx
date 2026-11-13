@@ -385,16 +385,19 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                     </TableCell>
                     <TableCell>
                       {user.user_status === 'ATIVO' ? (
-                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[11px] font-semibold">
-                          🟢 Ativo
+                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[11px] font-semibold items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          Ativo
                         </Badge>
                       ) : user.user_status === 'SUSPENSO' ? (
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[11px] font-semibold" title={user.status_reason || 'Suspensão temporária'}>
-                          🟠 Suspenso
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[11px] font-semibold items-center gap-1.5" title={user.status_reason || 'Suspensão temporária'}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                          Suspenso
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/30 text-[11px] font-semibold" title={user.status_reason || 'Desligado / Rescisão'}>
-                          🔴 Demitido
+                        <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/30 text-[11px] font-semibold items-center gap-1.5" title={user.status_reason || 'Desligado / Rescisão'}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                          Demitido
                         </Badge>
                       )}
                     </TableCell>

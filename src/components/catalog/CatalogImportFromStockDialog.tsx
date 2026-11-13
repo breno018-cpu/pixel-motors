@@ -245,9 +245,9 @@ export function CatalogImportFromStockDialog({
               <SelectValue placeholder="Filtrar por Loja" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">🏢 Todas as Lojas (Rede)</SelectItem>
-              <SelectItem value="store-divinopolis">📍 Concessionária Divinópolis</SelectItem>
-              <SelectItem value="store-montesclaros">📍 Concessionária Montes Claros</SelectItem>
+              <SelectItem value="all">Todas as Lojas (Rede)</SelectItem>
+              <SelectItem value="store-divinopolis">Concessionária Divinópolis</SelectItem>
+              <SelectItem value="store-montesclaros">Concessionária Montes Claros</SelectItem>
             </SelectContent>
           </Select>
 

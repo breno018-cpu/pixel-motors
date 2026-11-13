@@ -442,7 +442,7 @@ export function LancamentoRapidoFimDeMes({
       }
       setDirtyFuncIds(new Set());
       toast({
-        title: '✅ Folha de Fim de Mês Atualizada!',
+        title: 'Folha de Fim de Mês Atualizada!',
         description: `Todos os ${salvos} colaboradores foram processados e os contracheques foram salvos com sucesso.`,
       });
     } catch (err: any) {
@@ -514,10 +514,10 @@ export function LancamentoRapidoFimDeMes({
                 <SelectValue placeholder="Selecione a loja" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">🏢 Todas as Concessionárias</SelectItem>
+                <SelectItem value="all">Todas as Concessionárias</SelectItem>
                 {stores.map((st) => (
                   <SelectItem key={st.id} value={st.id}>
-                    📍 {st.name}
+                    {st.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -826,7 +826,7 @@ export function LancamentoRapidoFimDeMes({
                               }
                             />
                             <Label htmlFor={`meta-${func.id}`} className="text-[11px] cursor-pointer font-semibold text-emerald-600">
-                              🏆 Meta Batida (+R$ {bonusMetaCargoValor})
+                              Meta Batida (+R$ {bonusMetaCargoValor})
                             </Label>
                           </div>
                         </div>

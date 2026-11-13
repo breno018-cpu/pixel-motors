@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   Wrench,
   CheckCircle2,
+  Check,
   AlertTriangle,
   Printer,
   ShieldCheck,
@@ -234,7 +235,7 @@ export function PdiInspectionPanel() {
                     : 'border-2 border-muted-foreground/40 text-transparent'
                 )}
               >
-                ✓
+                {item.checked && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
               </div>
               <div className="space-y-0.5 flex-1">
                 <span className={cn('text-xs font-bold block', item.checked ? 'text-foreground' : 'text-muted-foreground')}>

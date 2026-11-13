@@ -338,16 +338,16 @@ export function CatalogProductDialog({
             {/* Disponibilidade por Loja / Concessionária */}
             <div className="space-y-1.5 p-3 rounded-xl border bg-muted/30">
               <Label className="text-xs font-semibold flex items-center gap-1.5">
-                🏢 Concessionária / Disponibilidade por Loja
+                Concessionária / Disponibilidade por Loja
               </Label>
               <Select value={storeId} onValueChange={setStoreId}>
                 <SelectTrigger className="bg-background">
                   <SelectValue placeholder="Selecione a loja..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">🏢 Todas as Lojas / Rede (Disponível em Divinópolis e Montes Claros)</SelectItem>
-                  <SelectItem value="store-divinopolis">📍 Concessionária Divinópolis (Matriz Oeste)</SelectItem>
-                  <SelectItem value="store-montesclaros">📍 Concessionária Montes Claros (Polo Norte)</SelectItem>
+                  <SelectItem value="all">Todas as Lojas / Rede (Disponível em Divinópolis e Montes Claros)</SelectItem>
+                  <SelectItem value="store-divinopolis">Concessionária Divinópolis (Matriz Oeste)</SelectItem>
+                  <SelectItem value="store-montesclaros">Concessionária Montes Claros (Polo Norte)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground">

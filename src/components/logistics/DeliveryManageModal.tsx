@@ -140,13 +140,22 @@ export function DeliveryManageModal({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="aguardando_despacho" className="text-xs">
-                  ⏳ Aguardando Despacho (Pátio / PDI)
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Aguardando Despacho (Pátio / PDI)</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="em_transporte" className="text-xs">
-                  🚚 Em Transporte / Rota Rodoviária
+                  <div className="flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-blue-500" />
+                    <span>Em Transporte / Rota Rodoviária</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="entregue" className="text-xs">
-                  ✅ Entregue ao Cliente (Concluído)
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Entregue ao Cliente (Concluído)</span>
+                  </div>
                 </SelectItem>
               </SelectContent>
             </Select>

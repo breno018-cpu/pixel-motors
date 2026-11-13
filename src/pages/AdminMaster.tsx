@@ -759,7 +759,7 @@ export default function AdminMaster() {
                 Tem certeza que deseja excluir o colaborador <strong>{userToDelete?.full_name}</strong> ({userToDelete?.email})?
               </p>
               <p className="text-xs text-destructive font-semibold bg-destructive/10 p-2.5 rounded-lg border border-destructive/20">
-                ⚠️ Esta ação é irreversível. O perfil, credenciais, cargos e vínculos deste usuário serão completamente apagados do sistema.
+                Esta ação é irreversível. O perfil, credenciais, cargos e vínculos deste usuário serão completamente apagados do sistema.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>

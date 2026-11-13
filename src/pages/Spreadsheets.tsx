@@ -162,7 +162,7 @@ export default function Spreadsheets() {
     updateLiveRows(updated);
     setQuickDraft((prev) => ({ ...prev, cliente: '' }));
     toast({
-      title: `✅ Linha #${nextQt} preenchida no Excel Online!`,
+      title: `Linha #${nextQt} preenchida no Excel Online!`,
       description: `${newTestRow.cliente} (${newTestRow.modelo} — ${formatCurrencyBRL(newTestRow.valor)}) adicionada e sincronizada.`,
     });
   };
