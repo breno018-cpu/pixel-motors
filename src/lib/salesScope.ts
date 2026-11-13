@@ -1,5 +1,6 @@
 import { Employee } from '@/hooks/useEmployees';
 import { isMasterUser } from '@/lib/userService';
+import { SELLER_TO_STORE_MAP } from '@/lib/storeResolution';
 
 /**
  * Normaliza strings para comparação fonética/sem acento
@@ -45,36 +46,79 @@ export function isUserSellerRestricted(auth: UserAuthScopeContext): boolean {
 
 /**
  * Determina a concessionária de origem do vendedor logado com base nos dados do sistema:
- * userStore -> linked employee store -> concessionária padrão
+ * userStore -> linked employee store -> mapeamento canônico de vendedor -> concessionária padrão
  */
 export function resolveUserSellerStore(
   auth: UserAuthScopeContext & { userStore?: { id: string; name: string } | null },
   employees: Employee[] = []
 ): { storeId: string; storeName: string } {
-  // 1. Diretamente de auth.userStore
-  if (auth.userStore?.id) {
-    const sId = auth.userStore.id;
-    const isMoc = sId === 'store-montesclaros' || (auth.userStore.name || '').toUpperCase().includes('MONTES CLAROS');
+  const userEmailNorm = (auth.email || '').toLowerCase().trim();
+  const userNameNorm = normalizeName(auth.fullName);
+
+  // 1. Verificação prioritária por identidade explícita de vendedor Montes Claros
+  const isDirectMocSeller =
+    userEmailNorm.includes('moc') ||
+    userEmailNorm.includes('montesclaros') ||
+    userNameNorm.includes('mariana') ||
+    userNameNorm.includes('halana') ||
+    userNameNorm.includes('sabrina') ||
+    userNameNorm.includes('natan');
+
+  if (isDirectMocSeller) {
+    return {
+      storeId: 'store-montesclaros',
+      storeName: 'Concessionária Montes Claros (Polo Norte)',
+    };
+  }
+
+  // 2. Do colaborador vinculado em employees
+  const linkedEmp = (employees || []).find((emp) => {
+    if (emp.profile_id && auth.userId && emp.profile_id.toLowerCase() === auth.userId.toLowerCase()) return true;
+    if (emp.email && userEmailNorm && emp.email.toLowerCase().trim() === userEmailNorm) return true;
+    if (auth.fullName && emp.full_name && normalizeName(emp.full_name) === userNameNorm) return true;
+    return false;
+  });
+
+  if (linkedEmp?.store_id) {
+    const sId = (linkedEmp.store_id || '').toLowerCase().trim();
+    const sName = (linkedEmp.store?.name || '').toUpperCase();
+    const isMoc =
+      sId === 'store-montesclaros' ||
+      sId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+      sId.includes('montes') ||
+      sName.includes('MONTES CLAROS') ||
+      sName.includes('MOC') ||
+      sName.includes('POLO NORTE');
     const storeId = isMoc ? 'store-montesclaros' : 'store-divinopolis';
     const storeName = isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)';
     return { storeId, storeName };
   }
 
-  // 2. Do colaborador vinculado em employees
-  const userEmailNorm = (auth.email || '').toLowerCase().trim();
-  const linkedEmp = (employees || []).find((emp) => {
-    if (emp.profile_id && auth.userId && emp.profile_id.toLowerCase() === auth.userId.toLowerCase()) return true;
-    if (emp.email && userEmailNorm && emp.email.toLowerCase().trim() === userEmailNorm) return true;
-    if (auth.fullName && emp.full_name && normalizeName(emp.full_name) === normalizeName(auth.fullName)) return true;
-    return false;
-  });
-
-  if (linkedEmp?.store_id) {
-    const sId = linkedEmp.store_id;
-    const isMoc = sId === 'store-montesclaros' || (linkedEmp.store?.name || '').toUpperCase().includes('MONTES CLAROS');
+  // 3. Diretamente de auth.userStore
+  if (auth.userStore?.id) {
+    const sId = (auth.userStore.id || '').toLowerCase().trim();
+    const sName = (auth.userStore.name || '').toUpperCase();
+    const isMoc =
+      sId === 'store-montesclaros' ||
+      sId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+      sId.includes('montes') ||
+      sName.includes('MONTES CLAROS') ||
+      sName.includes('MOC') ||
+      sName.includes('POLO NORTE');
     const storeId = isMoc ? 'store-montesclaros' : 'store-divinopolis';
     const storeName = isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)';
     return { storeId, storeName };
+  }
+
+  // 4. Mapeamento canônico fallback por nome de vendedor
+  for (const [key, mappedStore] of Object.entries(SELLER_TO_STORE_MAP)) {
+    if (userNameNorm.includes(key) || userEmailNorm.includes(key)) {
+      const isMoc = mappedStore === 'store-montesclaros' || mappedStore === 'e8254a81-d669-464b-9806-457ba25ce7f0';
+      return {
+        storeId: isMoc ? 'store-montesclaros' : 'store-divinopolis',
+        storeName: isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)',
+      };
+    }
   }
 
   // Padrão: Concessionária Divinópolis (Matriz Oeste)

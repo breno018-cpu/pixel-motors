@@ -91,6 +91,10 @@ const FINANCING_INSTALLMENTS_OPTIONS = [12, 18, 24, 30, 36, 42, 48, 60];
 const CARD_INSTALLMENTS_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 21];
 
 const PRESET_SELLERS = [
+  'Mariana',
+  'Sabrina',
+  'Halana',
+  'Natan',
   'Lilian',
   'Geibriel',
   'Daniel',
@@ -425,7 +429,17 @@ export function CreateSaleModal({
       const effectiveSaleDate = isRestrictedSeller ? new Date().toISOString().split('T')[0] : (saleDate || new Date().toISOString().split('T')[0]);
       const effectiveSeller = activeSeller || currentSellerName || 'Vendedor';
 
-      const isMoc = (effectiveStoreId || '').includes('montesclaros') || (buyerCity || '').toUpperCase().includes('MONTES CLAROS');
+      const cleanSeller = effectiveSeller.toLowerCase().trim();
+      const isMoc =
+        (effectiveStoreId || '').includes('montesclaros') ||
+        effectiveStoreId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+        (sellerStore?.storeId || '').includes('montesclaros') ||
+        sellerStore?.storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+        cleanSeller.includes('mariana') ||
+        cleanSeller.includes('sabrina') ||
+        cleanSeller.includes('halana') ||
+        cleanSeller.includes('natan') ||
+        (buyerCity || '').toUpperCase().includes('MONTES CLAROS');
       const storeName = isMoc
         ? 'Concessionária Montes Claros (Polo Norte)'
         : 'Concessionária Divinópolis (Matriz Oeste)';
@@ -523,8 +537,7 @@ export function CreateSaleModal({
           if (matchedDbStore && isUuid(matchedDbStore.id)) {
             targetStoreUuid = matchedDbStore.id;
           } else {
-            const firstValidStore = stores.find((s: any) => isUuid(s.id));
-            if (firstValidStore) targetStoreUuid = firstValidStore.id;
+            targetStoreUuid = isMoc ? 'e8254a81-d669-464b-9806-457ba25ce7f0' : 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
           }
         }
 
@@ -865,7 +878,27 @@ export function CreateSaleModal({
                   </div>
                 ) : (
                   <>
-                    <Select value={sellerName} onValueChange={setSellerName}>
+                    <Select
+                      value={sellerName}
+                      onValueChange={(val) => {
+                        setSellerName(val);
+                        const clean = val.toLowerCase().trim();
+                        if (
+                          clean.includes('mariana') ||
+                          clean.includes('sabrina') ||
+                          clean.includes('halana') ||
+                          clean.includes('natan')
+                        ) {
+                          setStoreId('store-montesclaros');
+                        } else if (
+                          clean.includes('lilian') ||
+                          clean.includes('geibriel') ||
+                          clean.includes('carlos')
+                        ) {
+                          setStoreId('store-divinopolis');
+                        }
+                      }}
+                    >
                       <SelectTrigger className="h-10 text-xs mt-1">
                         <SelectValue placeholder="Selecione o vendedor" />
                       </SelectTrigger>

@@ -78,7 +78,10 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
   );
   const storeId = resolved.storeId;
   const storeName = resolved.storeName;
-  const isMoc = storeId === 'store-montesclaros';
+  const isMoc =
+    storeId === 'store-montesclaros' ||
+    storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+    (storeName || '').toLowerCase().includes('montes');
   
   let createdAt = new Date().toISOString();
   if (r.data) {

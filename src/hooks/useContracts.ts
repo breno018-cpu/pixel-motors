@@ -103,7 +103,10 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
   const storeName = resolved.storeName;
 
   const regUpper = (r.regiao || '').toUpperCase();
-  const isMoc = storeId === 'store-montesclaros';
+  const isMoc =
+    storeId === 'store-montesclaros' ||
+    storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+    (storeName || '').toLowerCase().includes('montes');
   const isHubCity = regUpper.includes('DIVINOPOLIS') || regUpper.includes('DIVINÓPOLIS') || regUpper.includes('MONTES CLAROS');
   const channel: 'interna' | 'externa' = isHubCity ? 'interna' : 'externa';
 

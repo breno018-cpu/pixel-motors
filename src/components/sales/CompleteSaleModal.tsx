@@ -630,6 +630,21 @@ export function CompleteSaleModal({
         typeof val === 'string' &&
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
+      const isMoc =
+        storeId === 'store-montesclaros' ||
+        storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+        (storeId || '').toLowerCase().includes('montes') ||
+        (selectedStoreData?.storeId || '').toLowerCase().includes('montes') ||
+        selectedStoreData?.storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+        (selectedStoreData?.storeName || '').toLowerCase().includes('montes') ||
+        (sellerStore?.storeId || '').toLowerCase().includes('montes') ||
+        sellerStore?.storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+        (buyerCity || '').toLowerCase().includes('montes') ||
+        (profile?.full_name || '').toLowerCase().includes('mariana') ||
+        (profile?.full_name || '').toLowerCase().includes('sabrina') ||
+        (profile?.full_name || '').toLowerCase().includes('halana') ||
+        (profile?.full_name || '').toLowerCase().includes('natan');
+
       if (templateId && isUuid(templateId)) {
         payload.template_id = templateId;
       }

@@ -258,8 +258,18 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
 
     const emp = employeeProfileMap.get(p.id) || (employees || []).find((e) => e.email && e.email.toLowerCase().trim() === emailKey);
     const res = resellerMap.get(p.id);
-    const resolvedStoreId = emp?.store_id || res?.store_id || undefined;
-    const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) || 'Concessionária Divinópolis (Matriz Oeste)';
+    const isMocUser =
+      emailKey.includes('moc') ||
+      emailKey.includes('montesclaros') ||
+      (p.full_name || '').toLowerCase().includes('mariana') ||
+      (p.full_name || '').toLowerCase().includes('halana') ||
+      (p.full_name || '').toLowerCase().includes('sabrina') ||
+      (p.full_name || '').toLowerCase().includes('natan');
+
+    const rawStoreId = emp?.store_id || res?.store_id;
+    const resolvedStoreId = rawStoreId || (isMocUser ? STORE_UUIDS['store-montesclaros'] : undefined);
+    const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) ||
+      (isMocUser ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)');
 
     const notes = emp?.notes || '';
     let userStatus: 'ATIVO' | 'SUSPENSO' | 'DEMITIDO' = 'ATIVO';
@@ -304,8 +314,17 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
     }
 
     if (!userMap.has(emailKey)) {
-      const resolvedStoreId = e.store_id || undefined;
-      const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) || 'Concessionária Divinópolis (Matriz Oeste)';
+      const isMocUser =
+        emailKey.includes('moc') ||
+        emailKey.includes('montesclaros') ||
+        (e.full_name || '').toLowerCase().includes('mariana') ||
+        (e.full_name || '').toLowerCase().includes('halana') ||
+        (e.full_name || '').toLowerCase().includes('sabrina') ||
+        (e.full_name || '').toLowerCase().includes('natan');
+
+      const resolvedStoreId = e.store_id || (isMocUser ? STORE_UUIDS['store-montesclaros'] : undefined);
+      const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) ||
+        (isMocUser ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)');
 
       const notes = e.notes || '';
       let userStatus: 'ATIVO' | 'SUSPENSO' | 'DEMITIDO' = e.is_active === false ? 'SUSPENSO' : 'ATIVO';
@@ -352,8 +371,17 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
     }
 
     const existing = userMap.get(emailKey);
-    const resolvedStoreId = cu.store_id || (existing?.store_id) || undefined;
-    const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) || 'Concessionária Divinópolis (Matriz Oeste)';
+    const isMocCustom =
+      emailKey.includes('moc') ||
+      emailKey.includes('montesclaros') ||
+      (cu.full_name || '').toLowerCase().includes('mariana') ||
+      (cu.full_name || '').toLowerCase().includes('halana') ||
+      (cu.full_name || '').toLowerCase().includes('sabrina') ||
+      (cu.full_name || '').toLowerCase().includes('natan');
+
+    const resolvedStoreId = cu.store_id || (existing?.store_id) || (isMocCustom ? STORE_UUIDS['store-montesclaros'] : undefined);
+    const resolvedStoreName = (resolvedStoreId ? storeMap.get(resolvedStoreId) : undefined) ||
+      (isMocCustom ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)');
     const effectiveRole = isMasterUser(cu.full_name || existing?.full_name, cu.email, cu.id || existing?.id)
       ? (cu.role || existing?.role || 'vendedor')
       : 'vendedor';

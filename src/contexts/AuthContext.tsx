@@ -370,6 +370,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (storeRes?.data) {
           nextStore = storeRes.data as UserStore;
         }
+
+        const cleanEmail = (nextProfile?.email || '').toLowerCase().trim();
+        const cleanName = (nextProfile?.full_name || '').toLowerCase().trim();
+        const isMoc =
+          cleanEmail.includes('moc') ||
+          cleanEmail.includes('montesclaros') ||
+          cleanName.includes('mariana') ||
+          cleanName.includes('halana') ||
+          cleanName.includes('sabrina') ||
+          cleanName.includes('natan') ||
+          (nextStore?.id || '').includes('montesclaros') ||
+          nextStore?.id === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+          (nextStore?.name || '').toUpperCase().includes('MONTES CLAROS');
+
+        if (isMoc) {
+          nextStore = {
+            id: 'e8254a81-d669-464b-9806-457ba25ce7f0',
+            name: 'Concessionária Montes Claros (Polo Norte)',
+          };
+        } else if (!nextStore) {
+          nextStore = {
+            id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634',
+            name: 'Concessionária Divinópolis (Matriz Oeste)',
+          };
+        }
         setUserStore(nextStore);
       } else {
         // Ensure seller system roles have 'vehicles.create' in DB role_permissions for RLS
@@ -577,6 +602,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setDataScope(initialScope);
           setIsLoading(false);
           setIsDataReady(true);
+          const cleanEmailLogin = userEmail.toLowerCase().trim();
+          const cleanFullNameLogin = (fullName || '').toLowerCase().trim();
+          const isMocLogin =
+            cleanEmailLogin.includes('moc') ||
+            cleanEmailLogin.includes('montesclaros') ||
+            cleanFullNameLogin.includes('mariana') ||
+            cleanFullNameLogin.includes('halana') ||
+            cleanFullNameLogin.includes('sabrina') ||
+            cleanFullNameLogin.includes('natan');
+
+          const initialStore = isMocLogin
+            ? { id: 'e8254a81-d669-464b-9806-457ba25ce7f0', name: 'Concessionária Montes Claros (Polo Norte)' }
+            : { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'Concessionária Divinópolis (Matriz Oeste)' };
+
           writeAuthCache({
             userId: data.user.id,
             profile: {
@@ -588,7 +627,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               must_change_password: false,
             },
             roles: initialRoles,
-            userStore: { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS' },
+            userStore: initialStore,
             permissions: initialPerms,
             dataScope: initialScope,
             customRoleName: null,
@@ -730,10 +769,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const roleName: AppRole = isMaster ? (matchedUser.role || 'admin') : 'vendedor';
           const currentScope: DataScope = isMaster ? 'all' : 'own';
           const currentPerms = isMaster ? ['*'] : SELLER_DEFAULT_PERMS;
-          const sId = matchedUser.store_id || 'store-divinopolis';
-          const isMoc = sId.includes('montesclaros');
+          const sId = (matchedUser.store_id || '').toLowerCase().trim();
+          const cleanEmailMatched = (matchedUser.email || '').toLowerCase().trim();
+          const cleanNameMatched = (matchedUser.full_name || '').toLowerCase().trim();
+          const isMoc =
+            sId === 'store-montesclaros' ||
+            sId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+            sId.includes('montesclaros') ||
+            cleanEmailMatched.includes('moc') ||
+            cleanEmailMatched.includes('montesclaros') ||
+            cleanNameMatched.includes('mariana') ||
+            cleanNameMatched.includes('halana') ||
+            cleanNameMatched.includes('sabrina') ||
+            cleanNameMatched.includes('natan');
           const storeObj = {
-            id: sId,
+            id: isMoc ? (sId || 'store-montesclaros') : (sId || 'store-divinopolis'),
             name: isMoc ? 'Concessionária Montes Claros (Polo Norte)' : 'Concessionária Divinópolis (Matriz Oeste)',
           };
 
