@@ -1100,7 +1100,11 @@ export default function Vehicles() {
                             <div className="space-y-0.5 font-mono text-xs">
                               {(() => {
                                 const isElectric = isElectricVehicle(vehicle);
-                                const hasIdentifier = vehicle.chassis && vehicle.chassis.toUpperCase() !== 'DISPENSADO' && !vehicle.chassis.toUpperCase().startsWith('DISPENSADO');
+                                const hasIdentifier =
+                                  vehicle.chassis &&
+                                  vehicle.chassis.toUpperCase() !== 'DISPENSADO' &&
+                                  !vehicle.chassis.toUpperCase().startsWith('DISPENSADO') &&
+                                  !vehicle.chassis.toUpperCase().includes('DEFINIR');
                                 if (hasIdentifier) {
                                   return (
                                     <button
@@ -1117,7 +1121,7 @@ export default function Vehicles() {
                                 }
                                 return (
                                   <Badge variant="outline" className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-                                    {isElectric ? '⚡ Moto Elétrica (S/ Número)' : 'Sem Chassi'}
+                                    {isElectric ? '⚡ Elétrica (Inserir na venda)' : 'Sem Chassi'}
                                   </Badge>
                                 );
                               })()}
@@ -1395,7 +1399,11 @@ export default function Vehicles() {
                                   </span>
                                   {(() => {
                                     const isElectric = isElectricVehicle(vehicle);
-                                    const hasIdentifier = vehicle.chassis && vehicle.chassis.toUpperCase() !== 'DISPENSADO' && !vehicle.chassis.toUpperCase().startsWith('DISPENSADO');
+                                    const hasIdentifier =
+                                      vehicle.chassis &&
+                                      vehicle.chassis.toUpperCase() !== 'DISPENSADO' &&
+                                      !vehicle.chassis.toUpperCase().startsWith('DISPENSADO') &&
+                                      !vehicle.chassis.toUpperCase().includes('DEFINIR');
                                     if (hasIdentifier) {
                                       return (
                                         <button
@@ -1411,7 +1419,7 @@ export default function Vehicles() {
                                     }
                                     return (
                                       <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                        {isElectric ? '⚡ Moto Elétrica (S/ Número)' : 'Sem Chassi'}
+                                        {isElectric ? '⚡ Elétrica (Inserir na venda)' : 'Sem Chassi'}
                                       </span>
                                     );
                                   })()}

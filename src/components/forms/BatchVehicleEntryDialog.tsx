@@ -64,6 +64,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
   const [costPrice, setCostPrice] = useState('R$ 8.200,00');
   const [salePrice, setSalePrice] = useState('R$ 9.490,00');
   const [chassisListRaw, setChassisListRaw] = useState('');
+  const [electricQtyWithoutChassis, setElectricQtyWithoutChassis] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Detecta se o modelo selecionado é elétrico
@@ -79,6 +80,14 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
     .map((c) => c.trim().toUpperCase())
     .filter((c) => c.length >= (isElectricModel ? 3 : 5));
 
+  // Lista efetiva: se informado texto de chassis, usa o texto; se elétrica e quantidade definida sem chassi, gera placeholders
+  const effectiveChassisList =
+    parsedChassisList.length > 0
+      ? parsedChassisList
+      : isElectricModel && electricQtyWithoutChassis > 0
+      ? Array.from({ length: electricQtyWithoutChassis }, () => 'A DEFINIR NA VENDA')
+      : [];
+
   const handleModelSelect = (selectedModel: string) => {
     setModel(selectedModel);
     const found = SHINERAY_OFFICIAL_LINEUP.find((m) => m.model === selectedModel);
@@ -92,8 +101,12 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
       alert('Selecione a loja de destino.');
       return;
     }
-    if (parsedChassisList.length === 0) {
-      alert(isElectricModel ? 'Informe ou cole ao menos um número de moto/motor válido.' : 'Informe ou cole ao menos um número de chassi válido.');
+    if (effectiveChassisList.length === 0) {
+      alert(
+        isElectricModel
+          ? 'Informe a quantidade de motos elétricas sem chassi ou cole os números de moto/motor.'
+          : 'Informe ou cole ao menos um número de chassi válido.'
+      );
       return;
     }
 
@@ -103,7 +116,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
     const finalStoreId = storeId || userStore?.id;
 
     try {
-      const inserts = parsedChassisList.map((chassis) => ({
+      const inserts = effectiveChassisList.map((chassis) => ({
         brand: brand.toUpperCase(),
         model: model.toUpperCase(),
         vehicle_type: vehicleType,
@@ -347,30 +360,68 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
             </div>
           </div>
 
+          {/* Opção Rápida para Elétricas Sem Chassi */}
+          {isElectricModel && (
+            <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-scale-in">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Cadastrar Elétricas Sem Chassi
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  O chassi ou motor será inserido pelo vendedor no momento da venda de cada unidade.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Label className="text-xs font-semibold whitespace-nowrap">Qtd de motos:</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={electricQtyWithoutChassis || ''}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const val = Math.max(0, parseInt(e.target.value) || 0);
+                    setElectricQtyWithoutChassis(val);
+                    if (val > 0) setChassisListRaw('');
+                  }}
+                  className="h-8 w-20 text-xs font-bold text-center bg-background"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Lista de Chassis ou Números de Moto em Massa */}
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold text-foreground">
                 {isElectricModel
-                  ? 'Lista de Números da Moto / Motor (Cole da NF ou digite 1 por linha) *'
+                  ? 'Ou cole os Números da Moto / Motor (1 por linha ou separados por vírgula):'
                   : 'Lista de Números de Chassi (Cole da NF ou digite 1 por linha) *'}
               </Label>
               <Badge variant="secondary" className="text-[10px] font-mono">
-                {parsedChassisList.length} {isElectricModel ? 'moto(s) elétrica(s)' : `chassi${parsedChassisList.length > 1 ? 's' : ''}`}
+                {effectiveChassisList.length} {isElectricModel ? 'moto(s) elétrica(s)' : `chassi${effectiveChassisList.length > 1 ? 's' : ''}`}
               </Badge>
             </div>
             <Textarea
               placeholder={
                 isElectricModel
-                  ? `Cole aqui os números da moto/motor, por exemplo:\nQS60V2000W001\nQS60V2000W002\nQS60V2000W003\n...`
+                  ? `Opcional. Se tiver os números agora, cole aqui (ex: QS60V2000W001). Caso contrário, use o campo de quantidade acima para cadastrar sem chassi e preencher na venda.`
                   : `Cole aqui os números de chassi, por exemplo:\n9F2W125A0P000101\n9F2W125A0P000102\n9F2W125A0P000103\n...`
               }
               value={chassisListRaw}
-              onChange={(e) => setChassisListRaw(e.target.value)}
+              onChange={(e) => {
+                setChassisListRaw(e.target.value);
+                if (e.target.value.trim().length > 0) {
+                  setElectricQtyWithoutChassis(0);
+                }
+              }}
               className="font-mono text-xs h-28 resize-none bg-background uppercase"
             />
             <p className="text-[10px] text-muted-foreground">
-              Você pode separar por linha, vírgula ou espaço. O sistema criará {parsedChassisList.length || 0} veículos idênticos no estoque de uma só vez.
+              {isElectricModel
+                ? `Total a ser cadastrado: ${effectiveChassisList.length} unidade(s). ${effectiveChassisList.some(c => c.includes('DEFINIR')) ? 'As unidades sem chassi serão identificadas para preenchimento na venda.' : ''}`
+                : `Você pode separar por linha, vírgula ou espaço. O sistema criará ${effectiveChassisList.length || 0} veículos idênticos no estoque de uma só vez.`}
             </p>
           </div>
         </div>
@@ -387,7 +438,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
           </Button>
           <Button
             size="sm"
-            disabled={isSubmitting || parsedChassisList.length === 0}
+            disabled={isSubmitting || effectiveChassisList.length === 0}
             onClick={handleSubmit}
             className="text-xs gap-1.5 font-semibold"
           >
@@ -399,7 +450,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
             ) : (
               <>
                 <Check className="w-3.5 h-3.5" />
-                Cadastrar {parsedChassisList.length} Unidades
+                Cadastrar {effectiveChassisList.length} Unidades
               </>
             )}
           </Button>

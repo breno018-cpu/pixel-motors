@@ -539,7 +539,9 @@ export function ChassisSearchInput({
                 <div className="min-w-0 space-y-0.5">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary transition-colors truncate">
-                      {item.chassis || 'SEM CHASSI'}
+                      {!item.chassis || item.chassis.toUpperCase().includes('DEFINIR') || item.chassis.toUpperCase() === 'DISPENSADO'
+                        ? '⚡ Sem Chassi (Inserir na venda)'
+                        : item.chassis}
                     </span>
                     {item.type === 'stock' && (
                       <Badge
@@ -751,7 +753,9 @@ export function ChassisSearchInput({
                             {v.status === 'disponivel' ? 'DISPONÍVEL' : v.status === 'reservado' ? 'RESERVADO' : 'ESTOQUE'}
                           </Badge>
                           <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary">
-                            {v.chassis || 'SEM CHASSI'}
+                            {!v.chassis || v.chassis.toUpperCase().includes('DEFINIR') || v.chassis.toUpperCase() === 'DISPENSADO'
+                              ? '⚡ Sem Chassi (Inserir na venda)'
+                              : v.chassis}
                           </span>
                           {v.plate && (
                             <Badge variant="outline" className="text-[10px] px-1 py-0 font-mono">

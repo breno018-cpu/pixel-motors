@@ -731,9 +731,13 @@ export function CompleteSaleModal({
         }
 
         // Marca imediatamente o veículo como vendido em todos os armazenamentos locais e remotos
-        await markVehicleAsSold(finalVehicleId || vehicleId || vehicleChassis, 'vendido');
-        if (vehicleId && isUuid(vehicleId)) {
-          await supabase.from('vehicles').update({ status: 'vendido' }).eq('id', vehicleId);
+        const cleanAssignedChassis = vehicleChassis && !vehicleChassis.toUpperCase().includes('DEFINIR') ? vehicleChassis.trim().toUpperCase() : undefined;
+        await markVehicleAsSold(finalVehicleId || vehicleId || vehicleChassis, 'vendido', cleanAssignedChassis);
+        const targetVehId = finalVehicleId || (vehicleId && isUuid(vehicleId) ? vehicleId : null);
+        if (targetVehId) {
+          const vehUpdate: Record<string, any> = { status: 'vendido' };
+          if (cleanAssignedChassis) vehUpdate.chassis = cleanAssignedChassis;
+          await supabase.from('vehicles').update(vehUpdate).eq('id', targetVehId);
         }
       } catch (dbErr) {
         console.warn('Aviso ao sincronizar contrato com o Supabase (registro tratado localmente):', dbErr);

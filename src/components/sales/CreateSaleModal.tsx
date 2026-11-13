@@ -676,12 +676,22 @@ export function CreateSaleModal({
             finalVehicleId = newV.id;
           }
         } else {
-          // Atualiza status do veículo existente
-          await supabase.from('vehicles').update({ status: saleType === 'concluido' ? 'vendido' : 'reservado' }).eq('id', finalVehicleId);
+          // Atualiza status e chassi/motor do veículo existente (ex: elétrica cadastrada sem chassi)
+          const vehUpdate: Record<string, any> = {
+            status: saleType === 'concluido' ? 'vendido' : 'reservado',
+          };
+          if (vehicleChassis && vehicleChassis.trim() && !vehicleChassis.toUpperCase().includes('DEFINIR')) {
+            vehUpdate.chassis = vehicleChassis.trim().toUpperCase();
+          }
+          await (supabase as any).from('vehicles').update(vehUpdate).eq('id', finalVehicleId);
         }
 
         // Atualiza imediatamente o veículo como vendido ou reservado em todos os armazenamentos locais e remotos
-        await markVehicleAsSold(finalVehicleId || vehicleChassis, saleType === 'concluido' ? 'vendido' : 'reservado');
+        await markVehicleAsSold(
+          finalVehicleId || vehicleChassis,
+          saleType === 'concluido' ? 'vendido' : 'reservado',
+          vehicleChassis && !vehicleChassis.toUpperCase().includes('DEFINIR') ? vehicleChassis.trim().toUpperCase() : undefined
+        );
 
         contractPayload.vehicle_id = finalVehicleId;
 
@@ -1071,7 +1081,12 @@ export function CreateSaleModal({
                         value={vehicleChassis}
                         onChange={(val) => setVehicleChassis(val)}
                         onSelectVehicle={(veh) => {
-                          setVehicleChassis(veh.chassis || '');
+                          const isNoChassisYet =
+                            !veh.chassis ||
+                            veh.chassis.toUpperCase().includes('DEFINIR') ||
+                            veh.chassis.toUpperCase() === 'DISPENSADO';
+                          // Se o veículo no estoque não tiver chassi definitivo, deixa o campo aberto para o vendedor inserir o chassi ou motor
+                          setVehicleChassis(isNoChassisYet ? '' : (veh.chassis || ''));
                           if (veh.brand || veh.model) {
                             setVehicleModel(`${veh.brand || ''} ${veh.model || ''}`.trim());
                           }
@@ -1102,9 +1117,15 @@ export function CreateSaleModal({
                         }}
                         filterStoreId={storeId}
                       />
+                      {isElectric && !vehicleChassis && (
+                        <p className="text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg font-medium mt-1 flex items-center gap-1.5 animate-in fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                          <span>Moto Elétrica: Digite o número do chassi ou motor da unidade que está sendo vendida.</span>
+                        </p>
+                      )}
                       <div className="flex items-center justify-between mt-1 px-0.5">
                         <span className="text-[10px] text-muted-foreground">
-                          {isElectric ? 'Moto Elétrica (Identificação por motor)' : 'Elétricas / Bicicletas'}
+                          {isElectric ? 'Moto Elétrica (Identificação por chassi ou motor)' : 'Elétricas / Bicicletas'}
                         </span>
                         <button
                           type="button"

@@ -131,13 +131,15 @@ export function getCachedVehicles(): Vehicle[] {
  */
 export async function markVehicleAsSold(
   vehicleIdOrChassis: string,
-  newStatus: 'vendido' | 'reservado' = 'vendido'
+  newStatus: 'vendido' | 'reservado' = 'vendido',
+  assignedChassis?: string | null
 ): Promise<void> {
   if (typeof window === 'undefined' || !vehicleIdOrChassis) return;
 
   const rawClean = vehicleIdOrChassis.trim();
   const cleanVinTarget = rawClean.toUpperCase().replace(/[^A-Z0-9]/g, '');
   let matchedId: string | null = null;
+  const cleanAssigned = assignedChassis ? assignedChassis.trim().toUpperCase() : null;
 
   // 1. Atualiza VEHICLES_CACHE_KEY
   try {
@@ -157,6 +159,7 @@ export async function markVehicleAsSold(
         return {
           ...v,
           status: newStatus,
+          chassis: cleanAssigned || v.chassis,
           updated_at: new Date().toISOString(),
         };
       }
@@ -191,6 +194,7 @@ export async function markVehicleAsSold(
             return {
               ...v,
               status: newStatus,
+              chassis: cleanAssigned || v.chassis,
               updated_at: new Date().toISOString(),
             };
           }
@@ -207,10 +211,13 @@ export async function markVehicleAsSold(
   try {
     const targetId = matchedId || rawClean;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+    const updatePayload: Record<string, any> = { status: newStatus };
+    if (cleanAssigned) updatePayload.chassis = cleanAssigned;
+
     if (isUuid) {
-      await (supabase as any).from('vehicles').update({ status: newStatus }).eq('id', targetId);
+      await (supabase as any).from('vehicles').update(updatePayload).eq('id', targetId);
     } else if (cleanVinTarget.length >= 6) {
-      await (supabase as any).from('vehicles').update({ status: newStatus }).ilike('chassis', `%${cleanVinTarget}%`);
+      await (supabase as any).from('vehicles').update(updatePayload).ilike('chassis', `%${cleanVinTarget}%`);
     }
   } catch {}
 
@@ -238,7 +245,14 @@ export function isChassisAlreadySold(
 ): { isSold: boolean; reason?: string; vehicle?: Vehicle } {
   if (!chassis) return { isSold: false };
   const cleanTarget = chassis.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (!cleanTarget || cleanTarget.length < 5 || cleanTarget === 'DISPENSADO') {
+  if (
+    !cleanTarget ||
+    cleanTarget.length < 5 ||
+    cleanTarget === 'DISPENSADO' ||
+    cleanTarget.includes('DEFINIR') ||
+    cleanTarget.includes('PENDENTE') ||
+    cleanTarget.includes('PROVISORIO')
+  ) {
     return { isSold: false };
   }
 

@@ -237,13 +237,13 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
 
     const cleanChassis = chassis.trim().toUpperCase();
 
-    if (!cleanChassis || cleanChassis.length < 3) {
+    // Moto a Combustão EXIGE chassi (mínimo 5 caracteres).
+    // Moto Elétrica PODE ser cadastrada sem chassi (o chassi ou motor será inserido na hora da venda).
+    if (!isElectric && (!cleanChassis || cleanChassis.length < 5)) {
       toast({
         variant: 'destructive',
-        title: isElectric ? 'Número da Moto Obrigatório' : 'Chassi Obrigatório',
-        description: isElectric
-          ? 'Informe o número da moto ou do motor para prosseguir com o cadastro.'
-          : 'Digite o chassi do veículo para prosseguir com o cadastro, ou ative a opção de Moto Elétrica.',
+        title: 'Chassi Obrigatório',
+        description: 'Digite o chassi do veículo para prosseguir com o cadastro, ou ative a opção de Moto Elétrica.',
       });
       return;
     }
@@ -268,12 +268,14 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
       return;
     }
 
-    const finalChassis = cleanChassis;
+    const finalChassis = cleanChassis || (isElectric ? 'A DEFINIR NA VENDA' : '');
 
     const confirmed = await confirm({
       title: 'Confirmar Cadastro no Estoque?',
       description: `Deseja registrar ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) - ${
-        isElectric ? `Nº da Moto: ${finalChassis}` : `Chassi ${finalChassis}`
+        isElectric
+          ? (finalChassis === 'A DEFINIR NA VENDA' ? 'Sem chassi (será inserido na venda)' : `Nº da Moto/Motor: ${finalChassis}`)
+          : `Chassi ${finalChassis}`
       } no estoque disponível?`,
       confirmText: 'Sim, Cadastrar Veículo',
       cancelText: 'Revisar',
@@ -383,7 +385,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               <Label className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
                 <Hash className="w-4 h-4 text-primary" />
                 {isElectric
-                  ? '1. Número da Moto / Motor * — Campo Obrigatório'
+                  ? '1. Número da Moto / Motor (Opcional no cadastro — inserir na venda)'
                   : '1. Chassi do Veículo (VIN) * — Primeiro Campo a Preencher'}
               </Label>
               <div className="flex items-center gap-2">
@@ -407,7 +409,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 ) : (
                   <Badge variant="outline" className="text-[10px] font-bold text-emerald-700 border-emerald-500/40 bg-emerald-500/15 gap-1">
                     <Zap className="w-3 h-3 text-emerald-600" />
-                    MOTO ELÉTRICA / MOTOR
+                    OPCIONAL NO CADASTRO
                   </Badge>
                 )}
               </div>
@@ -420,12 +422,12 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 onChange={(e) => handleChassisChange(e.target.value)}
                 placeholder={
                   isElectric
-                    ? 'DIGITE O NÚMERO DA MOTO (EX: NÚMERO DO MOTOR / SÉRIE)...'
+                    ? 'DEIXE EM BRANCO PARA INSERIR NA HORA DA VENDA (OU DIGITE O Nº DA MOTO/MOTOR)...'
                     : 'DIGITE O CHASSI (EX: 99HSHF250VS001288)...'
                 }
                 className="h-12 text-base sm:text-lg font-mono font-black tracking-widest bg-background border-primary/40 focus-visible:ring-primary shadow-xs uppercase placeholder:font-sans placeholder:text-xs placeholder:font-normal placeholder:tracking-normal"
                 maxLength={isElectric ? 40 : 17}
-                required
+                required={!isElectric}
               />
               {!isElectric && isDecodingChassis && (
                 <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5 text-xs text-primary font-bold">
@@ -445,12 +447,14 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                       Modo Moto Elétrica Ativo
                     </p>
                     <p className="text-[11px] opacity-90 truncate">
-                      Identificação cadastrada pelo <strong>Número da Moto / Motor</strong>: <strong>{chassis.trim() || 'Aguardando digitação...'}</strong>
+                      {chassis.trim()
+                        ? `Número da moto registrado: ${chassis.trim()}`
+                        : 'Você pode cadastrar agora sem chassi/motor — o vendedor poderá informar o chassi ou motor na hora da venda!'}
                     </p>
                   </div>
                 </div>
                 <Badge className="bg-emerald-600 text-white font-mono text-[10px] shrink-0 ml-2">
-                  MOTO ELÉTRICA
+                  {chassis.trim() ? 'Nº INFORMADO' : 'INSERIR NA VENDA'}
                 </Badge>
               </div>
             )}
