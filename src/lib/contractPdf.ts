@@ -18,7 +18,7 @@ export interface ContractData {
   /** Todos os veículos do contrato. Quando há mais de um, o PDF lista em tabela. */
   vehicles?: ContractVehicleLine[];
   contractNumber: string;
-  contractType: 'venda' | 'repasse';
+  contractType: 'venda' | 'repasse' | 'seminovo';
   createdAt: string;
   storeName: string;
   storeCnpj?: string;
@@ -51,28 +51,74 @@ export interface ContractData {
   pickup?: PickupPerson | null;
 }
 
-export const CLASSIC_SALE_TEMPLATE = {
-  header_content: '[center][b][size:12]CONTRATO DE COMPRA E VENDA DE VEÍCULO[/size][/b][/center]',
-  body_content:
-    'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:\n\n' +
-    '[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}\n' +
-    '[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}\n\n' +
-    '[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}',
-  clauses_content:
-    '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA[/b][/center]\n' +
-    'Declaro que estou vendendo o veículo acima descrito e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a presente data de venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza. A partir desta venda, tais responsabilidades passam a ser integralmente do comprador acima identificado. Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do comprador a partir desta data.\n\n' +
-    '[b]CLÁUSULAS:[/b]\n' +
-    '[b]1.[/b] A VENDEDORA transfere ao(à) COMPRADOR(A) a propriedade e posse da motocicleta acima descrita, livre de ônus, na presente data.\n' +
-    '[b]2.[/b] O(A) COMPRADOR(A) declara ter vistoriado a motocicleta e a recebe no estado em que se encontra, sem direito a reclamações posteriores quanto a defeitos aparentes.\n' +
-    '[b]3.[/b] A partir desta data, todas as responsabilidades civis, criminais e tributárias (multas, IPVA, licenciamento) passam a ser exclusivas do(a) COMPRADOR(A).\n' +
-    '[b]4.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.',
-  signature_content:
-    '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]\n\n' +
-    '[signatures]\nVENDEDORA | {{LOJA_RAZAO_SOCIAL}} || COMPRADOR(A) | {{CLIENTE_NOME}}\n[/signatures]',
-  fixed_clauses: [] as string[],
-  optional_clauses: [] as any[],
-};
-
+export const CLASSIC_SALE_TEMPLATE = {
+
+  header_content: '[center][b][size:12]CONTRATO DE COMPRA E VENDA DE VEÍCULO[/size][/b][/center]',
+
+  body_content:
+
+    'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda da motocicleta abaixo descrita:\n\n' +
+
+    '[b]MOTOCICLETA:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}\n' +
+
+    '[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}\n\n' +
+
+    '[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}',
+
+  clauses_content:
+
+    '[center][b]TERMO DE RESPONSABILIDADE E GARANTIA[/b][/center]\n' +
+
+    'Declaro que estou vendendo o veículo acima descrito e que assumo total responsabilidade por quaisquer ocorrências relacionadas ao mesmo até a presente data de venda, incluindo multas, danos materiais e pessoais, respondendo civil e criminalmente, bem como por todo e qualquer tipo de débito, de qualquer espécie ou natureza. A partir desta venda, tais responsabilidades passam a ser integralmente do comprador acima identificado. Declaro ainda que, conforme a legislação vigente, o veículo será de responsabilidade exclusiva do comprador a partir desta data.\n\n' +
+
+    '[b]CLÁUSULAS:[/b]\n' +
+
+    '[b]1.[/b] A VENDEDORA transfere ao(à) COMPRADOR(A) a propriedade e posse da motocicleta acima descrita, livre de ônus, na presente data.\n' +
+
+    '[b]2.[/b] O(A) COMPRADOR(A) declara ter vistoriado a motocicleta e a recebe no estado em que se encontra, sem direito a reclamações posteriores quanto a defeitos aparentes.\n' +
+
+    '[b]3.[/b] A partir desta data, todas as responsabilidades civis, criminais e tributárias (multas, IPVA, licenciamento) passam a ser exclusivas do(a) COMPRADOR(A).\n' +
+
+    '[b]4.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer questões oriundas deste contrato.',
+
+  signature_content:
+
+    '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]\n\n' +
+
+    '[signatures]\nVENDEDORA | {{LOJA_RAZAO_SOCIAL}} || COMPRADOR(A) | {{CLIENTE_NOME}}\n[/signatures]',
+
+  fixed_clauses: [] as string[],
+
+  optional_clauses: [] as any[],
+
+};
+
+
+
+
+export const CLASSIC_SEMINOVOS_TEMPLATE = {
+  header_content: '[center][b][size:12]CONTRATO DE COMPRA E VENDA DE VEÍCULO SEMINOVO[/size][/b][/center]',
+  body_content:
+    'Pelo presente instrumento particular, de um lado [b]{{LOJA_RAZAO_SOCIAL}}[/b], com sede em {{LOJA_ENDERECO}} — {{LOJA_CIDADE}}, telefone {{LOJA_TELEFONE}}, doravante denominada [b]VENDEDORA[/b], e de outro lado [b]{{CLIENTE_NOME}}[/b], portador(a) do CPF/CNPJ nº {{CLIENTE_CPF}}, residente em {{CLIENTE_ENDERECO}}, telefone {{CLIENTE_TELEFONE}}, e-mail {{CLIENTE_EMAIL}}, doravante denominado(a) [b]COMPRADOR(A)[/b], têm entre si justo e contratado a compra e venda do veículo seminovo/usado abaixo caracterizado:\n\n' +
+    '[b]VEÍCULO:[/b] {{VEICULO_MARCA}} {{VEICULO_MODELO}} — [b]Ano:[/b] {{VEICULO_ANO}} — [b]Cor:[/b] {{VEICULO_COR}}\n' +
+    '[b]Chassi:[/b] {{VEICULO_CHASSI}} — [b]Placa:[/b] {{VEICULO_PLACA}} — [b]Renavam:[/b] {{VEICULO_RENAVAM}}\n\n' +
+    '[b]VALOR DA VENDA:[/b] {{VALOR_TOTAL}}, [b]Forma de Pagamento:[/b] {{FORMA_PAGAMENTO}}, [b]Entrada:[/b] {{VALOR_ENTRADA}}, [b]Parcelas:[/b] {{PARCELAS}} de {{VALOR_PARCELA}}',
+  clauses_content:
+    '[center][b]TERMO DE VISTORIA, GARANTIA LEGAL E RESPONSABILIDADE (SEMINOVOS / MULTIMARCAS)[/b][/center]\n' +
+    'O(A) COMPRADOR(A) declara que vistoriou previamente o veículo seminovo acima identificado, aprovando integralmente seu estado mecânico, estético, funilaria e tapeçaria, ciente de que se trata de bem usado com quilometragem rodada e desgaste natural.\n\n' +
+    '[b]CLÁUSULAS CONTRATUAIS:[/b]\n' +
+    '[b]1.[/b] A VENDEDORA transfere a posse e propriedade do veículo acima descrito, livre e desembaraçado de ônus, dívidas fiscais ou gravames anteriores à presente data.\n' +
+    '[b]2.[/b] GARANTIA LEGAL DE 90 DIAS: Em conformidade com o Art. 26, inciso II da Lei nº 8.078/90 (Código de Defesa do Consumidor), a VENDEDORA concede garantia legal de 90 (noventa) dias a contar da entrega física, restrita e exclusivamente aos componentes internos lubrificados de motor e caixa de câmbio. Itens de desgaste natural (freios, pneus, suspensão, bateria, lâmpadas e estofamento) não possuem garantia.\n' +
+    '[b]3.[/b] A partir da presente data e horário de retirada, todas as responsabilidades civis, administrativas, criminais e pontuações de infrações de trânsito (multas) passam a ser de exclusiva responsabilidade do(a) COMPRADOR(A).\n' +
+    '[b]4.[/b] O(A) COMPRADOR(A) compromete-se a providenciar a transferência do registro do veículo junto ao DETRAN no prazo impreterível de 30 (trinta) dias.\n' +
+    '[b]5.[/b] Fica eleito o foro da comarca de {{LOJA_CIDADE}} para dirimir quaisquer controvérsias decorrentes deste contrato.',
+  signature_content:
+    '[center]{{LOJA_CIDADE}}, {{DATA_CONTRATO}}[/center]\n\n' +
+    '[signatures]\nVENDEDORA | {{LOJA_RAZAO_SOCIAL}} || COMPRADOR(A) | {{CLIENTE_NOME}}\n[/signatures]',
+  fixed_clauses: [] as string[],
+  optional_clauses: [] as any[],
+};
+
 export const CLASSIC_REPASSE_TEMPLATE = {
   header_content: '[center][b][size:12]CONTRATO DE REPASSE DE VEÍCULO[/size][/b][/center]',
   body_content:
@@ -114,7 +160,10 @@ function formatPaymentMethodLabel(method?: string): string {
  */
 export function generateContractPDF(data: ContractData): jsPDF {
   const isRepasse = data.contractType === 'repasse';
-  const baseTemplate = isRepasse ? CLASSIC_REPASSE_TEMPLATE : CLASSIC_SALE_TEMPLATE;
+  const isSeminovo = data.contractType === 'seminovo' || (data.notes && data.notes.toLowerCase().includes('seminov'));
+  const baseTemplate = isRepasse
+    ? CLASSIC_REPASSE_TEMPLATE
+    : (isSeminovo ? CLASSIC_SEMINOVOS_TEMPLATE : CLASSIC_SALE_TEMPLATE);
 
   // Resolve cidade da loja com fallback inteligente
   const rawCity =
