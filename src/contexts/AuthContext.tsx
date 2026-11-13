@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { DataScope } from '@/lib/permissions';
 import { initializeSingleSessionGuard, teardownSingleSessionGuard } from '@/lib/singleSessionGuard';
 import { removeSecureCookie } from '@/lib/secureStorage';
-import { isMasterUser } from '@/lib/userService';
+import { isMasterUser, DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 
 type AppRole = 'admin' | 'gerente' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'coordenador_logistica' | 'motorista' | 'visualizador';
@@ -751,6 +751,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             };
           }
         } catch {}
+      }
+
+      // 4.2 Busca na base oficial resiliente de colaboradores (DEFAULT_OFFICIAL_USERS)
+      if (!matchedUser) {
+        const found = DEFAULT_OFFICIAL_USERS.find((u) => {
+          const uEmail = (u.email || '').toLowerCase().trim();
+          const uName = (u.full_name || '').toLowerCase().trim();
+          return (
+            uEmail === cleanEmail ||
+            cleanEmail.includes(uEmail) ||
+            uEmail.startsWith(cleanEmail) ||
+            uName === cleanEmail ||
+            cleanEmail.includes(uName) ||
+            (cleanEmail === 'admin' && (uEmail.includes('admbreno') || uEmail.includes('breno'))) ||
+            (cleanEmail === 'breno' && uEmail.includes('breno')) ||
+            (cleanEmail === 'joao' && uEmail.includes('joao')) ||
+            (cleanEmail === 'gestor' && uEmail.includes('joao'))
+          );
+        });
+        if (found) {
+          matchedUser = { ...found };
+        }
+      }
+
+      // 4.3 Fallback Direto para Administradores / Dono (Breno & João)
+      if (!matchedUser && (isMasterUser(cleanEmail, cleanEmail, null) || cleanEmail === 'admin' || cleanEmail === 'dono')) {
+        matchedUser = {
+          id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
+          email: cleanEmail.includes('@') ? cleanEmail : 'admbreno@index.com',
+          full_name: 'Breno Lima',
+          role: 'admin',
+          store_id: 'store-divinopolis',
+          temp_password: 'PixelMotors@2026',
+        };
       }
 
       // 5. Se encontrou o cadastro do usuário, valida a senha com flexibilidade total para colaboradores

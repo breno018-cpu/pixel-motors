@@ -162,15 +162,143 @@ export function generateRandomPassword(): string {
   return pass;
 }
 
+export const DEFAULT_OFFICIAL_USERS: (UserWithRole & { temp_password?: string })[] = [
+  {
+    id: '54db7881-ce90-42d4-baff-0e0ec2cb9eeb',
+    email: 'admbreno@index.com',
+    full_name: 'Breno Lima',
+    role: 'admin',
+    store_id: 'store-divinopolis',
+    store_name: 'Concessionária Divinópolis',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+  {
+    id: 'def5409c-f9cc-47ae-b45e-9e15fd52727f',
+    email: 'breno@l1mamotors.com.br',
+    full_name: 'Breno Lima',
+    role: 'admin',
+    store_id: 'store-divinopolis',
+    store_name: 'Concessionária Divinópolis',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+  {
+    id: '63f4c11a-7675-4209-bcc5-770bd7e514a3',
+    email: 'joaovitor@l1mamotors.com.br',
+    full_name: 'João Vitor',
+    role: 'gerente',
+    store_id: 'store-divinopolis',
+    store_name: 'Concessionária Divinópolis',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+  {
+    id: 'emp-lilian-div',
+    email: 'lilian@l1mamotors.com.br',
+    full_name: 'Lilian',
+    role: 'vendedor',
+    store_id: 'store-divinopolis',
+    store_name: 'Concessionária Divinópolis',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+  {
+    id: 'emp-geibriel-div',
+    email: 'geibriel@l1mamotors.com.br',
+    full_name: 'Geibriel',
+    role: 'vendedor',
+    store_id: 'store-divinopolis',
+    store_name: 'Concessionária Divinópolis',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+  {
+    id: 'emp-daniel-div',
+    email: 'daniel@l1mamotors.com.br',
+    full_name: 'Daniel',
+    role: 'vendedor',
+    store_id: 'store-divinopolis',
+    store_name: 'Concessionária Divinópolis',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+  {
+    id: 'emp-mariana-moc',
+    email: 'mariana@l1mamotors.com.br',
+    full_name: 'Mariana',
+    role: 'vendedor',
+    store_id: 'store-montesclaros',
+    store_name: 'Concessionária Montes Claros',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+  {
+    id: 'emp-halana-moc',
+    email: 'halana@l1mamotors.com.br',
+    full_name: 'Halana',
+    role: 'vendedor',
+    store_id: 'store-montesclaros',
+    store_name: 'Concessionária Montes Claros',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+  {
+    id: 'emp-sabrina-moc',
+    email: 'sabrina@l1mamotors.com.br',
+    full_name: 'Sabrina',
+    role: 'vendedor',
+    store_id: 'store-montesclaros',
+    store_name: 'Concessionária Montes Claros',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+  {
+    id: 'emp-natan-moc',
+    email: 'natan@l1mamotors.com.br',
+    full_name: 'Natan',
+    role: 'vendedor',
+    store_id: 'store-montesclaros',
+    store_name: 'Concessionária Montes Claros',
+    is_active: true,
+    user_status: 'ATIVO',
+    created_at: '2026-01-01T00:00:00.000Z',
+    temp_password: 'PixelMotors@2026',
+  },
+];
+
 export function getCustomUsers(): UserWithRole[] {
   try {
     const raw = localStorage.getItem(CUSTOM_USERS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch {}
-  return [];
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CUSTOM_USERS_STORAGE_KEY, JSON.stringify(DEFAULT_OFFICIAL_USERS));
+    }
+  } catch {}
+  return [...DEFAULT_OFFICIAL_USERS];
 }
 
 export function saveCustomUser(user: UserWithRole & { temp_password?: string }) {
