@@ -24,8 +24,8 @@ import { cn } from '@/lib/utils';
 import bridgeDither from '@/assets/bridge-dither.png';
 
 const loginSchema = z.object({
-  email: z.string().trim().email({ message: 'Informe um e-mail válido' }).max(255),
-  password: z.string().min(6, { message: 'A senha deve ter no mínimo 6 caracteres' }).max(100),
+  email: z.string().trim().min(3, { message: 'Informe seu e-mail ou usuário corporativo' }).max(255),
+  password: z.string().min(4, { message: 'A senha deve ter no mínimo 4 caracteres' }).max(100),
 });
 
 const REMEMBER_EMAIL_KEY = 'pixel_motors_remember_email';
