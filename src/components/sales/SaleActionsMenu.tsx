@@ -54,6 +54,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { getStoreFromDatabase } from '@/lib/storeResolution';
 import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { downloadContractPDF } from '@/lib/contractPdf';
+import { markVehicleAsSold } from '@/hooks/useVehicles';
 
 interface Sale {
   id: string;
@@ -263,12 +264,18 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
         .eq('id', sale.id);
       if (error) throw error;
 
-      // Also update vehicle status to vendido
-      const { error: vehicleError } = await supabase
-        .from('vehicles')
-        .update({ status: 'vendido' })
-        .eq('id', sale.vehicle_id);
-      if (vehicleError) console.error('Error updating vehicle:', vehicleError);
+      // Also update vehicle status to vendido in all storages
+      const targetVehicleId = sale.vehicle_id || (sale.vehicle?.chassis as string) || (sale.external_data as any)?.chassi;
+      if (targetVehicleId) {
+        await markVehicleAsSold(targetVehicleId, 'vendido');
+      }
+      if (sale.vehicle_id) {
+        const { error: vehicleError } = await supabase
+          .from('vehicles')
+          .update({ status: 'vendido' })
+          .eq('id', sale.vehicle_id);
+        if (vehicleError) console.error('Error updating vehicle:', vehicleError);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });

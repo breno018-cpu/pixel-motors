@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import officialVehiclesSeed from '@/data/officialVehiclesSeed.json';
@@ -40,30 +41,247 @@ const typedOfficialSeed = (officialVehiclesSeed as unknown as Vehicle[]) || [];
 export function getCachedVehicles(): Vehicle[] {
   if (typeof window === 'undefined') return typedOfficialSeed;
   try {
+    let list: Vehicle[] = [];
     const raw = localStorage.getItem(VEHICLES_CACHE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) list = parsed;
     }
-    for (const key of LEGACY_CACHE_KEYS) {
-      const leg = localStorage.getItem(key);
-      if (leg) {
-        const parsed = JSON.parse(leg);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          localStorage.setItem(VEHICLES_CACHE_KEY, leg);
-          return parsed;
+
+    if (!list || list.length === 0) {
+      for (const key of LEGACY_CACHE_KEYS) {
+        const leg = localStorage.getItem(key);
+        if (leg) {
+          const parsed = JSON.parse(leg);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            localStorage.setItem(VEHICLES_CACHE_KEY, leg);
+            list = parsed;
+            break;
+          }
         }
       }
     }
+
     // Inicialização direta com a base oficial do pátio
-    if (typedOfficialSeed.length > 0) {
-      localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(typedOfficialSeed));
-      return typedOfficialSeed;
+    if (!list || list.length === 0) {
+      if (typedOfficialSeed.length > 0) {
+        localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(typedOfficialSeed));
+        list = [...typedOfficialSeed];
+      }
     }
+
+    // Reconciliação com a Planilha Mensal: qualquer chassi já vendido/faturado é marcado como 'vendido'
+    if (list.length > 0) {
+      try {
+        const rawSheet = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
+        if (rawSheet) {
+          const rows: any[] = JSON.parse(rawSheet);
+          if (Array.isArray(rows) && rows.length > 0) {
+            const soldChassis = new Set<string>();
+            const reservedChassis = new Set<string>();
+
+            rows.forEach((r) => {
+              const ch = (r.chassi || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+              if (ch.length >= 6 && ch !== 'DISPENSADO') {
+                if (r.tipo_registro === 'venda' || r.is_permitted) {
+                  soldChassis.add(ch);
+                } else if (r.tipo_registro === 'pre_venda') {
+                  reservedChassis.add(ch);
+                }
+              }
+            });
+
+            let changed = false;
+            list = list.map((v) => {
+              const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+              if (!vCh || vCh === 'DISPENSADO') return v;
+
+              if (soldChassis.has(vCh) && v.status !== 'vendido') {
+                changed = true;
+                return { ...v, status: 'vendido' as const, updated_at: new Date().toISOString() };
+              }
+              if (reservedChassis.has(vCh) && v.status === 'disponivel') {
+                changed = true;
+                return { ...v, status: 'reservado' as const, updated_at: new Date().toISOString() };
+              }
+              return v;
+            });
+
+            if (changed) {
+              localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(list));
+            }
+          }
+        }
+      } catch {}
+    }
+
+    return list.length > 0 ? list : typedOfficialSeed;
   } catch (err) {
     console.error('Erro ao ler cache local de veículos:', err);
   }
   return typedOfficialSeed;
+}
+
+/**
+ * Marca um veículo como vendido ou reservado em todos os armazenamentos locais e remotos:
+ * 1. dealflow_vehicles_cache_v2
+ * 2. df_local_table_v5_vehicles
+ * 3. Supabase (tabela vehicles)
+ * 4. Dispara evento global de atualização
+ */
+export async function markVehicleAsSold(
+  vehicleIdOrChassis: string,
+  newStatus: 'vendido' | 'reservado' = 'vendido'
+): Promise<void> {
+  if (typeof window === 'undefined' || !vehicleIdOrChassis) return;
+
+  const rawClean = vehicleIdOrChassis.trim();
+  const cleanVinTarget = rawClean.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  let matchedId: string | null = null;
+
+  // 1. Atualiza VEHICLES_CACHE_KEY
+  try {
+    const list = getCachedVehicles();
+    let updated = false;
+    const nextList = list.map((v) => {
+      const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const isIdMatch = v.id && v.id.toLowerCase() === rawClean.toLowerCase();
+      const isChMatch =
+        cleanVinTarget.length >= 5 &&
+        vCh &&
+        (vCh === cleanVinTarget || (cleanVinTarget.length >= 6 && (vCh.endsWith(cleanVinTarget) || cleanVinTarget.endsWith(vCh))));
+
+      if (isIdMatch || isChMatch) {
+        updated = true;
+        matchedId = v.id;
+        return {
+          ...v,
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        };
+      }
+      return v;
+    });
+
+    if (updated) {
+      localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(nextList));
+    }
+  } catch (err) {
+    console.error('Erro ao atualizar status do veículo no cache:', err);
+  }
+
+  // 2. Atualiza df_local_table_v5_vehicles
+  try {
+    const rawLocal = localStorage.getItem('df_local_table_v5_vehicles');
+    if (rawLocal) {
+      const list = JSON.parse(rawLocal);
+      if (Array.isArray(list)) {
+        let localUpdated = false;
+        const nextList = list.map((v: any) => {
+          const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const isIdMatch = v.id && v.id.toLowerCase() === rawClean.toLowerCase();
+          const isChMatch =
+            cleanVinTarget.length >= 5 &&
+            vCh &&
+            (vCh === cleanVinTarget || (cleanVinTarget.length >= 6 && (vCh.endsWith(cleanVinTarget) || cleanVinTarget.endsWith(vCh))));
+
+          if (isIdMatch || isChMatch) {
+            localUpdated = true;
+            matchedId = matchedId || v.id;
+            return {
+              ...v,
+              status: newStatus,
+              updated_at: new Date().toISOString(),
+            };
+          }
+          return v;
+        });
+        if (localUpdated) {
+          localStorage.setItem('df_local_table_v5_vehicles', JSON.stringify(nextList));
+        }
+      }
+    }
+  } catch {}
+
+  // 3. Atualiza no Supabase se houver conexão
+  try {
+    const targetId = matchedId || rawClean;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId);
+    if (isUuid) {
+      await (supabase as any).from('vehicles').update({ status: newStatus }).eq('id', targetId);
+    } else if (cleanVinTarget.length >= 6) {
+      await (supabase as any).from('vehicles').update({ status: newStatus }).ilike('chassis', `%${cleanVinTarget}%`);
+    }
+  } catch {}
+
+  // 4. Dispara evento global para reatividade instantânea em todas as telas
+  try {
+    window.dispatchEvent(
+      new CustomEvent('dealflow:vehicle-status-updated', {
+        detail: {
+          target: vehicleIdOrChassis,
+          matchedId,
+          status: newStatus,
+        },
+      })
+    );
+  } catch {}
+}
+
+/**
+ * Verifica se um determinado chassi já foi vendido ou faturado anteriormente
+ */
+export function isChassisAlreadySold(
+  chassis: string,
+  vehiclesList: Vehicle[] = [],
+  ignoreVehicleId?: string | null
+): { isSold: boolean; reason?: string; vehicle?: Vehicle } {
+  if (!chassis) return { isSold: false };
+  const cleanTarget = chassis.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!cleanTarget || cleanTarget.length < 5 || cleanTarget === 'DISPENSADO') {
+    return { isSold: false };
+  }
+
+  // 1. Verifica no estoque de veículos
+  const foundInStock = (vehiclesList || []).find((v) => {
+    if (ignoreVehicleId && v.id === ignoreVehicleId) return false;
+    const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    return vCh && (vCh === cleanTarget || (cleanTarget.length >= 7 && (vCh.endsWith(cleanTarget) || cleanTarget.endsWith(vCh))));
+  });
+
+  if (foundInStock && foundInStock.status === 'vendido') {
+    return {
+      isSold: true,
+      reason: `O chassi final ...${cleanTarget.slice(-6)} já consta como VENDIDO no estoque (${foundInStock.brand} ${foundInStock.model}).`,
+      vehicle: foundInStock,
+    };
+  }
+
+  // 2. Verifica nas vendas faturadas da planilha mensal
+  try {
+    const rawSheet = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
+    if (rawSheet) {
+      const rows: any[] = JSON.parse(rawSheet);
+      if (Array.isArray(rows)) {
+        const soldRow = rows.find((r) => {
+          if (r.tipo_registro === 'venda' || r.is_permitted) {
+            const rCh = (r.chassi || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            return rCh && (rCh === cleanTarget || (cleanTarget.length >= 7 && (rCh.endsWith(cleanTarget) || cleanTarget.endsWith(rCh))));
+          }
+          return false;
+        });
+
+        if (soldRow) {
+          return {
+            isSold: true,
+            reason: `O chassi final ...${cleanTarget.slice(-6)} já foi faturado anteriormente para o cliente ${soldRow.cliente || 'outro comprador'}.`,
+          };
+        }
+      }
+    }
+  } catch {}
+
+  return { isSold: false };
 }
 
 export function saveVehicleToCache(vehicle: Vehicle): void {
@@ -107,6 +325,20 @@ export function removeVehicleFromCache(vehicleId: string): void {
 }
 
 export function useVehicles() {
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      qc.invalidateQueries({ queryKey: ['vehicles'] });
+    };
+    window.addEventListener('dealflow:vehicle-status-updated', handleUpdate);
+    window.addEventListener('dealflow:sales-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('dealflow:vehicle-status-updated', handleUpdate);
+      window.removeEventListener('dealflow:sales-updated', handleUpdate);
+    };
+  }, [qc]);
+
   return useQuery({
     queryKey: ['vehicles'],
     queryFn: async () => {

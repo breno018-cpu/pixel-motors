@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useContracts } from '@/hooks/useContracts';
-import { useVehicles } from '@/hooks/useVehicles';
+import { useVehicles, markVehicleAsSold, isChassisAlreadySold } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useFinancingBanks } from '@/hooks/useFinancingBanks';
@@ -442,6 +442,18 @@ export function CompleteSaleModal({
       return;
     }
 
+    if (vehicleChassis && vehicleChassis.trim().length >= 4 && vehicleChassis.trim().toUpperCase() !== 'DISPENSADO') {
+      const soldCheck = isChassisAlreadySold(vehicleChassis, vehicles, vehicleId || selectedPreSale?.vehicle_id);
+      if (soldCheck.isSold) {
+        toast({
+          title: 'Chassi Já Vendido',
+          description: soldCheck.reason || 'Este chassi já foi faturado anteriormente e não está mais disponível para venda.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const confirmed = await confirm({
       title: 'Concluir Venda e Faturamento?',
       description: `Deseja concluir a venda do veículo ${vehicleModel} para ${buyerName}? O veículo será dado como entregue/faturado.`,
@@ -712,7 +724,8 @@ export function CompleteSaleModal({
           }
         }
 
-        // Marca o veículo como vendido no pátio se for UUID válido
+        // Marca imediatamente o veículo como vendido em todos os armazenamentos locais e remotos
+        await markVehicleAsSold(finalVehicleId || vehicleId || vehicleChassis, 'vendido');
         if (vehicleId && isUuid(vehicleId)) {
           await supabase.from('vehicles').update({ status: 'vendido' }).eq('id', vehicleId);
         }
@@ -753,8 +766,21 @@ export function CompleteSaleModal({
         console.warn('Erro ao atualizar planilha v9:', sheetErr);
       }
 
+      queryClient.setQueryData(['vehicles'], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((v) => {
+          const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const cleanCh = (vehicleChassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const targetId = finalVehicleId || vehicleId;
+          if ((targetId && v.id === targetId) || (cleanCh && vCh && vCh === cleanCh)) {
+            return { ...v, status: 'vendido' };
+          }
+          return v;
+        });
+      });
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
       queryClient.invalidateQueries({ queryKey: ['cloud-monthly-sheet-v9'] });
 
       toast({

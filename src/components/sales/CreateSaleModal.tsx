@@ -36,7 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useVehicles } from '@/hooks/useVehicles';
+import { useVehicles, markVehicleAsSold, isChassisAlreadySold } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useToast } from '@/hooks/use-toast';
@@ -408,6 +408,18 @@ export function CreateSaleModal({
       return;
     }
 
+    if (vehicleChassis && vehicleChassis.trim().length >= 4 && vehicleChassis.trim().toUpperCase() !== 'DISPENSADO') {
+      const soldCheck = isChassisAlreadySold(vehicleChassis, vehicles, selectedVehicleId);
+      if (soldCheck.isSold) {
+        toast({
+          title: 'Chassi Já Vendido',
+          description: soldCheck.reason || 'Este chassi já foi faturado anteriormente e não está mais disponível para venda.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const confirmed = await confirm({
       title: 'Confirmar Lançamento da Venda?',
       description: `Deseja registrar a venda de ${vehicleModel} para ${buyerName} no valor de R$ ${totalValNum.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}?`,
@@ -668,6 +680,9 @@ export function CreateSaleModal({
           await supabase.from('vehicles').update({ status: saleType === 'concluido' ? 'vendido' : 'reservado' }).eq('id', finalVehicleId);
         }
 
+        // Atualiza imediatamente o veículo como vendido ou reservado em todos os armazenamentos locais e remotos
+        await markVehicleAsSold(finalVehicleId || vehicleChassis, saleType === 'concluido' ? 'vendido' : 'reservado');
+
         contractPayload.vehicle_id = finalVehicleId;
 
         if (contractPayload.store_id && contractPayload.vehicle_id) {
@@ -733,8 +748,21 @@ export function CreateSaleModal({
           },
         })
       );
+      // Atualiza o cache do React Query imediatamente
+      queryClient.setQueryData(['vehicles'], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((v) => {
+          const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          const cleanCh = (vehicleChassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if ((finalVehicleId && v.id === finalVehicleId) || (cleanCh && vCh && vCh === cleanCh)) {
+            return { ...v, status: saleType === 'concluido' ? 'vendido' : 'reservado' };
+          }
+          return v;
+        });
+      });
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
 
       onOpenChange(false);
       // Reset completo dos campos

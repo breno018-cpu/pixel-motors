@@ -13,6 +13,7 @@ import {
   ArrowRight,
   ShieldCheck,
   ChevronDown,
+  AlertCircle,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useVehicles } from '@/hooks/useVehicles';
+import { useVehicles, isChassisAlreadySold } from '@/hooks/useVehicles';
+import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { recognizeFromChassis, resolveModelYearFromVin } from '@/lib/chassisRecognition';
@@ -84,6 +86,7 @@ export function ChassisSearchInput({
   filterStoreId,
   autoRecognize = true,
 }: ChassisSearchInputProps) {
+  const { toast } = useToast();
   const { data: vehicles = [], isLoading: isLoadingVehicles } = useVehicles();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -101,6 +104,10 @@ export function ChassisSearchInput({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const lastDecodedRef = useRef<string>('');
+
+  const soldCheck = useMemo(() => {
+    return isChassisAlreadySold(value, vehicles);
+  }, [value, vehicles]);
 
   // Busca chassi gravados na planilha mensal local (para cobrir vendas e pré-vendas)
   const sheetRows: SheetRowV9[] = useMemo(() => {
@@ -355,6 +362,15 @@ export function ChassisSearchInput({
   }, [modalSearch, vehicles, sheetRows, chassisPatterns, filterStoreId]);
 
   const handleSelectVehicle = (item: any) => {
+    if (item.status === 'vendido') {
+      toast({
+        title: 'Chassi Já Vendido',
+        description: `O veículo com chassi ${item.chassis || ''} já foi faturado anteriormente e não está mais disponível para venda.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const chassisToSet = item.type === 'pattern' ? value : (item.chassis || '');
     onChange(chassisToSet);
     setDropdownOpen(false);
@@ -616,6 +632,19 @@ export function ChassisSearchInput({
           )}
         </div>
       ) : null}
+
+      {/* Alerta de Chassi Já Vendido */}
+      {soldCheck.isSold && (
+        <div className="flex items-center gap-2 p-2.5 bg-destructive/10 border border-destructive/30 rounded-xl text-xs text-destructive mt-1 animate-in fade-in-50">
+          <AlertCircle className="w-4 h-4 shrink-0 text-destructive" />
+          <div className="space-y-0.5">
+            <span className="font-bold block text-[11px]">Chassi Indisponível para Nova Venda</span>
+            <span className="text-[11px] leading-tight block text-destructive/90">
+              {soldCheck.reason}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* MODAL LOCALIZADOR AVANÇADO DE CHASSI */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
