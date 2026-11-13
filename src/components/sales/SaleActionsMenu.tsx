@@ -17,6 +17,7 @@ import {
   Paperclip,
   Printer,
   Truck,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -54,6 +55,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { getStoreFromDatabase } from '@/lib/storeResolution';
 import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { downloadContractPDF } from '@/lib/contractPdf';
+import { downloadVehicleDeliveryTermPDF } from '@/lib/secondCopyPdfs';
 import { markVehicleAsSold } from '@/hooks/useVehicles';
 
 interface Sale {
@@ -396,6 +398,56 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
     }
   };
 
+  const handleDownloadPickupTerm = () => {
+    try {
+      const v = sale.vehicle || {};
+      const ext = (sale.external_data || {}) as any;
+      const pickup = normalizePickup(ext?.pickup);
+      const targetStoreId = sale.store_id || sale.store?.id;
+      const resolvedStore = getStoreFromDatabase(targetStoreId || storeName || sale.store?.name);
+
+      downloadVehicleDeliveryTermPDF({
+        id: sale.id,
+        contractNumber: sale.contract_number || 'CTR-2VIA',
+        status: sale.status,
+        createdAt: sale.created_at || new Date().toISOString(),
+        completedAt: sale.signed_at || sale.created_at,
+        buyerName: sale.buyer_name || 'Comprador',
+        buyerCpf: sale.buyer_cpf || '',
+        buyerPhone: sale.buyer_phone || ext.buyer_phone || '',
+        buyerEmail: sale.buyer_email || '',
+        buyerAddress: sale.buyer_address || ext.buyer_address || '',
+        vehicleBrand: v.brand || ext.marca || 'SHINERAY',
+        vehicleModel: v.model || ext.modelo || vehicleName || 'MOTO',
+        vehicleYear: Number(v.year || ext.ano || 2026),
+        vehicleColor: v.color || ext.cor || 'Padrão',
+        vehicleChassis: v.chassis || ext.chassi || '',
+        vehiclePlate: v.plate || ext.placa || 'Sem placa',
+        storeName: resolvedStore.storeName,
+        storeCnpj: resolvedStore.cnpj,
+        storeAddress: resolvedStore.address,
+        storeCity: resolvedStore.city,
+        storePhone: resolvedStore.phone,
+        storeEmail: resolvedStore.email,
+        authorizedPersonName: pickup?.name || ext.authorizedPersonName || undefined,
+        authorizedPersonCpf: pickup?.cpf || ext.authorizedPersonCpf || undefined,
+        authorizedPersonRg: pickup?.rg || ext.authorizedPersonRg || undefined,
+        authorizedPersonPhone: pickup?.phone || ext.authorizedPersonPhone || undefined,
+        authorizedPersonRelationship: pickup?.relationship || ext.authorizedPersonRelationship || undefined,
+      });
+      toast({
+        title: 'Termo gerado',
+        description: 'Termo de Entrada & Retirada a Pessoas Autorizadas (Gov.br) baixado com sucesso.',
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao gerar termo',
+        description: err?.message || 'Não foi possível gerar o termo de retirada.',
+      });
+    }
+  };
+
   const handleEmitInvoicePng = async () => {
     try {
       const { downloadInvoiceRequestPng } = await import('@/lib/invoiceRequestPng');
@@ -490,6 +542,13 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
             <DropdownMenuItem onClick={handleExportSale}>
               <Download className="w-4 h-4 mr-2" />
               Baixar contrato
+            </DropdownMenuItem>
+          )}
+
+          {sale.status !== 'pre_venda' && (
+            <DropdownMenuItem onClick={handleDownloadPickupTerm} className="text-blue-600 dark:text-blue-400 font-medium">
+              <ShieldCheck className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+              Baixar Termo de Retirada (Gov.br)
             </DropdownMenuItem>
           )}
 
