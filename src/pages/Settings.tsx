@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   User,
@@ -71,6 +71,7 @@ import { BrandLogoShowcase } from '@/components/brand/BrandLogoShowcase';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 function BackupsList() {
   const { toast } = useToast();
@@ -190,7 +191,6 @@ type GlowIntensity = 'none' | 'subtle' | 'moderate';
 export default function Settings() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'stores';
 
   const {
     theme,
@@ -202,12 +202,36 @@ export default function Settings() {
     glowIntensity,
     setGlowIntensity,
   } = useTheme();
-  const { profile, roles, isAdmin, hasElevatedAccess, userStore } = useAuth();
+  const { profile, roles, isAdmin, isManager, hasElevatedAccess, userStore } = useAuth();
   const { toast } = useToast();
+
+  const isManagement = Boolean(
+    isAdmin ||
+    isManager ||
+    hasElevatedAccess ||
+    roles.includes('admin') ||
+    roles.includes('gerente')
+  );
+
+  const defaultTab = isManagement ? 'stores' : 'profile';
+  const requestedTab = searchParams.get('tab');
+  const initialTab = requestedTab && (isManagement || requestedTab === 'profile') ? requestedTab : defaultTab;
 
   const [activeTab, setActiveTab] = useState<string>(initialTab);
 
+  useEffect(() => {
+    if (!isManagement && activeTab !== 'profile') {
+      setActiveTab('profile');
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', 'profile');
+      setSearchParams(next, { replace: true });
+    }
+  }, [isManagement, activeTab, searchParams, setSearchParams]);
+
   const handleTabChange = (val: string) => {
+    if (!isManagement && val !== 'profile') {
+      return;
+    }
     setActiveTab(val);
     const next = new URLSearchParams(searchParams);
     next.set('tab', val);
@@ -310,41 +334,64 @@ export default function Settings() {
     <div className="space-y-6 max-w-6xl mx-auto w-full min-w-0 page-transition pb-12">
       {/* Header */}
       <PageHeader
-        title="Painel de Configurações Master"
-        description="Gestão centralizada das concessionárias, segurança de sessão única, bancos F&I, identidade e preferências."
+        title={isManagement ? "Painel de Configurações Master" : "Meu Perfil & Configurações"}
+        description={
+          isManagement
+            ? "Gestão centralizada das concessionárias, segurança de sessão única, bancos F&I, identidade e preferências."
+            : "Gerencie as informações da sua conta, credenciais de acesso e segurança pessoal."
+        }
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="animate-fade-in w-full min-w-0">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 w-full h-auto gap-1.5 p-1.5 bg-muted/50 rounded-2xl border">
-          <TabsTrigger value="stores" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
-            <Building2 className="w-4 h-4 text-primary shrink-0" />
-            <span className="truncate min-w-0 flex-1">Lojas & Matriz</span>
-          </TabsTrigger>
-          <TabsTrigger value="logistics" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
-            <Truck className="w-4 h-4 text-primary shrink-0" />
-            <span className="truncate min-w-0 flex-1">Logística & Frete</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
-            <Lock className="w-4 h-4 text-primary shrink-0" />
-            <span className="truncate min-w-0 flex-1">Segurança</span>
-          </TabsTrigger>
+        <TabsList
+          className={cn(
+            "w-full h-auto gap-1.5 p-1.5 bg-muted/50 rounded-2xl border",
+            isManagement
+              ? "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8"
+              : "flex items-center justify-start max-w-xs"
+          )}
+        >
+          {isManagement && (
+            <TabsTrigger value="stores" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
+              <Building2 className="w-4 h-4 text-primary shrink-0" />
+              <span className="truncate min-w-0 flex-1">Lojas & Matriz</span>
+            </TabsTrigger>
+          )}
+          {isManagement && (
+            <TabsTrigger value="logistics" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
+              <Truck className="w-4 h-4 text-primary shrink-0" />
+              <span className="truncate min-w-0 flex-1">Logística & Frete</span>
+            </TabsTrigger>
+          )}
+          {isManagement && (
+            <TabsTrigger value="security" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
+              <Lock className="w-4 h-4 text-primary shrink-0" />
+              <span className="truncate min-w-0 flex-1">Segurança</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="profile" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
             <User className="w-4 h-4 text-primary shrink-0" />
             <span className="truncate min-w-0 flex-1">Perfil</span>
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
-            <Palette className="w-4 h-4 text-primary shrink-0" />
-            <span className="truncate min-w-0 flex-1">Identidade</span>
-          </TabsTrigger>
-          <TabsTrigger value="banks" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
-            <Landmark className="w-4 h-4 text-primary shrink-0" />
-            <span className="truncate min-w-0 flex-1">Bancos & F&I</span>
-          </TabsTrigger>
-          <TabsTrigger value="data" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
-            <Database className="w-4 h-4 text-primary shrink-0" />
-            <span className="truncate min-w-0 flex-1">Dados</span>
-          </TabsTrigger>
-          {hasElevatedAccess && (
+          {isManagement && (
+            <TabsTrigger value="appearance" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
+              <Palette className="w-4 h-4 text-primary shrink-0" />
+              <span className="truncate min-w-0 flex-1">Identidade</span>
+            </TabsTrigger>
+          )}
+          {isManagement && (
+            <TabsTrigger value="banks" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
+              <Landmark className="w-4 h-4 text-primary shrink-0" />
+              <span className="truncate min-w-0 flex-1">Bancos & F&I</span>
+            </TabsTrigger>
+          )}
+          {isManagement && (
+            <TabsTrigger value="data" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
+              <Database className="w-4 h-4 text-primary shrink-0" />
+              <span className="truncate min-w-0 flex-1">Dados</span>
+            </TabsTrigger>
+          )}
+          {isManagement && hasElevatedAccess && (
             <TabsTrigger value="admin" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
               <Shield className="w-4 h-4 text-primary shrink-0" />
               <span className="truncate min-w-0 flex-1">Gestão</span>
@@ -355,56 +402,62 @@ export default function Settings() {
         {/* -------------------------------------------------------- */}
         {/* ABA 1: CONCESSIONÁRIAS & MATRIZ (FONTE ÚNICA DA VERDADE) */}
         {/* -------------------------------------------------------- */}
-        <TabsContent value="stores" className="space-y-4 mt-6">
-          <DealershipsSettingsManager />
-        </TabsContent>
+        {isManagement && (
+          <TabsContent value="stores" className="space-y-4 mt-6">
+            <DealershipsSettingsManager />
+          </TabsContent>
+        )}
 
         {/* -------------------------------------------------------- */}
         {/* ABA 2: LOGÍSTICA, FROTAS & MÉTODOS DE TRANSPORTE         */}
         {/* -------------------------------------------------------- */}
-        <TabsContent value="logistics" className="space-y-4 mt-6">
-          <LogisticsSettingsManager />
-        </TabsContent>
+        {isManagement && (
+          <TabsContent value="logistics" className="space-y-4 mt-6">
+            <LogisticsSettingsManager />
+          </TabsContent>
+        )}
 
         {/* -------------------------------------------------------- */}
         {/* ABA 2: SEGURANÇA & SESSÃO ÚNICA (DISPOSITIVOS & COOKIES) */}
         {/* -------------------------------------------------------- */}
-        <TabsContent value="security" className="space-y-4 mt-6">
-          <DeviceSecurityManager />
+        {isManagement && (
+          <TabsContent value="security" className="space-y-4 mt-6">
+            <DeviceSecurityManager />
 
-          <Card className="card-interactive rounded-2xl border shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-primary" />
-                Políticas de Proteção da Conta
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Controle de tentativas de acesso, isolamento de sessão e auditoria.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Bloqueio após Tentativas Falhas</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Bloquear conta temporariamente após 5 tentativas incorretas de login
-                  </p>
+            <Card className="card-interactive rounded-2xl border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  Políticas de Proteção da Conta
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Controle de tentativas de acesso, isolamento de sessão e auditoria.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Bloqueio após Tentativas Falhas</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Bloquear conta temporariamente após 5 tentativas incorretas de login
+                    </p>
+                  </div>
+                  <Switch checked={lockAfterAttempts} onCheckedChange={setLockAfterAttempts} />
                 </div>
-                <Switch checked={lockAfterAttempts} onCheckedChange={setLockAfterAttempts} />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Logs de Auditoria em Tempo Real</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Registrar acessos, alterações cadastrais de lojas e geração de contratos
-                  </p>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Logs de Auditoria em Tempo Real</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Registrar acessos, alterações cadastrais de lojas e geração de contratos
+                    </p>
+                  </div>
+                  <Switch checked={auditLogs} onCheckedChange={setAuditLogs} />
                 </div>
-                <Switch checked={auditLogs} onCheckedChange={setAuditLogs} />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* -------------------------------------------------------- */}
         {/* ABA 3: PERFIL & SENHA DO USUÁRIO                         */}
@@ -546,270 +599,276 @@ export default function Settings() {
         {/* -------------------------------------------------------- */}
         {/* ABA 4: APARÊNCIA & IDENTIDADE VISUAL                     */}
         {/* -------------------------------------------------------- */}
-        <TabsContent value="appearance" className="space-y-6 mt-6">
-          <BrandLogoShowcase />
+        {isManagement && (
+          <TabsContent value="appearance" className="space-y-6 mt-6">
+            <BrandLogoShowcase />
 
-          {/* Theme */}
-          <Card className="card-interactive rounded-2xl border shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                {theme === 'dark' ? (
-                  <Moon className="w-4 h-4 text-primary" />
-                ) : (
-                  <Sun className="w-4 h-4 text-primary" />
-                )}
-                Tema da Interface
-              </CardTitle>
-              <CardDescription className="text-xs">Escolha entre modo escuro executivo ou claro</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Modo Escuro (Dark Mode)</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {theme === 'dark' ? 'Tema escuro ativado com alto contraste' : 'Tema claro ativado'}
-                  </p>
+            {/* Theme */}
+            <Card className="card-interactive rounded-2xl border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  {theme === 'dark' ? (
+                    <Moon className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Sun className="w-4 h-4 text-primary" />
+                  )}
+                  Tema da Interface
+                </CardTitle>
+                <CardDescription className="text-xs">Escolha entre modo escuro executivo ou claro</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Modo Escuro (Dark Mode)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {theme === 'dark' ? 'Tema escuro ativado com alto contraste' : 'Tema claro ativado'}
+                    </p>
+                  </div>
+                  <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
                 </div>
-                <Switch checked={theme === 'dark'} onCheckedChange={toggleTheme} />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* Font Size */}
-          <Card className="card-interactive rounded-2xl border shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Type className="w-4 h-4 text-primary" />
-                Escala de Tipografia
-              </CardTitle>
-              <CardDescription className="text-xs">Ajuste o tamanho do texto para leitura confortável</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Select value={fontSize} onValueChange={(v) => setFontSize(v as FontSize)}>
-                <SelectTrigger className="w-full h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(fontSizeLabels) as FontSize[]).map((size) => (
-                    <SelectItem key={size} value={size}>
-                      {fontSizeLabels[size]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          {/* Animations */}
-          <Card className="card-interactive rounded-2xl border shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                Animações e Efeitos Visuais
-              </CardTitle>
-              <CardDescription className="text-xs">Controle as transições de tela e brilho</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label className="text-xs font-semibold mb-2 block">Intensidade das Animações</Label>
-                <Select
-                  value={animationIntensity}
-                  onValueChange={(v) => setAnimationIntensity(v as AnimationIntensity)}
-                >
+            {/* Font Size */}
+            <Card className="card-interactive rounded-2xl border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Type className="w-4 h-4 text-primary" />
+                  Escala de Tipografia
+                </CardTitle>
+                <CardDescription className="text-xs">Ajuste o tamanho do texto para leitura confortável</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Select value={fontSize} onValueChange={(v) => setFontSize(v as FontSize)}>
                   <SelectTrigger className="w-full h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(animationLabels) as AnimationIntensity[]).map((intensity) => (
-                      <SelectItem key={intensity} value={intensity}>
-                        {animationLabels[intensity]}
+                    {(Object.keys(fontSizeLabels) as FontSize[]).map((size) => (
+                      <SelectItem key={size} value={size}>
+                        {fontSizeLabels[size]}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </CardContent>
+            </Card>
 
-              <Separator />
+            {/* Animations */}
+            <Card className="card-interactive rounded-2xl border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  Animações e Efeitos Visuais
+                </CardTitle>
+                <CardDescription className="text-xs">Controle as transições de tela e brilho</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-xs font-semibold mb-2 block">Intensidade das Animações</Label>
+                  <Select
+                    value={animationIntensity}
+                    onValueChange={(v) => setAnimationIntensity(v as AnimationIntensity)}
+                  >
+                    <SelectTrigger className="w-full h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(animationLabels) as AnimationIntensity[]).map((intensity) => (
+                        <SelectItem key={intensity} value={intensity}>
+                          {animationLabels[intensity]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label className="text-xs font-semibold mb-2 block">Brilho dos Elementos em Vidro (Glow)</Label>
-                <Select
-                  value={glowIntensity}
-                  onValueChange={(v) => setGlowIntensity(v as GlowIntensity)}
-                >
-                  <SelectTrigger className="w-full h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(glowLabels) as GlowIntensity[]).map((intensity) => (
-                      <SelectItem key={intensity} value={intensity}>
-                        {glowLabels[intensity]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+                <Separator />
 
-          <SidebarCustomizer />
-        </TabsContent>
+                <div>
+                  <Label className="text-xs font-semibold mb-2 block">Brilho dos Elementos em Vidro (Glow)</Label>
+                  <Select
+                    value={glowIntensity}
+                    onValueChange={(v) => setGlowIntensity(v as GlowIntensity)}
+                  >
+                    <SelectTrigger className="w-full h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(glowLabels) as GlowIntensity[]).map((intensity) => (
+                        <SelectItem key={intensity} value={intensity}>
+                          {glowLabels[intensity]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            <SidebarCustomizer />
+          </TabsContent>
+        )}
 
         {/* -------------------------------------------------------- */}
         {/* ABA 5: BANCOS & CREDENCIAIS DE F&I                       */}
         {/* -------------------------------------------------------- */}
-        <TabsContent value="banks" className="space-y-4 mt-6">
-          <Card className="border border-primary/20 bg-primary/5 rounded-2xl p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Landmark className="w-4 h-4" />
+        {isManagement && (
+          <TabsContent value="banks" className="space-y-4 mt-6">
+            <Card className="border border-primary/20 bg-primary/5 rounded-2xl p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Landmark className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      Central Integrada de F&I e Bancos Homologados
+                      <Badge variant="outline" className="text-[10px] bg-background border-primary/30 text-primary font-bold">
+                        Sincronizado com Ala Master
+                      </Badge>
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      Os coeficientes bancários, tabelas de retorno e credenciais de integração são centralizados e abastecem as simulações em tempo real.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    Central Integrada de F&I e Bancos Homologados
-                    <Badge variant="outline" className="text-[10px] bg-background border-primary/30 text-primary font-bold">
-                      Sincronizado com Ala Master
-                    </Badge>
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    Os coeficientes bancários, tabelas de retorno e credenciais de integração são centralizados e abastecem as simulações em tempo real.
-                  </p>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 gap-1.5 shrink-0 rounded-xl"
+                  onClick={() => navigate('/admin?tab=bancos')}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                  Gerenciar na Ala Master
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-8 gap-1.5 shrink-0 rounded-xl"
-                onClick={() => navigate('/admin?tab=bancos')}
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                Gerenciar na Ala Master
-              </Button>
-            </div>
-          </Card>
+            </Card>
 
-          <FinancingBanksManager />
-          <BankCredentialsManager />
-        </TabsContent>
+            <FinancingBanksManager />
+            <BankCredentialsManager />
+          </TabsContent>
+        )}
 
         {/* -------------------------------------------------------- */}
         {/* ABA 6: DADOS, BACKUPS & SINCRONIZAÇÃO                    */}
         {/* -------------------------------------------------------- */}
-        <TabsContent value="data" className="space-y-4 mt-6">
-          <StockSyncSettings />
+        {isManagement && (
+          <TabsContent value="data" className="space-y-4 mt-6">
+            <StockSyncSettings />
 
-          <Card className="card-interactive rounded-2xl border shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Download className="w-4 h-4 text-primary" />
-                Assistente de Exportação de Dados
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Exporte relatórios executivos em Excel (XLSX) com metadados de auditoria
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                className="w-full h-11 font-bold shadow-sm shadow-primary/20"
-                onClick={() => setExportDialogOpen(true)}
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Abrir Assistente de Exportação
-              </Button>
-            </CardContent>
-          </Card>
+            <Card className="card-interactive rounded-2xl border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Download className="w-4 h-4 text-primary" />
+                  Assistente de Exportação de Dados
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Exporte relatórios executivos em Excel (XLSX) com metadados de auditoria
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button
+                  className="w-full h-11 font-bold shadow-sm shadow-primary/20"
+                  onClick={() => setExportDialogOpen(true)}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Abrir Assistente de Exportação
+                </Button>
+              </CardContent>
+            </Card>
 
-          <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} />
+            <ExportDialog open={exportDialogOpen} onOpenChange={setExportDialogOpen} />
 
-          <Card className="card-interactive rounded-2xl border shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Database className="w-4 h-4 text-primary" />
-                Backup Contábil do Sistema
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Backups salvos automaticamente na nuvem e disponíveis para download
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button
-                variant="outline"
-                className="w-full h-10 font-bold"
-                onClick={async () => {
-                  toast({
-                    title: 'Iniciando backup...',
-                    description: 'Gerando pacote e salvando na nuvem...',
-                  });
+            <Card className="card-interactive rounded-2xl border shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Database className="w-4 h-4 text-primary" />
+                  Backup Contábil do Sistema
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Backups salvos automaticamente na nuvem e disponíveis para download
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button
+                  variant="outline"
+                  className="w-full h-10 font-bold"
+                  onClick={async () => {
+                    toast({
+                      title: 'Iniciando backup...',
+                      description: 'Gerando pacote e salvando na nuvem...',
+                    });
 
-                  try {
-                    const [vehicles, contracts, resellers, storesData] = await Promise.all([
-                      supabase.from('vehicles').select('*'),
-                      supabase.from('contracts').select('*'),
-                      supabase.from('resellers').select('*'),
-                      supabase.from('stores').select('*'),
-                    ]);
+                    try {
+                      const [vehicles, contracts, resellers, storesData] = await Promise.all([
+                        supabase.from('vehicles').select('*'),
+                        supabase.from('contracts').select('*'),
+                        supabase.from('resellers').select('*'),
+                        supabase.from('stores').select('*'),
+                      ]);
 
-                    const backupData = {
-                      vehicles: vehicles.data || [],
-                      contracts: contracts.data || [],
-                      resellers: resellers.data || [],
-                      stores: storesData.data || [],
-                      exported_at: new Date().toISOString(),
-                      version: '9.0',
-                    };
+                      const backupData = {
+                        vehicles: vehicles.data || [],
+                        contracts: contracts.data || [],
+                        resellers: resellers.data || [],
+                        stores: storesData.data || [],
+                        exported_at: new Date().toISOString(),
+                        version: '9.0',
+                      };
 
-                    const jsonStr = JSON.stringify(backupData, null, 2);
-                    const blob = new Blob([jsonStr], { type: 'application/json' });
-                    const fileName = `backup_dealflow_${new Date()
-                      .toISOString()
-                      .replace(/[:.]/g, '-')}.json`;
+                      const jsonStr = JSON.stringify(backupData, null, 2);
+                      const blob = new Blob([jsonStr], { type: 'application/json' });
+                      const fileName = `backup_dealflow_${new Date()
+                        .toISOString()
+                        .replace(/[:.]/g, '-')}.json`;
 
-                    // Upload to cloud storage
-                    const { error: uploadError } = await supabase.storage
-                      .from('system-backups')
-                      .upload(fileName, blob, {
-                        contentType: 'application/json',
-                        upsert: false,
+                      // Upload to cloud storage
+                      const { error: uploadError } = await supabase.storage
+                        .from('system-backups')
+                        .upload(fileName, blob, {
+                          contentType: 'application/json',
+                          upsert: false,
+                        });
+
+                      if (uploadError) throw uploadError;
+
+                      // Also download locally
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = fileName;
+                      link.click();
+                      URL.revokeObjectURL(url);
+
+                      toast({
+                        title: 'Backup concluído com sucesso!',
+                        description: 'Dados salvos na nuvem e baixados no computador.',
                       });
+                    } catch (error) {
+                      toast({
+                        variant: 'destructive',
+                        title: 'Erro no backup',
+                        description:
+                          error instanceof Error ? error.message : 'Não foi possível realizar o backup.',
+                      });
+                    }
+                  }}
+                >
+                  <Database className="w-4 h-4 mr-2" />
+                  Realizar Backup Agora
+                </Button>
 
-                    if (uploadError) throw uploadError;
-
-                    // Also download locally
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = fileName;
-                    link.click();
-                    URL.revokeObjectURL(url);
-
-                    toast({
-                      title: 'Backup concluído com sucesso!',
-                      description: 'Dados salvos na nuvem e baixados no computador.',
-                    });
-                  } catch (error) {
-                    toast({
-                      variant: 'destructive',
-                      title: 'Erro no backup',
-                      description:
-                        error instanceof Error ? error.message : 'Não foi possível realizar o backup.',
-                    });
-                  }
-                }}
-              >
-                <Database className="w-4 h-4 mr-2" />
-                Realizar Backup Agora
-              </Button>
-
-              <BackupsList />
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <BackupsList />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* -------------------------------------------------------- */}
         {/* ABA 7: HUB DIRECIONADOR PARA ALA MASTER (SEM DUPLICIDADE)*/}
         {/* -------------------------------------------------------- */}
-        {hasElevatedAccess && (
+        {isManagement && hasElevatedAccess && (
           <TabsContent value="admin" className="space-y-6 mt-6">
             <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card rounded-3xl shadow-sm overflow-hidden">
               <CardHeader className="pb-4">
