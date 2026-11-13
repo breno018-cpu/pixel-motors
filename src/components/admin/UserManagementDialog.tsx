@@ -39,6 +39,7 @@ const userSchema = z.object({
   email: z.string().email('E-mail inválido'),
   role: z.enum(['admin', 'gerente', 'revendedor', 'vendedor', 'vendedor_plus', 'vendedor_externo', 'visualizador']),
   store_id: z.string().optional(),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional().or(z.literal('')),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -95,7 +96,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
-    defaultValues: { full_name: '', email: '', role: 'vendedor', store_id: STORE_UUIDS['store-divinopolis'] },
+    defaultValues: { full_name: '', email: '', role: 'vendedor', store_id: STORE_UUIDS['store-divinopolis'], password: '' },
   });
 
   const createUserMutation = useMutation({
@@ -105,6 +106,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
         full_name: data.full_name,
         role: data.role,
         store_id: data.store_id || STORE_UUIDS['store-divinopolis'],
+        password: data.password ? data.password.trim() : undefined,
       });
     },
     onSuccess: (data) => {
@@ -113,7 +115,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
       queryClient.invalidateQueries({ queryKey: ['sellers-list'] });
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setIsCreating(false);
-      form.reset({ full_name: '', email: '', role: 'vendedor', store_id: STORE_UUIDS['store-divinopolis'] });
+      form.reset({ full_name: '', email: '', role: 'vendedor', store_id: STORE_UUIDS['store-divinopolis'], password: '' });
       setTempPasswordData({ password: data.temp_password, name: data.email, email: data.email });
       toast({ title: 'Usuário criado com sucesso', description: 'Credencial de acesso temporária gerada.' });
     },
@@ -295,6 +297,13 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                       </FormItem>
                     )} />
                   </div>
+                  <FormField control={form.control} name="password" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha de Acesso (Opcional - deixe em branco para gerar aleatória)</FormLabel>
+                      <FormControl><Input {...field} type="password" placeholder="Definir senha de acesso para este colaborador" className="h-9" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   <div className="flex justify-end gap-2 pt-2">
                     <Button type="button" variant="outline" onClick={() => setIsCreating(false)}>Cancelar</Button>
                     <Button type="submit" disabled={createUserMutation.isPending}>

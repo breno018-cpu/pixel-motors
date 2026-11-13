@@ -9,6 +9,7 @@ export interface CreateUserData {
   phone?: string;
   cpf?: string;
   custom_role_id?: string;
+  password?: string;
 }
 
 export interface CreateUserResponse {
@@ -417,7 +418,7 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
   const cleanEmail = data.email.trim().toLowerCase();
   const cleanName = data.full_name.trim();
   const validStoreId = resolveStoreUuid(data.store_id);
-  const tempPassword = generateRandomPassword();
+  const tempPassword = data.password?.trim() || generateRandomPassword();
 
   // Se o e-mail estava previamente na lixeira de deletados, restaura imediatamente
   unmarkDeletedUser(cleanEmail);

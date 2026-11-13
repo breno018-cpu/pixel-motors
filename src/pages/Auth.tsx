@@ -127,11 +127,13 @@ export default function Auth() {
     const { error } = await signIn(email, password);
 
     if (error) {
-      let message = 'Erro ao realizar login. Verifique suas credenciais.';
+      let message = 'E-mail ou senha incorretos.';
       if (error.message.includes('Invalid login credentials')) {
         message = 'E-mail ou senha incorretos.';
       } else if (error.message.includes('Email not confirmed')) {
         message = 'Confirme seu e-mail antes de efetuar o login.';
+      } else if (error.message) {
+        message = error.message;
       }
       setErrors({ general: message });
       toast({
@@ -140,7 +142,15 @@ export default function Auth() {
         description: message,
       });
       setIsSubmitting(false);
+      return;
     }
+
+    toast({
+      title: 'Acesso autorizado',
+      description: 'Iniciando terminal e carregando dados...',
+    });
+    setIsSubmitting(false);
+    navigate('/', { replace: true });
   };
 
   if (user && isDataReady) {
