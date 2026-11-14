@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,8 @@ import { toast } from "sonner";
 import { CatalogProduct } from "@/types/catalog";
 import { maskCurrency, parseCurrency } from "@/lib/masks";
 import { FALLBACK_PATTERNS, fetchChassisPatterns, ChassisPatternItem } from "@/lib/catalogStockLink";
+import { useStores } from "@/hooks/useStores";
+import { isMatchingStore } from "@/lib/storeResolution";
 import { Plus, Trash2, Image, Layers, DollarSign, Wrench, Link2, ShieldCheck, RefreshCw } from "lucide-react";
 
 interface CatalogProductDialogProps {
@@ -39,6 +41,12 @@ export function CatalogProductDialog({
   product,
   onSaveProduct,
 }: CatalogProductDialogProps) {
+  const { data: stores = [] } = useStores();
+  const activeStores = useMemo(
+    () => stores.filter((s) => s.is_active !== false),
+    [stores]
+  );
+
   // Aba Geral
   const [id, setId] = useState("");
   const [name, setName] = useState("");
@@ -87,7 +95,14 @@ export function CatalogProductDialog({
         setDesc(product.desc || "");
         setActive(product.active !== false);
         setReadyDelivery(!!product.readyDelivery);
-        setStoreId(product.store_id || "all");
+
+        let initialStoreId = product.store_id || "all";
+        if (initialStoreId !== "all" && !activeStores.some((s) => s.id === initialStoreId)) {
+          const match = activeStores.find((s) => isMatchingStore(initialStoreId, s.id));
+          if (match) initialStoreId = match.id;
+        }
+        setStoreId(initialStoreId);
+
         setVideo(product.video || "");
         setDisc(product.disc || "");
         setPatternCode(product.patternCode || "");
@@ -209,6 +224,12 @@ export function CatalogProductDialog({
     else if (stockType === "fixed") finalStock = Number(stockQty) || 0;
     else finalStock = null;
 
+    const selectedStore = activeStores.find((s) => s.id === storeId);
+    const resolvedStoreName =
+      storeId === "all"
+        ? "Todas as Lojas"
+        : selectedStore?.name || storeId;
+
     const payload: CatalogProduct = {
       id: id.trim(),
       active,
@@ -221,7 +242,7 @@ export function CatalogProductDialog({
       installments,
       readyDelivery,
       store_id: storeId,
-      store_name: storeId === "store-divinopolis" ? "Divinópolis" : storeId === "store-montesclaros" ? "Montes Claros" : "Todas as Lojas",
+      store_name: resolvedStoreName,
       stock: finalStock,
       patternCode: patternCode.trim() || undefined,
       autoSyncStock,
@@ -342,12 +363,15 @@ export function CatalogProductDialog({
               </Label>
               <Select value={storeId} onValueChange={setStoreId}>
                 <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Selecione a loja..." />
+                  <SelectValue placeholder="Selecione a concessionária..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as Lojas / Rede (Disponível em Divinópolis e Montes Claros)</SelectItem>
-                  <SelectItem value="store-divinopolis">Concessionária Divinópolis</SelectItem>
-                  <SelectItem value="store-montesclaros">Concessionária Montes Claros</SelectItem>
+                  <SelectItem value="all">Todas as Lojas / Rede (Disponível em todas as filiais)</SelectItem>
+                  {activeStores.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-[11px] text-muted-foreground">

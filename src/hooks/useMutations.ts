@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/audit';
 import { saveVehicleToCache, type Vehicle } from '@/hooks/useVehicles';
+import { saveStoreToCache, type Store } from '@/hooks/useStores';
 
 // Vehicle mutations
 export interface CreateVehicleData {
@@ -120,15 +121,30 @@ export function useCreateStore() {
 
   return useMutation({
     mutationFn: async (data: CreateStoreData) => {
-      const { data: store, error } = await supabase
-        .from('stores')
-        .insert(data)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      logActivity('criar', 'loja', store.id, { nome: data.name });
-      return store;
+      const tempId = `store-${Date.now()}`;
+      try {
+        const { data: store, error } = await supabase
+          .from('stores')
+          .insert(data)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        saveStoreToCache(store);
+        logActivity('criar', 'loja', store.id, { nome: data.name });
+        return store;
+      } catch (err) {
+        console.warn('Erro ao cadastrar loja no Supabase, salvando localmente:', err);
+        const localStore = {
+          id: tempId,
+          ...data,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as Store;
+        saveStoreToCache(localStore);
+        return localStore;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stores'] });

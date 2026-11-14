@@ -703,10 +703,8 @@ export default function Sales() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as Concessionárias (MG)</SelectItem>
-              <SelectItem value="store-divinopolis">Concessionária Divinópolis</SelectItem>
-              <SelectItem value="store-montesclaros">Concessionária Montes Claros</SelectItem>
               {(stores || [])
-                .filter((s) => s.id !== 'store-montesclaros' && s.id !== 'store-divinopolis')
+                .filter((s) => s.is_active !== false)
                 .map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}

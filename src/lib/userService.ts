@@ -359,12 +359,20 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
   const employeeEmailMap = new Map((employees || []).filter((e) => e.email).map((e) => [e.email.toLowerCase().trim(), e]));
   const resellerMap = new Map((resellers || []).filter((r) => r.user_id).map((r) => [r.user_id, r]));
 
-  // Lojas conhecidas
+  // Lojas conhecidas (respeita 100% os nomes oficiais/personalizados configurados nas lojas)
   const storeMap = new Map((storesList || []).map((s) => [s.id, s.name]));
-  storeMap.set('store-divinopolis', 'Concessionária Divinópolis');
-  storeMap.set('store-montesclaros', 'Concessionária Montes Claros');
-  storeMap.set(STORE_UUIDS['store-divinopolis'], 'Concessionária Divinópolis');
-  storeMap.set(STORE_UUIDS['store-montesclaros'], 'Concessionária Montes Claros');
+  if (!storeMap.has('store-divinopolis')) {
+    storeMap.set('store-divinopolis', storeMap.get(STORE_UUIDS['store-divinopolis']) || 'Concessionária Divinópolis');
+  }
+  if (!storeMap.has('store-montesclaros')) {
+    storeMap.set('store-montesclaros', storeMap.get(STORE_UUIDS['store-montesclaros']) || 'Concessionária Montes Claros');
+  }
+  if (!storeMap.has(STORE_UUIDS['store-divinopolis'])) {
+    storeMap.set(STORE_UUIDS['store-divinopolis'], storeMap.get('store-divinopolis') || 'Concessionária Divinópolis');
+  }
+  if (!storeMap.has(STORE_UUIDS['store-montesclaros'])) {
+    storeMap.set(STORE_UUIDS['store-montesclaros'], storeMap.get('store-montesclaros') || 'Concessionária Montes Claros');
+  }
 
   const resolveStoreDetails = (
     explicitStoreId?: string | null,

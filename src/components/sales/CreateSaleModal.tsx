@@ -462,9 +462,10 @@ export function CreateSaleModal({
         cleanSeller.includes('halana') ||
         cleanSeller.includes('natan') ||
         (buyerCity || '').toUpperCase().includes('MONTES CLAROS');
-      const storeName = isMoc
+      const currentStore = stores.find((s) => s.id === storeId || (isMoc ? s.id === STORE_MONTESCLAROS_UUID : s.id === STORE_DIVINOPOLIS_UUID));
+      const storeName = currentStore?.name || (isMoc
         ? 'Concessionária Montes Claros'
-        : 'Concessionária Divinópolis';
+        : 'Concessionária Divinópolis');
 
       const dateParts = effectiveSaleDate.split('-');
       const formattedDateBR = dateParts.length === 3
@@ -915,8 +916,13 @@ export function CreateSaleModal({
                       <SelectValue placeholder="Selecione a loja" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="store-divinopolis">Concessionária Divinópolis</SelectItem>
-                      <SelectItem value="store-montesclaros">Concessionária Montes Claros</SelectItem>
+                      {stores
+                        .filter((s) => s.is_active !== false)
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 )}

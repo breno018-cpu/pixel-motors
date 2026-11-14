@@ -149,8 +149,15 @@ export default function OwnerDashboard() {
       // 1. Filtro de Loja
       if (storeFilter !== 'all') {
         const itemStoreNorm = (item.store_name || '').toUpperCase();
-        if (storeFilter === 'divinopolis' && !itemStoreNorm.includes('DIVINOPOLIS')) return false;
-        if (storeFilter === 'montesclaros' && !itemStoreNorm.includes('MONTES CLAROS') && !itemStoreNorm.includes('MOC')) return false;
+        const selectedStore = stores?.find((s) => s.id === storeFilter);
+        const targetName = (selectedStore?.name || storeFilter).toUpperCase();
+        if (storeFilter === 'divinopolis') {
+          if (!itemStoreNorm.includes('DIVINOPOLIS')) return false;
+        } else if (storeFilter === 'montesclaros') {
+          if (!itemStoreNorm.includes('MONTES CLAROS') && !itemStoreNorm.includes('MOC')) return false;
+        } else {
+          if (!itemStoreNorm.includes(targetName) && item.store_id !== storeFilter) return false;
+        }
       }
 
       // 2. Filtro de Vendedor
@@ -595,8 +602,13 @@ export default function OwnerDashboard() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as Concessionárias</SelectItem>
-                  <SelectItem value="divinopolis">Concessionária Divinópolis</SelectItem>
-                  <SelectItem value="montesclaros">Concessionária Montes Claros</SelectItem>
+                  {(stores || [])
+                    .filter((s) => s.is_active !== false)
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

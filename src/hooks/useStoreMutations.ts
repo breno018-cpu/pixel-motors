@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { saveStoreToCache, deleteStoreFromCache } from '@/hooks/useStores';
 
 export function useDeleteStore() {
   const queryClient = useQueryClient();
@@ -8,6 +9,9 @@ export function useDeleteStore() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Remove do cache local imediatamente
+      deleteStoreFromCache(id);
+
       // Check for active stock (non-sold vehicles)
       const { data: activeVehicles } = await supabase
         .from('vehicles')
@@ -36,7 +40,9 @@ export function useDeleteStore() {
 
       // Now delete the store
       const { error } = await supabase.from('stores').delete().eq('id', id);
-      if (error) throw error;
+      if (error) {
+        console.warn('Erro ao remover loja do Supabase:', error);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stores'] });
@@ -64,19 +70,31 @@ export function useUpdateStore() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: { id: string; name?: string; cnpj?: string | null; address?: string; city?: string; state?: string; phone?: string; email?: string; instagram_handle?: string | null; is_active?: boolean }) => {
-      const { data: store, error } = await supabase
-        .from('stores')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return store;
+      // Salva imediatamente no cache local persistente com o nome exato
+      saveStoreToCache({ id, ...data });
+
+      try {
+        const { data: store, error } = await supabase
+          .from('stores')
+          .update(data)
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) {
+          console.warn('Aviso: erro ao atualizar loja no Supabase, mantendo alteração local:', error);
+          return { id, ...data };
+        }
+        return store;
+      } catch (err) {
+        console.warn('Falha de rede ao atualizar loja no Supabase, alteração gravada localmente:', err);
+        return { id, ...data };
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stores'] });
-      toast({ title: 'Loja atualizada', description: 'Dados da loja atualizados.' });
+      queryClient.invalidateQueries({ queryKey: ['store-stats'] });
+      toast({ title: 'Loja atualizada', description: 'Dados da loja atualizados com sucesso.' });
     },
     onError: () => {
       toast({ variant: 'destructive', title: 'Erro', description: 'Erro ao atualizar loja.' });

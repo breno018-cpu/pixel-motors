@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useVehicles } from "@/hooks/useVehicles";
 import { useVehicleModels } from "@/hooks/useVehicleModels";
 import { useStores } from "@/hooks/useStores";
+import { isMatchingStore } from "@/lib/storeResolution";
 import {
   Select,
   SelectContent,
@@ -102,7 +103,7 @@ export function CatalogImportFromStockDialog({
         isAlreadyInCatalog: existingCatalogProductIds.has(key),
       };
 
-      if (v.status === "disponivel" && (storeFilter === "all" || v.store_id === storeFilter)) {
+      if (v.status === "disponivel" && (storeFilter === "all" || isMatchingStore(v.store_id, storeFilter))) {
         existing.stockQty += 1;
       }
       if (!existing.price && v.sale_price) {
@@ -172,6 +173,12 @@ export function CatalogImportFromStockDialog({
         cat = "semi";
       }
 
+      const selectedStoreObj = stores.find((s) => s.id === storeFilter);
+      const resolvedStoreName =
+        storeFilter === "all"
+          ? "Todas as Lojas"
+          : selectedStoreObj?.name || storeFilter;
+
       const product: CatalogProduct = {
         id: item.key,
         active: true,
@@ -183,7 +190,7 @@ export function CatalogImportFromStockDialog({
         installments: true,
         readyDelivery: item.stockQty > 0,
         store_id: storeFilter !== "all" ? storeFilter : undefined,
-        store_name: storeFilter === "store-divinopolis" ? "Divinópolis" : storeFilter === "store-montesclaros" ? "Montes Claros" : "Todas as Lojas",
+        store_name: resolvedStoreName,
         stock: item.stockQty > 0 ? item.stockQty : null,
         desc: `${item.brand} ${item.modelName} com excelente custo-benefício, pronto para entrega na L1MA Motors.`,
         photos:
@@ -246,8 +253,13 @@ export function CatalogImportFromStockDialog({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas as Lojas (Rede)</SelectItem>
-              <SelectItem value="store-divinopolis">Concessionária Divinópolis</SelectItem>
-              <SelectItem value="store-montesclaros">Concessionária Montes Claros</SelectItem>
+              {stores
+                .filter((s) => s.is_active !== false)
+                .map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
 
