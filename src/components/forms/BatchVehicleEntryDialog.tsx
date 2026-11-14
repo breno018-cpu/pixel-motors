@@ -35,6 +35,7 @@ import { useStores } from '@/hooks/useStores';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useQueryClient } from '@tanstack/react-query';
 import { saveVehiclesToCache, type Vehicle } from '@/hooks/useVehicles';
 import { 
@@ -116,27 +117,36 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
     const finalStoreId = storeId || userStore?.id;
 
     try {
-      const inserts = effectiveChassisList.map((chassis) => ({
-        brand: brand.toUpperCase(),
-        model: model.toUpperCase(),
-        vehicle_type: vehicleType,
-        year: Number(year),
-        manufacture_year: Number(year),
-        color: color.toUpperCase(),
-        chassis: chassis,
-        fuel_type: isElectricModel ? 'eletrico' : 'gasolina',
-        transmission: isElectricModel ? 'direta' : 'manual',
-        engine_cc: isElectricModel ? 2000 : 125,
-        cost_price: cost > 0 ? cost : null,
-        purchase_price: cost > 0 ? cost : null,
-        sale_price: sale > 0 ? sale : null,
-        status: 'disponivel',
-        store_id: finalStoreId,
-        condition: 'novo',
-        notes: isElectricModel
-          ? `Entrada em lote moto elétrica (${brand}) - Nº da Moto/Motor: ${chassis}`
-          : `Entrada em lote concessionária (${brand}) - NF Remessa Fábrica.`,
-      }));
+      const inserts = effectiveChassisList.map((chassis) => {
+        const cleanChassis =
+          chassis &&
+          !chassis.toUpperCase().includes('DEFINIR') &&
+          !chassis.toUpperCase().includes('DISPENSADO')
+            ? chassis
+            : null;
+
+        return {
+          brand: brand.toUpperCase(),
+          model: model.toUpperCase(),
+          vehicle_type: vehicleType,
+          year: Number(year),
+          manufacture_year: Number(year),
+          color: color.toUpperCase(),
+          chassis: cleanChassis,
+          fuel_type: isElectricModel ? 'eletrico' : 'gasolina',
+          transmission: isElectricModel ? 'direta' : 'manual',
+          engine_cc: isElectricModel ? 2000 : 125,
+          cost_price: cost > 0 ? cost : null,
+          purchase_price: cost > 0 ? cost : null,
+          sale_price: sale > 0 ? sale : null,
+          status: 'disponivel',
+          store_id: finalStoreId,
+          condition: 'novo',
+          notes: isElectricModel
+            ? `Entrada em lote moto elétrica (${brand}) - Nº da Moto/Motor: ${chassis}`
+            : `Entrada em lote concessionária (${brand}) - NF Remessa Fábrica.`,
+        };
+      });
 
       // Cache imediato para visualização garantida em todas as sessões
       const cachedVehicles: Vehicle[] = inserts.map((ins) => ({
@@ -149,18 +159,18 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
         manufacture_year: ins.year,
         color: ins.color,
         plate: null,
-        chassis: ins.chassis,
+        chassis: ins.chassis || 'A DEFINIR NA VENDA',
         renavam: null,
         mileage: 0,
-        fuel_type: 'gasolina',
-        transmission: 'manual',
+        fuel_type: ins.fuel_type || 'gasolina',
+        transmission: ins.transmission || 'manual',
         purchase_price: ins.purchase_price,
         sale_price: ins.sale_price,
         status: 'disponivel',
         images: null,
         notes: ins.notes,
         vehicle_type: ins.vehicle_type,
-        engine_cc: 125,
+        engine_cc: ins.engine_cc || 125,
         warranty_months: 12,
         revision_period_months: 6,
         revision_period_km: 1000,
@@ -170,6 +180,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
       saveVehiclesToCache(cachedVehicles);
 
       try {
+        await ensureSupabaseSession();
         const { error } = await supabase.from('vehicles').insert(inserts as any);
         if (error) {
           console.warn('Persistência remota do lote falhou, salvo localmente:', error.message);

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/audit';
 import { saveVehicleToCache, type Vehicle } from '@/hooks/useVehicles';
@@ -14,7 +15,7 @@ export interface CreateVehicleData {
   year: number;
   manufacture_year?: number;
   color: string;
-  chassis: string;
+  chassis?: string | null;
   plate?: string;
   renavam?: string;
   mileage?: number;
@@ -36,6 +37,15 @@ export function useCreateVehicle() {
 
   return useMutation({
     mutationFn: async (data: CreateVehicleData) => {
+      const cleanChassis =
+        data.chassis &&
+        !data.chassis.toUpperCase().includes('DEFINIR') &&
+        !data.chassis.toUpperCase().includes('DISPENSADO')
+          ? data.chassis.trim().toUpperCase()
+          : null;
+
+      const cleanPlate = data.plate?.trim() ? data.plate.trim().toUpperCase() : null;
+
       const tempId = crypto.randomUUID();
       const localVehicle: Vehicle = {
         id: tempId,
@@ -46,8 +56,8 @@ export function useCreateVehicle() {
         year: data.year,
         manufacture_year: data.manufacture_year || data.year,
         color: data.color,
-        plate: data.plate || null,
-        chassis: data.chassis,
+        plate: cleanPlate,
+        chassis: cleanChassis || 'A DEFINIR NA VENDA',
         renavam: data.renavam || null,
         mileage: data.mileage || 0,
         fuel_type: data.fuel_type || 'gasolina',
@@ -69,16 +79,26 @@ export function useCreateVehicle() {
       saveVehicleToCache(localVehicle);
 
       try {
+        await ensureSupabaseSession();
+        const insertPayload = {
+          ...data,
+          chassis: cleanChassis,
+          plate: cleanPlate,
+        };
+
         const { data: vehicle, error } = await supabase
           .from('vehicles')
-          .insert(data)
+          .insert(insertPayload)
           .select()
           .single();
 
         if (!error && vehicle) {
           saveVehicleToCache(vehicle as Vehicle);
-          logActivity('criar', 'veiculo', vehicle.id, { chassi: data.chassis, modelo: `${data.brand} ${data.model}` });
+          logActivity('criar', 'veiculo', vehicle.id, { chassi: cleanChassis, modelo: `${data.brand} ${data.model}` });
           return vehicle;
+        }
+        if (error) {
+          console.warn('[useCreateVehicle] Erro ao persistir no Supabase:', error.message);
         }
       } catch (err) {
         console.warn('Persistência remota de veículo indisponível, salvo no cache local:', err);
