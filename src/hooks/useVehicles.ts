@@ -391,18 +391,12 @@ export function useVehicles() {
 
         if (!error && Array.isArray(data)) {
           const filteredRemote = (data as Vehicle[]).filter((v) => !deletedIds.has(v.id));
-          const remoteIds = new Set(filteredRemote.map((v) => v.id));
-          const now = Date.now();
-          // Apenas mantém veículos criados offline nos últimos 15 min que não foram excluídos
-          const localOnly = currentList.filter(
-            (v) =>
-              !remoteIds.has(v.id) &&
-              !deletedIds.has(v.id) &&
-              now - new Date(v.created_at).getTime() < 15 * 60 * 1000
-          );
-          const merged = [...filteredRemote, ...localOnly];
-          saveVehiclesToCache(merged);
-          return merged;
+          // O banco de dados Supabase é a autoridade absoluta do estoque
+          // Sobrescreve o cache local para purgar imediatamente qualquer fantasma ou duplicata
+          try {
+            localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(filteredRemote));
+          } catch {}
+          return filteredRemote;
         }
       } catch (err) {
         console.warn('Consulta remota de veículos falhou, usando estoque local:', err);

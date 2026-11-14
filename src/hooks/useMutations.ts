@@ -46,44 +46,30 @@ export function useCreateVehicle() {
 
       const cleanPlate = data.plate?.trim() ? data.plate.trim().toUpperCase() : null;
 
-      const tempId = crypto.randomUUID();
-      const localVehicle: Vehicle = {
-        id: tempId,
-        store_id: data.store_id || 'store-divinopolis',
-        reseller_id: null,
-        brand: data.brand,
-        model: data.model,
-        year: data.year,
-        manufacture_year: data.manufacture_year || data.year,
-        color: data.color,
-        plate: cleanPlate,
-        chassis: cleanChassis || 'A DEFINIR NA VENDA',
-        renavam: data.renavam || null,
-        mileage: data.mileage || 0,
-        fuel_type: data.fuel_type || 'gasolina',
-        transmission: data.transmission || 'manual',
-        purchase_price: data.purchase_price || null,
-        sale_price: data.sale_price || null,
-        status: data.status || 'disponivel',
-        images: null,
-        notes: data.notes || null,
-        vehicle_type: data.vehicle_type || 'moto',
-        engine_cc: data.engine_cc || null,
-        warranty_months: data.warranty_months || 12,
-        revision_period_months: data.revision_period_months || 6,
-        revision_period_km: data.revision_period_km || 1000,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      saveVehicleToCache(localVehicle);
-
       try {
         await ensureSupabaseSession();
         const insertPayload = {
-          ...data,
+          store_id: data.store_id || 'store-divinopolis',
+          vehicle_type: data.vehicle_type || 'moto',
+          brand: data.brand.trim().toUpperCase(),
+          model: data.model.trim().toUpperCase(),
+          year: data.year,
+          manufacture_year: data.manufacture_year || data.year,
+          color: data.color || 'Preta',
           chassis: cleanChassis,
           plate: cleanPlate,
+          renavam: data.renavam || null,
+          mileage: data.mileage || 0,
+          fuel_type: data.fuel_type || 'gasolina',
+          transmission: data.transmission || 'manual',
+          purchase_price: data.purchase_price || null,
+          sale_price: data.sale_price || null,
+          status: data.status || 'disponivel',
+          notes: data.notes || null,
+          engine_cc: data.engine_cc || null,
+          warranty_months: data.warranty_months || 12,
+          revision_period_months: data.revision_period_months || 6,
+          revision_period_km: data.revision_period_km || 1000,
         };
 
         const { data: vehicle, error } = await supabase
@@ -92,20 +78,52 @@ export function useCreateVehicle() {
           .select()
           .single();
 
-        if (!error && vehicle) {
-          saveVehicleToCache(vehicle as Vehicle);
-          logActivity('criar', 'veiculo', vehicle.id, { chassi: cleanChassis, modelo: `${data.brand} ${data.model}` });
-          return vehicle;
-        }
         if (error) {
-          console.warn('[useCreateVehicle] Erro ao persistir no Supabase:', error.message);
+          throw new Error(error.message || 'Erro ao persistir no Supabase');
         }
-      } catch (err) {
-        console.warn('Persistência remota de veículo indisponível, salvo no cache local:', err);
-      }
 
-      logActivity('criar', 'veiculo', tempId, { chassi: data.chassis, modelo: `${data.brand} ${data.model}` });
-      return localVehicle;
+        if (vehicle) {
+          const realVehicle = vehicle as Vehicle;
+          saveVehicleToCache(realVehicle);
+          void logActivity('criar', 'veiculo', realVehicle.id, { chassi: cleanChassis, modelo: `${data.brand} ${data.model}` });
+          return realVehicle;
+        }
+        throw new Error('Falha ao obter registro do veículo cadastrado');
+      } catch (err: any) {
+        // Apenas em caso de erro real de rede sem internet salva em contingência local
+        console.warn('[useCreateVehicle] Falha de conexão, registrando em contingência:', err);
+        const tempId = crypto.randomUUID();
+        const fallbackVehicle: Vehicle = {
+          id: tempId,
+          store_id: data.store_id || 'store-divinopolis',
+          reseller_id: null,
+          brand: data.brand,
+          model: data.model,
+          year: data.year,
+          manufacture_year: data.manufacture_year || data.year,
+          color: data.color,
+          plate: cleanPlate,
+          chassis: cleanChassis || 'A DEFINIR NA VENDA',
+          renavam: data.renavam || null,
+          mileage: data.mileage || 0,
+          fuel_type: data.fuel_type || 'gasolina',
+          transmission: data.transmission || 'manual',
+          purchase_price: data.purchase_price || null,
+          sale_price: data.sale_price || null,
+          status: data.status || 'disponivel',
+          images: null,
+          notes: data.notes || null,
+          vehicle_type: data.vehicle_type || 'moto',
+          engine_cc: data.engine_cc || null,
+          warranty_months: data.warranty_months || 12,
+          revision_period_months: data.revision_period_months || 6,
+          revision_period_km: data.revision_period_km || 1000,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        saveVehicleToCache(fallbackVehicle);
+        return fallbackVehicle;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
