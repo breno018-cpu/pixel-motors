@@ -163,7 +163,7 @@ export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
             </DropdownMenuItem>
           )}
           
-          {isAdmin && (
+          {(isAdmin || isManager) && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem 

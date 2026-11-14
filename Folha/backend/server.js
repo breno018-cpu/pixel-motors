@@ -741,6 +741,54 @@ app.get('/api/folha/holerite/:funcionarioId/:mes', (req, res) => {
   }
 });
 
+// ==========================================
+// CATÁLOGO L1MA MOTORS (GET /api/catalog, POST /api/sync)
+// ==========================================
+let globalCatalogState = {
+  version: 1,
+  products: [],
+  config: { storeName: 'L1MA Motors', maxInstallments: 21 },
+  campaign: null,
+};
+
+app.get('/api/catalog', (req, res) => {
+  res.json(globalCatalogState);
+});
+
+app.post('/api/sync', (req, res) => {
+  try {
+    const actions = Array.isArray(req.body) ? req.body : [req.body];
+    for (const act of actions) {
+      if (act.action === 'remove' && act.id) {
+        globalCatalogState.products = globalCatalogState.products.filter(p => p.id !== act.id);
+      } else if (act.action === 'create' || act.action === 'upsert') {
+        const prod = act.product || act;
+        if (prod && prod.id) {
+          globalCatalogState.products = globalCatalogState.products.filter(p => p.id !== prod.id);
+          globalCatalogState.products.push(prod);
+        }
+      }
+    }
+    globalCatalogState.version = (globalCatalogState.version || 1) + 1;
+    res.json({ ok: true, version: globalCatalogState.version, applied: actions.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/events', (req, res) => {
+  res.json([]);
+});
+
+app.get('/api/stream', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+  res.write(`data: ${JSON.stringify({ version: globalCatalogState.version, events: [] })}\n\n`);
+});
+
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`Servidor de Folha de Pagamento Inteligente rodando na porta ${PORT}`);

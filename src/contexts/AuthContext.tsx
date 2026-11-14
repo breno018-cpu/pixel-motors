@@ -319,17 +319,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .map((r: any) => r.custom_role_id)
         .filter(Boolean);
 
+      const cleanEmail = (nextProfile?.email || '').toLowerCase().trim();
       const storePromise = !userRoles.includes('admin')
         ? Promise.all([
             supabase
               .from('resellers')
               .select('store_id, stores(id, name)')
-              .eq('user_id', userId)
+              .or(`user_id.eq.${userId}${cleanEmail ? `,email.ilike.${cleanEmail}` : ''}`)
               .maybeSingle(),
             supabase
               .from('employees')
-              .select('store_id, stores(id, name)')
-              .eq('profile_id', userId)
+              .select('id, profile_id, store_id, stores(id, name)')
+              .or(`profile_id.eq.${userId}${cleanEmail ? `,email.ilike.${cleanEmail}` : ''}`)
               .maybeSingle(),
             supabase.from('stores').select('id, name').eq('manager_id', userId).maybeSingle(),
           ])
@@ -379,38 +380,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let nextStore: UserStore | null = null;
       if (!userRoles.includes('admin')) {
-        if (resellerRes?.data?.stores) {
-          nextStore = resellerRes.data.stores as unknown as UserStore;
-        } else if ((empRes?.data as any)?.stores) {
-          nextStore = (empRes?.data as any).stores as UserStore;
-        } else if (storeRes?.data) {
-          nextStore = storeRes.data as UserStore;
+        const storeData = (empRes?.data as any)?.stores || (resellerRes?.data as any)?.stores || storeRes?.data;
+        const explicitStoreId = empRes?.data?.store_id || resellerRes?.data?.store_id || (storeRes?.data as any)?.id;
+
+        // Se encontrou o vínculo de empregado por e-mail mas faltava profile_id, atualiza no Supabase
+        if (empRes?.data?.id && !empRes.data.profile_id) {
+          void (supabase as any)
+            .from('employees')
+            .update({ profile_id: userId })
+            .eq('id', empRes.data.id);
         }
 
-        const cleanEmail = (nextProfile?.email || '').toLowerCase().trim();
-        const cleanName = (nextProfile?.full_name || '').toLowerCase().trim();
-        const isMoc =
-          cleanEmail.includes('moc') ||
-          cleanEmail.includes('montesclaros') ||
-          cleanName.includes('mariana') ||
-          cleanName.includes('halana') ||
-          cleanName.includes('sabrina') ||
-          cleanName.includes('natan') ||
-          (nextStore?.id || '').includes('montesclaros') ||
-          nextStore?.id === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-          (nextStore?.name || '').toUpperCase().includes('MONTES CLAROS');
-
-        if (isMoc) {
-          nextStore = {
-            id: 'e8254a81-d669-464b-9806-457ba25ce7f0',
-            name: 'Concessionária Montes Claros',
-          };
-        } else if (!nextStore) {
-          nextStore = {
-            id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634',
-            name: 'Concessionária Divinópolis',
-          };
+        if (storeData && typeof storeData === 'object' && !Array.isArray(storeData) && (storeData as any).id) {
+          nextStore = storeData as unknown as UserStore;
+        } else if (explicitStoreId) {
+          if (isMatchingStore(explicitStoreId, STORE_MONTESCLAROS_UUID)) {
+            nextStore = {
+              id: STORE_MONTESCLAROS_UUID,
+              name: 'Concessionária Montes Claros',
+            };
+          } else {
+            nextStore = {
+              id: STORE_DIVINOPOLIS_UUID,
+              name: 'Concessionária Divinópolis',
+            };
+          }
         }
+
+        // Se ainda não achou, consulta overrides salvos localmente
+        if (!nextStore) {
+          const ov = getUserOverride(userId) || (cleanEmail ? getUserOverride(cleanEmail) : null);
+          if (ov?.store_id) {
+            if (isMatchingStore(ov.store_id, STORE_MONTESCLAROS_UUID)) {
+              nextStore = {
+                id: STORE_MONTESCLAROS_UUID,
+                name: 'Concessionária Montes Claros',
+              };
+            } else {
+              nextStore = {
+                id: STORE_DIVINOPOLIS_UUID,
+                name: 'Concessionária Divinópolis',
+              };
+            }
+          }
+        }
+
+        // Fallback final apenas se NENHUMA loja estiver associada ao colaborador
+        if (!nextStore) {
+          const cleanName = (nextProfile?.full_name || '').toLowerCase().trim();
+          const isMoc =
+            cleanEmail.includes('moc') ||
+            cleanEmail.includes('montesclaros') ||
+            cleanName.includes('mariana') ||
+            cleanName.includes('halana') ||
+            cleanName.includes('sabrina') ||
+            cleanName.includes('natan');
+
+          nextStore = isMoc
+            ? { id: STORE_MONTESCLAROS_UUID, name: 'Concessionária Montes Claros' }
+            : { id: STORE_DIVINOPOLIS_UUID, name: 'Concessionária Divinópolis' };
+        }
+
         setUserStore(nextStore);
       } else {
         // Ensure seller system roles have 'vehicles.create' in DB role_permissions for RLS
@@ -652,17 +682,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsDataReady(true);
             const cleanEmailLogin = userEmail.toLowerCase().trim();
             const cleanFullNameLogin = (fullName || '').toLowerCase().trim();
-            const isMocLogin =
-              cleanEmailLogin.includes('moc') ||
-              cleanEmailLogin.includes('montesclaros') ||
-              cleanFullNameLogin.includes('mariana') ||
-              cleanFullNameLogin.includes('halana') ||
-              cleanFullNameLogin.includes('sabrina') ||
-              cleanFullNameLogin.includes('natan');
+            const ovLogin = getUserOverride(data.user.id) || getUserOverride(cleanEmailLogin);
 
-            const initialStore = isMocLogin
-              ? { id: 'e8254a81-d669-464b-9806-457ba25ce7f0', name: 'Concessionária Montes Claros' }
-              : { id: 'ccf8e097-09d7-4305-8077-5c16fc8b5634', name: 'Concessionária Divinópolis' };
+            let initialStore: UserStore;
+            if (ovLogin?.store_id) {
+              const isMocOv = isMatchingStore(ovLogin.store_id, STORE_MONTESCLAROS_UUID);
+              initialStore = isMocOv
+                ? { id: STORE_MONTESCLAROS_UUID, name: 'Concessionária Montes Claros' }
+                : { id: STORE_DIVINOPOLIS_UUID, name: 'Concessionária Divinópolis' };
+            } else {
+              const isMocLogin =
+                cleanEmailLogin.includes('moc') ||
+                cleanEmailLogin.includes('montesclaros') ||
+                cleanFullNameLogin.includes('mariana') ||
+                cleanFullNameLogin.includes('halana') ||
+                cleanFullNameLogin.includes('sabrina') ||
+                cleanFullNameLogin.includes('natan');
+
+              initialStore = isMocLogin
+                ? { id: STORE_MONTESCLAROS_UUID, name: 'Concessionária Montes Claros' }
+                : { id: STORE_DIVINOPOLIS_UUID, name: 'Concessionária Divinópolis' };
+            }
 
             const mustDefine = !userAlreadyHasDefinedPassword && !isMasterSupabase;
             setMustChangePassword(mustDefine);
@@ -871,18 +911,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const sId = (matchedUser.store_id || '').toLowerCase().trim();
       const cleanEmailMatched = (matchedUser.email || '').toLowerCase().trim();
       const cleanNameMatched = (matchedUser.full_name || '').toLowerCase().trim();
-      const isMoc =
-        sId === 'store-montesclaros' ||
-        sId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-        sId.includes('montesclaros') ||
-        cleanEmailMatched.includes('moc') ||
-        cleanEmailMatched.includes('montesclaros') ||
-        cleanNameMatched.includes('mariana') ||
-        cleanNameMatched.includes('halana') ||
-        cleanNameMatched.includes('sabrina') ||
-        cleanNameMatched.includes('natan');
+      let isMoc = false;
+      if (sId && sId !== 'none' && sId !== 'all') {
+        isMoc = isMatchingStore(sId, STORE_MONTESCLAROS_UUID);
+      } else {
+        isMoc =
+          cleanEmailMatched.includes('moc') ||
+          cleanEmailMatched.includes('montesclaros') ||
+          cleanNameMatched.includes('mariana') ||
+          cleanNameMatched.includes('halana') ||
+          cleanNameMatched.includes('sabrina') ||
+          cleanNameMatched.includes('natan');
+      }
       const storeObj = {
-        id: isMoc ? (sId || 'store-montesclaros') : (sId || 'store-divinopolis'),
+        id: isMoc ? (sId || STORE_MONTESCLAROS_UUID) : (sId || STORE_DIVINOPOLIS_UUID),
         name: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
       };
 

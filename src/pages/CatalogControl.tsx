@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCatalog } from "@/hooks/useCatalog";
-import { CatalogProduct, CatalogPromo, CatalogSyncAction } from "@/types/catalog";
+import { CatalogProduct, CatalogPromo, CatalogSyncAction, CatalogData } from "@/types/catalog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -143,6 +144,7 @@ const CATALOG_PARTS = [
 ];
 
 export default function CatalogControl() {
+  const queryClient = useQueryClient();
   const {
     catalog,
     events,
@@ -542,10 +544,21 @@ export default function CatalogControl() {
   const handleConfirmDelete = async () => {
     if (!deleteProduct) return;
     setDeleting(true);
+    const targetProduct = deleteProduct;
     try {
-      const action: CatalogSyncAction = { action: "remove", id: deleteProduct.id };
-      await dispatchOrQueue(action, `Excluir ${deleteProduct.name}`);
+      const action: CatalogSyncAction = { action: "remove", id: targetProduct.id };
+      await dispatchOrQueue(action, `Excluir ${targetProduct.name}`);
+      queryClient.setQueryData<CatalogData>(["catalog-data"], (old) => {
+        if (!old || !Array.isArray(old.products)) return old;
+        return {
+          ...old,
+          products: old.products.filter((p) => p.id !== targetProduct.id),
+        };
+      });
       setDeleteProduct(null);
+      toast.success(`Veículo "${targetProduct.name}" excluído do catálogo com sucesso!`);
+    } catch (err: any) {
+      toast.error(`Falha ao excluir item: ${err?.message || "Erro desconhecido"}`);
     } finally {
       setDeleting(false);
     }

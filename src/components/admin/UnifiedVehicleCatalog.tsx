@@ -154,7 +154,7 @@ export function UnifiedVehicleCatalog() {
   // Estados de Busca e Filtro
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'moto' | 'carro'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'promo' | 'no_price' | 'has_vin' | 'no_vin'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'all_with_archived' | 'archived' | 'promo' | 'no_price' | 'has_vin' | 'no_vin'>('all');
 
   // Modal Unificado (Criação & Edição)
   const [modalOpen, setModalOpen] = useState(false);
@@ -210,6 +210,11 @@ export function UnifiedVehicleCatalog() {
       .filter((item) => {
         if (typeFilter !== 'all' && item.vehicle_type !== typeFilter) return false;
 
+        // Por padrão oculta modelos desativados/excluídos a menos que explicitamente solicitado
+        if (statusFilter !== 'archived' && statusFilter !== 'all_with_archived' && item.is_active === false) {
+          return false;
+        }
+        if (statusFilter === 'archived' && item.is_active !== false) return false;
         if (statusFilter === 'promo' && !item.isPromo) return false;
         if (statusFilter === 'no_price' && item.default_sale_price && item.default_sale_price > 0) return false;
         if (statusFilter === 'has_vin' && !item.hasPattern) return false;
@@ -447,11 +452,13 @@ export function UnifiedVehicleCatalog() {
               <SelectValue placeholder="Situação" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas as Situações</SelectItem>
+              <SelectItem value="all">Modelos Ativos no Catálogo</SelectItem>
               <SelectItem value="promo">Com Promoção Ativa</SelectItem>
               <SelectItem value="has_vin">Com Padrão VIN</SelectItem>
               <SelectItem value="no_vin">Sem Padrão VIN</SelectItem>
               <SelectItem value="no_price">Sem Preço de Venda</SelectItem>
+              <SelectItem value="all_with_archived">Todos (Incluindo Inativos)</SelectItem>
+              <SelectItem value="archived">Apenas Inativos / Excluídos</SelectItem>
             </SelectContent>
           </Select>
         </div>
