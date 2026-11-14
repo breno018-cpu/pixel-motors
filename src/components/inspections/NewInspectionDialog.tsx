@@ -46,7 +46,7 @@ import {
   FinanceStatus,
   VehicleDebt,
 } from '@/types/inspection';
-import { maskCurrency, parseCurrency } from '@/lib/masks';
+import { maskCurrency, parseCurrency, maskPhone } from '@/lib/masks';
 import { formatPlate } from '@/lib/vehicleCatalog';
 import { lookupMotoByPlate } from '@/lib/plateLookup';
 import { extractTextFromCrlvFile, parseCrlvText } from '@/lib/crlvParser';
@@ -516,7 +516,7 @@ export function NewInspectionDialog({
               </div>
               <div>
                 <Label className="text-[11px]">Telefone / WhatsApp</Label>
-                <Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} placeholder="(00) 00000-0000" className="h-8 text-xs mt-1" />
+                <Input value={clientPhone} onChange={(e) => setClientPhone(maskPhone(e.target.value))} placeholder="(37) 99999-0000" className="h-8 text-xs mt-1" />
               </div>
             </div>
           </div>

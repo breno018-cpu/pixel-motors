@@ -18,6 +18,8 @@ import { Truck, UserCheck, ShieldCheck, CheckCircle2, Clock } from 'lucide-react
 import { DeliveryRecord, DeliveryStatus, saveCustomDelivery } from '@/lib/logisticsStorage';
 import { TRANSPORT_LOGISTICS_METHODS, calculateFreightCost } from '@/lib/transportLogistics';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
+import { maskCPF } from '@/lib/masks';
+import { formatPlate } from '@/lib/vehicleCatalog';
 import { useToast } from '@/hooks/use-toast';
 
 interface DeliveryManageModalProps {
@@ -213,7 +215,7 @@ export function DeliveryManageModal({
                 <Label className="text-[11px]">CPF do Motorista</Label>
                 <Input
                   value={motoristaCpf}
-                  onChange={(e) => setMotoristaCpf(e.target.value)}
+                  onChange={(e) => setMotoristaCpf(maskCPF(e.target.value))}
                   placeholder="000.000.000-00"
                   className="h-8 text-xs font-mono"
                 />
@@ -223,7 +225,7 @@ export function DeliveryManageModal({
                 <Label className="text-[11px]">Placa do Caminhão / Guincho</Label>
                 <Input
                   value={motoristaPlaca}
-                  onChange={(e) => setMotoristaPlaca(e.target.value)}
+                  onChange={(e) => setMotoristaPlaca(formatPlate(e.target.value))}
                   placeholder="ABC-1234 / BRA2E19"
                   className="h-8 text-xs font-mono uppercase"
                 />

@@ -540,7 +540,7 @@ export function ChassisSearchInput({
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary transition-colors truncate">
                       {!item.chassis || item.chassis.toUpperCase().includes('DEFINIR') || item.chassis.toUpperCase() === 'DISPENSADO'
-                        ? '⚡ Sem Chassi (Inserir na venda)'
+                        ? 'Sem Chassi (Inserir na venda)'
                         : item.chassis}
                     </span>
                     {item.type === 'stock' && (
@@ -754,7 +754,7 @@ export function ChassisSearchInput({
                           </Badge>
                           <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary">
                             {!v.chassis || v.chassis.toUpperCase().includes('DEFINIR') || v.chassis.toUpperCase() === 'DISPENSADO'
-                              ? '⚡ Sem Chassi (Inserir na venda)'
+                              ? 'Sem Chassi (Inserir na venda)'
                               : v.chassis}
                           </span>
                           {v.plate && (

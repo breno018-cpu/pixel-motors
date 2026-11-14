@@ -1070,14 +1070,14 @@ export default function OwnerDashboard() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="seller">👤 Vendedor (Ranking)</SelectItem>
-                        <SelectItem value="store">🏬 Concessionária</SelectItem>
-                        <SelectItem value="payment">💳 Forma de Pagamento</SelectItem>
-                        <SelectItem value="bank">🏦 Banco / Financeira</SelectItem>
-                        <SelectItem value="model">🏍️ Modelo de Moto</SelectItem>
-                        <SelectItem value="channel">🎯 Origem do Lead</SelectItem>
-                        <SelectItem value="weekday">📅 Dia da Semana</SelectItem>
-                        <SelectItem value="price_range">💰 Faixa de Preço</SelectItem>
+                        <SelectItem value="seller">Vendedor (Ranking)</SelectItem>
+                        <SelectItem value="store">Concessionária</SelectItem>
+                        <SelectItem value="payment">Forma de Pagamento</SelectItem>
+                        <SelectItem value="bank">Banco / Financeira</SelectItem>
+                        <SelectItem value="model">Modelo de Moto</SelectItem>
+                        <SelectItem value="channel">Origem do Lead</SelectItem>
+                        <SelectItem value="weekday">Dia da Semana</SelectItem>
+                        <SelectItem value="price_range">Faixa de Preço</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

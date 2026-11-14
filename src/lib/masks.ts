@@ -1,29 +1,29 @@
 // Input masks for Brazilian formats
 
-export function maskCPF(value: string): string {
-  const numbers = value.replace(/\D/g, '').slice(0, 11);
-  return numbers
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+export function maskCPF(value: string | number | null | undefined): string {
+  const v = String(value || '').replace(/\D/g, '').slice(0, 11);
+  if (v.length <= 3) return v;
+  if (v.length <= 6) return `${v.slice(0, 3)}.${v.slice(3)}`;
+  if (v.length <= 9) return `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6)}`;
+  return `${v.slice(0, 3)}.${v.slice(3, 6)}.${v.slice(6, 9)}-${v.slice(9, 11)}`;
 }
 
-export function maskCNPJ(value: string): string {
-  const numbers = value.replace(/\D/g, '').slice(0, 14);
-  return numbers
-    .replace(/(\d{2})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1/$2')
-    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+export function maskCNPJ(value: string | number | null | undefined): string {
+  const v = String(value || '').replace(/\D/g, '').slice(0, 14);
+  if (v.length <= 2) return v;
+  if (v.length <= 5) return `${v.slice(0, 2)}.${v.slice(2)}`;
+  if (v.length <= 8) return `${v.slice(0, 2)}.${v.slice(2, 5)}.${v.slice(5)}`;
+  if (v.length <= 12) return `${v.slice(0, 2)}.${v.slice(2, 5)}.${v.slice(5, 8)}/${v.slice(8)}`;
+  return `${v.slice(0, 2)}.${v.slice(2, 5)}.${v.slice(5, 8)}/${v.slice(8, 12)}-${v.slice(12, 14)}`;
 }
 
 // Auto-detect and mask CPF or CNPJ based on length
-export function maskCPFCNPJ(value: string): string {
-  const numbers = value.replace(/\D/g, '');
+export function maskCPFCNPJ(value: string | number | null | undefined): string {
+  const numbers = String(value || '').replace(/\D/g, '');
   if (numbers.length <= 11) {
-    return maskCPF(value);
+    return maskCPF(numbers);
   }
-  return maskCNPJ(value);
+  return maskCNPJ(numbers);
 }
 
 // Detect document type
@@ -32,45 +32,53 @@ export function getDocumentType(value: string): 'cpf' | 'cnpj' {
   return numbers.length > 11 ? 'cnpj' : 'cpf';
 }
 
-export function maskCEP(value: string): string {
-  const numbers = value.replace(/\D/g, '').slice(0, 8);
-  return numbers.replace(/(\d{5})(\d)/, '$1-$2');
+export function maskCEP(value: string | number | null | undefined): string {
+  const v = String(value || '').replace(/\D/g, '').slice(0, 8);
+  if (v.length <= 5) return v;
+  return `${v.slice(0, 5)}-${v.slice(5, 8)}`;
 }
 
-export function maskPhone(value: string): string {
-  const numbers = value.replace(/\D/g, '').slice(0, 11);
-  if (numbers.length <= 10) {
-    return numbers
-      .replace(/(\d{2})(\d)/, '($1) $2')
-      .replace(/(\d{4})(\d)/, '$1-$2');
+export function maskPhone(value: string | number | null | undefined): string {
+  const v = String(value || '').replace(/\D/g, '').slice(0, 11);
+  if (v.length === 0) return '';
+  if (v.length <= 2) return `(${v}`;
+  if (v.length <= 6) return `(${v.slice(0, 2)}) ${v.slice(2)}`;
+  if (v.length <= 10) {
+    return `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`;
   }
-  return numbers
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{5})(\d)/, '$1-$2');
+  return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7, 11)}`;
 }
 
-export function maskCurrency(value: string | number): string {
-  // If already a number, format it
+export function maskCurrency(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return '';
   if (typeof value === 'number') {
+    if (isNaN(value)) return '';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-    }).format(value);
+    }).format(value).replace(/\u00a0/g, ' ');
   }
-  
-  // Remove non-numeric characters
-  const numbers = value.replace(/\D/g, '');
-  const numericValue = parseInt(numbers || '0', 10) / 100;
-  
+  const clean = String(value).replace(/\D/g, '');
+  if (!clean) return '';
+  const numericValue = parseInt(clean, 10) / 100;
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(numericValue);
+  }).format(numericValue).replace(/\u00a0/g, ' ');
 }
 
-export function parseCurrency(value: string): number {
-  const numbers = value.replace(/\D/g, '');
-  return parseInt(numbers || '0', 10) / 100;
+export function parseCurrency(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === 'number') return isNaN(value) ? 0 : value;
+  const str = String(value).trim();
+  if (!str) return 0;
+  if (str.includes(',') || str.includes('R$')) {
+    const numbers = str.replace(/\D/g, '');
+    if (!numbers) return 0;
+    return parseInt(numbers, 10) / 100;
+  }
+  const parsed = parseFloat(str);
+  return isNaN(parsed) ? 0 : parsed;
 }
 
 export function unmaskValue(value: string): string {

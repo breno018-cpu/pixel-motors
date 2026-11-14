@@ -480,7 +480,7 @@ export function buildLowPolyHubMarkerHtml(params: {
         box-shadow: 0 2px 5px rgba(0,0,0,0.4);
         letter-spacing: 0.2px;
       ">
-        ★ ${cityLabel}
+        ${cityLabel}
       </div>
     </div>
 

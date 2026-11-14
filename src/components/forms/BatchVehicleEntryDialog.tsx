@@ -330,18 +330,24 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Custo Unitário (R$)</Label>
               <Input
+                type="text"
+                inputMode="numeric"
                 value={costPrice}
                 onChange={(e) => setCostPrice(maskCurrency(e.target.value))}
-                className="h-8 text-xs"
+                placeholder="R$ 0,00"
+                className="h-8 text-xs font-mono"
               />
             </div>
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Preço de Venda Unitário (R$)</Label>
               <Input
+                type="text"
+                inputMode="numeric"
                 value={salePrice}
                 onChange={(e) => setSalePrice(maskCurrency(e.target.value))}
-                className="h-8 text-xs font-bold text-primary"
+                placeholder="R$ 0,00"
+                className="h-8 text-xs font-mono font-bold text-primary"
               />
             </div>
           </div>

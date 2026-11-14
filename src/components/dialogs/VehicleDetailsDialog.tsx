@@ -131,7 +131,7 @@ export function VehicleDetailsDialog({ vehicle, storeName, resellerName, open, o
               <Fuel className="w-4 h-4 text-muted-foreground" />
               <div>
                 <p className="text-muted-foreground">Propulsão / Combustível</p>
-                <p className="font-medium capitalize">{isElectric ? '⚡ 100% Elétrica' : (vehicle.fuel_type || 'Não informado')}</p>
+                <p className="font-medium capitalize">{isElectric ? '100% Elétrica' : (vehicle.fuel_type || 'Não informado')}</p>
               </div>
             </div>
 

@@ -44,7 +44,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { maskCPFCNPJ, maskPhone } from '@/lib/masks';
+import { maskCPFCNPJ, maskPhone, maskCurrency, parseCurrency } from '@/lib/masks';
 import { SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { ChassisSearchInput } from '@/components/common/ChassisSearchInput';
 import { Switch } from '@/components/ui/switch';
@@ -210,8 +210,8 @@ export function CreateSaleModal({
   // Ajuste automático de valores conforme a forma de pagamento selecionada
   const handlePaymentMethodChange = (category: string) => {
     setPaymentMethodCategory(category);
-    const total = parseFloat(saleValue) || 0;
-    const totalStr = total > 0 ? String(total) : '';
+    const total = parseCurrency(saleValue);
+    const totalStr = total > 0 ? maskCurrency(total) : '';
 
     if (category === 'a_vista_pix') {
       setPixVal(totalStr);
@@ -240,8 +240,8 @@ export function CreateSaleModal({
       setConsortiumVal('');
       setHasTradeIn(false);
     } else if (category === 'financiamento_entrada') {
-      const half = total > 0 ? (total * 0.7).toFixed(2) : '';
-      const down = total > 0 ? (total * 0.3).toFixed(2) : '';
+      const half = total > 0 ? maskCurrency(total * 0.7) : '';
+      const down = total > 0 ? maskCurrency(total * 0.3) : '';
       setFinVal(half);
       setSelectedBank((prev) => prev || 'BANCO PAN');
       setPixVal(down);
@@ -289,7 +289,7 @@ export function CreateSaleModal({
       setVehicleYear(found.year ? String(found.year) : '');
       if (found.color) setVehicleColor(found.color);
       if (found.sale_price) {
-        const pStr = String(found.sale_price);
+        const pStr = maskCurrency(found.sale_price);
         setSaleValue(pStr);
         if (paymentMethodCategory === 'a_vista_pix') setPixVal(pStr);
         else if (paymentMethodCategory === 'a_vista_dinheiro') setCashVal(pStr);
@@ -306,17 +306,18 @@ export function CreateSaleModal({
   };
 
   const handleSaleValueChange = (val: string) => {
-    setSaleValue(val);
+    const masked = maskCurrency(val);
+    setSaleValue(masked);
     if (paymentMethodCategory === 'a_vista_pix') {
-      setPixVal(val);
+      setPixVal(masked);
     } else if (paymentMethodCategory === 'a_vista_dinheiro') {
-      setCashVal(val);
+      setCashVal(masked);
     } else if (paymentMethodCategory === 'financiamento_100') {
-      setFinVal(val);
+      setFinVal(masked);
     } else if (paymentMethodCategory === 'cartao_credito') {
-      setCardVal(val);
+      setCardVal(masked);
     } else if (paymentMethodCategory === 'consorcio') {
-      setConsortiumVal(val);
+      setConsortiumVal(masked);
     }
   };
 
@@ -353,13 +354,13 @@ export function CreateSaleModal({
   }, [open, initialVehicleId, vehicles]);
 
   // Cálculos em tempo real
-  const totalValNum = parseFloat(saleValue) || 0;
-  const finValNum = parseFloat(finVal) || 0;
-  const cashValNum = parseFloat(cashVal) || 0;
-  const pixValNum = parseFloat(pixVal) || 0;
-  const cardValNum = parseFloat(cardVal) || 0;
-  const consValNum = parseFloat(consortiumVal) || 0;
-  const tradeInValNum = hasTradeIn ? (parseFloat(tradeInValue) || 0) : 0;
+  const totalValNum = parseCurrency(saleValue);
+  const finValNum = parseCurrency(finVal);
+  const cashValNum = parseCurrency(cashVal);
+  const pixValNum = parseCurrency(pixVal);
+  const cardValNum = parseCurrency(cardVal);
+  const consValNum = parseCurrency(consortiumVal);
+  const tradeInValNum = hasTradeIn ? parseCurrency(tradeInValue) : 0;
 
   const totalPayments = finValNum + cashValNum + pixValNum + cardValNum + consValNum + tradeInValNum;
   const diff = totalValNum - totalPayments;
@@ -1237,9 +1238,9 @@ export function CreateSaleModal({
               <div>
                 <Label className="text-xs font-bold text-foreground">Valor Total da Venda (R$) *</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
                   value={saleValue}
                   onChange={(e) => handleSaleValueChange(e.target.value)}
                   className="h-10 text-xs mt-1 font-black text-foreground bg-primary/5 border-primary/30"
@@ -1296,11 +1297,11 @@ export function CreateSaleModal({
                   <div>
                     <Label className="text-[11px] font-semibold text-muted-foreground">Valor Financiado (R$) *</Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={finVal}
-                      onChange={(e) => setFinVal(e.target.value)}
+                      onChange={(e) => setFinVal(maskCurrency(e.target.value))}
                       className="h-9 text-xs mt-1 font-semibold bg-background"
                     />
                   </div>
@@ -1348,15 +1349,15 @@ export function CreateSaleModal({
                         Valor da Parcela Mensal (R$/mês) *
                       </Label>
                       <Input
-                        type="number"
-                        step="0.01"
-                        placeholder={finInstallments > 0 ? `Sugerido: ${(finValNum / finInstallments).toFixed(2)}` : '0.00'}
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="R$ 0,00"
                         value={finInstallmentValue}
-                        onChange={(e) => setFinInstallmentValue(e.target.value)}
+                        onChange={(e) => setFinInstallmentValue(maskCurrency(e.target.value))}
                         className="h-9 text-xs mt-1 font-bold text-foreground bg-background"
                       />
                       <span className="text-[10px] text-muted-foreground">
-                        {finInstallments}x de R$ {finInstallmentValue || (finValNum / finInstallments).toFixed(2)}
+                        {finInstallments}x de {finInstallmentValue || (finValNum > 0 ? maskCurrency(finValNum / finInstallments) : 'R$ 0,00')}
                       </span>
                     </div>
 
@@ -1415,11 +1416,11 @@ export function CreateSaleModal({
                   <div>
                     <Label className="text-[11px] font-semibold text-muted-foreground">Valor no Cartão (R$)</Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={cardVal}
-                      onChange={(e) => setCardVal(e.target.value)}
+                      onChange={(e) => setCardVal(maskCurrency(e.target.value))}
                       className="h-9 text-xs mt-1 font-semibold bg-background"
                     />
                   </div>
@@ -1446,11 +1447,11 @@ export function CreateSaleModal({
                   <div>
                     <Label className="text-[11px] font-semibold text-muted-foreground">Valor da Parcela no Cartão</Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder={cardValNum > 0 ? (cardValNum / cardInstallments).toFixed(2) : '0.00'}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={cardInstallmentValue}
-                      onChange={(e) => setCardInstallmentValue(e.target.value)}
+                      onChange={(e) => setCardInstallmentValue(maskCurrency(e.target.value))}
                       className="h-9 text-xs mt-1 font-semibold bg-background"
                     />
                   </div>
@@ -1481,11 +1482,11 @@ export function CreateSaleModal({
                       <QrCode className="w-3 h-3 text-emerald-500" /> PIX (R$) {paymentMethodCategory === 'a_vista_pix' && '(À Vista)'}
                     </Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={pixVal}
-                      onChange={(e) => setPixVal(e.target.value)}
+                      onChange={(e) => setPixVal(maskCurrency(e.target.value))}
                       className="h-9 text-xs mt-1 bg-background font-semibold"
                     />
                   </div>
@@ -1495,11 +1496,11 @@ export function CreateSaleModal({
                       <DollarSign className="w-3 h-3 text-emerald-500" /> Dinheiro em Espécie (R$) {paymentMethodCategory === 'a_vista_dinheiro' && '(À Vista)'}
                     </Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={cashVal}
-                      onChange={(e) => setCashVal(e.target.value)}
+                      onChange={(e) => setCashVal(maskCurrency(e.target.value))}
                       className="h-9 text-xs mt-1 bg-background font-semibold"
                     />
                   </div>
@@ -1509,11 +1510,11 @@ export function CreateSaleModal({
                       <FileText className="w-3 h-3 text-purple-500" /> Carta de Crédito / Consórcio (R$)
                     </Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={consortiumVal}
-                      onChange={(e) => setConsortiumVal(e.target.value)}
+                      onChange={(e) => setConsortiumVal(maskCurrency(e.target.value))}
                       className="h-9 text-xs mt-1 bg-background"
                     />
                   </div>
@@ -1566,11 +1567,11 @@ export function CreateSaleModal({
                   <div>
                     <Label className="text-[11px] font-semibold text-muted-foreground">Valor Avaliado / Entrada (R$)</Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
                       value={tradeInValue}
-                      onChange={(e) => setTradeInValue(e.target.value)}
+                      onChange={(e) => setTradeInValue(maskCurrency(e.target.value))}
                       className="h-9 text-xs mt-1 font-semibold text-emerald-600"
                     />
                   </div>

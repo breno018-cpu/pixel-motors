@@ -916,11 +916,11 @@ export default function Vehicles() {
                   <SelectContent className="bg-background z-50">
                     {userStore?.id && (
                       <SelectItem value={userStore.id} className="font-bold text-foreground">
-                        ★ Minha Loja ({userStore.name})
+                        Minha Loja ({userStore.name})
                       </SelectItem>
                     )}
                     <SelectItem value="all" className="font-bold text-primary">
-                      🌐 Todas as Lojas (Rede Integrada)
+                      Todas as Lojas (Rede Integrada)
                     </SelectItem>
                     {stores
                       ?.filter((s) => s.id !== userStore?.id)
@@ -1008,7 +1008,7 @@ export default function Vehicles() {
                   { id: 'active', label: `Estoque Ativo (${activeInventory.length})` },
                   { id: 'disponivel', label: 'Disponíveis' },
                   { id: 'reservado', label: 'Reservados' },
-                  { id: 'aguardando_codigo', label: `⚡ Elétricas Esperando Código (${waitingElectricCount})` },
+                  { id: 'aguardando_codigo', label: `Elétricas Aguardando Código (${waitingElectricCount})` },
                   { id: 'aging60', label: `Pátio > 60d (${kpis.aging60Count})` },
                   { id: 'vendido', label: 'Histórico Vendidos' },
                 ].map((st) => (
@@ -1221,7 +1221,7 @@ export default function Vehicles() {
                                   return (
                                     <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40 gap-1">
                                       <Zap className="h-3 w-3 text-amber-600 shrink-0" />
-                                      ⚡ Esperando Código (Venda)
+                                      Aguardando Código (Venda)
                                     </Badge>
                                   );
                                 }
@@ -1238,7 +1238,7 @@ export default function Vehicles() {
                                       className="flex items-center gap-1 text-foreground hover:text-primary transition-colors"
                                       title={isElectric ? 'Clique para copiar o número da moto' : 'Clique para copiar o chassi'}
                                     >
-                                      {isElectric && <span className="text-[10px] font-bold text-emerald-600">⚡ Nº Moto:</span>}
+                                      {isElectric && <span className="text-[10px] font-bold text-emerald-600">Nº Moto:</span>}
                                       <span>{vehicle.chassis}</span>
                                       <Copy className="h-3 w-3 opacity-60" />
                                     </button>
@@ -1540,7 +1540,7 @@ export default function Vehicles() {
                                       return (
                                         <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-300 gap-1">
                                           <Zap className="h-3 w-3 text-amber-600 shrink-0" />
-                                          ⚡ Esperando Código / Chassi (Inserir na Venda)
+                                          Aguardando Código / Chassi (Inserir na Venda)
                                         </Badge>
                                       );
                                     }
@@ -1557,7 +1557,7 @@ export default function Vehicles() {
                                           className="inline-flex items-center gap-1 font-mono text-[11px] bg-muted/50 px-2 py-0.5 rounded border border-border/60 hover:border-primary/40"
                                           title={isElectric ? 'Copiar número da moto' : 'Copiar chassi'}
                                         >
-                                          {isElectric ? `⚡ Nº Moto: ${vehicle.chassis}` : `Chassi: ${vehicle.chassis}`}
+                                          {isElectric ? `Nº Moto: ${vehicle.chassis}` : `Chassi: ${vehicle.chassis}`}
                                           <Copy className="h-2.5 w-2.5 opacity-60" />
                                         </button>
                                       );
@@ -1760,7 +1760,7 @@ function UnitList({
                     return (
                       <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-300 gap-1">
                         <Zap className="h-3 w-3 text-amber-600 shrink-0" />
-                        ⚡ Esperando Código / Chassi (Inserir na Venda)
+                        Aguardando Código / Chassi (Inserir na Venda)
                       </Badge>
                     );
                   }
@@ -1771,7 +1771,7 @@ function UnitList({
                         onClick={() => onCopy(isElectric ? 'Nº da Moto' : 'Chassi', vehicle.chassis)}
                         className="flex items-center gap-1 font-mono text-foreground hover:text-primary transition-colors"
                       >
-                        <span>{isElectric ? `⚡ Nº Moto ${vehicle.chassis}` : `Chassi ${vehicle.chassis}`}</span>
+                        <span>{isElectric ? `Nº Moto ${vehicle.chassis}` : `Chassi ${vehicle.chassis}`}</span>
                         <Copy className="h-3 w-3 opacity-60" />
                       </button>
                     );

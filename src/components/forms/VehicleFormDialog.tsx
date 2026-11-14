@@ -32,6 +32,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import { STANDARD_COLORS, formatPlate } from '@/lib/vehicleCatalog';
+import { maskCurrency, parseCurrency } from '@/lib/masks';
 
 interface VehicleFormDialogProps {
   open: boolean;
@@ -152,8 +153,8 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
           }
           if (pattern.transmission) setTransmission(pattern.transmission);
           if (pattern.warranty_months) setWarrantyMonths(String(pattern.warranty_months));
-          if (pattern.default_sale_price) setSalePrice(String(pattern.default_sale_price));
-          if (pattern.default_purchase_price) setPurchasePrice(String(pattern.default_purchase_price));
+          if (pattern.default_sale_price) setSalePrice(maskCurrency(pattern.default_sale_price));
+          if (pattern.default_purchase_price) setPurchasePrice(maskCurrency(pattern.default_purchase_price));
 
           // Resolução de Ano Modelo e Fabricação a partir do VIN
           const decodedYear = resolvedYear.year || extractYearFromVIN(cleanVin) || new Date().getFullYear();
@@ -232,8 +233,8 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
     }
   };
 
-  const costNum = parseFloat(purchasePrice) || 0;
-  const saleNum = parseFloat(salePrice) || 0;
+  const costNum = parseCurrency(purchasePrice);
+  const saleNum = parseCurrency(salePrice);
   const profitNum = saleNum - costNum;
   const marginPct = saleNum > 0 && costNum > 0 ? ((profitNum / saleNum) * 100).toFixed(1) : null;
 
@@ -415,7 +416,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                   title="Alternar entre moto elétrica e moto a combustão"
                 >
                   <Zap className={`w-3.5 h-3.5 ${isElectric ? 'text-white' : 'text-emerald-600'}`} />
-                  <span>{isElectric ? '⚡ Elétrica Ativa' : 'Moto Elétrica?'}</span>
+                  <span>{isElectric ? 'Elétrica Ativa' : 'Moto Elétrica?'}</span>
                 </button>
 
                 {!isElectric ? (
@@ -633,11 +634,11 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 <div>
                   <Label className="text-xs font-bold text-foreground">Preço de Venda / Tabela (R$) *</Label>
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="numeric"
                     value={salePrice}
-                    onChange={(e) => setSalePrice(e.target.value)}
-                    placeholder="0.00"
+                    onChange={(e) => setSalePrice(maskCurrency(e.target.value))}
+                    placeholder="R$ 0,00"
                     className="h-10 text-xs mt-1 font-mono font-bold bg-primary/5 border-primary/40 text-foreground"
                     required
                   />
@@ -646,11 +647,11 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Custo de Aquisição / NF Fábrica (R$)</Label>
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="numeric"
                     value={purchasePrice}
-                    onChange={(e) => setPurchasePrice(e.target.value)}
-                    placeholder="0.00"
+                    onChange={(e) => setPurchasePrice(maskCurrency(e.target.value))}
+                    placeholder="R$ 0,00"
                     className="h-10 text-xs mt-1 font-mono"
                   />
                 </div>
@@ -757,7 +758,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                     Propulsão
                   </Label>
                   <div className="h-10 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 flex items-center text-xs font-bold text-emerald-800 dark:text-emerald-200 mt-1">
-                    ⚡ 100% Elétrica
+                    100% Elétrica
                   </div>
                 </div>
 

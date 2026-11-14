@@ -50,9 +50,14 @@ export const AddressFormFields: React.FC<AddressFormFieldsProps> = ({
   const [cepStatus, setCepStatus] = useState<'idle' | 'success' | 'not_found'>('idle');
   const numberInputRef = useRef<HTMLInputElement>(null);
   const lastFetchedCepRef = useRef<string>('');
+  const isInternalUpdateRef = useRef(false);
 
-  // Sincroniza se o valor externo mudar significativamente
+  // Sincroniza se o valor externo mudar de fora (não por digitação interna)
   useEffect(() => {
+    if (isInternalUpdateRef.current) {
+      isInternalUpdateRef.current = false;
+      return;
+    }
     if (typeof value === 'string') {
       const currentFormatted = formatFullAddress(address);
       if (value.trim() && value.trim() !== currentFormatted.trim()) {
@@ -60,11 +65,17 @@ export const AddressFormFields: React.FC<AddressFormFieldsProps> = ({
         setAddress(parsed);
       }
     } else if (value && typeof value === 'object') {
-      setAddress((prev) => ({ ...prev, ...value }));
+      setAddress((prev) => {
+        const hasDiff = Object.keys(value).some(
+          (k) => (value as any)[k] !== (prev as any)[k]
+        );
+        return hasDiff ? { ...prev, ...value } : prev;
+      });
     }
   }, [value]);
 
   const updateField = (field: keyof AddressData, val: string) => {
+    isInternalUpdateRef.current = true;
     const updated = { ...address, [field]: val };
     setAddress(updated);
     const formatted = formatFullAddress(updated);
