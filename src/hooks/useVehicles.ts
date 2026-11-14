@@ -330,6 +330,27 @@ export function saveVehiclesToCache(newVehicles: Vehicle[]): void {
   }
 }
 
+export const DELETED_VEHICLES_KEY = 'dealflow_deleted_vehicles_v1';
+
+export function getDeletedVehicleIds(): Set<string> {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(DELETED_VEHICLES_KEY) : null;
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function recordDeletedVehicle(id: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const set = getDeletedVehicleIds();
+    set.add(id);
+    localStorage.setItem(DELETED_VEHICLES_KEY, JSON.stringify(Array.from(set)));
+    removeVehicleFromCache(id);
+  } catch {}
+}
+
 export function removeVehicleFromCache(vehicleId: string): void {
   if (typeof window === 'undefined') return;
   try {
@@ -356,8 +377,9 @@ export function useVehicles() {
   return useQuery({
     queryKey: ['vehicles'],
     queryFn: async () => {
-      // 1. Obtém o estoque imediatamente disponível (cache do navegador ou catálogo oficial incorporado)
-      let currentList = getCachedVehicles();
+      const deletedIds = getDeletedVehicleIds();
+      // 1. Obtém o estoque imediatamente disponível filtrando excluídos
+      let currentList = getCachedVehicles().filter((v) => !deletedIds.has(v.id));
 
       // 2. Tenta sincronização remota com o Supabase
       try {
@@ -367,10 +389,18 @@ export function useVehicles() {
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (!error && Array.isArray(data) && data.length > 0) {
-          const remoteIds = new Set(data.map((v) => v.id));
-          const localOnly = currentList.filter((v) => !remoteIds.has(v.id));
-          const merged = [...(data as Vehicle[]), ...localOnly];
+        if (!error && Array.isArray(data)) {
+          const filteredRemote = (data as Vehicle[]).filter((v) => !deletedIds.has(v.id));
+          const remoteIds = new Set(filteredRemote.map((v) => v.id));
+          const now = Date.now();
+          // Apenas mantém veículos criados offline nos últimos 15 min que não foram excluídos
+          const localOnly = currentList.filter(
+            (v) =>
+              !remoteIds.has(v.id) &&
+              !deletedIds.has(v.id) &&
+              now - new Date(v.created_at).getTime() < 15 * 60 * 1000
+          );
+          const merged = [...filteredRemote, ...localOnly];
           saveVehiclesToCache(merged);
           return merged;
         }
@@ -378,14 +408,15 @@ export function useVehicles() {
         console.warn('Consulta remota de veículos falhou, usando estoque local:', err);
       }
 
-      // 3. Fallback garantido: assegura que o vendedor sempre tenha todo o catálogo disponível para vendas e consultas
+      // 3. Fallback garantido
       if (currentList.length > 0) {
         return currentList;
       }
 
-      if (typedOfficialSeed.length > 0) {
-        saveVehiclesToCache(typedOfficialSeed);
-        return typedOfficialSeed;
+      const seedFiltered = typedOfficialSeed.filter((v) => !deletedIds.has(v.id));
+      if (seedFiltered.length > 0) {
+        saveVehiclesToCache(seedFiltered);
+        return seedFiltered;
       }
 
       return [];

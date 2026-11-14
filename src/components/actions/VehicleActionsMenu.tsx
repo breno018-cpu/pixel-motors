@@ -73,9 +73,8 @@ export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
   };
 
   const handleDelete = () => {
-    deleteVehicle.mutate(vehicle.id, {
-      onSuccess: () => setDeleteOpen(false),
-    });
+    setDeleteOpen(false);
+    deleteVehicle.mutate(vehicle.id);
   };
 
   return (

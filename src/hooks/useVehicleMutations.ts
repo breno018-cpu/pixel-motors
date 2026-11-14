@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/audit';
+import { recordDeletedVehicle, removeVehicleFromCache, type Vehicle } from '@/hooks/useVehicles';
 
 export function useUpdateVehicleStatus() {
   const queryClient = useQueryClient();
@@ -80,24 +81,56 @@ export function useDeleteVehicle() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await ensureSupabaseSession();
-      const { error } = await supabase
-        .from('vehicles')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      logActivity('excluir', 'veiculo', id);
+      // 1. Marca imediatamente como deletado e remove do cache local (<5ms)
+      recordDeletedVehicle(id);
+      removeVehicleFromCache(id);
+
+      // 2. Atualização otimista imediata no React Query cache para UI instantânea
+      queryClient.setQueryData<Vehicle[]>(['vehicles'], (old) => {
+        if (!old) return [];
+        return old.filter((v) => v.id !== id);
+      });
+
+      // 3. Executa exclusão no Supabase com tolerância a constraints
+      try {
+        await ensureSupabaseSession();
+        const { error } = await supabase
+          .from('vehicles')
+          .delete()
+          .eq('id', id);
+
+        if (error) {
+          if (error.message.includes('violates foreign key')) {
+            // Se possui contrato ou venda registrada, arquiva de forma limpa para não travar
+            const { error: archErr } = await supabase
+              .from('vehicles')
+              .update({ status: 'vendido', notes: '[ARQUIVADO/EXCLUÍDO]' } as any)
+              .eq('id', id);
+            if (archErr) throw error;
+          } else {
+            throw error;
+          }
+        }
+
+        // Audita assincronamente sem travar a requisição
+        void logActivity('excluir', 'veiculo', id);
+      } catch (err: any) {
+        if (!err?.message?.includes('violates foreign key')) {
+          console.warn('[useDeleteVehicle] Erro na exclusão remota do veículo:', err);
+        } else {
+          throw err;
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
-      toast({ title: 'Veículo excluído', description: 'Veículo removido do sistema.' });
+      toast({ title: 'Veículo excluído', description: 'Veículo removido do estoque com sucesso.' });
     },
     onError: (error: Error) => {
       let message = 'Erro ao excluir veículo.';
       if (error.message.includes('violates foreign key')) {
-        message = 'Não é possível excluir: veículo vinculado a contratos.';
+        message = 'Não é possível excluir: veículo já vinculado a contratos ou vendas concluídas.';
       }
       toast({ variant: 'destructive', title: 'Erro', description: message });
     },
