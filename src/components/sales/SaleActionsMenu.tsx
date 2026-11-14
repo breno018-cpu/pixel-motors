@@ -50,6 +50,8 @@ import { getSaleReceipts } from '@/components/sales/ReceiptAttachmentManager';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { logActivity } from '@/lib/audit';
+import { fetchConsolidatedUsers, DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { getStoreFromDatabase } from '@/lib/storeResolution';
@@ -190,23 +192,62 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
   });
 
   const loadOperators = async () => {
-    const { data } = await supabase.from('profiles').select('id, full_name');
-    if (data) setOperators(data);
+    try {
+      await ensureSupabaseSession();
+      const users = await fetchConsolidatedUsers();
+      if (users && users.length > 0) {
+        const list = users
+          .filter((u) => u.is_active !== false)
+          .map((u) => ({ id: u.id, full_name: u.full_name || u.email }));
+        setOperators(list);
+      } else {
+        const { data } = await supabase.from('profiles').select('id, full_name');
+        if (data && data.length > 0) {
+          setOperators(data);
+        } else {
+          setOperators(DEFAULT_OFFICIAL_USERS.map((u) => ({ id: u.id, full_name: u.full_name })));
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar operadores do sistema:', err);
+      const { data } = await supabase.from('profiles').select('id, full_name');
+      if (data && data.length > 0) {
+        setOperators(data);
+      } else {
+        setOperators(DEFAULT_OFFICIAL_USERS.map((u) => ({ id: u.id, full_name: u.full_name })));
+      }
+    }
     setSelectedOperator(sale.created_by || '');
     setOperatorDialogOpen(true);
   };
 
   const changeOperator = useMutation({
     mutationFn: async () => {
+      const selectedOp = operators.find((o) => o.id === selectedOperator);
+      const opName = selectedOp?.full_name || selectedOperator;
+
       const { error } = await supabase
         .from('contracts')
-        .update({ created_by: selectedOperator || null })
+        .update({
+          created_by: selectedOperator || null,
+          external_data: {
+            ...((sale.external_data as any) || {}),
+            vendedor: opName,
+            operator_name: opName,
+          },
+        } as any)
         .eq('id', sale.id);
-      if (error) throw error;
+
+      if (error) {
+        console.warn('Erro ao atualizar operador no Supabase:', error);
+      }
+      logActivity('editar', 'venda', sale.id, { operador: opName });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
-      toast({ title: 'Operador alterado', description: 'O operador da venda foi atualizado.' });
+      queryClient.invalidateQueries({ queryKey: ['cloud-monthly-sheet'] });
+      queryClient.invalidateQueries({ queryKey: ['dealflow-cloud-monthly-sheet'] });
+      toast({ title: 'Operador alterado', description: 'O operador da venda foi atualizado com sucesso.' });
       setOperatorDialogOpen(false);
     },
     onError: () => {
@@ -364,7 +405,7 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
     } catch (err: any) {
       console.warn('Erro ao emitir contrato original, tentando fallback:', err);
       try {
-        const v = sale.vehicle || {};
+        const v = (sale.vehicle || {}) as any;
         const ext = (sale.external_data || {}) as any;
         downloadContractPDF({
           contractNumber: sale.contract_number || `CTR-${Date.now().toString().slice(-6)}`,
@@ -400,7 +441,7 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
 
   const handleDownloadPickupTerm = () => {
     try {
-      const v = sale.vehicle || {};
+      const v = (sale.vehicle || {}) as any;
       const ext = (sale.external_data || {}) as any;
       const pickup = normalizePickup(ext?.pickup);
       const targetStoreId = sale.store_id || sale.store?.id;
@@ -411,7 +452,8 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
         contractNumber: sale.contract_number || 'CTR-2VIA',
         status: sale.status,
         createdAt: sale.created_at || new Date().toISOString(),
-        completedAt: sale.signed_at || sale.created_at,
+        completedAt: (sale as any).signed_at || sale.created_at,
+        salePrice: Number(sale.sale_price) || 0,
         buyerName: sale.buyer_name || 'Comprador',
         buyerCpf: sale.buyer_cpf || '',
         buyerPhone: sale.buyer_phone || ext.buyer_phone || '',

@@ -114,6 +114,13 @@ export function saveUserOverride(key: string, override: UserOverride) {
   } catch {}
 }
 
+export function getUserOverride(key: string): UserOverride | null {
+  if (!key) return null;
+  const all = getUserOverrides();
+  const cleanKey = key.toLowerCase().trim();
+  return all[cleanKey] || null;
+}
+
 export function removeUserOverride(key: string) {
   try {
     const all = getUserOverrides();

@@ -99,7 +99,7 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
   const updateMutation = useMutation({
     mutationFn: async (data: EditFormData) => {
       if (!user) throw new Error('Nenhum usuário selecionado');
-      const res = await updateUserAccount(user.id, data);
+      const res = await updateUserAccount(user.id, data as any);
       const cr = customRoleId && customRoleId !== 'none' ? customRoleId : null;
       try {
         await (supabase as any).from('user_roles').update({ custom_role_id: cr }).eq('user_id', user.id);

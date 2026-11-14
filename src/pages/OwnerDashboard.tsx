@@ -265,7 +265,7 @@ export default function OwnerDashboard() {
     const divShare = totalRevenue > 0 ? (divRevenue / totalRevenue) * 100 : 0;
 
     // Métricas de Estoque Geral
-    const availableVehicles = (vehicles || []).filter((v) => v.status === 'disponivel' || v.status === 'em_estoque');
+    const availableVehicles = (vehicles || []).filter((v) => v.status === 'disponivel' || (v.status as any) === 'em_estoque');
     const totalStockCount = availableVehicles.length;
     const totalStockValue = availableVehicles.reduce((acc, v) => acc + (Number(v.purchase_price) || Number(v.sale_price) || 0), 0);
 
@@ -500,7 +500,29 @@ export default function OwnerDashboard() {
       Origem_Lead: s.lead_mapping,
     }));
 
-    exportToXLSX(rows, `Relatorio_Dono_L1MA_Motors_${new Date().toISOString().split('T')[0]}`);
+    void exportToXLSX({
+      title: 'Relatório Executivo do Proprietário - L1MA Motors',
+      module: 'sales',
+      filters: { Período: periodPreset, Concessionária: storeFilter, Vendedor: sellerFilter },
+      columns: [
+        { key: 'Data', label: 'Data', type: 'text' },
+        { key: 'Concessionaria', label: 'Concessionária', type: 'text' },
+        { key: 'Vendedor', label: 'Vendedor', type: 'text' },
+        { key: 'Cliente', label: 'Cliente', type: 'text' },
+        { key: 'Modelo', label: 'Modelo', type: 'text' },
+        { key: 'Chassi', label: 'Chassi', type: 'text' },
+        { key: 'Valor_Venda', label: 'Valor Venda', type: 'currency' },
+        { key: 'Financiamento', label: 'Financiamento', type: 'currency' },
+        { key: 'Banco', label: 'Banco', type: 'text' },
+        { key: 'Pix', label: 'PIX', type: 'currency' },
+        { key: 'Dinheiro', label: 'Dinheiro', type: 'currency' },
+        { key: 'Cartao', label: 'Cartão', type: 'currency' },
+        { key: 'Consorcio', label: 'Consórcio', type: 'currency' },
+        { key: 'Origem_Lead', label: 'Origem Lead', type: 'text' },
+      ],
+      data: rows as any,
+      userName: 'Proprietário',
+    });
   };
 
   return (

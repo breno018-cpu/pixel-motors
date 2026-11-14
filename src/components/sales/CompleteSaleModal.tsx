@@ -56,6 +56,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { maskCurrency, parseCurrency, maskCPFCNPJ, maskPhone, maskCEP } from '@/lib/masks';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
+import { downloadContractPDF } from '@/lib/contractPdf';
 import { getStoreFromDatabase } from '@/lib/storeResolution';
 import { ChassisSearchInput } from '@/components/common/ChassisSearchInput';
 import { cn } from '@/lib/utils';
@@ -443,7 +444,7 @@ export function CompleteSaleModal({
     }
 
     if (vehicleChassis && vehicleChassis.trim().length >= 4 && vehicleChassis.trim().toUpperCase() !== 'DISPENSADO') {
-      const soldCheck = isChassisAlreadySold(vehicleChassis, vehicles, vehicleId || selectedPreSale?.vehicle_id);
+      const soldCheck = isChassisAlreadySold(vehicleChassis, vehicles, vehicleId || initialPreSale?.vehicle_id);
       if (soldCheck.isSold) {
         toast({
           title: 'Chassi Já Vendido',
@@ -674,14 +675,14 @@ export function CompleteSaleModal({
       }
       payload.store_id = effectiveStoreId;
 
+      let finalVehicleId = vehicleId && isUuid(vehicleId) ? vehicleId : null;
+
       try {
         if (selectedPreSaleId && isUuid(selectedPreSaleId)) {
           await supabase.from('contracts').update(payload).eq('id', selectedPreSaleId);
         } else {
           payload.contract_number = `CTR-${Date.now().toString().slice(-6)}`;
           if (user?.id && isUuid(user.id)) payload.created_by = user.id;
-
-          let finalVehicleId = vehicleId && isUuid(vehicleId) ? vehicleId : null;
 
           // Se não encontrou veículo selecionado, busca por chassi se houver
           if (!finalVehicleId && vehicleChassis && vehicleChassis.trim().length >= 4) {
@@ -716,7 +717,7 @@ export function CompleteSaleModal({
                 status: 'vendido',
                 store_id: effectiveStoreId,
                 year: new Date().getFullYear(),
-                sale_price: totalValNum || null,
+                sale_price: priceNum || null,
               }])
               .select('id')
               .single();

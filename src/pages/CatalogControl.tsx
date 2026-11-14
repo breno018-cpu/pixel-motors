@@ -2013,7 +2013,7 @@ export default function CatalogControl() {
       <CatalogCampaignDialog
         open={campaignOpen}
         onOpenChange={setCampaignOpen}
-        campaign={catalog?.config?.campaign}
+        currentCampaign={catalog?.config?.campaign}
         onSaveCampaign={(campaign) => dispatchOrQueue({ action: "campaign", campaign }, "Campanha Sazonal")}
       />
 
@@ -2033,7 +2033,6 @@ export default function CatalogControl() {
         open={chatDialogOpen}
         onOpenChange={setChatDialogOpen}
         onSendMessage={(messages) => chatMutation.mutateAsync(messages)}
-        isSending={chatMutation.isPending}
       />
 
       {/* 7. Modal de Cadastro e Edição Completa de Veículo */}

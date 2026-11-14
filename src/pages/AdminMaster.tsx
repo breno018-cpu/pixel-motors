@@ -50,7 +50,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
 import { maskCPF } from '@/lib/masks';
-import { fetchConsolidatedUsers, toggleUserStatus, permanentDeleteUserAccount, resetUserPassword, UserWithRole } from '@/lib/userService';
+import { fetchConsolidatedUsers, toggleUserStatus, permanentDeleteUserAccount, resetUserPassword } from '@/lib/userService';
 import { purgeFictitiousData } from '@/integrations/supabase/localDbFallback';
 
 // Componentes Administrativos Integrados
@@ -66,7 +66,6 @@ import { ChassisYearCodeManager } from '@/components/admin/ChassisYearCodeManage
 import { MarginSettingsCard } from '@/components/admin/MarginSettingsCard';
 import { FinancingBanksManager } from '@/components/admin/FinancingBanksManager';
 import { BankCredentialsManager } from '@/components/admin/BankCredentialsManager';
-import { resetUserPassword, toggleUserStatus } from '@/lib/userService';
 import { ActivityLogPanel } from '@/components/admin/ActivityLogPanel';
 import { StockSyncSettings } from '@/components/settings/StockSyncSettings';
 import { ApiKeysManager } from '@/components/settings/ApiKeysManager';

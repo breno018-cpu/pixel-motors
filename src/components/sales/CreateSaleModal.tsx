@@ -38,6 +38,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useVehicles, markVehicleAsSold, isChassisAlreadySold } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
+import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/lib/storeResolution';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
@@ -765,7 +766,7 @@ export function CreateSaleModal({
         return old.map((v) => {
           const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
           const cleanCh = (vehicleChassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-          if ((finalVehicleId && v.id === finalVehicleId) || (cleanCh && vCh && vCh === cleanCh)) {
+          if ((selectedVehicleId && v.id === selectedVehicleId) || (cleanCh && vCh && vCh === cleanCh)) {
             return { ...v, status: saleType === 'concluido' ? 'vendido' : 'reservado' };
           }
           return v;

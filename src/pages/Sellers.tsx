@@ -82,12 +82,6 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
   const { hasElevatedAccess } = useAuth();
   const { isDateInPeriod, activePeriodLabel } = useDateFilter();
 
-  useEffect(() => {
-    const handleUpdate = () => refetch();
-    window.addEventListener('dealflow:users-updated', handleUpdate);
-    return () => window.removeEventListener('dealflow:users-updated', handleUpdate);
-  }, [refetch]);
-
   const { data: sellersRaw, isLoading, refetch } = useQuery({
     queryKey: ['sellers-list'],
     queryFn: async () => {
@@ -105,6 +99,12 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
       });
     },
   });
+
+  useEffect(() => {
+    const handleUpdate = () => refetch();
+    window.addEventListener('dealflow:users-updated', handleUpdate);
+    return () => window.removeEventListener('dealflow:users-updated', handleUpdate);
+  }, [refetch]);
 
   const sellers = useMemo(() => {
     return (sellersRaw || []).map(p => {
@@ -248,10 +248,10 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {seller.phone && (
+                      {(seller as any).phone && (
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                           <Phone className="w-3 h-3" />
-                          {seller.phone}
+                          {(seller as any).phone}
                         </div>
                       )}
                     </TableCell>

@@ -13,7 +13,10 @@ import {
   saveCustomUser,
   getCustomUsers,
   recordDeletedUser,
+  getUserOverride,
+  getUserOverrides,
 } from '@/lib/userService';
+import { isMatchingStore, STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/lib/storeResolution';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 
 type AppRole = 'admin' | 'gerente' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'coordenador_logistica' | 'motorista' | 'visualizador';

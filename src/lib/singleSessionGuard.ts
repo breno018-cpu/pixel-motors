@@ -175,7 +175,8 @@ function startSessionHeartbeat(userId: string, mySessionToken: string) {
       if (data && data.length > 0) {
         const details = (data[0].details as any) || {};
         if (details.session_token && details.session_token !== mySessionToken) {
-          if (details.device_id && details.device_id !== fingerprint.deviceId) {
+          const fp = getDeviceFingerprint();
+          if (details.device_id && details.device_id !== fp.deviceId) {
             handleSupersededSession(details.device_name || 'Outro dispositivo');
           }
         }

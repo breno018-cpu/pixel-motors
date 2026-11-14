@@ -135,6 +135,7 @@ export async function fetchCatalog(): Promise<CatalogData> {
     version: 1,
     products: [],
     config: { storeName: "L1MA Motors", maxInstallments: 21 },
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -222,7 +223,7 @@ export async function syncCatalog(
   return {
     ok: true,
     version: Date.now(),
-    applied: payload.length,
+    applied: payload,
     errors: [],
   };
 }

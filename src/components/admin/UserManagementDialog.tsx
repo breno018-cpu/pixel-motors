@@ -32,7 +32,7 @@ import {
 import { TempPasswordDialog } from '@/components/admin/TempPasswordDialog';
 import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDialog';
 import { UserEditDialog } from '@/components/admin/UserEditDialog';
-import { createUserAccount, resetUserPassword, deleteUserAccount, permanentDeleteUserAccount, STORE_UUIDS, fetchConsolidatedUsers, isMasterUser } from '@/lib/userService';
+import { createUserAccount, resetUserPassword, deleteUserAccount, permanentDeleteUserAccount, toggleUserStatus, STORE_UUIDS, fetchConsolidatedUsers, isMasterUser } from '@/lib/userService';
 
 const userSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(200),
