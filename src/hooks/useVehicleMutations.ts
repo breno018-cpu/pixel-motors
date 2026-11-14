@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/audit';
 
@@ -79,6 +80,7 @@ export function useDeleteVehicle() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      await ensureSupabaseSession();
       const { error } = await supabase
         .from('vehicles')
         .delete()

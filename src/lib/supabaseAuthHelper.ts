@@ -23,9 +23,6 @@ export function invalidateDealflowQueries() {
  */
 export async function ensureSupabaseSession() {
   try {
-    if (typeof window !== 'undefined' && localStorage.getItem('df_explicit_signout') === 'true') {
-      return null;
-    }
     const { data } = await supabase.auth.getSession();
     if (data?.session) return data.session;
 

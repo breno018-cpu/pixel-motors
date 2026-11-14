@@ -160,10 +160,7 @@ export function resolveStoreUuid(storeId?: string | null): string {
     return STORE_UUIDS['store-divinopolis'];
   }
   if (STORE_UUIDS[storeId]) return STORE_UUIDS[storeId];
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId)) {
-    return storeId;
-  }
-  return STORE_UUIDS['store-divinopolis'];
+  return storeId;
 }
 
 export function generateRandomPassword(): string {
@@ -189,6 +186,10 @@ export function getUserDefinedPasswords(): Record<string, { password: string; de
   return {};
 }
 
+/**
+ * Salva senha localmente e propaga imediatamente para o banco Supabase na tabela employees
+ * garantindo sincronização universal entre qualquer computador, celular ou navegador.
+ */
 export function saveUserDefinedPassword(emailOrId: string, password: string) {
   try {
     const all = getUserDefinedPasswords();
@@ -209,7 +210,143 @@ export function saveUserDefinedPassword(emailOrId: string, password: string) {
     localStorage.setItem(CUSTOM_USERS_STORAGE_KEY, JSON.stringify(updated));
 
     saveUserOverride(cleanKey, { temp_password: password });
+
+    // Sincronização em segundo plano no Supabase
+    void (async () => {
+      try {
+        await ensureSupabaseSession();
+        const { data: emps } = await (supabase as any)
+          .from('employees')
+          .select('id, notes, email, profile_id')
+          .or(`email.ilike.${cleanKey},id.eq.${cleanKey},profile_id.eq.${cleanKey}`);
+
+        if (emps && emps.length > 0) {
+          for (const emp of emps) {
+            let currentNotes = emp.notes || '';
+            currentNotes = currentNotes.replace(/\[PASS(?:_DEFINED)?:[^\]]+\]/g, '').trim();
+            currentNotes = currentNotes.replace(/\[PASS_HASH:[^\]]+\]/g, '').trim();
+            currentNotes = currentNotes.replace(/Senha inicial:\s*[^\s\n\r]+/g, '').trim();
+            currentNotes = currentNotes.replace(/Senha redefinida:\s*[^\s\n\r]+/g, '').trim();
+            const newNotes = `${currentNotes} [PASS_DEFINED:${password}]`.trim();
+
+            await (supabase as any)
+              .from('employees')
+              .update({
+                notes: newNotes,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', emp.id);
+          }
+        }
+      } catch (e) {
+        console.warn('[userService] Aviso ao salvar senha no Supabase:', e);
+      }
+    })();
   } catch {}
+}
+
+/**
+ * Sincroniza todas as credenciais cadastradas no Supabase para o cache deste dispositivo,
+ * permitindo login imediato em qualquer celular, computador ou aba anônima.
+ */
+export async function syncCredentialsFromSupabase(): Promise<void> {
+  try {
+    await ensureSupabaseSession();
+    const { data: employees, error } = await (supabase as any)
+      .from('employees')
+      .select('id, profile_id, email, full_name, notes, role, store_id, is_active, cpf, created_at');
+
+    if (error || !employees) return;
+
+    const passwords = getUserDefinedPasswords();
+    let hasNewPasswords = false;
+    const customUsers = getCustomUsers();
+    let hasNewUsers = false;
+    const deletedList = getDeletedUserIdentifiers();
+    const deletedSet = new Set(deletedList);
+
+    for (const emp of employees) {
+      const email = (emp.email || '').toLowerCase().trim();
+      const id = (emp.id || '').toLowerCase().trim();
+      const profileId = (emp.profile_id || '').toLowerCase().trim();
+      const notes = emp.notes || '';
+
+      // Trata usuários excluídos
+      if (notes.includes('[STATUS: DEMITIDO]') || (emp.is_active === false && notes.toLowerCase().includes('excluído'))) {
+        recordDeletedUser(id, email);
+        if (profileId) recordDeletedUser(profileId, email);
+        continue;
+      }
+
+      // Extrai senha gravada nas anotações
+      let extractedPass = '';
+      const matchDefined = notes.match(/\[PASS(?:_DEFINED)?:([^\]]+)\]/);
+      const matchHash = notes.match(/\[PASS_HASH:([^\]]+)\]/);
+      const matchInitial = notes.match(/Senha inicial:\s*([^\s\n\r]+)/);
+      const matchReset = notes.match(/Senha redefinida:\s*([^\s\n\r]+)/);
+
+      if (matchDefined) {
+        extractedPass = matchDefined[1].trim();
+      } else if (matchHash) {
+        try { extractedPass = atob(matchHash[1].trim()); } catch {}
+      } else if (matchReset) {
+        extractedPass = matchReset[1].trim();
+      } else if (matchInitial) {
+        extractedPass = matchInitial[1].trim();
+      }
+
+      if (extractedPass) {
+        if (email && (!passwords[email] || passwords[email].password !== extractedPass)) {
+          passwords[email] = { password: extractedPass, defined_at: new Date().toISOString() };
+          hasNewPasswords = true;
+        }
+        if (id && (!passwords[id] || passwords[id].password !== extractedPass)) {
+          passwords[id] = { password: extractedPass, defined_at: new Date().toISOString() };
+          hasNewPasswords = true;
+        }
+        if (profileId && (!passwords[profileId] || passwords[profileId].password !== extractedPass)) {
+          passwords[profileId] = { password: extractedPass, defined_at: new Date().toISOString() };
+          hasNewPasswords = true;
+        }
+      }
+
+      // Adiciona aos custom_users locais deste dispositivo
+      if (email && !deletedSet.has(email) && !deletedSet.has(id)) {
+        const existingIdx = customUsers.findIndex(
+          (u) => (u.email && u.email.toLowerCase().trim() === email) || u.id === id || (profileId && u.id === profileId)
+        );
+        const resolvedRole = isMasterUser(emp.full_name, emp.email, emp.id) ? (emp.role || 'admin') : 'vendedor';
+        const userObj: UserWithRole = {
+          id: emp.profile_id || emp.id,
+          email: emp.email || '',
+          full_name: emp.full_name,
+          role: resolvedRole,
+          store_id: resolveStoreUuid(emp.store_id),
+          cpf: emp.cpf || undefined,
+          is_active: emp.is_active !== false,
+          user_status: emp.is_active === false ? 'SUSPENSO' : 'ATIVO',
+          created_at: emp.created_at || new Date().toISOString(),
+          temp_password: extractedPass || undefined,
+        };
+
+        if (existingIdx >= 0) {
+          customUsers[existingIdx] = { ...customUsers[existingIdx], ...userObj };
+        } else {
+          customUsers.push(userObj);
+          hasNewUsers = true;
+        }
+      }
+    }
+
+    if (hasNewPasswords) {
+      localStorage.setItem(USER_PASSWORDS_STORAGE_KEY, JSON.stringify(passwords));
+    }
+    if (hasNewUsers) {
+      localStorage.setItem(CUSTOM_USERS_STORAGE_KEY, JSON.stringify(customUsers));
+    }
+  } catch (err) {
+    console.warn('[userService] syncCredentialsFromSupabase aviso:', err);
+  }
 }
 
 export function hasUserDefinedPassword(emailOrId: string): boolean {
@@ -411,9 +548,7 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
         };
       }
       const mapped = storeMap.get(explicitStoreId);
-      if (mapped) {
-        return { storeId: explicitStoreId, storeName: mapped };
-      }
+      return { storeId: explicitStoreId, storeName: mapped || 'Concessionária' };
     }
 
     const cleanEmail = (email || '').toLowerCase().trim();

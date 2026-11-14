@@ -106,6 +106,8 @@ export function useDeleteVehicleModel() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      await ensureSupabaseSession();
+
       // 1. Remove cores atreladas ao modelo para evitar erro de integridade referencial
       try {
         await supabase.from('vehicle_colors').delete().eq('vehicle_model_id', id);
@@ -113,7 +115,12 @@ export function useDeleteVehicleModel() {
         console.warn('[useDeleteVehicleModel] Falha ao excluir cores vinculadas:', err);
       }
 
-      // 2. Tenta exclusão direta do modelo
+      // 2. Se houver veículos com vínculo a este modelo, desassocia para permitir exclusão
+      try {
+        await (supabase as any).from('vehicles').update({ model_id: null }).eq('model_id', id);
+      } catch {}
+
+      // 3. Tenta exclusão direta do modelo
       const { error } = await supabase.from('vehicle_models').delete().eq('id', id);
       if (error) {
         // Se houver dependência de chave estrangeira (ex: veículos cadastrados), desativa o modelo no catálogo
@@ -126,6 +133,7 @@ export function useDeleteVehicleModel() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicle-models'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       toast({ title: 'Modelo excluído com sucesso do catálogo' });
     },
     onError: (err: any) =>

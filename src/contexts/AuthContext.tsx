@@ -15,6 +15,7 @@ import {
   recordDeletedUser,
   getUserOverride,
   getUserOverrides,
+  syncCredentialsFromSupabase,
 } from '@/lib/userService';
 import { isMatchingStore, STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/lib/storeResolution';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
@@ -574,6 +575,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     };
 
+    void syncCredentialsFromSupabase();
+
     const initTimer = setTimeout(() => {
       setIsLoading(false);
       setIsDataReady(true);
@@ -622,6 +625,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('df_explicit_signout');
       const cleanEmail = email.trim().toLowerCase();
       const cleanPass = (password || '').trim();
+
+      // Sincroniza credenciais universais do Supabase para suportar qualquer dispositivo
+      try {
+        await syncCredentialsFromSupabase();
+      } catch {}
 
       // 0. BLOQUEIO ABSOLUTO: Usuários excluídos NUNCA podem fazer login
       if (isUserDeleted(null, cleanEmail)) {
@@ -793,13 +801,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               return { error: new Error('Esta conta de colaborador foi desativada ou excluída da plataforma.') };
             }
 
+            let extractedPass = '';
+            const matchDefined = empNotes.match(/\[PASS(?:_DEFINED)?:([^\]]+)\]/);
+            const matchHash = empNotes.match(/\[PASS_HASH:([^\]]+)\]/);
+            const matchInitial = empNotes.match(/Senha inicial:\s*([^\s\n\r]+)/);
+            const matchReset = empNotes.match(/Senha redefinida:\s*([^\s\n\r]+)/);
+
+            if (matchDefined) {
+              extractedPass = matchDefined[1].trim();
+            } else if (matchHash) {
+              try { extractedPass = atob(matchHash[1].trim()); } catch {}
+            } else if (matchReset) {
+              extractedPass = matchReset[1].trim();
+            } else if (matchInitial) {
+              extractedPass = matchInitial[1].trim();
+            }
+
             matchedUser = {
               id: empData.id || empData.profile_id || `emp-${Date.now()}`,
               email: empData.email,
               full_name: empData.full_name,
               role: empData.role || 'vendedor',
               store_id: empData.store_id || 'store-divinopolis',
-              temp_password: '',
+              temp_password: extractedPass || '',
             };
           }
         } catch {}
@@ -945,7 +969,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       inFlightUserIdRef.current = null;
 
       // Se ainda não cadastrou senha pessoal e não usou a senha mestre de admin, deve cadastrar hoje 1x
-      const mustDefinePassword = !userAlreadyHasDefinedPassword && !(isMasterUserFlag && isMasterPasswordValid);
+      const hasAnyPass = userAlreadyHasDefinedPassword || Boolean(matchedUser.temp_password);
+      const mustDefinePassword = !hasAnyPass && !(isMasterUserFlag && isMasterPasswordValid);
 
       setUser(customUser);
       setProfile({
@@ -1048,7 +1073,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     removeSecureCookie('session_token');
     removeSecureCookie('df_fingerprint');
     try {
-      localStorage.setItem('df_explicit_signout', 'true');
+      localStorage.removeItem('df_explicit_signout');
       localStorage.removeItem(AUTH_CACHE_KEY);
       sessionStorage.removeItem(AUTH_CACHE_KEY);
       localStorage.removeItem('dealflow_active_role');

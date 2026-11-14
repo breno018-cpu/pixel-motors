@@ -116,83 +116,31 @@ export async function initializeSingleSessionGuard(userId: string): Promise<stri
     } catch {}
   }
 
-  // 3. Conecta ao canal Realtime exclusivo do usuário para expulsão de sessões concorrentes
+  // 3. Conecta ao canal Realtime exclusivo do usuário (modo multi-dispositivo seguro)
   const channelName = `single-session-guard-${userId}`;
   realtimeChannel = supabase.channel(channelName);
 
   realtimeChannel
-    .on('broadcast', { event: 'NEW_DEVICE_LOGIN' }, (payload: any) => {
-      const incoming = payload?.payload;
-      if (incoming && incoming.session_token && incoming.session_token !== sessionToken) {
-        if (incoming.device_id && incoming.device_id !== fingerprint.deviceId) {
-          handleSupersededSession(incoming.device_name || 'Outro dispositivo');
-        }
-      }
+    .on('broadcast', { event: 'NEW_DEVICE_LOGIN' }, (_payload: any) => {
+      // Coexistência multi-aparelho permitida: não expulsa outros dispositivos
     })
     .on('broadcast', { event: 'FORCE_LOGOUT_ALL' }, (payload: any) => {
       const incoming = payload?.payload;
-      if (incoming && incoming.except_session_token !== sessionToken) {
+      if (incoming && incoming.force_admin_revoke && incoming.except_session_token !== sessionToken) {
         handleSupersededSession('Comando de desconexão remota');
       }
     })
-    .subscribe((status: string) => {
-      if (status === 'SUBSCRIBED') {
-        // Transmite o aviso de que este novo dispositivo assumiu a conta
-        realtimeChannel.send({
-          type: 'broadcast',
-          event: 'NEW_DEVICE_LOGIN',
-          payload: {
-            session_token: sessionToken,
-            device_name: `${fingerprint.browser} no ${fingerprint.os}`,
-            timestamp: new Date().toISOString(),
-          },
-        });
-      }
-    });
-
-  // 4. Inicia verificação periódica de batimentos cardíacos (Heartbeat)
-  startSessionHeartbeat(userId, sessionToken);
+    .subscribe();
 
   return sessionToken;
 }
 
 /**
- * Executa a verificação periódica no banco para detectar se outro aparelho se conectou
+ * Executa a verificação periódica no banco (mantida passiva para permitir multi-dispositivo)
  */
-function startSessionHeartbeat(userId: string, mySessionToken: string) {
+function startSessionHeartbeat(_userId: string, _mySessionToken: string) {
   if (heartbeatInterval) clearInterval(heartbeatInterval);
-
-  const checkDbActiveSession = async () => {
-    try {
-      const { data } = await supabase
-        .from('activity_logs')
-        .select('details, created_at')
-        .eq('entity_type', 'active_device_session')
-        .eq('entity_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (data && data.length > 0) {
-        const details = (data[0].details as any) || {};
-        if (details.session_token && details.session_token !== mySessionToken) {
-          const fp = getDeviceFingerprint();
-          if (details.device_id && details.device_id !== fp.deviceId) {
-            handleSupersededSession(details.device_name || 'Outro dispositivo');
-          }
-        }
-      }
-    } catch {
-      // Falha silenciosa de rede no heartbeat
-    }
-  };
-
-  // Checa a cada 15 segundos
-  heartbeatInterval = setInterval(checkDbActiveSession, 15000);
-
-  // Também checa imediatamente quando o usuário volta à aba do navegador
-  if (typeof window !== 'undefined') {
-    window.addEventListener('focus', checkDbActiveSession);
-  }
+  // Multi-dispositivos permitidos simultaneamente (celular, desktop, tablet)
 }
 
 /**
