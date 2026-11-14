@@ -38,7 +38,7 @@ interface UserStore {
 
 const SESSION_MAX_AGE_MS = 7 * 60 * 60 * 1000; // 7 hours
 const AUTH_CACHE_KEY = 'df_auth_user_cache_v1';
-const GLOBAL_FORCE_LOGOUT_KEY = 'df_force_logout_all_epoch_20261113_v1';
+const GLOBAL_FORCE_LOGOUT_KEY = 'df_force_logout_all_epoch_20261114_v1';
 
 /**
  * Força a desconexão global de todas as sessões em todos os aparelhos/navegadores.

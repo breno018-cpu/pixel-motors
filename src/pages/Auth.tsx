@@ -7,6 +7,7 @@ import {
   EyeOff,
   AlertCircle,
   ShieldCheck,
+  Clock,
   Loader2,
   AlertTriangle,
   Mail,
@@ -249,12 +250,14 @@ export default function Auth() {
             )}
 
             {authMode === 'email' && (
-              <div className="rounded-2xl border border-blue-200/90 bg-blue-50/70 p-3 text-xs text-blue-900 flex items-start gap-2.5">
-                <ShieldCheck className="h-4 w-4 shrink-0 text-blue-600 mt-0.5" />
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-50/80 dark:bg-amber-950/20 p-3 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5 shadow-xs">
+                <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div className="space-y-0.5">
-                  <p className="font-bold text-[11px] text-blue-950 uppercase tracking-wider">Acesso Unificado Hoje</p>
-                  <p className="text-[11px] text-blue-800 leading-snug">
-                    Digite apenas seu e-mail para entrar e definir sua senha pessoal no primeiro acesso.
+                  <p className="font-bold text-[11px] text-amber-950 dark:text-amber-100 uppercase tracking-wider flex items-center gap-1.5">
+                    Prazo de Criação de Novas Senhas: Hoje (14/11/2026)
+                  </p>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-snug">
+                    O prazo para criação e atualização da sua nova senha expira hoje. Digite seu e-mail cadastrado para entrar e definir sua senha pessoal.
                   </p>
                 </div>
               </div>

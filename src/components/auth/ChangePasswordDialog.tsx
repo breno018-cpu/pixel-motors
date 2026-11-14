@@ -123,13 +123,18 @@ export function ChangePasswordDialog({ open, onSuccess }: ChangePasswordDialogPr
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Lock className="w-5 h-5 text-primary" />
-            Alterar Senha
+            Definição Obrigatória de Nova Senha
           </DialogTitle>
-          <DialogDescription className="flex items-start gap-2 bg-warning/10 text-warning p-3 rounded-lg mt-2">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-            <span>
-              Você está usando uma senha temporária. Por segurança, é obrigatório definir uma nova senha para continuar.
-            </span>
+          <DialogDescription className="flex items-start gap-2 bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20 p-3 rounded-lg mt-2">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <div className="text-xs space-y-1">
+              <span className="font-bold block text-amber-950 dark:text-amber-100">
+                Prazo Limite: Hoje (14/11/2026)
+              </span>
+              <span>
+                Por determinação de segurança, o prazo para criação da sua nova senha pessoal encerra-se hoje. É obrigatório cadastrar sua nova senha para continuar utilizando a plataforma.
+              </span>
+            </div>
           </DialogDescription>
         </DialogHeader>
 
