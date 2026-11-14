@@ -162,11 +162,19 @@ export function Sidebar() {
       >
         <div className={cn(
           "w-6 h-6 rounded-md flex items-center justify-center shrink-0 transition-all shadow-xs",
-          isActive 
-            ? "bg-primary text-white ring-1 ring-white/30" 
-            : "bg-white/10 text-white border border-white/15 group-hover:bg-white/20 group-hover:text-white"
+          item.path === '/owner-dashboard'
+            ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+            : isActive 
+              ? "bg-primary text-white ring-1 ring-white/30" 
+              : "bg-white/10 text-white border border-white/15 group-hover:bg-white/20 group-hover:text-white"
         )}>
-          <item.icon className="w-3.5 h-3.5 shrink-0 text-white" style={{ color: '#ffffff', stroke: '#ffffff' }} />
+          <item.icon
+            className="w-3.5 h-3.5 shrink-0"
+            style={{
+              color: item.path === '/owner-dashboard' ? '#f59e0b' : '#ffffff',
+              stroke: item.path === '/owner-dashboard' ? '#f59e0b' : '#ffffff',
+            }}
+          />
         </div>
         {(!collapsed || isMobile) && (
           <span className="truncate min-w-0 flex-1 text-left text-xs text-white" title={item.label}>

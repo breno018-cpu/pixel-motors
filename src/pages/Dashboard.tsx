@@ -1060,6 +1060,35 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Banner Executivo de Acesso Direto ao Painel do Dono */}
+        {(isAdmin || hasElevatedAccess) && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white shadow-lg border border-slate-700/60 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <Crown className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm tracking-tight text-white">Painel do Dono da Loja (Centro de Comando 360°)</h3>
+                  <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-300 border-amber-500/40">Exclusivo Diretoria</Badge>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Visão panorâmica para a diretoria: Ver KPIs consolidados, Dividir e cruzar dados por vendedor/loja/modelo, Mapear rotas de entrega e Simular cenários de metas e margens.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => navigate('/owner-dashboard')}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-xl shadow-xs shrink-0 gap-1.5"
+            >
+              <Crown className="w-3.5 h-3.5 text-slate-950" />
+              Abrir Painel do Dono
+              <ArrowUpRight className="w-3.5 h-3.5 text-slate-950" />
+            </Button>
+          </div>
+        )}
+
         {/* BARRA DE FILTROS INTEGRADOS (Responsiva com flex wrap que não ultrapassa a tela) */}
         <GlassView
           glassEffectStyle="regular"

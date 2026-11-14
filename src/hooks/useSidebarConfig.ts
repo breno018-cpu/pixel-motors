@@ -25,11 +25,17 @@ function load(key: string): SidebarConfig {
     const order = parsed.order?.filter((p) => known.has(p)) ?? [];
     // append any new items not yet in stored order
     for (const item of ALL_MENU_ITEMS) {
-      if (!order.includes(item.path)) order.push(item.path);
+      if (!order.includes(item.path)) {
+        if (item.path === '/owner-dashboard') {
+          order.unshift(item.path);
+        } else {
+          order.push(item.path);
+        }
+      }
     }
     return {
       order,
-      hidden: parsed.hidden?.filter((p) => known.has(p)) ?? [],
+      hidden: (parsed.hidden?.filter((p) => known.has(p)) ?? []).filter((p) => p !== '/owner-dashboard'),
     };
   } catch {
     return defaultConfig();
