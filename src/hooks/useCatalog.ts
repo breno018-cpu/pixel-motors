@@ -8,6 +8,7 @@ import {
   subscribeCatalogStream,
   sendCatalogChatMessage,
   getCatalogApiSettings,
+  restoreDefaultCatalog,
 } from "@/lib/catalogApi";
 import {
   CatalogData,
@@ -268,6 +269,15 @@ export function useCatalog() {
     mutationFn: (messages: CatalogChatMessage[]) => sendCatalogChatMessage(messages),
   });
 
+  // 15. Restaurar Catálogo Padrão Oficial Shineray & Elétricas
+  const restoreLineup = () => {
+    const restored = restoreDefaultCatalog();
+    queryClient.setQueryData(["catalog-data"], restored);
+    queryClient.invalidateQueries({ queryKey: ["catalog-data"] });
+    toast.success(`Catálogo Oficial Shineray e Elétricas restaurado! ${restored.products.length} modelos carregados.`);
+    return restored;
+  };
+
   return {
     ...catalogQuery,
     catalog: catalogQuery.data,
@@ -276,6 +286,7 @@ export function useCatalog() {
     liveEvents,
     syncMutation,
     chatMutation,
+    restoreLineup,
     toggleActive,
     updateStock,
     updatePrice,

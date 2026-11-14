@@ -70,6 +70,7 @@ import {
   Link2,
   Compass,
   CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 import { useVehicles } from "@/hooks/useVehicles";
 import {
@@ -172,6 +173,7 @@ export default function CatalogControl() {
     upsertProduct,
     removeProduct,
     batchSync,
+    restoreLineup,
     apiSettings,
   } = useCatalog();
 
@@ -205,6 +207,7 @@ export default function CatalogControl() {
   const [descDialogOpen, setDescDialogOpen] = useState(false);
   const [selectedProductForDesc, setSelectedProductForDesc] = useState<CatalogProduct | null>(null);
   const [reorderDialogOpen, setReorderDialogOpen] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
 
   // Atrelamento ao Estoque Real (DealFlow Hub)
   const { data: vehicles = [] } = useVehicles();
@@ -1452,6 +1455,17 @@ export default function CatalogControl() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setRestoreDialogOpen(true)}
+            className="gap-1.5 font-medium border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+            title="Restaurar a Linha Oficial Shineray e Elétricas completa"
+          >
+            <RotateCcw className="w-4 h-4 text-amber-500" />
+            Restaurar Catálogo Oficial
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setImportDialogOpen(true)}
             className="gap-1.5 font-medium"
           >
@@ -1802,23 +1816,64 @@ export default function CatalogControl() {
           <p>Carregando modelos do catálogo público...</p>
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="p-12 text-center border rounded-2xl bg-card space-y-3">
-          <Store className="w-10 h-10 mx-auto text-muted-foreground/60" />
-          <h3 className="text-lg font-semibold text-foreground">Nenhum veículo encontrado nesta parte do catálogo</h3>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            {search || selectedCat !== "all" || statusFilter !== "all"
-              ? "Tente selecionar outra parte no catálogo ou limpar a busca."
-              : "Seu catálogo público ainda não possui modelos cadastrados."}
-          </p>
-          <div className="flex justify-center gap-2 pt-2">
-            <Button size="sm" onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-1.5">
-              <Download className="w-4 h-4" /> Importar do Estoque
-            </Button>
-            <Button size="sm" onClick={handleNewProduct} className="gap-1.5">
-              <Plus className="w-4 h-4" /> Criar Novo Veículo
-            </Button>
+        products.length === 0 ? (
+          <div className="p-10 text-center border-2 border-dashed border-amber-500/30 rounded-2xl bg-amber-500/5 space-y-4 max-w-2xl mx-auto my-6">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto">
+              <Store className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-foreground">Catálogo Inicialmente Vazio neste Dispositivo</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+                Carregue instantaneamente todos os modelos da Linha Oficial da Shineray (Worker 125, Phoenix 50 EFI, SHI 175, Storm 200, Elétricas e Quadriciclos) ou importe do seu estoque físico.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
+              <Button
+                size="sm"
+                onClick={restoreLineup}
+                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4"
+              >
+                <RotateCcw className="w-4 h-4" /> Restaurar Linha Shineray Oficial (17+ Modelos)
+              </Button>
+              <Button size="sm" onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-1.5 font-medium">
+                <Download className="w-4 h-4" /> Importar do Estoque Físico
+              </Button>
+              <Button size="sm" onClick={handleNewProduct} variant="outline" className="gap-1.5">
+                <Plus className="w-4 h-4" /> Criar Veículo Manual
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="p-12 text-center border rounded-2xl bg-card space-y-3">
+            <Store className="w-10 h-10 mx-auto text-muted-foreground/60" />
+            <h3 className="text-lg font-semibold text-foreground">Nenhum veículo encontrado nesta parte do catálogo</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              {search || selectedCat !== "all" || statusFilter !== "all"
+                ? "Tente selecionar outra parte no catálogo ou limpar a busca."
+                : "Seu catálogo público ainda não possui modelos cadastrados nesta categoria."}
+            </p>
+            <div className="flex justify-center gap-2 pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSearch("");
+                  setSelectedCat("all");
+                  setSelectedSub("all");
+                  setStatusFilter("all");
+                }}
+              >
+                Limpar Filtros
+              </Button>
+              <Button size="sm" onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-1.5">
+                <Download className="w-4 h-4" /> Importar do Estoque
+              </Button>
+              <Button size="sm" onClick={handleNewProduct} className="gap-1.5">
+                <Plus className="w-4 h-4" /> Criar Novo Veículo
+              </Button>
+            </div>
+          </div>
+        )
       ) : viewLayout === "table" ? (
         // VISUALIZAÇÃO EM TABELA COMPACTA (DESKTOP)
         <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
@@ -2117,6 +2172,30 @@ export default function CatalogControl() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold"
             >
               {deleting ? "Excluindo..." : "Sim, Excluir do Catálogo"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 13. Dialog de Restauração da Linha Oficial Shineray */}
+      <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restaurar Linha Oficial Shineray & Elétricas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação recarregará todos os 17+ modelos oficiais de fábrica da Shineray (Worker 125, Phoenix 50 EFI, SHI 175, Storm 200, motos e scooters elétricas, e quadriciclos off-road) com preços sugeridos, especificações completas e fotos oficiais.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                restoreLineup();
+                setRestoreDialogOpen(false);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+            >
+              Restaurar Catálogo Oficial
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
