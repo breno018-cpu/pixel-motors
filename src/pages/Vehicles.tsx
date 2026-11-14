@@ -166,7 +166,22 @@ export default function Vehicles() {
   const [statusFilter, setStatusFilter] = useState<string>('active'); // 'active' | 'disponivel' | 'reservado' | 'aging60' | 'vendido'
   const [typeFilter, setTypeFilter] = useState<'all' | 'moto' | 'carro'>('all');
   const [colorFilter, setColorFilter] = useState<string>('all');
-  const [storeFilter, setStoreFilter] = useState(searchParams.get('store') || 'all');
+  const [storeFilter, setStoreFilter] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const fromParam = new URLSearchParams(window.location.search).get('store');
+      if (fromParam) return fromParam;
+      try {
+        const raw = localStorage.getItem('df_auth_user_cache_v1') || sessionStorage.getItem('df_auth_user_cache_v1');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.userStore?.id) {
+            return parsed.userStore.id;
+          }
+        }
+      } catch {}
+    }
+    return 'all';
+  });
   const [resellerFilter, setResellerFilter] = useState('all');
   const [viewMode, setViewMode] = useState<ViewMode>('grouped');
   const [sortBy, setSortBy] = useState<SortBy>('default');
@@ -219,24 +234,25 @@ export default function Vehicles() {
   const { toast } = useToast();
   const confirm = useConfirm();
 
-  // Inicializa o filtro com a loja local do usuário se houver estoque; caso contrário, abre como 'all' (Rede Integrada)
-  const hasInitializedStoreRef = useRef(false);
+  // Regra de ouro: cada funcionário vê PRIMEIRO o estoque da sua respectiva loja por padrão.
+  // Se o usuário alternar manualmente ou houver parâmetro na URL (?store=), respeita a escolha do usuário.
+  const userManuallyChangedStoreRef = useRef(false);
   useEffect(() => {
-    if (!hasInitializedStoreRef.current && !searchParams.get('store')) {
-      const allVehicles = vehicles || [];
-      if (userStore?.id && allVehicles.length > 0) {
-        const hasLocalStock = allVehicles.some((v) => isMatchingStore(v.store_id, userStore.id));
-        if (hasLocalStock) {
-          setStoreFilter(userStore.id);
-        } else {
-          setStoreFilter('all');
-        }
-      } else {
-        setStoreFilter('all');
-      }
-      hasInitializedStoreRef.current = true;
+    if (searchParams.get('store')) {
+      userManuallyChangedStoreRef.current = true;
+      return;
     }
-  }, [userStore?.id, searchParams, vehicles]);
+    if (!userManuallyChangedStoreRef.current && userStore?.id) {
+      if (storeFilter === 'all' || !storeFilter) {
+        setStoreFilter(userStore.id);
+      }
+    }
+  }, [userStore?.id, searchParams]);
+
+  const handleStoreChange = (newStoreId: string) => {
+    userManuallyChangedStoreRef.current = true;
+    setStoreFilter(newStoreId);
+  };
 
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
@@ -560,20 +576,22 @@ export default function Vehicles() {
     URL.revokeObjectURL(url);
   };
 
+  const defaultStoreId = userStore?.id || 'all';
   const hasActiveFilters =
     Boolean(search) ||
     statusFilter !== 'active' ||
     typeFilter !== 'all' ||
     colorFilter !== 'all' ||
-    storeFilter !== 'all' ||
+    storeFilter !== defaultStoreId ||
     resellerFilter !== 'all';
 
   const resetAllFilters = () => {
+    userManuallyChangedStoreRef.current = false;
     setSearch('');
     setStatusFilter('active');
     setTypeFilter('all');
     setColorFilter('all');
-    setStoreFilter('all');
+    setStoreFilter(defaultStoreId);
     setResellerFilter('all');
     setSortBy('default');
   };
@@ -885,29 +903,67 @@ export default function Vehicles() {
                 ))}
               </div>
 
-              {/* Loja */}
-              <Select
-                value={storeFilter}
-                onValueChange={setStoreFilter}
-              >
-                <SelectTrigger className="h-9 w-full lg:w-[210px] text-xs font-semibold">
-                  <Store className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
-                  <SelectValue placeholder="Loja" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  <SelectItem value="all" className="font-bold text-primary">
-                    Todas as Lojas (Rede Integrada)
-                  </SelectItem>
-                  {stores?.map((store) => {
-                    const isMyStore = store.id === userStore?.id;
-                    return (
-                      <SelectItem key={store.id} value={store.id} className={cn(isMyStore && 'font-bold text-foreground')}>
-                        {store.name} {isMyStore ? '★ (Minha Loja)' : ''}
+              {/* Loja e Alternador Rápido de Rede */}
+              <div className="flex items-center gap-1.5 w-full lg:w-auto">
+                <Select
+                  value={storeFilter}
+                  onValueChange={handleStoreChange}
+                >
+                  <SelectTrigger className="h-9 w-full lg:w-[220px] text-xs font-semibold">
+                    <Store className="mr-1.5 h-3.5 w-3.5 text-primary shrink-0" />
+                    <SelectValue placeholder="Loja" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    {userStore?.id && (
+                      <SelectItem value={userStore.id} className="font-bold text-foreground">
+                        ★ Minha Loja ({userStore.name})
                       </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+                    )}
+                    <SelectItem value="all" className="font-bold text-primary">
+                      🌐 Todas as Lojas (Rede Integrada)
+                    </SelectItem>
+                    {stores
+                      ?.filter((s) => s.id !== userStore?.id)
+                      .map((store) => (
+                        <SelectItem key={store.id} value={store.id}>
+                          {store.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+
+                {userStore?.id && (
+                  <Button
+                    type="button"
+                    variant={storeFilter === 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleStoreChange(storeFilter === userStore.id ? 'all' : userStore.id)}
+                    className={cn(
+                      'h-9 px-2.5 text-xs font-semibold shrink-0 gap-1.5 transition-all',
+                      storeFilter === userStore.id
+                        ? 'border-dashed border-border hover:border-primary/50 text-muted-foreground hover:text-foreground'
+                        : 'bg-primary text-primary-foreground shadow-xs'
+                    )}
+                    title={
+                      storeFilter === userStore.id
+                        ? 'Alternar para ver o estoque de todas as lojas da rede'
+                        : 'Voltar para o estoque exclusivo da minha loja'
+                    }
+                  >
+                    {storeFilter === userStore.id ? (
+                      <>
+                        <Building2 className="w-3.5 h-3.5 text-primary" />
+                        <span className="hidden sm:inline">Ver</span> Todas as Lojas
+                      </>
+                    ) : (
+                      <>
+                        <Store className="w-3.5 h-3.5" />
+                        <span>Minha Loja</span>
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
 
               {/* Revendedor */}
               <Select value={resellerFilter} onValueChange={setResellerFilter}>
@@ -1014,10 +1070,10 @@ export default function Vehicles() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setStoreFilter(userStore.id)}
+                onClick={() => handleStoreChange(userStore.id)}
                 className="h-7 text-xs font-bold border-amber-500/40 text-amber-800 dark:text-amber-200 hover:bg-amber-500/20 shrink-0"
               >
-                Ver Minha Loja ({userStore.name || 'Local'})
+                Voltar para Minha Loja ({userStore.name || 'Local'})
               </Button>
             </div>
           )}
@@ -1034,12 +1090,32 @@ export default function Vehicles() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setStoreFilter(userStore.id)}
+                  onClick={() => handleStoreChange(userStore.id)}
                   className="h-7 text-xs font-semibold shrink-0"
                 >
-                  Filtrar Minha Loja
+                  Filtrar Minha Loja ({userStore.name || 'Local'})
                 </Button>
               )}
+            </div>
+          )}
+
+          {userStore?.id && isMatchingStore(storeFilter, userStore.id) && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2 rounded-xl bg-muted/40 border border-border/60 text-muted-foreground text-xs">
+              <div className="flex items-center gap-2">
+                <Store className="w-4 h-4 text-primary shrink-0" />
+                <span>
+                  Exibindo estoque de <strong className="text-foreground">{userStore.name}</strong> (Padrão da sua unidade).
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleStoreChange('all')}
+                className="h-7 text-xs font-semibold text-primary hover:text-primary hover:bg-primary/10 shrink-0 gap-1.5"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                Ver Estoque de Todas as Lojas da Rede
+              </Button>
             </div>
           )}
 
