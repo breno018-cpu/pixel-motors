@@ -72,7 +72,7 @@ export default function MotoInvoices() {
     tax_rate: 0,
     chassi: '',
     alienacao: 'À VISTA',
-    items: [{ description: 'SHINERAY FREE 150 2025/2026', quantity: 1, unit_value: 12990 }] as InvoiceItem[],
+    items: [] as InvoiceItem[],
     notes: `[${TYPE_TAG}] `,
   };
   const [form, setForm] = useState<any>(empty);

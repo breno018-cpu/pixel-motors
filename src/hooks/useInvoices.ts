@@ -48,7 +48,24 @@ export function useInvoices() {
           console.warn('Consulta à tabela invoices retornou aviso, operando com fallback:', error);
           return [];
         }
-        return (data || []).map((inv: any): Invoice => {
+        const cleanList = (data || []).filter((inv: any) => {
+          const invNum = String(inv.invoice_number || '').trim();
+          const id = String(inv.id || '');
+          if (id.startsWith('fisc-seed-')) return false;
+          if (['10420', '10421', '10422', '10425', '10426', '10430', '10431'].includes(invNum)) return false;
+          const cust = String(inv.customer_name || '').toLowerCase();
+          if (
+            cust.includes('marcos aurelio') ||
+            cust.includes('claudio roberto') ||
+            cust.includes('patricia santos') ||
+            cust.includes('fernando guimaraes')
+          ) {
+            return false;
+          }
+          return true;
+        });
+
+        return cleanList.map((inv: any): Invoice => {
           const itemObj = Array.isArray(inv.items) ? (inv.items[0] || {}) : (inv.items || {});
           return {
             ...inv,

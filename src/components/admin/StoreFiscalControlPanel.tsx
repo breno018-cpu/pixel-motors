@@ -88,7 +88,16 @@ function getStoredFiscalInvoices(): FiscalInvoiceRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item: any) => {
+      if (!item) return false;
+      const id = String(item.id || '');
+      const invNum = String(item.invoice_number || '').trim();
+      if (id.startsWith('fisc-seed-')) return false;
+      if (['10420', '10421', '10422', '10425', '10426', '10430', '10431'].includes(invNum)) return false;
+      return true;
+    });
   } catch {
     return [];
   }

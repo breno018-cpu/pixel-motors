@@ -63,114 +63,35 @@ export const WEEKS_CONFIG = [
   { key: 'sem_5', label: 'Semana 5', range: '29 a 30 Nov', days: [29, 31] },
 ];
 
-const SAMPLE_FISCAL_RECORDS = [
-  {
-    id: 'fisc-seed-1',
-    invoice_number: '10420',
-    fiscal_type: 'entrada',
-    store_id: 'store-montesclaros',
-    issue_date: '2026-11-03',
-    entry_or_cancel_date: '2026-11-03',
-    party_name: 'Shineray do Brasil S.A. (Montadora)',
-    total_value: 184500,
-    status: 'conferido',
-    sefaz_protocol: '312611009182310',
-    notes: 'Remessa de Fábrica Lote 14 (12 motos: SHI 175 e JET 125)',
-  },
-  {
-    id: 'fisc-seed-2',
-    invoice_number: '10421',
-    fiscal_type: 'emissao',
-    store_id: 'store-montesclaros',
-    issue_date: '2026-11-04',
-    entry_or_cancel_date: '2026-11-04',
-    party_name: 'Marcos Aurelio Silveira',
-    total_value: 14990,
-    status: 'emitida',
-    sefaz_protocol: '312611009182311',
-    notes: 'Venda de Free 150',
-  },
-  {
-    id: 'fisc-seed-3',
-    invoice_number: '10422',
-    fiscal_type: 'emissao',
-    store_id: 'store-montesclaros',
-    issue_date: '2026-11-05',
-    entry_or_cancel_date: '2026-11-05',
-    party_name: 'Claudio Roberto Mendes',
-    total_value: 18990,
-    status: 'cancelada_posteriormente',
-    sefaz_protocol: '312611009182312',
-    notes: 'Venda de SHI 175 EFI (Faturada na Semana 1)',
-  },
-  {
-    id: 'fisc-seed-4',
-    invoice_number: '10425',
-    fiscal_type: 'entrada',
-    store_id: 'store-divinopolis',
-    issue_date: '2026-11-09',
-    entry_or_cancel_date: '2026-11-09',
-    party_name: 'Shineray do Brasil S.A. (Montadora)',
-    total_value: 112000,
-    status: 'conferido',
-    sefaz_protocol: '312611009182315',
-    notes: 'Remessa de Fábrica Filial Divinópolis (8 Jet 125)',
-  },
-  {
-    id: 'fisc-seed-5',
-    invoice_number: '10426',
-    fiscal_type: 'emissao',
-    store_id: 'store-divinopolis',
-    issue_date: '2026-11-11',
-    entry_or_cancel_date: '2026-11-11',
-    party_name: 'Patricia Santos Lima',
-    total_value: 13990,
-    status: 'emitida',
-    sefaz_protocol: '312611009182316',
-    notes: 'Venda de Jet 125 SS',
-  },
-  {
-    id: 'fisc-seed-6',
-    invoice_number: '10430',
-    fiscal_type: 'entrada',
-    store_id: 'store-montesclaros',
-    issue_date: '2026-11-15',
-    entry_or_cancel_date: '2026-11-15',
-    party_name: 'Shineray do Brasil S.A. (Montadora)',
-    total_value: 220000,
-    status: 'conferido',
-    sefaz_protocol: '312611009182320',
-    notes: 'Remessa de Fábrica Lote 15 (10 motos Storm 200 e SHI 250)',
-  },
-  {
-    id: 'fisc-seed-7',
-    invoice_number: '10431',
-    fiscal_type: 'emissao',
-    store_id: 'store-montesclaros',
-    issue_date: '2026-11-16',
-    entry_or_cancel_date: '2026-11-16',
-    party_name: 'Fernando Guimaraes',
-    total_value: 18990,
-    status: 'emitida',
-    sefaz_protocol: '312611009182321',
-    notes: 'Venda de SHI 175 EFI',
-  },
-  {
-    id: 'fisc-seed-8',
-    invoice_number: '10422',
-    fiscal_type: 'cancelamento',
-    store_id: 'store-montesclaros',
-    issue_date: '2026-11-05',
-    entry_or_cancel_date: '2026-11-16',
-    party_name: 'Claudio Roberto Mendes',
-    total_value: 18990,
-    status: 'cancelada',
-    cancellation_reason: 'Financiamento bancário reprovado na vistoria de entrega',
-    cancellation_type: 'estorno',
-    sefaz_protocol: '312611009999001',
-    notes: 'Emitida em 05/11 (Semana 1) e Cancelada em 16/11 (Semana 3) com estorno financeiro gerado para a concessionária',
-  },
-];
+export function cleanFakeFiscalInvoices(): void {
+  try {
+    const storageKey = 'dealflow_store_fiscal_invoices_v1';
+    const raw = localStorage.getItem(storageKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter((item: any) => {
+          if (!item) return false;
+          const id = String(item.id || '');
+          const invNum = String(item.invoice_number || '').trim();
+          if (id.startsWith('fisc-seed-')) return false;
+          if (['10420', '10421', '10422', '10425', '10426', '10430', '10431'].includes(invNum)) return false;
+          const party = String(item.party_name || '').toLowerCase();
+          if (
+            party.includes('marcos aurelio') ||
+            party.includes('claudio roberto') ||
+            party.includes('patricia santos') ||
+            party.includes('fernando guimaraes')
+          ) {
+            return false;
+          }
+          return true;
+        });
+        localStorage.setItem(storageKey, JSON.stringify(cleaned));
+      }
+    }
+  } catch {}
+}
 
 export function OwnerFiscalInvoicesPanel() {
   const { data: invoices = [], isLoading } = useInvoices();
@@ -209,15 +130,20 @@ export function OwnerFiscalInvoicesPanel() {
   const allFiscalRecords = useMemo(() => {
     let localRecords: any[] = [];
     try {
+      cleanFakeFiscalInvoices();
       const raw = localStorage.getItem('dealflow_store_fiscal_invoices_v1');
       if (raw) {
-        localRecords = JSON.parse(raw);
-      } else {
-        localStorage.setItem('dealflow_store_fiscal_invoices_v1', JSON.stringify(SAMPLE_FISCAL_RECORDS));
-        localRecords = SAMPLE_FISCAL_RECORDS;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          localRecords = parsed.filter((loc: any) => {
+            const id = String(loc.id || '');
+            const invNum = String(loc.invoice_number || '').trim();
+            return !id.startsWith('fisc-seed-') && !['10420', '10421', '10422', '10425', '10426', '10430', '10431'].includes(invNum);
+          });
+        }
       }
     } catch {
-      localRecords = SAMPLE_FISCAL_RECORDS;
+      localRecords = [];
     }
 
     const recordsList: CombinedFiscalRecord[] = [];
