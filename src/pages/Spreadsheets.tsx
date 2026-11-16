@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { exportDealershipWorksheetMultiStore } from '@/lib/export';
+import { isMontesClarosStore } from '@/lib/storeResolution';
 import {
   parseBackupCsv,
   ONEDRIVE_DEFAULT_URL,
@@ -488,7 +489,7 @@ export default function Spreadsheets() {
                     <div className="flex items-center gap-2.5">
                       <FileSpreadsheet className="w-4 h-4" />
                       <span className="text-xs font-bold tracking-wide">
-                        Planilha de Vendas Divinopolis.xlsx — Aba VROUT26 (Edição Ao Vivo)
+                        Planilha Geral de Vendas (Montes Claros & Divinópolis) — Aba VROUT26 (Edição Ao Vivo)
                       </span>
                       <Badge className="bg-white/20 text-white border-none text-[10px] font-semibold">
                         Salvo automaticamente
@@ -581,14 +582,29 @@ export default function Spreadsheets() {
                       </thead>
                       <tbody>
                         {liveRows.map((row, rIdx) => {
+                          const isMoc = isMontesClarosStore({
+                            store_id: (row as any).store_id,
+                            vendedor: row.vendedor,
+                            regiao: row.regiao,
+                          });
                           const sellerBg =
-                            row.vendedor === 'Geibriel'
+                            row.vendedor === 'Mariana'
+                              ? 'bg-fuchsia-600 text-white font-bold'
+                              : row.vendedor === 'Natan'
+                              ? 'bg-teal-600 text-white font-bold'
+                              : row.vendedor === 'Sabrina'
+                              ? 'bg-pink-600 text-white font-bold'
+                              : row.vendedor === 'Geibriel'
                               ? 'bg-purple-600 text-white font-bold'
                               : row.vendedor === 'Lilian'
                               ? 'bg-lime-500 text-black font-bold'
                               : row.vendedor === 'Daniel'
                               ? 'bg-sky-700 text-white font-bold'
-                              : 'bg-amber-500 text-black font-bold';
+                              : row.vendedor === 'Breno'
+                              ? 'bg-amber-600 text-white font-bold'
+                              : isMoc
+                              ? 'bg-blue-600 text-white font-bold'
+                              : 'bg-emerald-600 text-white font-bold';
 
                           const cells: { key: keyof SheetRowV9; letter: string; align?: string; isSeller?: boolean }[] = [
                             { key: 'qt', letter: 'A', align: 'text-center font-bold' },

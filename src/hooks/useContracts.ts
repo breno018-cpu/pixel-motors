@@ -140,7 +140,7 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
     buyer_cpf: r.lead_mapping || '—',
     buyer_phone: (r as any).buyer_phone || null,
     buyer_email: (r as any).buyer_email || null,
-    buyer_address: `${r.regiao || 'Divinópolis'} - MG`,
+    buyer_address: `${r.regiao || (isMoc ? 'Montes Claros' : 'Divinópolis')} - MG`,
     sale_price: r.valor || 0,
     down_payment: downPayment,
     installments: 1,

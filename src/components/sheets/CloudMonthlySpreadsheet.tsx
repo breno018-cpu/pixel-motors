@@ -65,6 +65,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
 } from '@/components/ui/select';
 import {
   Dialog,
@@ -83,7 +86,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { exportToXLSX, exportDealershipWorksheetMultiStore } from '@/lib/export';
 import { useStores } from '@/hooks/useStores';
-import { isMontesClarosStore } from '@/lib/storeResolution';
+import { useEmployees } from '@/hooks/useEmployees';
+import { isMontesClarosStore, STORE_MONTESCLAROS_UUID, STORE_DIVINOPOLIS_UUID, getStoreDisplayName } from '@/lib/storeResolution';
+import { DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
 import { TabTransition } from '@/components/ui/TabTransition';
 import * as XLSX from 'xlsx';
 import {
@@ -92,6 +97,8 @@ import {
   SheetRowComment,
   parseBackupCsv,
   INITIAL_USER_BACKUP_CSV,
+  convertContractsSeedToSheetRows,
+  getLiveSheetRows,
   parseCurrencyBRL,
   formatCurrencyBRL,
 } from '@/lib/dealershipSheetParser';
@@ -161,6 +168,88 @@ export function CloudMonthlySpreadsheet({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSellerFilter, setSelectedSellerFilter] = useState<string>('all');
   const { data: storesList = [] } = useStores();
+  const { data: dbEmployees = [] } = useEmployees();
+
+  // Agrupa vendedores canônicos por concessionária a partir do Banco de Dados (public.employees) e sistema
+  const sellersByStore = useMemo(() => {
+    const mocSellers = new Map<string, { name: string; role?: string; storeId: string; storeName: string }>();
+    const divSellers = new Map<string, { name: string; role?: string; storeId: string; storeName: string }>();
+
+    // 1. A partir dos funcionários cadastrados no banco de dados (public.employees)
+    dbEmployees.forEach((emp) => {
+      const isMoc = isMontesClarosStore({
+        store_id: emp.store_id,
+        store_name: emp.store?.name,
+        vendedor: emp.full_name,
+      });
+      const key = emp.full_name.trim();
+      const item = {
+        name: key,
+        role: emp.position || emp.role || 'Consultor(a)',
+        storeId: isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
+        storeName: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
+      };
+      if (isMoc) {
+        mocSellers.set(key, item);
+      } else {
+        divSellers.set(key, item);
+      }
+    });
+
+    // 2. A partir dos colaboradores oficiais do sistema (DEFAULT_OFFICIAL_USERS)
+    DEFAULT_OFFICIAL_USERS.forEach((u) => {
+      const isMoc = isMontesClarosStore({
+        store_id: u.store_id,
+        store_name: u.store_name,
+        vendedor: u.full_name,
+      });
+      const key = u.full_name.trim();
+      const item = {
+        name: key,
+        role: u.role,
+        storeId: isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
+        storeName: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
+      };
+      if (isMoc) {
+        if (!mocSellers.has(key)) mocSellers.set(key, item);
+      } else {
+        if (!divSellers.has(key)) divSellers.set(key, item);
+      }
+    });
+
+    // 3. Vendedores canônicos da operação em ambas as concessionárias
+    const knownShortNames = [
+      { name: 'Mariana', storeId: STORE_MONTESCLAROS_UUID, isMoc: true, role: 'Consultora de Vendas' },
+      { name: 'Natan', storeId: STORE_MONTESCLAROS_UUID, isMoc: true, role: 'Consultor de Vendas' },
+      { name: 'Sabrina', storeId: STORE_MONTESCLAROS_UUID, isMoc: true, role: 'Consultora de Vendas' },
+      { name: 'Halana', storeId: STORE_MONTESCLAROS_UUID, isMoc: true, role: 'Consultora de Vendas' },
+      { name: 'Lilian', storeId: STORE_DIVINOPOLIS_UUID, isMoc: false, role: 'Consultora de Vendas' },
+      { name: 'Geibriel', storeId: STORE_DIVINOPOLIS_UUID, isMoc: false, role: 'Consultor Externo' },
+      { name: 'Daniel', storeId: STORE_DIVINOPOLIS_UUID, isMoc: false, role: 'Consultor de Vendas' },
+      { name: 'Breno', storeId: STORE_DIVINOPOLIS_UUID, isMoc: false, role: 'Diretor Comercial' },
+      { name: 'Elias', storeId: STORE_DIVINOPOLIS_UUID, isMoc: false, role: 'Consultor de Vendas' },
+    ];
+    knownShortNames.forEach((s) => {
+      const item = {
+        name: s.name,
+        role: s.role,
+        storeId: s.storeId,
+        storeName: s.isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
+      };
+      if (s.isMoc) {
+        if (!mocSellers.has(s.name)) mocSellers.set(s.name, item);
+      } else {
+        if (!divSellers.has(s.name)) divSellers.set(s.name, item);
+      }
+    });
+
+    return {
+      montesClaros: Array.from(mocSellers.values()),
+      divinopolis: Array.from(divSellers.values()),
+      all: [...Array.from(mocSellers.values()), ...Array.from(divSellers.values())],
+    };
+  }, [dbEmployees]);
+
   const [selectedBankFilter, setSelectedBankFilter] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'permitted'>('all');
   const [receiptFilter, setReceiptFilter] = useState<'all' | 'with_receipt' | 'without_receipt'>('all');
@@ -185,12 +274,13 @@ export function CloudMonthlySpreadsheet({
   // Modal Novo Lançamento v9.0
   const [newRowModalOpen, setNewRowModalOpen] = useState(false);
   const [newRowForm, setNewRowForm] = useState({
-    vendedor: 'Geibriel',
+    vendedor: 'Mariana',
+    store_id: STORE_MONTESCLAROS_UUID,
     data: new Date().toLocaleDateString('pt-BR'),
     modelo: 'SHI 250',
     chassi: '',
     cliente: '',
-    regiao: 'DIVINOPOLIS',
+    regiao: 'MONTES CLAROS',
     valor: '',
     financiamento: '',
     banco: 'PAN',
@@ -269,14 +359,36 @@ export function CloudMonthlySpreadsheet({
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
+            // Garante que linhas existentes sem store_id tenham a concessionária canônica calculada
+            const sanitized = parsed.map((r: SheetRowV9) => {
+              const isMoc = isMontesClarosStore({
+                store_id: r.store_id,
+                store_name: r.store_name,
+                vendedor: r.vendedor,
+                regiao: r.regiao,
+                observacoes: r.observacoes,
+              });
+              return {
+                ...r,
+                store_id: r.store_id || (isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID),
+                store_name: r.store_name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
+              };
+            });
+            return sanitized;
           }
         }
       } catch (e) {
         console.warn('Erro ao ler cache de planilhas v9:', e);
       }
 
-      // Inicializa com todos os 18 lançamentos reais e de teste
+      // Inicializa com as linhas da base oficial (incluindo Montes Claros e Divinópolis)
+      const seeded = convertContractsSeedToSheetRows();
+      if (seeded && seeded.length > 0) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
+        return seeded;
+      }
+
+      // Fallback
       const { rows } = parseBackupCsv(INITIAL_USER_BACKUP_CSV, '2026-10');
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
       return rows;
@@ -394,20 +506,23 @@ export function CloudMonthlySpreadsheet({
     const existingInMonth = sheetRows.filter((r) => r.month_key === selectedMonth);
     const startSeq = existingInMonth.length + 1;
     const newRows: SheetRowV9[] = [];
+    const isMocTarget = selectedStoreFilter === 'MOC';
 
     for (let i = 0; i < countToAdd; i++) {
       const seq = String(startSeq + i).padStart(2, '0');
       newRows.push({
         id: `row-empty-${selectedMonth}-${Date.now()}-${i}`,
+        store_id: isMocTarget ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
+        store_name: isMocTarget ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
         month_key: selectedMonth,
         qt: seq,
         lead_mapping: '',
         data: new Date().toLocaleDateString('pt-BR'),
-        vendedor: 'Vendedor',
+        vendedor: isMocTarget ? 'Mariana' : 'Geibriel',
         chassi: '',
         modelo: '',
         cliente: '',
-        regiao: selectedStoreFilter === 'MOC' ? 'MONTES CLAROS' : 'DIVINOPOLIS',
+        regiao: isMocTarget ? 'MONTES CLAROS' : 'DIVINOPOLIS',
         valor: 0,
         financiamento: 0,
         banco: '',
@@ -711,8 +826,18 @@ export function CloudMonthlySpreadsheet({
     const totalRec = finNum + dinNum + pixNum + cartaNum + cartaoNum + boletoNum || valorNum;
     const isPending = newRowForm.tipo !== 'venda';
 
+    const isMoc = isMontesClarosStore({
+      store_id: (newRowForm as any).store_id,
+      vendedor: newRowForm.vendedor,
+      regiao: newRowForm.regiao,
+    });
+    const storeId = (newRowForm as any).store_id || (isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID);
+    const storeName = isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis';
+
     const newRecord: SheetRowV9 = {
       id: `row-v9-${selectedMonth}-${Date.now()}`,
+      store_id: storeId,
+      store_name: storeName,
       month_key: selectedMonth,
       qt: nextSeq,
       lead_mapping: newRowForm.lead_mapping.trim(),
@@ -742,12 +867,12 @@ export function CloudMonthlySpreadsheet({
     saveRowsMutation.mutate(updated);
     setNewRowModalOpen(false);
     setNewRowForm({
-      vendedor: 'Geibriel',
+      vendedor: isMoc ? 'Mariana' : 'Geibriel',
       data: new Date().toLocaleDateString('pt-BR'),
       modelo: 'SHI 250',
       chassi: '',
       cliente: '',
-      regiao: 'DIVINOPOLIS',
+      regiao: isMoc ? 'MONTES CLAROS' : 'DIVINOPOLIS',
       valor: '',
       financiamento: '',
       banco: 'PAN',
@@ -809,24 +934,59 @@ export function CloudMonthlySpreadsheet({
     return Array.from(set).sort();
   }, [monthRows]);
 
-  // Placar / Ranking de Vendedores
+  // Placar / Ranking de Vendedores Dinâmico conectado ao Banco de Dados e Vendas do Mês
   const sellerScoreboard = useMemo(() => {
-    const stats: Record<string, { count: number; totalVolume: number }> = {};
-    const sellersOrder = ['Geibriel', 'Daniel', 'Lilian', 'Breno'];
+    const stats: Record<string, { count: number; totalVolume: number; storeName: string; isMoc: boolean }> = {};
 
-    sellersOrder.forEach((s) => {
-      stats[s] = { count: 0, totalVolume: 0 };
+    // 1. Inicializa com os consultores cadastrados para a concessionária selecionada ou todas
+    const candidateList =
+      selectedStoreFilter === 'MOC'
+        ? sellersByStore.montesClaros
+        : selectedStoreFilter === 'DIV' || selectedStoreFilter === 'MATRIZ'
+        ? sellersByStore.divinopolis
+        : sellersByStore.all;
+
+    candidateList.forEach((s) => {
+      const isMoc = s.storeId === STORE_MONTESCLAROS_UUID;
+      stats[s.name] = {
+        count: 0,
+        totalVolume: 0,
+        storeName: isMoc ? 'Montes Claros' : 'Divinópolis',
+        isMoc,
+      };
     });
 
+    // 2. Computa vendas registradas no mês corrente
     monthRows.forEach((r) => {
-      const v = r.vendedor || 'Outros';
-      if (!stats[v]) stats[v] = { count: 0, totalVolume: 0 };
+      const v = r.vendedor?.trim() || 'Outros';
+      const isMoc = isMontesClarosStore({
+        store_id: (r as any).store_id,
+        store_name: (r as any).store_name,
+        vendedor: r.vendedor,
+        regiao: r.regiao,
+        observacoes: r.observacoes,
+      });
+
+      // Se há filtro de loja ativo, só contabiliza no scoreboard vendedores daquela loja
+      if (selectedStoreFilter === 'MOC' && !isMoc) return;
+      if ((selectedStoreFilter === 'DIV' || selectedStoreFilter === 'MATRIZ') && isMoc) return;
+
+      if (!stats[v]) {
+        stats[v] = {
+          count: 0,
+          totalVolume: 0,
+          storeName: isMoc ? 'Montes Claros' : 'Divinópolis',
+          isMoc,
+        };
+      }
       stats[v].count += 1;
       stats[v].totalVolume += r.valor || 0;
     });
 
-    return Object.entries(stats).sort((a, b) => b[1].count - a[1].count);
-  }, [monthRows]);
+    return Object.entries(stats)
+      .filter(([name, stat]) => stat.count > 0 || candidateList.some((c) => c.name === name))
+      .sort((a, b) => b[1].count - a[1].count);
+  }, [monthRows, selectedStoreFilter, sellersByStore]);
 
   // Totais Financeiros do Mês
   const monthFinancials = useMemo(() => {
@@ -882,12 +1042,14 @@ export function CloudMonthlySpreadsheet({
     return monthRows.filter((r) => {
       if (selectedStoreFilter !== 'all') {
         const isMoc = isMontesClarosStore({
+          store_id: (r as any).store_id,
+          store_name: (r as any).store_name,
           vendedor: r.vendedor,
           regiao: r.regiao,
           observacoes: r.observacoes,
         });
         if (selectedStoreFilter === 'MOC' && !isMoc) return false;
-        else if (selectedStoreFilter !== 'MOC' && isMoc) return false;
+        if ((selectedStoreFilter === 'DIV' || selectedStoreFilter === 'MATRIZ') && isMoc) return false;
       }
       if (selectedSellerFilter !== 'all' && r.vendedor !== selectedSellerFilter) return false;
       if (selectedBankFilter !== 'all' && r.banco !== selectedBankFilter) return false;
@@ -912,7 +1074,7 @@ export function CloudMonthlySpreadsheet({
         r.observacoes.toLowerCase().includes(q)
       );
     });
-  }, [monthRows, selectedSellerFilter, selectedBankFilter, filterStatus, receiptFilter, searchTerm]);
+  }, [monthRows, selectedStoreFilter, selectedSellerFilter, selectedBankFilter, filterStatus, receiptFilter, searchTerm]);
 
   // Linhas Ordenadas
   const sortedRows = useMemo(() => {
@@ -1099,7 +1261,7 @@ export function CloudMonthlySpreadsheet({
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {sellerScoreboard.map(([name, stat], idx) => {
             const isSelected = selectedSellerFilter === name;
             return (
@@ -1123,7 +1285,18 @@ export function CloudMonthlySpreadsheet({
                     >
                       {idx + 1}º
                     </div>
-                    <span className="font-bold text-xs text-foreground">{name}</span>
+                    <div>
+                      <span className="font-bold text-xs text-foreground block">{name}</span>
+                      <span
+                        className={`text-[9px] font-semibold px-1 py-0.2 rounded-sm inline-block ${
+                          stat.isMoc
+                            ? 'text-sky-600 dark:text-sky-400 bg-sky-500/10'
+                            : 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+                        }`}
+                      >
+                        {stat.storeName}
+                      </span>
+                    </div>
                   </div>
                   <Badge variant="secondary" className="font-mono font-bold text-xs">
                     {stat.count} {stat.count === 1 ? 'moto' : 'motos'}
@@ -1226,16 +1399,16 @@ export function CloudMonthlySpreadsheet({
             />
           </div>
 
-          {/* Filtro de Concessionária (Ex: MOC - Montes Claros / Matriz / Filiais) */}
+          {/* Filtro de Concessionária */}
           <Select value={selectedStoreFilter} onValueChange={setSelectedStoreFilter}>
-            <SelectTrigger className="h-9 text-xs w-[190px] bg-background rounded-xl font-medium">
+            <SelectTrigger className="h-9 text-xs w-[220px] bg-background rounded-xl font-medium">
               <Building2 className="w-3.5 h-3.5 mr-1 text-primary shrink-0" />
               <SelectValue placeholder="Concessionária" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas as Lojas</SelectItem>
-              <SelectItem value="MOC">Concessionária MOC (Montes Claros)</SelectItem>
-              <SelectItem value="MATRIZ">Demais Lojas / Matriz</SelectItem>
+              <SelectItem value="all">Todas as Concessionárias</SelectItem>
+              <SelectItem value="MOC">Concessionária Montes Claros</SelectItem>
+              <SelectItem value="DIV">Concessionária Divinópolis (Matriz)</SelectItem>
             </SelectContent>
           </Select>
 
@@ -1952,16 +2125,42 @@ export function CloudMonthlySpreadsheet({
                 <Label className="text-xs font-semibold">Vendedor</Label>
                 <Select
                   value={newRowForm.vendedor}
-                  onValueChange={(v) => setNewRowForm({ ...newRowForm, vendedor: v })}
+                  onValueChange={(v) => {
+                    const matched = sellersByStore.all.find((s) => s.name === v);
+                    const isMoc = matched ? matched.storeId === STORE_MONTESCLAROS_UUID : isMontesClarosStore({ vendedor: v });
+                    setNewRowForm({
+                      ...newRowForm,
+                      vendedor: v,
+                      store_id: isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
+                      regiao: isMoc ? 'MONTES CLAROS' : 'DIVINOPOLIS',
+                    });
+                  }}
                 >
                   <SelectTrigger className="h-9 mt-1 text-xs">
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione o vendedor" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Geibriel">Geibriel</SelectItem>
-                    <SelectItem value="Daniel">Daniel</SelectItem>
-                    <SelectItem value="Lilian">Lilian</SelectItem>
-                    <SelectItem value="Breno">Breno</SelectItem>
+                  <SelectContent className="max-h-72">
+                    <SelectGroup>
+                      <SelectLabel className="text-[11px] font-bold text-sky-600 dark:text-sky-400">
+                        Concessionária Montes Claros
+                      </SelectLabel>
+                      {sellersByStore.montesClaros.map((s) => (
+                        <SelectItem key={s.name} value={s.name}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <SelectLabel className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        Concessionária Divinópolis
+                      </SelectLabel>
+                      {sellersByStore.divinopolis.map((s) => (
+                        <SelectItem key={s.name} value={s.name}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
@@ -2230,16 +2429,48 @@ export function CloudMonthlySpreadsheet({
                   <Label className="text-xs font-semibold">Vendedor</Label>
                   <Select
                     value={editingRow.vendedor}
-                    onValueChange={(v) => setEditingRow({ ...editingRow, vendedor: v })}
+                    onValueChange={(v) => {
+                      const matched = sellersByStore.all.find((s) => s.name === v);
+                      const isMoc = matched ? matched.storeId === STORE_MONTESCLAROS_UUID : isMontesClarosStore({ vendedor: v });
+                      setEditingRow({
+                        ...editingRow,
+                        vendedor: v,
+                        store_id: isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
+                        store_name: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
+                        regiao:
+                          editingRow.regiao && editingRow.regiao !== 'DIVINOPOLIS' && editingRow.regiao !== 'MONTES CLAROS'
+                            ? editingRow.regiao
+                            : isMoc
+                            ? 'MONTES CLAROS'
+                            : 'DIVINOPOLIS',
+                      });
+                    }}
                   >
                     <SelectTrigger className="h-9 mt-1 text-xs">
-                      <SelectValue />
+                      <SelectValue placeholder="Selecione o vendedor" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Geibriel">Geibriel</SelectItem>
-                      <SelectItem value="Daniel">Daniel</SelectItem>
-                      <SelectItem value="Lilian">Lilian</SelectItem>
-                      <SelectItem value="Breno">Breno</SelectItem>
+                    <SelectContent className="max-h-72">
+                      <SelectGroup>
+                        <SelectLabel className="text-[11px] font-bold text-sky-600 dark:text-sky-400">
+                          Concessionária Montes Claros
+                        </SelectLabel>
+                        {sellersByStore.montesClaros.map((s) => (
+                          <SelectItem key={s.name} value={s.name}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectSeparator />
+                      <SelectGroup>
+                        <SelectLabel className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                          Concessionária Divinópolis
+                        </SelectLabel>
+                        {sellersByStore.divinopolis.map((s) => (
+                          <SelectItem key={s.name} value={s.name}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2749,8 +2980,39 @@ export function CloudMonthlySpreadsheet({
         {/* Data */}
         {renderEditableCell(row, 'data', row.data, 'whitespace-nowrap text-muted-foreground text-[11px]')}
 
-        {/* Vendedor */}
-        {renderEditableCell(row, 'vendedor', row.vendedor, 'font-bold text-foreground')}
+        {/* Vendedor com identificação da Concessionária MOC / DIV */}
+        {renderEditableCell(
+          row,
+          'vendedor',
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-foreground">{row.vendedor}</span>
+            <Badge
+              variant="outline"
+              className={`text-[9px] px-1 py-0 h-4 font-mono font-semibold ${
+                isMontesClarosStore({
+                  store_id: (row as any).store_id,
+                  store_name: (row as any).store_name,
+                  vendedor: row.vendedor,
+                  regiao: row.regiao,
+                  observacoes: row.observacoes,
+                })
+                  ? 'border-sky-500/40 text-sky-600 dark:text-sky-400 bg-sky-500/10'
+                  : 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+              }`}
+            >
+              {isMontesClarosStore({
+                store_id: (row as any).store_id,
+                store_name: (row as any).store_name,
+                vendedor: row.vendedor,
+                regiao: row.regiao,
+                observacoes: row.observacoes,
+              })
+                ? 'MOC'
+                : 'DIV'}
+            </Badge>
+          </div>,
+          'font-bold text-foreground'
+        )}
 
         {/* Chassi */}
         {renderEditableCell(

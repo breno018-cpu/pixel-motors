@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
 import { useContracts } from '@/hooks/useContracts';
 import { useEmployees } from '@/hooks/useEmployees';
-import { resolveSaleStore } from '@/lib/storeResolution';
+import { resolveSaleStore, isMontesClarosStore } from '@/lib/storeResolution';
 import { SheetRowV9, getLiveSheetRows } from '@/lib/dealershipSheetParser';
 
 export interface ConsolidatedSaleItem {
@@ -192,7 +192,22 @@ export function useConsolidatedSales() {
         ) || 0;
       const bankName = c.financing_bank || (finVal > 0 ? 'FINANCIAMENTO' : 'À VISTA');
 
-      let cityStr = c.store?.name || 'Divinópolis';
+      const ext = (c.external_data || {}) as any;
+      const opFullName =
+        c.operator?.full_name ||
+        ext.seller_name ||
+        ext.operator_name ||
+        ext.vendedor ||
+        c.vendedor;
+
+      const isMoc = isMontesClarosStore({
+        store_id: c.store_id || c.store?.id,
+        store_name: c.store?.name,
+        vendedor: opFullName,
+        observacoes: c.notes,
+      });
+
+      let cityStr = c.store?.name || (isMoc ? 'Montes Claros' : 'Divinópolis');
       if (c.buyer_address) {
         const addressParts = c.buyer_address.split('-');
         if (addressParts.length >= 2) {
@@ -201,13 +216,6 @@ export function useConsolidatedSales() {
           cityStr = c.buyer_address.trim();
         }
       }
-
-      const ext = (c.external_data || {}) as any;
-      const opFullName =
-        c.operator?.full_name ||
-        ext.seller_name ||
-        ext.operator_name ||
-        ext.vendedor ||
         (c as any).vendedor ||
         (c as any).seller_name;
 

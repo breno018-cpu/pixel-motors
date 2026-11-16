@@ -290,7 +290,6 @@ export const SELLER_TO_STORE_MAP: Record<string, string> = {
   halana: 'store-montesclaros',
   sabrina: 'store-montesclaros',
   natan: 'store-montesclaros',
-  elias: 'store-montesclaros',
   renan: 'store-montesclaros',
   'henrique renan': 'store-montesclaros',
   'joao pedro': 'store-montesclaros',
@@ -304,6 +303,9 @@ export const SELLER_TO_STORE_MAP: Record<string, string> = {
   carlos: 'store-divinopolis',
   vinicios: 'store-divinopolis',
   daniel: 'store-divinopolis',
+  elias: 'store-divinopolis',
+  shineraydiv: 'store-divinopolis',
+  matriz: 'store-divinopolis',
 };
 
 /**

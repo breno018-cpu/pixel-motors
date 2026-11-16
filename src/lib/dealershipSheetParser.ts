@@ -1,5 +1,5 @@
 import officialContractsSeed from '@/data/officialContractsSeed.json';
-import { isMontesClarosStore } from '@/lib/storeResolution';
+import { isMontesClarosStore, STORE_MONTESCLAROS_UUID, STORE_DIVINOPOLIS_UUID } from '@/lib/storeResolution';
 
 export interface SheetRowComment {
   id: string;
@@ -19,6 +19,8 @@ export interface SheetRowStyle {
 
 export interface SheetRowV9 {
   id: string;
+  store_id?: string;
+  store_name?: string;
   month_key: string; // Ex: '2026-10'
   qt: string; // '01', '02', '03'...
   lead_mapping: string; // Mapeamento de lead
@@ -187,7 +189,7 @@ export const ONEDRIVE_DEFAULT_URL = 'https://1drv.ms/x/c/b5177ebc01be67e9/IQCk_o
 
 export const SHEET_STORAGE_KEY_V9 = 'dealflow_cloud_monthly_sheet_v9';
 
-/** Converte a base oficial de contratos do grupo em linhas estruturadas de planilha */
+/** Converte a base oficial de contratos do grupo em linhas estruturadas de planilha com resolução de lojas */
 export function convertContractsSeedToSheetRows(): SheetRowV9[] {
   const seed = (officialContractsSeed as any[]) || [];
   return seed.map((c, index) => {
@@ -209,17 +211,45 @@ export function convertContractsSeedToSheetRows(): SheetRowV9[] {
       ) || 0;
     const bankName = c.financing_bank || (finVal > 0 ? 'FINANCIAMENTO' : 'À VISTA');
 
-    let cityStr = isMontesClarosStore({
+    // Mapeamento preciso de vendedor a partir de dados do banco (auth/profiles/employees)
+    let sellerName = c.vendedor || c.operator?.full_name || '';
+    if (!sellerName || sellerName === 'Vendedor') {
+      const creatorId = String(c.created_by || c.user_id || '').toLowerCase();
+      if (creatorId === '61c7c7ba-f328-44d4-8fad-acfc1941ed3c' || creatorId === '286e1fbc-57ef-4e0f-aa3e-b56880f52751') sellerName = 'Mariana';
+      else if (creatorId === '6a031ece-6175-4965-b0a9-51e7d330d58f' || creatorId === '0ce9be1d-ce73-498d-8c1a-87bb2eaac3da') sellerName = 'Natan';
+      else if (creatorId === 'c75534a4-1b08-4ccf-a2d7-96d882df7966') sellerName = 'Sabrina';
+      else if (creatorId === '71622fd8-0930-4c98-bec2-17f53d92ca75' || creatorId === '1b3f9d1d-86b4-4211-8f72-aee8e662beb3') sellerName = 'Lilian';
+      else if (creatorId === '4bfa9ccd-7131-449b-898b-a355878c64ea') sellerName = 'Geibriel';
+      else if (creatorId === '08581b57-bbaf-4147-a92c-83aab9a80240' || creatorId === '845e16ba-3e29-4306-ab23-a8827c66c499') sellerName = 'Daniel';
+      else if (creatorId === '54db7881-ce90-42d4-baff-0e0ec2cb9eeb' || creatorId === 'e9d8d277-3698-4a6e-bed2-cbba3823bc1d') sellerName = 'Breno';
+      else if (creatorId === '308366d4-3b96-47a0-9658-d53ec88c92b0') sellerName = 'Elias';
+      else if (creatorId === '63f4c11a-7675-4209-bcc5-770bd7e514a3') sellerName = 'João Vitor';
+    }
+
+    const isMoc = isMontesClarosStore({
       store_id: c.store_id || c.store?.id,
       store_name: c.store?.name,
-      vendedor: c.vendedor || c.operator?.full_name,
-    }) ? 'Montes Claros' : 'Divinópolis';
+      vendedor: sellerName,
+      observacoes: c.notes,
+    });
+
+    if (!sellerName || sellerName === 'Vendedor') {
+      sellerName = isMoc ? 'Mariana' : 'Geibriel';
+    }
+
+    let cityStr = isMoc ? 'MONTES CLAROS' : 'DIVINOPOLIS';
     if (c.buyer_address) {
       const parts = c.buyer_address.split('-');
       if (parts.length >= 2) {
-        cityStr = parts[parts.length - 2].trim();
+        const candidate = parts[parts.length - 2].trim().toUpperCase();
+        if (candidate.length > 2 && !candidate.includes('CEP') && !candidate.includes('RUA') && !candidate.includes('AV')) {
+          cityStr = candidate;
+        }
       }
     }
+
+    const storeId = isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID;
+    const storeName = isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis';
 
     const vehicleModel = v.model
       ? `${v.brand || ''} ${v.model}`.trim()
@@ -227,11 +257,13 @@ export function convertContractsSeedToSheetRows(): SheetRowV9[] {
 
     return {
       id: c.id,
+      store_id: storeId,
+      store_name: storeName,
       month_key,
       qt: String(index + 1).padStart(2, '0'),
       lead_mapping: c.lead_source || 'Balcão',
       data: dataStr,
-      vendedor: c.vendedor || c.operator?.full_name || 'Vendedor',
+      vendedor: sellerName,
       chassi: v.chassis || ext.chassis || '',
       modelo: vehicleModel,
       cliente: c.buyer_name || 'Cliente',
