@@ -5,12 +5,59 @@ import { SheetRowV9, convertContractsSeedToSheetRows, SHEET_STORAGE_KEY_V9 } fro
 export const GLOBAL_SYNC_CONTRACT_NUMBER = 'DEALFLOW_GLOBAL_SYNC';
 export const LOCAL_DELETED_KEY = 'dealflow_deleted_contract_ids';
 export const LOCAL_CANCELLED_KEY = 'dealflow_cancelled_contract_ids';
+export const LOCAL_INVOICES_KEY = 'dealflow_registered_invoices_v1';
+
+export interface RegisteredInvoice {
+  id: string;
+  invoice_number: string;
+  series?: string;
+  access_key?: string; // Chave de acesso SEFAZ de 44 dígitos
+  issue_date: string;
+  store_id: string;
+  store_name?: string;
+  // Venda vinculada (opcional)
+  sale_id?: string;
+  contract_number?: string;
+  // Dados do cliente
+  customer_name: string;
+  customer_document: string;
+  customer_phone?: string;
+  customer_email?: string;
+  customer_address?: string;
+  // Dados da motocicleta
+  vehicle_model: string;
+  vehicle_chassis: string;
+  vehicle_brand?: string;
+  vehicle_color?: string;
+  vehicle_year?: number;
+  alienacao?: string;
+  // Valores fiscais
+  operation_nature?: string; // Venda de Moto 0KM, Seminovos, etc.
+  total_value: number;
+  tax_rate?: number;
+  tax_value?: number;
+  status: 'emitida' | 'cancelada';
+  notes?: string;
+  // Anexo oficial da NF
+  attachment_name?: string;
+  attachment_url?: string; // Data URL Base64 ou Link público do arquivo
+  attachment_size?: number;
+  attachment_type?: string;
+  created_at: string;
+  created_by?: string;
+  // Cancelamento
+  cancellation_date?: string;
+  cancellation_reason?: string;
+  cancellation_type?: 'estorno' | 'credito' | 'devolucao';
+  sefaz_protocol?: string;
+}
 
 export interface CloudSyncState {
   deleted_ids: string[];
   cancelled_ids: string[];
   last_sync: string;
   sheet_rows?: SheetRowV9[];
+  registered_invoices?: RegisteredInvoice[];
   version?: number;
 }
 
@@ -41,11 +88,13 @@ export async function fetchCloudSyncState(): Promise<CloudSyncState> {
       const deleted_ids = Array.isArray(cv.deleted_ids) ? cv.deleted_ids.map(String) : [];
       const cancelled_ids = Array.isArray(cv.cancelled_ids) ? cv.cancelled_ids.map(String) : [];
       const sheet_rows = Array.isArray(ext.sheet_rows) ? (ext.sheet_rows as SheetRowV9[]) : undefined;
+      const registered_invoices = Array.isArray(ext.registered_invoices) ? (ext.registered_invoices as RegisteredInvoice[]) : [];
 
       // Mantém localStorage alinhado com a nuvem
       try {
         localStorage.setItem(LOCAL_DELETED_KEY, JSON.stringify(deleted_ids));
         localStorage.setItem(LOCAL_CANCELLED_KEY, JSON.stringify(cancelled_ids));
+        localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(registered_invoices));
         if (sheet_rows && sheet_rows.length > 0) {
           localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(sheet_rows));
         }
@@ -56,6 +105,7 @@ export async function fetchCloudSyncState(): Promise<CloudSyncState> {
         cancelled_ids,
         last_sync: cv.last_sync || new Date().toISOString(),
         sheet_rows,
+        registered_invoices,
         version: ext.version || 1,
       };
     }
@@ -73,6 +123,7 @@ function getLocalSyncFallback(): CloudSyncState {
   let deleted_ids: string[] = [];
   let cancelled_ids: string[] = [];
   let sheet_rows: SheetRowV9[] | undefined;
+  let registered_invoices: RegisteredInvoice[] = [];
 
   try {
     const rawDel = localStorage.getItem(LOCAL_DELETED_KEY);
@@ -81,6 +132,8 @@ function getLocalSyncFallback(): CloudSyncState {
     if (rawCanc) cancelled_ids = JSON.parse(rawCanc);
     const rawSheet = localStorage.getItem(SHEET_STORAGE_KEY_V9);
     if (rawSheet) sheet_rows = JSON.parse(rawSheet);
+    const rawInv = localStorage.getItem(LOCAL_INVOICES_KEY);
+    if (rawInv) registered_invoices = JSON.parse(rawInv);
   } catch {}
 
   return {
@@ -88,6 +141,7 @@ function getLocalSyncFallback(): CloudSyncState {
     cancelled_ids,
     last_sync: new Date().toISOString(),
     sheet_rows,
+    registered_invoices,
   };
 }
 
@@ -477,6 +531,12 @@ export function initCloudSalesRealtime() {
             if (Array.isArray(ext.sheet_rows) && ext.sheet_rows.length > 0) {
               localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(ext.sheet_rows));
             }
+            if (Array.isArray(ext.registered_invoices)) {
+              localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(ext.registered_invoices));
+              window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+              queryClient.invalidateQueries({ queryKey: ['invoices'] });
+              queryClient.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
+            }
 
             window.dispatchEvent(new CustomEvent('dealflow:sheet-updated'));
             window.dispatchEvent(new CustomEvent('dealflow:sales-updated'));
@@ -487,6 +547,7 @@ export function initCloudSalesRealtime() {
             // Qualquer outro contrato atualizado ou inserido
             queryClient.invalidateQueries({ queryKey: ['contracts'] });
             queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
+            queryClient.invalidateQueries({ queryKey: ['invoices'] });
           }
         }
       )
@@ -498,10 +559,297 @@ export function initCloudSalesRealtime() {
         fetchCloudSyncState().then(() => {
           queryClient.invalidateQueries({ queryKey: ['contracts'] });
           queryClient.invalidateQueries({ queryKey: ['cloud-monthly-sheet-v9'] });
+          queryClient.invalidateQueries({ queryKey: ['invoices'] });
         });
       });
     }
   } catch (e) {
     console.warn('[cloudSalesSync] Falha ao iniciar realtime:', e);
+  }
+}
+
+/**
+ * Retorna as Notas Fiscais cadastradas de forma semi-manual.
+ * REGRA DE NEGÓCIO: Se nenhuma NF foi cadastrada pelo usuário, retorna lista vazia ([]).
+ * NUNCA gera NFs automáticas ou fictícias a partir das vendas existentes.
+ */
+export async function fetchCloudInvoices(): Promise<RegisteredInvoice[]> {
+  try {
+    const state = await fetchCloudSyncState();
+    if (Array.isArray(state.registered_invoices)) {
+      return state.registered_invoices;
+    }
+  } catch (err) {
+    console.warn('[cloudSalesSync] Erro ao buscar notas fiscais cadastradas:', err);
+  }
+
+  try {
+    const raw = localStorage.getItem(LOCAL_INVOICES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+
+  return [];
+}
+
+/**
+ * Cadastra ou atualiza uma Nota Fiscal de forma semi-manual, vinculando-a à venda selecionada.
+ * Atualiza o registro em nuvem compartilhado e o contrato/planilha da venda.
+ */
+export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean> {
+  try {
+    const currentState = await fetchCloudSyncState();
+    const currentInvoices = currentState.registered_invoices || [];
+
+    // Se já existir NF com esse id ou número, atualiza; senão adiciona
+    const existingIdx = currentInvoices.findIndex(
+      (item) => item.id === inv.id || (item.invoice_number === inv.invoice_number && item.store_id === inv.store_id)
+    );
+
+    let updatedList: RegisteredInvoice[];
+    if (existingIdx >= 0) {
+      updatedList = [...currentInvoices];
+      updatedList[existingIdx] = { ...updatedList[existingIdx], ...inv };
+    } else {
+      updatedList = [inv, ...currentInvoices];
+    }
+
+    // Salva em cache local
+    localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(updatedList));
+
+    // Se a NF estiver vinculada a uma venda, anota o número e o anexo na venda
+    if (inv.sale_id) {
+      const isUuid = (val: any) =>
+        typeof val === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      if (isUuid(inv.sale_id)) {
+        try {
+          const { data: existingContract } = await supabase
+            .from('contracts')
+            .select('external_data')
+            .eq('id', inv.sale_id)
+            .maybeSingle();
+
+          const ext = (existingContract?.external_data || {}) as any;
+          await supabase
+            .from('contracts')
+            .update({
+              external_data: {
+                ...ext,
+                invoice_number: inv.invoice_number,
+                invoice_url: inv.attachment_url || null,
+                invoice_registered_at: inv.created_at,
+              },
+            })
+            .eq('id', inv.sale_id);
+        } catch (e) {
+          console.warn('[cloudSaveInvoice] Erro ao vincular NF no contrato:', e);
+        }
+      }
+
+      // Atualiza também na linha da planilha mensal
+      if (currentState.sheet_rows) {
+        const updatedRows = currentState.sheet_rows.map((r) => {
+          if (r.id === inv.sale_id || (inv.contract_number && r.qt === inv.contract_number)) {
+            return {
+              ...r,
+              comp: inv.attachment_name ? `NF ${inv.invoice_number} Anexada` : r.comp,
+              observacoes: `${r.observacoes || ''} [NF ${inv.invoice_number} emitida em ${inv.issue_date}]`.trim(),
+            };
+          }
+          return r;
+        });
+        localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(updatedRows));
+      }
+    }
+
+    // Atualiza o mestre em nuvem (DEALFLOW_GLOBAL_SYNC)
+    const { data: existingMaster } = await supabase
+      .from('contracts')
+      .select('external_data')
+      .eq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER)
+      .maybeSingle();
+
+    const masterExt = (existingMaster?.external_data || {}) as any;
+
+    await supabase
+      .from('contracts')
+      .update({
+        external_data: {
+          ...masterExt,
+          registered_invoices: updatedList,
+          version: Date.now(),
+          updated_at: new Date().toISOString(),
+          is_system_record: true,
+        },
+      })
+      .eq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER);
+
+    // Tenta também gravar na tabela invoices do Supabase (quando autenticado)
+    try {
+      const invPayload: any = {
+        id: inv.id,
+        invoice_number: inv.invoice_number,
+        invoice_type: 'produto',
+        issue_date: inv.issue_date,
+        store_id: inv.store_id || null,
+        customer_name: inv.customer_name,
+        customer_document: inv.customer_document || null,
+        customer_phone: inv.customer_phone || null,
+        customer_email: inv.customer_email || null,
+        customer_address: inv.customer_address || null,
+        total: inv.total_value,
+        subtotal: inv.total_value,
+        tax_rate: inv.tax_rate || 0,
+        tax_value: inv.tax_value || 0,
+        status: inv.status || 'emitida',
+        notes: `[moto] ${inv.vehicle_model} - Chassi: ${inv.vehicle_chassis}${inv.alienacao ? ` | Alienação: ${inv.alienacao}` : ''} | Venda: ${inv.contract_number || inv.sale_id || '—'}`,
+        items: [
+          {
+            description: `${inv.vehicle_brand || 'SHINERAY'} ${inv.vehicle_model} (Chassi: ${inv.vehicle_chassis})`,
+            quantity: 1,
+            unit_value: inv.total_value,
+            chassis: inv.vehicle_chassis,
+            contract_number: inv.contract_number,
+            sale_id: inv.sale_id,
+            attachment_name: inv.attachment_name,
+            attachment_url: inv.attachment_url,
+          },
+        ],
+      };
+      await (supabase as any).from('invoices').upsert([invPayload], { onConflict: 'id' });
+    } catch {}
+
+    window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+    window.dispatchEvent(new CustomEvent('dealflow:sales-updated'));
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    queryClient.invalidateQueries({ queryKey: ['contracts'] });
+    queryClient.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
+
+    return true;
+  } catch (err: any) {
+    console.error('[cloudSalesSync] Erro ao salvar nota fiscal:', err);
+    return false;
+  }
+}
+
+/**
+ * Cancela uma Nota Fiscal cadastrada.
+ */
+export async function cloudCancelInvoice(
+  id: string,
+  cancelData: {
+    date: string;
+    reason: string;
+    type?: 'estorno' | 'credito' | 'devolucao';
+    protocol?: string;
+  }
+): Promise<boolean> {
+  try {
+    const list = await fetchCloudInvoices();
+    const updated = list.map((item) => {
+      if (item.id === id) {
+        return {
+          ...item,
+          status: 'cancelada' as const,
+          cancellation_date: cancelData.date,
+          cancellation_reason: cancelData.reason,
+          cancellation_type: cancelData.type || 'estorno',
+          sefaz_protocol: cancelData.protocol || item.sefaz_protocol,
+        };
+      }
+      return item;
+    });
+
+    localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(updated));
+
+    const { data: existingMaster } = await supabase
+      .from('contracts')
+      .select('external_data')
+      .eq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER)
+      .maybeSingle();
+
+    const masterExt = (existingMaster?.external_data || {}) as any;
+
+    await supabase
+      .from('contracts')
+      .update({
+        external_data: {
+          ...masterExt,
+          registered_invoices: updated,
+          version: Date.now(),
+          updated_at: new Date().toISOString(),
+          is_system_record: true,
+        },
+      })
+      .eq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER);
+
+    try {
+      await (supabase as any)
+        .from('invoices')
+        .update({
+          status: 'cancelada',
+          notes: `[CANCELADA em ${cancelData.date} - ${cancelData.type?.toUpperCase()}: ${cancelData.reason}]`,
+        })
+        .eq('id', id);
+    } catch {}
+
+    window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    queryClient.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
+
+    return true;
+  } catch (err) {
+    console.error('[cloudSalesSync] Erro ao cancelar NF:', err);
+    return false;
+  }
+}
+
+/**
+ * Exclui uma Nota Fiscal cadastrada.
+ */
+export async function cloudDeleteInvoice(id: string): Promise<boolean> {
+  try {
+    const list = await fetchCloudInvoices();
+    const updated = list.filter((item) => item.id !== id);
+
+    localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(updated));
+
+    const { data: existingMaster } = await supabase
+      .from('contracts')
+      .select('external_data')
+      .eq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER)
+      .maybeSingle();
+
+    const masterExt = (existingMaster?.external_data || {}) as any;
+
+    await supabase
+      .from('contracts')
+      .update({
+        external_data: {
+          ...masterExt,
+          registered_invoices: updated,
+          version: Date.now(),
+          updated_at: new Date().toISOString(),
+          is_system_record: true,
+        },
+      })
+      .eq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER);
+
+    try {
+      await (supabase as any).from('invoices').delete().eq('id', id);
+    } catch {}
+
+    window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    queryClient.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
+
+    return true;
+  } catch (err) {
+    console.error('[cloudSalesSync] Erro ao excluir NF:', err);
+    return false;
   }
 }

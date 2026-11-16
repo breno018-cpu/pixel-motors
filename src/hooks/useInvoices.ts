@@ -1,19 +1,35 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  fetchCloudInvoices,
+  cloudSaveInvoice,
+  cloudCancelInvoice,
+  cloudDeleteInvoice,
+  RegisteredInvoice,
+} from '@/lib/cloudSalesSync';
 
 export interface InvoiceItem {
   description: string;
   quantity: number;
   unit_value: number;
+  chassis?: string;
+  contract_number?: string;
+  sale_id?: string;
+  attachment_name?: string;
+  attachment_url?: string;
 }
 
 export interface Invoice {
   id: string;
   invoice_number: string;
+  series?: string;
+  access_key?: string;
   invoice_type: 'servico' | 'produto' | 'entrada' | 'cancelamento';
   issue_date: string;
   store_id: string | null;
+  sale_id?: string | null;
+  contract_number?: string | null;
   customer_name: string;
   customer_document: string | null;
   customer_address: string | null;
@@ -26,6 +42,10 @@ export interface Invoice {
   total: number;
   status: 'emitida' | 'cancelada' | 'pendente_conferencia' | 'conferido';
   notes: string | null;
+  attachment_name?: string | null;
+  attachment_url?: string | null;
+  attachment_size?: number | null;
+  attachment_type?: string | null;
   created_at: string;
   cancellation_date?: string | null;
   cancellation_reason?: string | null;
@@ -38,34 +58,98 @@ export interface Invoice {
 export function useInvoices() {
   return useQuery({
     queryKey: ['invoices'],
-    queryFn: async () => {
+    queryFn: async (): Promise<Invoice[]> => {
+      // 1. Busca notas fiscais cadastradas de forma semi-manual na nuvem
+      const cloudList = await fetchCloudInvoices();
+
+      // 2. Tenta complementar com tabela invoices do Supabase se houver registros reais
+      let dbList: any[] = [];
       try {
         const { data, error } = await (supabase as any)
           .from('invoices')
           .select('*, store:stores(id, name, cnpj, address, city, state)')
           .order('issue_date', { ascending: false });
-        if (error) {
-          console.warn('Consulta à tabela invoices retornou aviso, operando com fallback:', error);
-          return [];
-        }
-        const cleanList = (data || []).filter((inv: any) => {
-          const invNum = String(inv.invoice_number || '').trim();
-          const id = String(inv.id || '');
-          if (id.startsWith('fisc-seed-')) return false;
-          if (['10420', '10421', '10422', '10425', '10426', '10430', '10431'].includes(invNum)) return false;
-          const cust = String(inv.customer_name || '').toLowerCase();
-          if (
-            cust.includes('marcos aurelio') ||
-            cust.includes('claudio roberto') ||
-            cust.includes('patricia santos') ||
-            cust.includes('fernando guimaraes')
-          ) {
-            return false;
-          }
-          return true;
-        });
 
-        return cleanList.map((inv: any): Invoice => {
+        if (!error && Array.isArray(data)) {
+          dbList = data.filter((inv: any) => {
+            const invNum = String(inv.invoice_number || '').trim();
+            const id = String(inv.id || '');
+            if (id.startsWith('fisc-seed-')) return false;
+            if (['10420', '10421', '10422', '10425', '10426', '10430', '10431'].includes(invNum)) return false;
+            const cust = String(inv.customer_name || '').toLowerCase();
+            if (
+              cust.includes('marcos aurelio') ||
+              cust.includes('claudio roberto') ||
+              cust.includes('patricia santos') ||
+              cust.includes('fernando guimaraes')
+            ) {
+              return false;
+            }
+            return true;
+          });
+        }
+      } catch {}
+
+      // Mapeia cloudList para Invoice
+      const mappedCloud: Invoice[] = cloudList.map((r: RegisteredInvoice): Invoice => {
+        const isMoc = (r.store_id || '').includes('montes') || (r.store_name || '').toLowerCase().includes('montes');
+        return {
+          id: r.id,
+          invoice_number: r.invoice_number,
+          series: r.series || '1',
+          access_key: r.access_key || undefined,
+          invoice_type: 'produto',
+          issue_date: r.issue_date,
+          store_id: r.store_id,
+          sale_id: r.sale_id || null,
+          contract_number: r.contract_number || null,
+          customer_name: r.customer_name,
+          customer_document: r.customer_document,
+          customer_address: r.customer_address || null,
+          customer_email: r.customer_email || null,
+          customer_phone: r.customer_phone || null,
+          items: [
+            {
+              description: `${r.vehicle_brand || 'SHINERAY'} ${r.vehicle_model} (Chassi: ${r.vehicle_chassis})`,
+              quantity: 1,
+              unit_value: r.total_value,
+              chassis: r.vehicle_chassis,
+              contract_number: r.contract_number,
+              sale_id: r.sale_id,
+              attachment_name: r.attachment_name,
+              attachment_url: r.attachment_url,
+            },
+          ],
+          subtotal: r.total_value,
+          tax_rate: r.tax_rate || 0,
+          tax_value: r.tax_value || 0,
+          total: r.total_value,
+          status: r.status,
+          notes: r.notes || `[moto] ${r.vehicle_model} - Chassi: ${r.vehicle_chassis}${r.alienacao ? ` | Alienação: ${r.alienacao}` : ''}`,
+          attachment_name: r.attachment_name || null,
+          attachment_url: r.attachment_url || null,
+          attachment_size: r.attachment_size || null,
+          attachment_type: r.attachment_type || null,
+          created_at: r.created_at,
+          cancellation_date: r.cancellation_date || null,
+          cancellation_reason: r.cancellation_reason || null,
+          cancellation_type: r.cancellation_type || null,
+          sefaz_protocol: r.sefaz_protocol || null,
+          store: {
+            id: r.store_id,
+            name: r.store_name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
+            city: isMoc ? 'Montes Claros' : 'Divinópolis',
+            state: 'MG',
+          },
+        };
+      });
+
+      const seenIds = new Set(mappedCloud.map((x) => x.id));
+      const seenNumbers = new Set(mappedCloud.map((x) => `${x.store_id || ''}-${x.invoice_number}`));
+
+      const mappedDb: Invoice[] = dbList
+        .filter((inv: any) => !seenIds.has(inv.id) && !seenNumbers.has(`${inv.store_id || ''}-${inv.invoice_number}`))
+        .map((inv: any): Invoice => {
           const itemObj = Array.isArray(inv.items) ? (inv.items[0] || {}) : (inv.items || {});
           return {
             ...inv,
@@ -74,12 +158,12 @@ export function useInvoices() {
             cancellation_type: itemObj.cancellation_type || inv.cancellation_type || 'estorno',
             sefaz_protocol: itemObj.sefaz_protocol || inv.sefaz_protocol || null,
             cancelled_by: itemObj.cancelled_by || inv.cancelled_by || null,
+            attachment_name: itemObj.attachment_name || null,
+            attachment_url: itemObj.attachment_url || null,
           };
-        }) as Invoice[];
-      } catch (err) {
-        console.warn('Falha de conexão com invoices:', err);
-        return [];
-      }
+        });
+
+      return [...mappedCloud, ...mappedDb];
     },
   });
 }
@@ -103,75 +187,13 @@ export function useCancelInvoice() {
       sefaz_protocol?: string;
       cancelled_by?: string;
     }) => {
-      // 1. Busca registro atual para preservar itens
-      const { data: current } = await (supabase as any)
-        .from('invoices')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      const existingItems = current?.items || [];
-      const updatedItems = Array.isArray(existingItems)
-        ? existingItems.map((it: any) => ({
-            ...it,
-            cancellation_date,
-            cancellation_reason,
-            cancellation_type,
-            sefaz_protocol: sefaz_protocol || '',
-            cancelled_by: cancelled_by || 'Diretoria',
-          }))
-        : {
-            ...(typeof existingItems === 'object' ? existingItems : {}),
-            cancellation_date,
-            cancellation_reason,
-            cancellation_type,
-            sefaz_protocol: sefaz_protocol || '',
-            cancelled_by: cancelled_by || 'Diretoria',
-          };
-
-      const updatedNotes = `${current?.notes || ''} [CANCELADA em ${cancellation_date} - ${cancellation_type.toUpperCase()}: ${cancellation_reason}]`.trim();
-
-      const { data, error } = await (supabase as any)
-        .from('invoices')
-        .update({
-          status: 'cancelada',
-          items: updatedItems,
-          notes: updatedNotes,
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // 2. Registra também no histórico fiscal local para garantir visualização imediata
-      try {
-        const storageKey = 'dealflow_store_fiscal_invoices_v1';
-        const raw = localStorage.getItem(storageKey);
-        const list = raw ? JSON.parse(raw) : [];
-        const cancelRecord = {
-          id: `canc-${id}-${Date.now()}`,
-          invoice_number: current?.invoice_number || 'NF',
-          fiscal_type: 'cancelamento',
-          store_id: current?.store_id || '',
-          issue_date: current?.issue_date || cancellation_date,
-          entry_or_cancel_date: cancellation_date,
-          party_name: current?.customer_name || 'Consumidor Final',
-          party_document: current?.customer_document || '',
-          cancellation_reason,
-          cancellation_type,
-          sefaz_protocol: sefaz_protocol || '',
-          total_value: Number(current?.total) || 0,
-          status: 'cancelada',
-          authorized_by: cancelled_by || 'Administrador',
-          notes: cancellation_reason,
-          created_at: new Date().toISOString(),
-        };
-        list.unshift(cancelRecord);
-        localStorage.setItem(storageKey, JSON.stringify(list));
-      } catch {}
-
-      return data;
+      await cloudCancelInvoice(id, {
+        date: cancellation_date,
+        reason: cancellation_reason,
+        type: cancellation_type,
+        protocol: sefaz_protocol,
+      });
+      return { success: true };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] });
@@ -190,38 +212,57 @@ export function useUpsertInvoice() {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async (input: Partial<Invoice> & { id?: string }) => {
-      const { data: u } = await supabase.auth.getUser();
-      const payload: any = { ...input };
-      if (!input.id) {
-        payload.created_by = u.user?.id;
-        if (!payload.invoice_number) {
-          payload.invoice_number = `NF-${Date.now().toString(36).toUpperCase()}`;
-        }
-      }
-      const subtotal = (input.items || []).reduce(
-        (s, i) => s + Number(i.quantity || 0) * Number(i.unit_value || 0),
-        0,
-      );
-      const taxValue = subtotal * (Number(input.tax_rate || 0) / 100);
-      payload.subtotal = subtotal;
-      payload.tax_value = taxValue;
-      payload.total = subtotal + taxValue;
+    mutationFn: async (input: any) => {
+      const id = input.id || `inv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const regInvoice: RegisteredInvoice = {
+        id,
+        invoice_number: String(input.invoice_number || '').trim(),
+        series: input.series || '1',
+        access_key: input.access_key || undefined,
+        issue_date: input.issue_date || new Date().toISOString().slice(0, 10),
+        store_id: input.store_id || 'store-divinopolis',
+        store_name: input.store_name,
+        sale_id: input.sale_id || undefined,
+        contract_number: input.contract_number || undefined,
+        customer_name: input.customer_name || 'Consumidor Final',
+        customer_document: input.customer_document || '',
+        customer_phone: input.customer_phone || undefined,
+        customer_email: input.customer_email || undefined,
+        customer_address: input.customer_address || undefined,
+        vehicle_model: input.vehicle_model || (input.items?.[0]?.description || 'Motocicleta Shineray'),
+        vehicle_chassis: input.vehicle_chassis || input.chassi || '',
+        vehicle_brand: input.vehicle_brand || 'SHINERAY',
+        vehicle_color: input.vehicle_color,
+        vehicle_year: input.vehicle_year,
+        alienacao: input.alienacao || 'À VISTA',
+        operation_nature: input.operation_nature || 'Venda de Moto Zero KM',
+        total_value: Number(input.total || input.total_value || 0),
+        tax_rate: Number(input.tax_rate || 0),
+        tax_value: Number(input.tax_value || 0),
+        status: input.status || 'emitida',
+        notes: input.notes,
+        attachment_name: input.attachment_name,
+        attachment_url: input.attachment_url,
+        attachment_size: input.attachment_size,
+        attachment_type: input.attachment_type,
+        created_at: input.created_at || new Date().toISOString(),
+      };
 
-      const { data, error } = await (supabase as any)
-        .from('invoices')
-        .upsert(payload)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const ok = await cloudSaveInvoice(regInvoice);
+      if (!ok) throw new Error('Falha ao persistir Nota Fiscal em nuvem');
+      return regInvoice;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['invoices'] });
-      toast({ title: 'Nota fiscal salva' });
+      qc.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
+      qc.invalidateQueries({ queryKey: ['contracts'] });
+      toast({
+        title: 'Nota Fiscal cadastrada com sucesso!',
+        description: `NF Nº ${data.invoice_number} vinculada e salva na nuvem.`,
+      });
     },
     onError: (e: any) =>
-      toast({ variant: 'destructive', title: 'Erro', description: e?.message }),
+      toast({ variant: 'destructive', title: 'Erro ao cadastrar NF', description: e?.message }),
   });
 }
 
@@ -230,12 +271,14 @@ export function useDeleteInvoice() {
   const { toast } = useToast();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from('invoices').delete().eq('id', id);
-      if (error) throw error;
+      await cloudDeleteInvoice(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] });
-      toast({ title: 'Nota fiscal removida' });
+      qc.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
+      toast({ title: 'Nota fiscal removida com sucesso' });
     },
+    onError: (e: any) =>
+      toast({ variant: 'destructive', title: 'Erro ao remover NF', description: e?.message }),
   });
 }
