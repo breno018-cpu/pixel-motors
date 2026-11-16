@@ -855,7 +855,7 @@ export function CloudMonthlySpreadsheet({
       if (r.is_permitted) permittedCount++;
       else pendingCount++;
 
-      const hasRec = getSaleReceipts(r.id).length > 0 || (r.comp && r.comp.toLowerCase() === 'imagem');
+      const hasRec = getSaleReceipts(r.id).length > 0;
       if (hasRec) withReceiptCount++;
     });
 
@@ -890,7 +890,7 @@ export function CloudMonthlySpreadsheet({
       if (filterStatus === 'permitted' && !r.is_permitted) return false;
       if (filterStatus === 'pending' && r.is_permitted) return false;
 
-      const hasReceipt = getSaleReceipts(r.id).length > 0 || (r.comp && r.comp.toLowerCase() === 'imagem');
+      const hasReceipt = getSaleReceipts(r.id).length > 0;
       if (receiptFilter === 'with_receipt' && !hasReceipt) return false;
       if (receiptFilter === 'without_receipt' && hasReceipt) return false;
 
@@ -1744,7 +1744,7 @@ export function CloudMonthlySpreadsheet({
                 {
                   sortedRows.filter((r) => {
                     const recs = getSaleReceipts(r.id);
-                    return r.is_permitted && (recs.length > 0 || (r.comp && r.comp.toLowerCase() === 'imagem'));
+                    return r.is_permitted && recs.length > 0;
                   }).length
                 }
               </Badge>
@@ -1757,7 +1757,7 @@ export function CloudMonthlySpreadsheet({
               {sortedRows
                 .filter((r) => {
                   const recs = getSaleReceipts(r.id);
-                  return r.is_permitted && (recs.length > 0 || (r.comp && r.comp.toLowerCase() === 'imagem'));
+                  return r.is_permitted && recs.length > 0;
                 })
                 .map((row) => renderKanbanCard(row))}
             </div>
@@ -2649,7 +2649,7 @@ export function CloudMonthlySpreadsheet({
   function renderTableRow(row: SheetRowV9) {
     const isPermitted = row.is_permitted;
     const receipts = getSaleReceipts(row.id);
-    const hasReceipts = receipts.length > 0 || (row.comp && row.comp.toLowerCase() === 'imagem');
+    const hasReceipts = receipts.length > 0;
     const isFileDropTarget = fileDropTargetRowId === row.id;
     const isDragOverReorder = dragOverRowId === row.id;
     const isSelected = selectedRowForStyle === row.id;
@@ -2897,7 +2897,7 @@ export function CloudMonthlySpreadsheet({
   // Renderizador de Card no Kanban
   function renderKanbanCard(row: SheetRowV9) {
     const receipts = getSaleReceipts(row.id);
-    const hasReceipts = receipts.length > 0 || (row.comp && row.comp.toLowerCase() === 'imagem');
+    const hasReceipts = receipts.length > 0;
 
     return (
       <div

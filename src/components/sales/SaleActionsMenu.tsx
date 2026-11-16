@@ -137,8 +137,10 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
   const receiptsCount = useMemo(() => {
     const local = getSaleReceipts(sale.id);
     const cloud = ((sale.external_data as any)?.receipts as any[]) || [];
-    const evidencePaths = sale.evidence_paths || [];
-    return Math.max(local.length, cloud.length, evidencePaths.length);
+    const validEvidencePaths = (sale.evidence_paths || []).filter(
+      (p) => p && (p.startsWith('http') || p.startsWith('data:') || p.startsWith('blob:') || p.startsWith('/'))
+    );
+    return Math.max(local.length, cloud.length, validEvidencePaths.length);
   }, [sale.id, sale.external_data, sale.evidence_paths]);
 
   const userFullName = (profile?.full_name || (user as any)?.user_metadata?.full_name || (user as any)?.user_metadata?.name || '').toLowerCase().trim();

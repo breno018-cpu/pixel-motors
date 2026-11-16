@@ -135,7 +135,14 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
     template_id: null,
     sale_group_id: null,
     sale_channel: 'interna',
-    evidence_paths: r.comp ? [r.comp] : [],
+    evidence_paths:
+      r.comp &&
+      (r.comp.startsWith('http') ||
+        r.comp.startsWith('data:') ||
+        r.comp.startsWith('blob:') ||
+        r.comp.startsWith('/'))
+        ? [r.comp]
+        : [],
     external_data: {
       ...((r as any).external_data || {}),
       vehicle_model_custom: r.modelo,

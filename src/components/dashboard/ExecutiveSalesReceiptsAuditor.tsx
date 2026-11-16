@@ -3,20 +3,17 @@ import {
   FileCheck2,
   Paperclip,
   Search,
-  Filter,
   CheckCircle2,
   AlertCircle,
   Eye,
-  Store,
   Calendar,
+  Store,
   DollarSign,
   User,
   Bike,
   CreditCard,
   Landmark,
-  Banknote,
   QrCode,
-  Download,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,29 +37,79 @@ interface ExecutiveSalesReceiptsAuditorProps {
   sales: ConsolidatedSaleItem[];
 }
 
+const MONTHS_LABELS: Record<string, string> = {
+  '01': 'Janeiro',
+  '02': 'Fevereiro',
+  '03': 'Março',
+  '04': 'Abril',
+  '05': 'Maio',
+  '06': 'Junho',
+  '07': 'Julho',
+  '08': 'Agosto',
+  '09': 'Setembro',
+  '10': 'Outubro',
+  '11': 'Novembro',
+  '12': 'Dezembro',
+};
+
 export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsAuditorProps) {
+  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
   const [searchTerm, setSearchTerm] = useState('');
   const [storeFilter, setStoreFilter] = useState('all');
   const [receiptFilter, setReceiptFilter] = useState<'all' | 'with_receipt' | 'missing_receipt'>('all');
   const [selectedSaleForModal, setSelectedSaleForModal] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Mapeia cada venda com a contagem de comprovantes no localStorage / banco
+  // Lista de meses disponíveis nas vendas
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    set.add(currentMonthKey);
+    set.add('2026-10');
+    sales.forEach((s) => {
+      const d = new Date(s.date);
+      if (!isNaN(d.getTime())) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        set.add(key);
+      }
+    });
+    return Array.from(set).sort().reverse();
+  }, [sales, currentMonthKey]);
+
+  // Mapeia cada venda verificando APENAS comprovantes REAIS anexados (com URL ou arquivo válido)
   const salesWithReceiptStatus = useMemo(() => {
     return sales.map((sale) => {
-      const receipts = getSaleReceipts(sale.id);
+      const rawReceipts = getSaleReceipts(sale.id);
+      // Filtra estritamente comprovantes reais com URL/base64 de imagem ou PDF válido
+      const realReceipts = rawReceipts.filter(
+        (r) =>
+          r &&
+          r.url &&
+          (r.url.startsWith('data:') ||
+            r.url.startsWith('http') ||
+            r.url.startsWith('blob:') ||
+            r.url.startsWith('/'))
+      );
+
       return {
         ...sale,
-        receiptsCount: receipts.length,
-        hasReceipts: receipts.length > 0,
+        receiptsCount: realReceipts.length,
+        hasReceipts: realReceipts.length > 0,
       };
     });
   }, [sales]);
 
-  // Filtros combinados
+  // Filtros combinados com isolamento estrito por Mês Selecionado
   const filteredSales = useMemo(() => {
     return salesWithReceiptStatus.filter((sale) => {
-      // 1. Filtro de Loja
+      // 1. Filtro Obrigatório de Mês de Competência
+      if (selectedMonth !== 'all') {
+        const d = new Date(sale.date);
+        const saleMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (saleMonth !== selectedMonth) return false;
+      }
+
+      // 2. Filtro de Loja
       if (storeFilter !== 'all') {
         const storeUpper = (sale.store_name || '').toUpperCase();
         if (storeFilter === 'montesclaros' && !storeUpper.includes('MONTES CLAROS') && !storeUpper.includes('MOC')) {
@@ -73,11 +120,11 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
         }
       }
 
-      // 2. Filtro de Comprovante
+      // 3. Filtro de Comprovante (Real)
       if (receiptFilter === 'with_receipt' && !sale.hasReceipts) return false;
       if (receiptFilter === 'missing_receipt' && sale.hasReceipts) return false;
 
-      // 3. Busca por texto
+      // 4. Busca por texto
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase().trim();
         const matches =
@@ -91,17 +138,26 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
 
       return true;
     });
-  }, [salesWithReceiptStatus, storeFilter, receiptFilter, searchTerm]);
+  }, [salesWithReceiptStatus, selectedMonth, storeFilter, receiptFilter, searchTerm]);
 
-  // Estatísticas de Auditoria
+  // Estatísticas de Auditoria do Mês Selecionado
+  const monthAuditedSales = useMemo(() => {
+    return salesWithReceiptStatus.filter((sale) => {
+      if (selectedMonth === 'all') return true;
+      const d = new Date(sale.date);
+      const saleMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return saleMonth === selectedMonth;
+    });
+  }, [salesWithReceiptStatus, selectedMonth]);
+
   const auditStats = useMemo(() => {
-    const total = salesWithReceiptStatus.length;
-    const withReceipts = salesWithReceiptStatus.filter((s) => s.hasReceipts).length;
+    const total = monthAuditedSales.length;
+    const withReceipts = monthAuditedSales.filter((s) => s.hasReceipts).length;
     const missingReceipts = total - withReceipts;
     const complianceRate = total > 0 ? (withReceipts / total) * 100 : 0;
 
     return { total, withReceipts, missingReceipts, complianceRate };
-  }, [salesWithReceiptStatus]);
+  }, [monthAuditedSales]);
 
   const handleOpenReceiptModal = (sale: any) => {
     setSelectedSaleForModal({
@@ -124,14 +180,20 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
     setModalOpen(true);
   };
 
+  const selectedMonthLabel = useMemo(() => {
+    if (selectedMonth === 'all') return 'Todos os Períodos';
+    const [y, m] = selectedMonth.split('-');
+    return `${MONTHS_LABELS[m] || m} de ${y}`;
+  }, [selectedMonth]);
+
   return (
     <div className="space-y-6">
-      {/* Cards de Resumo da Auditoria */}
+      {/* 4 Cards de Resumo da Auditoria do Mês */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card className="rounded-2xl border shadow-xs bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold text-muted-foreground uppercase">Total de Vendas Auditadas</p>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase">Vendas em {selectedMonthLabel}</p>
               <h3 className="text-2xl font-black text-foreground mt-0.5">{auditStats.total}</h3>
             </div>
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -143,7 +205,7 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
         <Card className="rounded-2xl border border-emerald-500/20 shadow-xs bg-emerald-500/5">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Com Comprovante Anexado</p>
+              <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Com Comprovante Real</p>
               <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{auditStats.withReceipts}</h3>
             </div>
             <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center">
@@ -155,7 +217,7 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
         <Card className="rounded-2xl border border-rose-500/20 shadow-xs bg-rose-500/5">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400 uppercase">Sem Comprovante (Pendente)</p>
+              <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400 uppercase">Pendente de Comprovante</p>
               <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-0.5">{auditStats.missingReceipts}</h3>
             </div>
             <div className="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-600 flex items-center justify-center">
@@ -167,7 +229,7 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
         <Card className="rounded-2xl border shadow-xs bg-card">
           <CardContent className="p-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold text-muted-foreground uppercase">Taxa de Conformidade</p>
+              <p className="text-[11px] font-bold text-muted-foreground uppercase">Conformidade do Mês</p>
               <h3 className="text-2xl font-black text-primary mt-0.5">{auditStats.complianceRate.toFixed(1)}%</h3>
             </div>
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -184,27 +246,39 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
             <div>
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <Paperclip className="w-4 h-4 text-primary" />
-                Auditoria de Comprovantes &amp; Recibos de Pagamento
+                Auditoria de Comprovantes • {selectedMonthLabel}
               </CardTitle>
               <CardDescription className="text-xs">
-                Audite em 1 clique os recibos de PIX, depósitos, cartão e faturamento de cada venda.
+                Audite em 1 clique os recibos reais de PIX, depósitos e faturamento de cada venda deste mês.
               </CardDescription>
             </div>
 
-            {/* Filtros da Auditoria */}
+            {/* Filtros da Auditoria com Seletor de Mês */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-56">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="h-8 pl-8 text-xs rounded-xl"
-                  placeholder="Cliente, chassi, vendedor..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+              {/* Seletor de Mês de Competência */}
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="h-8 text-xs w-44 rounded-xl font-bold bg-background">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Meses</SelectItem>
+                    {availableMonths.map((mKey) => {
+                      const [y, m] = mKey.split('-');
+                      return (
+                        <SelectItem key={mKey} value={mKey}>
+                          {MONTHS_LABELS[m] || m} de {y}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
 
+              {/* Loja */}
               <Select value={storeFilter} onValueChange={setStoreFilter}>
-                <SelectTrigger className="h-8 text-xs w-36 rounded-xl">
+                <SelectTrigger className="h-8 text-xs w-36 rounded-xl bg-background">
                   <SelectValue placeholder="Loja" />
                 </SelectTrigger>
                 <SelectContent>
@@ -214,16 +288,28 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
                 </SelectContent>
               </Select>
 
+              {/* Status do Comprovante */}
               <Select value={receiptFilter} onValueChange={(v: any) => setReceiptFilter(v)}>
-                <SelectTrigger className="h-8 text-xs w-44 rounded-xl">
-                  <SelectValue placeholder="Status do Comprovante" />
+                <SelectTrigger className="h-8 text-xs w-44 rounded-xl bg-background">
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Status</SelectItem>
-                  <SelectItem value="with_receipt">Com Comprovante ({auditStats.withReceipts})</SelectItem>
-                  <SelectItem value="missing_receipt">Pendente de Comprovante ({auditStats.missingReceipts})</SelectItem>
+                  <SelectItem value="with_receipt">Com Comprovante Real ({auditStats.withReceipts})</SelectItem>
+                  <SelectItem value="missing_receipt">Pendente ({auditStats.missingReceipts})</SelectItem>
                 </SelectContent>
               </Select>
+
+              {/* Busca por texto */}
+              <div className="relative w-48">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="h-8 pl-8 text-xs rounded-xl bg-background"
+                  placeholder="Cliente, chassi..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -238,8 +324,8 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
                   <TableHead>Motocicleta &amp; Chassi</TableHead>
                   <TableHead>Loja / Vendedor</TableHead>
                   <TableHead className="text-right">Valor da Venda</TableHead>
-                  <TableHead>Composição de Pagamento</TableHead>
-                  <TableHead className="text-center">Comprovantes</TableHead>
+                  <TableHead>Forma de Pagamento</TableHead>
+                  <TableHead className="text-center">Comprovante</TableHead>
                   <TableHead className="w-24 text-right">Ação</TableHead>
                 </TableRow>
               </TableHeader>
@@ -247,7 +333,7 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
                 {filteredSales.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-10 text-muted-foreground text-xs">
-                      Nenhuma venda encontrada com os filtros selecionados.
+                      Nenhuma venda encontrada para {selectedMonthLabel} com os filtros selecionados.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -314,7 +400,7 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
                         {sale.hasReceipts ? (
                           <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold gap-1 px-2 py-0.5">
                             <CheckCircle2 className="w-3 h-3" />
-                            {sale.receiptsCount} {sale.receiptsCount === 1 ? 'anexo' : 'anexos'}
+                            {sale.receiptsCount} {sale.receiptsCount === 1 ? 'real' : 'reais'}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-rose-600 border-rose-300 bg-rose-50 dark:bg-rose-950/40 text-[10px] font-bold gap-1 px-2 py-0.5">
@@ -332,7 +418,7 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
                           onClick={() => handleOpenReceiptModal(sale)}
                         >
                           <Eye className="w-3 h-3" />
-                          <span>Ver</span>
+                          <span>{sale.hasReceipts ? 'Ver' : 'Anexar'}</span>
                         </Button>
                       </TableCell>
                     </TableRow>

@@ -171,7 +171,14 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
     template_id: null,
     sale_group_id: null,
     sale_channel: channel,
-    evidence_paths: r.comp ? [r.comp] : [],
+    evidence_paths:
+      r.comp &&
+      (r.comp.startsWith('http') ||
+        r.comp.startsWith('data:') ||
+        r.comp.startsWith('blob:') ||
+        r.comp.startsWith('/'))
+        ? [r.comp]
+        : [],
     external_data: {
       ...((r as any).external_data || {}),
       vehicle_model_custom: r.modelo,
