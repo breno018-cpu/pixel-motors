@@ -23,10 +23,6 @@ import {
   Bike,
 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-} from '@/components/ui/dialog';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -135,7 +131,6 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
   const [manageOpen, setManageOpen] = useState(false);
   const [manageDefaultTab, setManageDefaultTab] = useState<'cadastro' | 'veiculo' | 'finalizacao' | 'documentos'>('cadastro');
   const [freightOpen, setFreightOpen] = useState(false);
-  const [popupOpen, setPopupOpen] = useState(false);
   const [copiedChassis, setCopiedChassis] = useState(false);
 
   const chassis = (
@@ -698,379 +693,238 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
 
   return (
     <>
-      {/* Botão Oficial dos 3 Pontos */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setPopupOpen(true)}
-        className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-        title="Abrir menu de ações da venda"
-      >
-        <MoreHorizontal className="w-4 h-4" />
-      </Button>
-
-      {/* POP-UP OFICIAL DE AÇÕES DA VENDA (Sempre visível no centro da tela) */}
-      <Dialog open={popupOpen} onOpenChange={setPopupOpen}>
-        <DialogContent className="sm:max-w-lg w-[94vw] p-0 overflow-hidden rounded-2xl border border-border shadow-2xl bg-card">
-          {/* Header do Pop-up */}
-          <div className="p-4 sm:p-5 border-b border-border bg-muted/40">
-            <div className="flex items-start justify-between gap-3 pr-6">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-display font-bold text-base sm:text-lg text-foreground">
-                    Ações da Venda
-                  </h3>
-                  <Badge variant="outline" className="font-mono text-xs font-bold border-primary/30 text-primary">
-                    {sale.contract_number}
-                  </Badge>
-                  {sale.status === 'concluido' || sale.status === 'assinado' ? (
-                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-semibold">
-                      Quitada
-                    </Badge>
-                  ) : sale.status === 'pre_venda' ? (
-                    <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-semibold">
-                      Pré-Venda (NF)
-                    </Badge>
-                  ) : sale.status === 'cancelado' ? (
-                    <Badge variant="destructive" className="text-[10px] font-semibold">
-                      Cancelada
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="text-[10px] font-semibold">
-                      Pendente
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 truncate max-w-sm">
-                  Cliente: <strong className="text-foreground">{sale.buyer_name}</strong>
-                  {vehicleName ? ` • ${vehicleName}` : ''}
-                </p>
-              </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            title="Abrir menu de ações da venda"
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          side="bottom"
+          avoidCollisions={true}
+          collisionPadding={12}
+          className="w-56 sm:w-60 max-h-[min(460px,calc(100vh-32px))] overflow-y-auto overscroll-contain rounded-xl border border-border/80 bg-popover shadow-xl p-1 z-50 text-xs"
+        >
+          {/* Cabeçalho Compacto */}
+          <div className="px-2.5 py-1.5 border-b border-border/50 mb-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="font-mono text-xs font-bold text-foreground truncate">
+                {sale.contract_number}
+              </span>
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-semibold shrink-0">
+                {sale.status === 'concluido' || sale.status === 'assinado' ? 'Quitada' : sale.status === 'pre_venda' ? 'Pré-Venda' : sale.status === 'cancelado' ? 'Cancelada' : 'Pendente'}
+              </Badge>
             </div>
-
-            {/* Banner de Chassi com Cópia Rápida */}
-            <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between gap-2 bg-muted/40 p-2 rounded-md">
-              <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                  Chassi Oficial / VIN
-                </span>
-                <span className="font-mono font-bold text-xs text-foreground truncate block">
-                  {chassis || (
-                    <span className="text-amber-600 dark:text-amber-400 font-normal italic">
-                      Não informado / Em faturamento
-                    </span>
-                  )}
-                </span>
-              </div>
-              {chassis && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={handleCopyChassis}
-                  className="h-7 px-2.5 text-xs gap-1.5 shrink-0 font-bold hover:bg-primary hover:text-primary-foreground shadow-2xs"
-                  title="Copiar número do chassi"
-                >
-                  {copiedChassis ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedChassis ? 'Copiado!' : 'Copiar'}</span>
-                </Button>
-              )}
-            </div>
+            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+              {sale.buyer_name}
+            </p>
           </div>
 
-          {/* Lista de Ações em Seções */}
-          <div className="p-4 sm:p-5 max-h-[70vh] overflow-y-auto space-y-4 text-xs">
-            {/* Bloco 1: Documentos & Emissão */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Documentos &amp; Emissões
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPopupOpen(false);
-                    setManageDefaultTab('documentos');
-                    setManageOpen(true);
-                  }}
-                  className="justify-start h-10 px-3 text-xs gap-2 font-bold text-primary border-primary/30 hover:bg-primary/5"
-                >
-                  <Printer className="w-4 h-4 text-primary shrink-0" />
-                  <span className="truncate">Emitir 2ª Via</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPopupOpen(false);
-                    handleEmitInvoicePng();
-                  }}
-                  className="justify-start h-10 px-3 text-xs gap-2 font-semibold text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/10"
-                >
-                  <ImageDown className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span className="truncate">Solicitação NF (PNG)</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPopupOpen(false);
-                    setReceiptsModalOpen(true);
-                  }}
-                  className="justify-start h-10 px-3 text-xs gap-2 font-medium"
-                >
-                  <Paperclip className="w-4 h-4 text-primary shrink-0" />
-                  <span className="truncate">Comprovantes</span>
-                  {receiptsCount > 0 && (
-                    <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 font-mono font-bold">
-                      {receiptsCount}
-                    </Badge>
-                  )}
-                </Button>
-
-                {sale.status !== 'pre_venda' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setPopupOpen(false);
-                      handleExportSale();
-                    }}
-                    className="justify-start h-10 px-3 text-xs gap-2 font-medium"
-                  >
-                    <Download className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Baixar Contrato (PDF)</span>
-                  </Button>
-                )}
-
-                {sale.status !== 'pre_venda' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setPopupOpen(false);
-                      handleDownloadPickupTerm();
-                    }}
-                    className="justify-start h-10 px-3 text-xs gap-2 font-medium text-blue-600 dark:text-blue-400"
-                  >
-                    <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Termo de Retirada</span>
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Bloco 2: Gestão Comercial */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Gestão da Venda
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPopupOpen(false);
-                    setDetailsOpen(true);
-                  }}
-                  className="justify-start h-10 px-3 text-xs gap-2 font-medium"
-                >
-                  <Eye className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="truncate">Visualizar Venda</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPopupOpen(false);
-                    setManageDefaultTab('cadastro');
-                    setManageOpen(true);
-                  }}
-                  className="justify-start h-10 px-3 text-xs gap-2 font-medium"
-                >
-                  <Pencil className="w-4 h-4 text-primary shrink-0" />
-                  <span className="truncate">Editar Venda</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPopupOpen(false);
-                    setManageDefaultTab('veiculo');
-                    setManageOpen(true);
-                  }}
-                  className="justify-start h-10 px-3 text-xs gap-2 font-medium border-primary/30 text-primary hover:bg-primary/5"
-                >
-                  <Bike className="w-4 h-4 text-primary shrink-0" />
-                  <span className="truncate">Ver/Editar Chassi</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPopupOpen(false);
-                    setFreightOpen(true);
-                  }}
-                  className="justify-start h-10 px-3 text-xs gap-2 font-medium text-emerald-600 dark:text-emerald-400"
-                >
-                  <Truck className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Calcular Frete</span>
-                </Button>
-
-                {sale.status === 'pre_venda' && (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setPopupOpen(false);
-                      setFinalizeModalOpen(true);
-                    }}
-                    className="justify-start h-10 px-3 text-xs gap-2 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Finalizar Venda &amp; Contrato</span>
-                  </Button>
-                )}
-
-                {sale.status === 'pendente' && hasElevatedAccess && (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setPopupOpen(false);
-                      setSignDialogOpen(true);
-                    }}
-                    className="justify-start h-10 px-3 text-xs gap-2 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    <FileCheck className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Aprovar e Concluir</span>
-                  </Button>
-                )}
-
-                {hasElevatedAccess && sale.status !== 'cancelado' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setPopupOpen(false);
-                      setQuestionNote(sale.review_note || '');
-                      setQuestionOpen(true);
-                    }}
-                    className="justify-start h-10 px-3 text-xs gap-2 font-medium"
-                  >
-                    <MessageSquareWarning className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{isQuestioned ? 'Editar Revisão' : 'Solicitar Revisão'}</span>
-                  </Button>
-                )}
-
-                {canFixQuestioned && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setPopupOpen(false);
-                      setReviewEditOpen(true);
-                    }}
-                    className="justify-start h-10 px-3 text-xs gap-2 font-medium"
-                  >
-                    <Wrench className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Ajustar Proposta</span>
-                  </Button>
-                )}
-
-                {isQuestioned && hasElevatedAccess && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setPopupOpen(false);
-                      clearQuestion.mutate();
-                    }}
-                    className="justify-start h-10 px-3 text-xs gap-2 font-medium"
-                  >
-                    <FileCheck className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Concluir Revisão</span>
-                  </Button>
-                )}
-
-                {isPowerUser && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setPopupOpen(false);
-                        loadOperators();
-                      }}
-                      className="justify-start h-10 px-3 text-xs gap-2 font-medium"
-                    >
-                      <UserCog className="w-4 h-4 shrink-0" />
-                      <span className="truncate">Alterar Operador</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setPopupOpen(false);
-                        setNewDate(sale.created_at.split('T')[0]);
-                        setDateDialogOpen(true);
-                      }}
-                      className="justify-start h-10 px-3 text-xs gap-2 font-medium"
-                    >
-                      <CalendarDays className="w-4 h-4 shrink-0" />
-                      <span className="truncate">Alterar Data</span>
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Bloco 3: Cancelamento e Exclusão */}
-            {(canCancel || canDelete) && (
-              <div className="space-y-1.5 pt-2 border-t border-border">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-destructive">
-                  Ações Restritas
+          {/* Destaque: Chassi Oficial com Cópia Rápida */}
+          {chassis && (
+            <>
+              <DropdownMenuItem
+                onClick={handleCopyChassis}
+                className="cursor-pointer font-mono text-[11px] font-bold text-primary focus:bg-primary/10 flex items-center justify-between"
+              >
+                <span className="flex items-center gap-1.5 truncate">
+                  {copiedChassis ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
+                  <span className="truncate">Chassi: {chassis}</span>
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {canCancel && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setPopupOpen(false);
-                        setCancelDialogOpen(true);
-                      }}
-                      className="justify-start h-10 px-3 text-xs gap-2 font-semibold text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                    >
-                      <XCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                      <span className="truncate">{sale.status === 'concluido' ? 'Cancelar venda quitada' : 'Cancelar venda'}</span>
-                    </Button>
-                  )}
+                <span className="text-[9px] font-sans font-medium text-muted-foreground ml-1 shrink-0">
+                  {copiedChassis ? 'Copiado!' : 'Copiar'}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
 
-                  {canDelete && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setPopupOpen(false);
-                        setDeleteDialogOpen(true);
-                      }}
-                      className="justify-start h-10 px-3 text-xs gap-2 font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive shrink-0" />
-                      <span className="truncate">Excluir venda</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
+          {/* Gestão Comercial & Detalhes */}
+          <DropdownMenuItem onClick={() => setDetailsOpen(true)} className="cursor-pointer">
+            <Eye className="w-3.5 h-3.5 mr-2 text-muted-foreground shrink-0" />
+            Visualizar venda
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={() => {
+              setManageDefaultTab('veiculo');
+              setManageOpen(true);
+            }}
+            className="cursor-pointer font-medium text-primary focus:text-primary"
+          >
+            <Bike className="w-3.5 h-3.5 mr-2 text-primary shrink-0" />
+            Ver / Editar Chassi
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={() => {
+              setManageDefaultTab('cadastro');
+              setManageOpen(true);
+            }}
+            className="cursor-pointer"
+          >
+            <Pencil className="w-3.5 h-3.5 mr-2 text-muted-foreground shrink-0" />
+            Editar venda
+          </DropdownMenuItem>
+
+          {/* Documentos & 2ª Via */}
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            onClick={() => {
+              setManageDefaultTab('documentos');
+              setManageOpen(true);
+            }}
+            className="cursor-pointer font-semibold text-primary focus:text-primary"
+          >
+            <Printer className="w-3.5 h-3.5 mr-2 text-primary shrink-0" />
+            Emitir 2ª Via & Docs
+          </DropdownMenuItem>
+
+          <DropdownMenuItem onClick={handleEmitInvoicePng} className="cursor-pointer text-amber-700 dark:text-amber-300">
+            <ImageDown className="w-3.5 h-3.5 mr-2 text-amber-500 shrink-0" />
+            Solicitação NF (PNG)
+          </DropdownMenuItem>
+
+          <DropdownMenuItem onClick={() => setReceiptsModalOpen(true)} className="cursor-pointer flex items-center justify-between">
+            <span className="flex items-center">
+              <Paperclip className="w-3.5 h-3.5 mr-2 text-muted-foreground shrink-0" />
+              Comprovantes
+            </span>
+            {receiptsCount > 0 && (
+              <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 font-mono font-bold">
+                {receiptsCount}
+              </Badge>
             )}
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DropdownMenuItem>
+
+          {sale.status !== 'pre_venda' && (
+            <>
+              <DropdownMenuItem onClick={handleExportSale} className="cursor-pointer">
+                <Download className="w-3.5 h-3.5 mr-2 text-muted-foreground shrink-0" />
+                Baixar Contrato (PDF)
+              </DropdownMenuItem>
+
+              <DropdownMenuItem onClick={handleDownloadPickupTerm} className="cursor-pointer text-blue-600 dark:text-blue-400">
+                <ShieldCheck className="w-3.5 h-3.5 mr-2 shrink-0" />
+                Termo de Retirada
+              </DropdownMenuItem>
+            </>
+          )}
+
+          <DropdownMenuItem onClick={() => setFreightOpen(true)} className="cursor-pointer text-emerald-600 dark:text-emerald-400">
+            <Truck className="w-3.5 h-3.5 mr-2 shrink-0" />
+            Calcular Frete
+          </DropdownMenuItem>
+
+          {/* Etapas de Status */}
+          {sale.status === 'pre_venda' && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setFinalizeModalOpen(true)}
+                className="cursor-pointer text-emerald-600 dark:text-emerald-400 font-bold focus:bg-emerald-500/10"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 mr-2 text-emerald-500 shrink-0" />
+                Finalizar Venda & Contrato
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {sale.status === 'pendente' && hasElevatedAccess && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setSignDialogOpen(true)}
+                className="cursor-pointer text-emerald-600 dark:text-emerald-400 font-semibold"
+              >
+                <FileCheck className="w-3.5 h-3.5 mr-2 shrink-0" />
+                Aprovar e Concluir
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {/* Revisões */}
+          {hasElevatedAccess && sale.status !== 'cancelado' && (
+            <DropdownMenuItem
+              onClick={() => {
+                setQuestionNote(sale.review_note || '');
+                setQuestionOpen(true);
+              }}
+              className="cursor-pointer"
+            >
+              <MessageSquareWarning className="w-3.5 h-3.5 mr-2 shrink-0" />
+              {isQuestioned ? 'Editar Revisão' : 'Solicitar Revisão'}
+            </DropdownMenuItem>
+          )}
+
+          {canFixQuestioned && (
+            <DropdownMenuItem onClick={() => setReviewEditOpen(true)} className="cursor-pointer">
+              <Wrench className="w-3.5 h-3.5 mr-2 shrink-0" />
+              Ajustar Proposta
+            </DropdownMenuItem>
+          )}
+
+          {isQuestioned && hasElevatedAccess && (
+            <DropdownMenuItem onClick={() => clearQuestion.mutate()} className="cursor-pointer">
+              <FileCheck className="w-3.5 h-3.5 mr-2 shrink-0" />
+              Concluir Revisão
+            </DropdownMenuItem>
+          )}
+
+          {/* Operador e Data */}
+          {isPowerUser && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={loadOperators} className="cursor-pointer">
+                <UserCog className="w-3.5 h-3.5 mr-2 text-muted-foreground shrink-0" />
+                Alterar Operador
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setNewDate(sale.created_at.split('T')[0]);
+                  setDateDialogOpen(true);
+                }}
+                className="cursor-pointer"
+              >
+                <CalendarDays className="w-3.5 h-3.5 mr-2 text-muted-foreground shrink-0" />
+                Alterar Data
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {/* Cancelamento / Exclusão */}
+          {(canCancel || canDelete) && (
+            <>
+              <DropdownMenuSeparator />
+              {canCancel && (
+                <DropdownMenuItem
+                  onClick={() => setCancelDialogOpen(true)}
+                  className="cursor-pointer text-amber-600 dark:text-amber-400 font-semibold focus:text-amber-700"
+                >
+                  <XCircle className="w-3.5 h-3.5 mr-2 text-amber-500 shrink-0" />
+                  {sale.status === 'concluido' ? 'Cancelar venda quitada' : 'Cancelar venda'}
+                </DropdownMenuItem>
+              )}
+              {canDelete && (
+                <DropdownMenuItem
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="cursor-pointer text-destructive font-semibold focus:text-destructive"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-2 text-destructive shrink-0" />
+                  Excluir venda
+                </DropdownMenuItem>
+              )}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <SaleDetailsDialog
         sale={sale}
