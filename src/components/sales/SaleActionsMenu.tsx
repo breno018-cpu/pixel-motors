@@ -110,7 +110,7 @@ interface SaleActionsMenuProps {
 }
 
 export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: SaleActionsMenuProps) {
-  const { isAdmin, hasElevatedAccess, isSeller, user, profile, can } = useAuth();
+  const { isAdmin, isManager, hasElevatedAccess, isSeller, user, profile, can } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
