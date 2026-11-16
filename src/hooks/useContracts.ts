@@ -246,10 +246,15 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
     } catch {}
   }
 
-  const hydratedDb = dbContracts.map((c) => ({
-    ...c,
-    operator: c.operator || (c.created_by ? { full_name: operatorMap[c.created_by] || c.created_by } : null),
-  }));
+  const hydratedDb = dbContracts.map((c) => {
+    const ext = (c.external_data || {}) as any;
+    const sellerFromExt = ext.seller_name || ext.operator_name || ext.vendedor || (c as any).vendedor;
+    const opName = (c.created_by ? operatorMap[c.created_by] : null) || sellerFromExt || (c as any).created_by;
+    return {
+      ...c,
+      operator: c.operator || (opName ? { full_name: opName } : null),
+    };
+  });
 
   const sheetRows = getMonthlySheetRows();
   const seenIds = new Set(hydratedDb.map((c) => c.id));

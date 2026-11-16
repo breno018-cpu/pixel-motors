@@ -8,6 +8,7 @@ import { isMontesClarosRegion, normalizeCityKey, CITY_COORDINATES } from '@/lib/
 
 export const STORE_DIVINOPOLIS_UUID = 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
 export const STORE_MONTESCLAROS_UUID = 'e8254a81-d669-464b-9806-457ba25ce7f0';
+export const STORE_MONTESCLAROS_MULTIMARCAS_UUID = '6b3afc94-86b2-41b0-9427-6f58ae8dbf21';
 
 /**
  * Normaliza e compara identificadores de loja aceitando tanto UUIDs quanto slugs locais
@@ -39,10 +40,11 @@ export function isMatchingStore(vehicleStoreId: string | null | undefined, filte
     }
   }
 
-  // Montes Claros
+  // Montes Claros (todas as unidades do polo Norte)
   const isMontesFilter =
     cleanFilter === 'store-montesclaros' ||
     cleanFilter === STORE_MONTESCLAROS_UUID ||
+    cleanFilter === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
     cleanFilter.includes('montes') ||
     cleanFilter.includes('moc') ||
     cleanFilter.includes('polo norte');
@@ -51,6 +53,7 @@ export function isMatchingStore(vehicleStoreId: string | null | undefined, filte
     if (
       cleanVehicleStore === 'store-montesclaros' ||
       cleanVehicleStore === STORE_MONTESCLAROS_UUID ||
+      cleanVehicleStore === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
       cleanVehicleStore.includes('montes') ||
       cleanVehicleStore.includes('moc') ||
       cleanVehicleStore.includes('polo norte')
@@ -114,6 +117,16 @@ export const OFFICIAL_STORES: Record<string, ResolvedStore> = {
     phone: '(38) 3221-2000',
     email: 'montesclaros@pixelmotors.com.br',
   },
+  '6b3afc94-86b2-41b0-9427-6f58ae8dbf21': {
+    storeId: 'store-montesclaros',
+    storeName: 'Concessionária Montes Claros',
+    city: 'Montes Claros',
+    state: 'MG',
+    cnpj: '18.456.789/0002-82',
+    address: 'Av. Deputado Esteves Rodrigues, 850 - Centro, Montes Claros/MG',
+    phone: '(38) 3221-2000',
+    email: 'montesclaros@pixelmotors.com.br',
+  },
 };
 
 /**
@@ -128,7 +141,8 @@ export function getStoreFromDatabase(
 
   if (
     cleanRef === 'store-montesclaros' ||
-    cleanRef === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+    cleanRef === STORE_MONTESCLAROS_UUID ||
+    cleanRef === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
     cleanRef.includes('montes') ||
     cleanRef.includes('polo norte') ||
     cleanRef.includes('moc')
@@ -138,7 +152,7 @@ export function getStoreFromDatabase(
 
   if (
     cleanRef === 'store-divinopolis' ||
-    cleanRef === 'ccf8e097-09d7-4305-8077-5c16fc8b5634' ||
+    cleanRef === STORE_DIVINOPOLIS_UUID ||
     cleanRef.includes('divin') ||
     cleanRef.includes('matriz')
   ) {
@@ -161,12 +175,14 @@ export function getStoreFromDatabase(
     if (found) {
       const isMontes =
         (found.name || found.city || '').toLowerCase().includes('montes') ||
-        (found.id || '').toLowerCase() === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+        (found.city || '').toLowerCase().includes('moc') ||
+        (found.id || '').toLowerCase() === STORE_MONTESCLAROS_UUID ||
+        (found.id || '').toLowerCase() === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
         (found.id || '').toLowerCase() === 'store-montesclaros';
       return {
         storeId: isMontes ? 'store-montesclaros' : 'store-divinopolis',
-        storeName: found.name || (isMontes ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
-        city: found.city || (isMontes ? 'Montes Claros' : 'Divinópolis'),
+        storeName: isMontes ? 'Concessionária Montes Claros' : (found.name || 'Concessionária Divinópolis'),
+        city: isMontes ? 'Montes Claros' : (found.city || 'Divinópolis'),
         state: found.state || 'MG',
         cnpj: found.cnpj || (isMontes ? '18.456.789/0002-82' : '18.456.789/0001-01'),
         address: found.address || (isMontes ? 'Av. Deputado Esteves Rodrigues, 850 - Centro, Montes Claros/MG' : 'Av. Autorama, 1200 - Judeia, Divinópolis/MG'),
@@ -217,35 +233,52 @@ export function resolveSaleStore(
   saleOrContract: {
     store_id?: string | null;
     raw_store_id?: string | null;
-    store?: { id?: string; name?: string } | null;
+    store?: { id?: string; name?: string; city?: string } | null;
     vendedor?: string | null;
     operator?: { full_name?: string } | null;
     observacoes?: string | null;
     cliente?: string | null;
     regiao?: string | null;
     chassi?: string | null;
+    external_data?: any;
   },
   employeesList?: Array<{ full_name?: string; profile_id?: string | null; store_id?: string | null }>
 ): ResolvedStore {
-  // 1. Prioridade Máxima: se a venda/contrato possui loja explicitamente gravada no banco
-  const explicitStoreId = String(saleOrContract.store_id || saleOrContract.raw_store_id || saleOrContract.store?.id || '').toLowerCase().trim();
-  const explicitStoreName = String(saleOrContract.store?.name || '').toLowerCase().trim();
+  const ext = (saleOrContract.external_data || {}) as any;
+
+  // 1. Prioridade Máxima: se a venda/contrato possui loja explicitamente gravada no banco ou external_data
+  const explicitStoreId = String(
+    saleOrContract.store_id ||
+    saleOrContract.raw_store_id ||
+    saleOrContract.store?.id ||
+    ext.store_id ||
+    ''
+  ).toLowerCase().trim();
+
+  const explicitStoreName = String(
+    saleOrContract.store?.name ||
+    ext.store_name ||
+    ''
+  ).toLowerCase().trim();
 
   if (
     explicitStoreId === 'store-montesclaros' ||
-    explicitStoreId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+    explicitStoreId === STORE_MONTESCLAROS_UUID ||
+    explicitStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
     explicitStoreName.includes('montes') ||
     explicitStoreName.includes('polo norte') ||
-    explicitStoreName.includes('moc')
+    explicitStoreName.includes('moc') ||
+    (saleOrContract.store?.city || '').toLowerCase().includes('montes')
   ) {
     return OFFICIAL_STORES['store-montesclaros'];
   }
 
   if (
     explicitStoreId === 'store-divinopolis' ||
-    explicitStoreId === 'ccf8e097-09d7-4305-8077-5c16fc8b5634' ||
+    explicitStoreId === STORE_DIVINOPOLIS_UUID ||
     explicitStoreName.includes('divin') ||
-    explicitStoreName.includes('matriz')
+    explicitStoreName.includes('matriz') ||
+    (saleOrContract.store?.city || '').toLowerCase().includes('divin')
   ) {
     return OFFICIAL_STORES['store-divinopolis'];
   }
@@ -255,7 +288,15 @@ export function resolveSaleStore(
   }
 
   // 2. Prioridade 2: Lotação do Vendedor no cadastro de colaboradores (employees) ou mapeamento canônico
-  const sellerRaw = String(saleOrContract.vendedor || saleOrContract.operator?.full_name || '').trim().toLowerCase();
+  const sellerRaw = String(
+    saleOrContract.vendedor ||
+    saleOrContract.operator?.full_name ||
+    ext.seller_name ||
+    ext.operator_name ||
+    ext.vendedor ||
+    ''
+  ).trim().toLowerCase();
+
   if (sellerRaw) {
     if (employeesList && employeesList.length > 0) {
       const emp = employeesList.find((e) => {
@@ -273,7 +314,8 @@ export function resolveSaleStore(
         const empStoreId = String(emp.store_id).toLowerCase().trim();
         const isMoc =
           empStoreId === 'store-montesclaros' ||
-          empStoreId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+          empStoreId === STORE_MONTESCLAROS_UUID ||
+          empStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
           empStoreId.includes('montes') ||
           empStoreId.includes('moc');
 
@@ -290,7 +332,7 @@ export function resolveSaleStore(
   }
 
   // 3. Prioridade 3: Menção explícita de loja / polo nas observações operacionais da venda
-  const obs = String(saleOrContract.observacoes || '').toLowerCase();
+  const obs = String(saleOrContract.observacoes || ext.observacoes || '').toLowerCase();
   if (obs.includes('montes claros') || obs.includes('polo norte') || obs.includes('moc')) {
     return OFFICIAL_STORES['store-montesclaros'];
   }
@@ -299,11 +341,12 @@ export function resolveSaleStore(
   }
 
   // 4. Prioridade 4: Região / Cidade da venda e entrega
-  if (saleOrContract.regiao) {
-    if (isMontesClarosRegion(saleOrContract.regiao)) {
+  const targetRegion = String(saleOrContract.regiao || ext.regiao || ext.buyer_city || '').trim();
+  if (targetRegion) {
+    if (isMontesClarosRegion(targetRegion)) {
       return OFFICIAL_STORES['store-montesclaros'];
     }
-    const cleanCity = normalizeCityKey(saleOrContract.regiao);
+    const cleanCity = normalizeCityKey(targetRegion);
     const geoMeta = CITY_COORDINATES[cleanCity];
     if (geoMeta?.poloAtendimento === 'MONTES CLAROS') {
       return OFFICIAL_STORES['store-montesclaros'];

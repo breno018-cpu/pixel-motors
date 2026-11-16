@@ -363,15 +363,26 @@ export default function Dashboard() {
         }
       }
 
+      const ext = (c.external_data || {}) as any;
+      const opFullName =
+        c.operator?.full_name ||
+        ext.seller_name ||
+        ext.operator_name ||
+        ext.vendedor ||
+        (c as any).vendedor ||
+        (c as any).seller_name;
+
       const resolvedStore = resolveSaleStore(
         {
           store_id: c.store_id,
           store: c.store,
-          vendedor: c.operator?.full_name,
-          observacoes: c.notes,
+          vendedor: opFullName,
+          operator: opFullName ? { full_name: opFullName } : null,
+          observacoes: c.notes || ext.observacoes,
           cliente: c.buyer_name,
-          regiao: cityStr,
-          chassi: c.vehicle?.chassis,
+          regiao: cityStr || ext.regiao || ext.buyer_city,
+          chassi: c.vehicle?.chassis || ext.chassi,
+          external_data: ext,
         },
         employees
       );
@@ -385,7 +396,7 @@ export default function Dashboard() {
         store_name: resolvedStore.storeName,
         date: dateObj,
         dateStr: dateObj.toLocaleDateString('pt-BR'),
-        vendedor: c.operator?.full_name || 'Vendedor',
+        vendedor: opFullName || 'Vendedor',
         chassi: c.vehicle?.chassis || '',
         modelo: vehicleModel,
         cliente: c.buyer_name || 'Cliente Registrado',
@@ -610,14 +621,26 @@ export default function Dashboard() {
   // Contratos Filtrados pelo Contexto de Loja e Vendedor
   const filteredContracts = useMemo(() => {
     const raw = (contracts || []).filter((c) => {
+      const ext = (c.external_data || {}) as any;
+      const opFullName =
+        c.operator?.full_name ||
+        ext.seller_name ||
+        ext.operator_name ||
+        ext.vendedor ||
+        (c as any).vendedor ||
+        (c as any).seller_name;
+
       if (storeFilter !== 'all') {
         const resolved = resolveSaleStore(
           {
             store_id: c.store_id,
             store: c.store,
-            vendedor: c.operator?.full_name,
-            observacoes: c.notes,
+            vendedor: opFullName,
+            operator: opFullName ? { full_name: opFullName } : null,
+            observacoes: c.notes || ext.observacoes,
             cliente: c.buyer_name,
+            regiao: ext.regiao || ext.buyer_city,
+            external_data: ext,
           },
           employees
         );
@@ -625,8 +648,7 @@ export default function Dashboard() {
       }
       if (sellerFilter !== 'all') {
         const seller = (
-          (c as any).seller_name ||
-          c.operator?.full_name ||
+          opFullName ||
           (c as any).created_by ||
           ''
         )

@@ -852,12 +852,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
 
           if (profData && !isUserDeleted(profData.id, profData.email)) {
+            const isMocUser =
+              (profData.store_id && (
+                profData.store_id.toLowerCase().includes('montes') ||
+                profData.store_id === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+                profData.store_id === '6b3afc94-86b2-41b0-9427-6f58ae8dbf21' ||
+                profData.store_id === 'store-montesclaros'
+              )) ||
+              (profData.email || '').toLowerCase().includes('moc') ||
+              (profData.email || '').toLowerCase().includes('montes') ||
+              (profData.full_name || '').toLowerCase().includes('mariana') ||
+              (profData.full_name || '').toLowerCase().includes('halana') ||
+              (profData.full_name || '').toLowerCase().includes('natan') ||
+              (profData.full_name || '').toLowerCase().includes('sabrina');
+
             matchedUser = {
               id: profData.id,
               email: profData.email,
               full_name: profData.full_name,
               role: isMasterUser(profData.full_name, profData.email, profData.id) ? 'admin' : 'vendedor',
-              store_id: 'store-divinopolis',
+              store_id: isMocUser ? 'e8254a81-d669-464b-9806-457ba25ce7f0' : 'ccf8e097-09d7-4305-8077-5c16fc8b5634',
               temp_password: '',
             };
           }

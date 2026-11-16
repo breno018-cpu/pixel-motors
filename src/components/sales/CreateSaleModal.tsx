@@ -38,7 +38,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useVehicles, markVehicleAsSold, isChassisAlreadySold } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
-import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/lib/storeResolution';
+import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID, STORE_MONTESCLAROS_MULTIMARCAS_UUID } from '@/lib/storeResolution';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
@@ -92,14 +92,15 @@ const FINANCING_INSTALLMENTS_OPTIONS = [12, 18, 24, 30, 36, 42, 48, 60];
 const CARD_INSTALLMENTS_OPTIONS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 21];
 
 const PRESET_SELLERS = [
-  'Mariana',
-  'Sabrina',
-  'Halana',
+  'Mariana Sabino',
+  'Halanna',
   'Natan',
+  'Sabrina',
   'Lilian',
   'Geibriel',
+  'Erick',
   'Daniel',
-  'Breno',
+  'Breno Lima',
 ];
 
 export function CreateSaleModal({
@@ -134,15 +135,65 @@ export function CreateSaleModal({
 
   const sellerStore = useMemo(() => resolveUserSellerStore(auth, employees), [auth, employees]);
 
+  const isDirectMocUser = useMemo(() => {
+    const sId = (sellerStore?.storeId || '').toLowerCase();
+    const email = (user?.email || '').toLowerCase();
+    const pName = (profile?.full_name || '').toLowerCase();
+    return (
+      sId === 'store-montesclaros' ||
+      sId === STORE_MONTESCLAROS_UUID ||
+      sId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+      sId.includes('montes') ||
+      email.includes('moc') ||
+      email.includes('montesclaros') ||
+      pName.includes('mariana') ||
+      pName.includes('halana') ||
+      pName.includes('natan') ||
+      pName.includes('sabrina')
+    );
+  }, [sellerStore, user, profile]);
+
+  const initialStoreUuid = useMemo(() => {
+    return isDirectMocUser ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID;
+  }, [isDirectMocUser]);
+
+  const resolvedDefaultSeller = useMemo(() => {
+    const cleanEmail = (user?.email || '').toLowerCase();
+    if (cleanEmail.includes('shineraymoc@') || cleanEmail.includes('mariana')) return 'Mariana Sabino';
+    if (cleanEmail.includes('shineraymocn') || cleanEmail.includes('natan')) return 'Natan';
+    if (cleanEmail.includes('shineraymoch') || cleanEmail.includes('halana')) return 'Halanna';
+    if (cleanEmail.includes('shineraymocs') || cleanEmail.includes('sabrina')) return 'Sabrina';
+    if (cleanEmail.includes('shineraydivl') || cleanEmail.includes('lilian')) return 'Lilian';
+    if (cleanEmail.includes('shineraydivg') || cleanEmail.includes('geibriel')) return 'Geibriel';
+    if (cleanEmail.includes('shineraydive') || cleanEmail.includes('elias') || cleanEmail.includes('erick')) return 'Erick';
+    if (cleanEmail.includes('admbreno') || cleanEmail.includes('laurentinobreno')) return 'Breno Lima';
+    if (cleanEmail.includes('gestor') || cleanEmail.includes('joaovitor')) return 'João Vitor';
+
+    if (profile?.full_name && !profile.full_name.toLowerCase().startsWith('shineray')) {
+      return profile.full_name;
+    }
+    return isDirectMocUser ? 'Mariana Sabino' : 'Lilian';
+  }, [profile, user, isDirectMocUser]);
+
+  const availableSellers = useMemo(() => {
+    const list = [...PRESET_SELLERS];
+    (employees || []).forEach((e) => {
+      if (e.full_name && !list.some((s) => s.toLowerCase() === e.full_name.toLowerCase())) {
+        list.push(e.full_name);
+      }
+    });
+    return list;
+  }, [employees]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { setPeriodFilter } = useDateFilter();
 
   // Status da Venda
   const [saleType, setSaleType] = useState<'concluido' | 'pre_venda'>('concluido');
 
-  // Loja & Vendedor & Data (Preenchidos automaticamente para vendedores)
-  const [storeId, setStoreId] = useState<string>(() => (isRestrictedSeller ? sellerStore.storeId : 'store-divinopolis'));
-  const [sellerName, setSellerName] = useState<string>(() => (isRestrictedSeller && profile?.full_name ? profile.full_name : ''));
+  // Loja & Vendedor & Data (Preenchidos com segurança inicial)
+  const [storeId, setStoreId] = useState<string>(() => initialStoreUuid);
+  const [sellerName, setSellerName] = useState<string>(() => resolvedDefaultSeller);
   const [customSeller, setCustomSeller] = useState('');
   const [saleDate, setSaleDate] = useState<string>(() => {
     const today = new Date();
@@ -150,12 +201,16 @@ export function CreateSaleModal({
   });
 
   useEffect(() => {
-    if (open && isRestrictedSeller) {
-      if (sellerStore?.storeId) setStoreId(sellerStore.storeId);
-      if (profile?.full_name) setSellerName(profile.full_name);
+    if (open) {
+      if (!storeId || storeId === 'store-divinopolis' || storeId === 'store-montesclaros') {
+        setStoreId(initialStoreUuid);
+      }
+      if (!sellerName) {
+        setSellerName(resolvedDefaultSeller);
+      }
       setSaleDate(new Date().toISOString().split('T')[0]);
     }
-  }, [open, isRestrictedSeller, profile, sellerStore]);
+  }, [open, initialStoreUuid, resolvedDefaultSeller]);
 
   // Veículo
   const [vehicleSource, setVehicleSource] = useState<'inventory' | 'manual'>('inventory');
@@ -376,9 +431,11 @@ export function CreateSaleModal({
     );
   }, [profile, user]);
 
-  const activeSeller = isRestrictedSeller
-    ? currentSellerName
-    : (sellerName === 'OUTRO' ? customSeller.trim() : (sellerName || currentSellerName));
+  const activeSeller = useMemo(() => {
+    if (sellerName === 'OUTRO') return customSeller.trim() || 'Vendedor';
+    if (sellerName && sellerName !== 'Shineraymoc') return sellerName;
+    return resolvedDefaultSeller || currentSellerName || 'Vendedor';
+  }, [sellerName, customSeller, resolvedDefaultSeller, currentSellerName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -449,25 +506,33 @@ export function CreateSaleModal({
       }
 
       const nextQtNumber = String(currentRows.length + 1).padStart(2, '0');
-      const effectiveStoreId = isRestrictedSeller ? (sellerStore?.storeId || storeId || 'store-divinopolis') : (storeId || 'store-divinopolis');
-      const effectiveSaleDate = isRestrictedSeller ? new Date().toISOString().split('T')[0] : (saleDate || new Date().toISOString().split('T')[0]);
-      const effectiveSeller = activeSeller || currentSellerName || 'Vendedor';
+      const effectiveStoreId = storeId || (isRestrictedSeller ? sellerStore?.storeId : STORE_DIVINOPOLIS_UUID);
+      const effectiveSaleDate = saleDate || new Date().toISOString().split('T')[0];
+      const effectiveSeller = activeSeller || resolvedDefaultSeller || currentSellerName || 'Vendedor';
 
       const cleanSeller = effectiveSeller.toLowerCase().trim();
       const isMoc =
         (effectiveStoreId || '').includes('montesclaros') ||
-        effectiveStoreId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+        effectiveStoreId === STORE_MONTESCLAROS_UUID ||
+        effectiveStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+        (storeId || '').toLowerCase().includes('montes') ||
+        storeId === STORE_MONTESCLAROS_UUID ||
+        storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
         (sellerStore?.storeId || '').includes('montesclaros') ||
-        sellerStore?.storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
+        sellerStore?.storeId === STORE_MONTESCLAROS_UUID ||
+        sellerStore?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
         cleanSeller.includes('mariana') ||
         cleanSeller.includes('sabrina') ||
         cleanSeller.includes('halana') ||
         cleanSeller.includes('natan') ||
+        cleanSeller.includes('moc') ||
         (buyerCity || '').toUpperCase().includes('MONTES CLAROS');
-      const currentStore = stores.find((s) => s.id === storeId || (isMoc ? s.id === STORE_MONTESCLAROS_UUID : s.id === STORE_DIVINOPOLIS_UUID));
+
+      const targetStoreUuid = isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID;
+      const currentStore = stores.find((s) => s.id === targetStoreUuid) || stores.find((s) => s.id === storeId);
       const storeName = currentStore?.name || (isMoc
-        ? 'Concessionária Montes Claros'
-        : 'Concessionária Divinópolis');
+        ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS'
+        : 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS');
 
       const dateParts = effectiveSaleDate.split('-');
       const formattedDateBR = dateParts.length === 3
@@ -501,11 +566,11 @@ export function CreateSaleModal({
           id: user?.id || null,
           full_name: effectiveSeller,
         },
-        store_id: effectiveStoreId,
+        store_id: targetStoreUuid,
         chassi: (vehicleChassis || '').trim().toUpperCase() || `CH-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
         modelo: (vehicleModel || '').trim().toUpperCase(),
         cliente: (buyerName || '').trim().toUpperCase(),
-        regiao: (buyerCity || 'Divinópolis').trim().toUpperCase(),
+        regiao: (buyerCity || (isMoc ? 'Montes Claros' : 'Divinópolis')).trim().toUpperCase(),
         valor: totalValNum,
         financiamento: finValNum,
         banco: finValNum > 0 ? (selectedBank || 'Banco') : 'À VISTA',
@@ -525,9 +590,11 @@ export function CreateSaleModal({
         external_data: {
           vehicle_model_custom: vehicleModel,
           chassis: vehicleChassis,
-          regiao: buyerCity,
-          buyer_city: buyerCity,
+          regiao: buyerCity || (isMoc ? 'Montes Claros' : 'Divinópolis'),
+          buyer_city: buyerCity || (isMoc ? 'Montes Claros' : 'Divinópolis'),
           seller_name: effectiveSeller,
+          operator_name: effectiveSeller,
+          vendedor: effectiveSeller,
           sale_date: effectiveSaleDate,
           store_name: storeName,
         },
@@ -622,15 +689,34 @@ export function CreateSaleModal({
           },
         };
 
-        if (targetStoreUuid) {
-          contractPayload.store_id = targetStoreUuid;
-        } else {
-          // Fallback seguro para as lojas padrão do banco de dados
-          contractPayload.store_id = isMoc ? 'e8254a81-d669-464b-9806-457ba25ce7f0' : 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
-        }
-        if (user?.id && isUuid(user.id)) {
+        contractPayload.store_id = targetStoreUuid;
+
+        const matchedEmp = employees.find((e) => {
+          const eName = (e.full_name || '').toLowerCase().trim();
+          return (
+            eName === cleanSeller ||
+            (cleanSeller.length >= 3 && eName.includes(cleanSeller)) ||
+            (cleanSeller.length >= 3 && cleanSeller.includes(eName))
+          );
+        });
+
+        if (matchedEmp?.profile_id && isUuid(matchedEmp.profile_id)) {
+          contractPayload.created_by = matchedEmp.profile_id;
+        } else if (matchedEmp?.id && isUuid(matchedEmp.id)) {
+          contractPayload.created_by = matchedEmp.id;
+        } else if (user?.id && isUuid(user.id)) {
           contractPayload.created_by = user.id;
         }
+
+        contractPayload.external_data = {
+          ...contractPayload.external_data,
+          seller_name: effectiveSeller,
+          operator_name: effectiveSeller,
+          vendedor: effectiveSeller,
+          store_name: storeName,
+          regiao: buyerCity || (isMoc ? 'Montes Claros' : 'Divinópolis'),
+          buyer_city: buyerCity || (isMoc ? 'Montes Claros' : 'Divinópolis'),
+        };
 
         let finalVehicleId = selectedVehicleId && isUuid(selectedVehicleId) ? selectedVehicleId : null;
 
@@ -877,37 +963,28 @@ export function CreateSaleModal({
           )}
 
           {/* SEÇÃO 1: LOJA, VENDEDOR E DATA */}
-          {isRestrictedSeller ? (
-            <div className="flex flex-wrap items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-primary/20 text-xs">
-              <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
-                <span className="flex items-center gap-1.5 font-bold text-foreground">
-                  <Building2 className="w-3.5 h-3.5 text-primary" /> {sellerStore.storeName}
-                </span>
-                <span className="text-border hidden sm:inline">|</span>
-                <span className="flex items-center gap-1.5 font-bold text-foreground">
-                  <User className="w-3.5 h-3.5 text-primary" /> {profile?.full_name || 'Vendedor'}
-                </span>
-                <span className="text-border hidden sm:inline">|</span>
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" /> {new Date().toLocaleDateString('pt-BR')} (Hoje)
-                </span>
-              </div>
-              <Badge variant="outline" className="text-[10px] text-primary bg-primary/5 font-semibold">
-                Operador Oficial
-              </Badge>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-primary" />
+                1. Concessionária & Vendedor Responsável
+              </h4>
+              {isRestrictedSeller && (
+                <Badge variant="outline" className="text-[10px] text-primary bg-primary/5 font-semibold">
+                  {sellerStore.storeName}
+                </Badge>
+              )}
             </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-primary" />
-                  1. Concessionária & Operador
-                </h4>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-xs font-semibold">Concessionária</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs font-semibold">Concessionária</Label>
+                {isRestrictedSeller ? (
+                  <div className="h-10 px-3 rounded-md border bg-muted/40 flex items-center gap-2 text-xs font-bold mt-1 text-foreground">
+                    <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="truncate">{sellerStore.storeName}</span>
+                  </div>
+                ) : (
                   <Select value={storeId} onValueChange={setStoreId}>
                     <SelectTrigger className="h-10 text-xs mt-1">
                       <SelectValue placeholder="Selecione a loja" />
@@ -922,67 +999,67 @@ export function CreateSaleModal({
                         ))}
                     </SelectContent>
                   </Select>
-                </div>
+                )}
+              </div>
 
-                <div>
-                  <Label className="text-xs font-semibold">Vendedor</Label>
-                  <Select
-                    value={sellerName}
-                    onValueChange={(val) => {
-                      setSellerName(val);
-                      const clean = val.toLowerCase().trim();
-                      if (
-                        clean.includes('mariana') ||
-                        clean.includes('sabrina') ||
-                        clean.includes('halana') ||
-                        clean.includes('natan')
-                      ) {
-                        setStoreId('store-montesclaros');
-                      } else if (
-                        clean.includes('lilian') ||
-                        clean.includes('geibriel') ||
-                        clean.includes('carlos')
-                      ) {
-                        setStoreId('store-divinopolis');
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-10 text-xs mt-1">
-                      <SelectValue placeholder="Selecione o vendedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRESET_SELLERS.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="OUTRO">Outro Vendedor...</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {sellerName === 'OUTRO' && (
-                    <Input
-                      placeholder="Nome do vendedor"
-                      value={customSeller}
-                      onChange={(e) => setCustomSeller(e.target.value)}
-                      className="h-9 text-xs mt-1.5"
-                      required
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <Label className="text-xs font-semibold">Data da Venda</Label>
+              <div>
+                <Label className="text-xs font-semibold">Vendedor Responsável</Label>
+                <Select
+                  value={sellerName}
+                  onValueChange={(val) => {
+                    setSellerName(val);
+                    const clean = val.toLowerCase().trim();
+                    if (
+                      clean.includes('mariana') ||
+                      clean.includes('sabrina') ||
+                      clean.includes('halana') ||
+                      clean.includes('natan')
+                    ) {
+                      setStoreId(STORE_MONTESCLAROS_UUID);
+                    } else if (
+                      clean.includes('lilian') ||
+                      clean.includes('geibriel') ||
+                      clean.includes('carlos') ||
+                      clean.includes('daniel')
+                    ) {
+                      setStoreId(STORE_DIVINOPOLIS_UUID);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-xs mt-1 font-medium">
+                    <SelectValue placeholder="Selecione o vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSellers.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="OUTRO">Outro Vendedor...</SelectItem>
+                  </SelectContent>
+                </Select>
+                {sellerName === 'OUTRO' && (
                   <Input
-                    type="date"
-                    value={saleDate}
-                    onChange={(e) => setSaleDate(e.target.value)}
-                    className="h-10 text-xs mt-1"
+                    placeholder="Nome do vendedor"
+                    value={customSeller}
+                    onChange={(e) => setCustomSeller(e.target.value)}
+                    className="h-9 text-xs mt-1.5"
                     required
                   />
-                </div>
+                )}
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Data da Venda</Label>
+                <Input
+                  type="date"
+                  value={saleDate}
+                  onChange={(e) => setSaleDate(e.target.value)}
+                  className="h-10 text-xs mt-1"
+                />
               </div>
             </div>
-          )}
+          </div>
 
           {/* SEÇÃO 2: VEÍCULO */}
           <div className="space-y-3 pt-2 border-t">

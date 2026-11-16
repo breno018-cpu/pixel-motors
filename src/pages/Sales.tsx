@@ -304,12 +304,23 @@ export default function Sales() {
   // Consolidação de vendas reais (Planilha Mensal + Contratos Cadastrados)
   const allSales = useMemo(() => {
     const fromContracts = (contracts || []).map((c) => {
+      const ext = (c.external_data || {}) as any;
+      const opFullName =
+        c.operator?.full_name ||
+        ext.seller_name ||
+        ext.operator_name ||
+        ext.vendedor ||
+        (c as any).vendedor ||
+        (c as any).seller_name;
       const resolved = resolveSaleStore(
         {
           store_id: c.store_id,
           store: c.store,
-          vendedor: c.operator?.full_name,
-          observacoes: c.notes,
+          vendedor: opFullName,
+          operator: opFullName ? { full_name: opFullName } : null,
+          observacoes: c.notes || ext.observacoes,
+          regiao: ext.regiao || ext.buyer_city || c.buyer_address,
+          external_data: ext,
         },
         employees
       );
@@ -320,6 +331,7 @@ export default function Sales() {
           id: resolved.storeId,
           name: resolved.storeName,
         },
+        operator: c.operator || (opFullName ? { full_name: opFullName } : null),
       };
     });
     const contractIds = new Set(fromContracts.map((c) => c.id));
@@ -948,7 +960,7 @@ export default function Sales() {
                     <div className="flex items-center gap-1 text-muted-foreground truncate">
                       <span className="truncate">{sale.store?.name?.replace('Concessionária ', '') || 'Loja'}</span>
                       <span>•</span>
-                      <span className="truncate">{(sale as any).operator?.full_name || (sale as any).external_data?.seller_name || 'Vendedor'}</span>
+                      <span className="truncate">{(sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || 'Vendedor'}</span>
                       <span>•</span>
                       <span className="shrink-0">{formatDate(sale.created_at)}</span>
                     </div>
@@ -1043,7 +1055,7 @@ export default function Sales() {
                       <TableCell className="hidden text-xs xl:table-cell">{sale.store?.name || '-'}</TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <span className="text-xs text-muted-foreground">
-                          {(sale as any).operator?.full_name || '-'}
+                          {(sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || '-'}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right">

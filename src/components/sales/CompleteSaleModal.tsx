@@ -57,7 +57,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { maskCurrency, parseCurrency, maskCPFCNPJ, maskPhone, maskCEP } from '@/lib/masks';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { downloadContractPDF } from '@/lib/contractPdf';
-import { getStoreFromDatabase } from '@/lib/storeResolution';
+import { getStoreFromDatabase, STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID, STORE_MONTESCLAROS_MULTIMARCAS_UUID } from '@/lib/storeResolution';
 import { ChassisSearchInput } from '@/components/common/ChassisSearchInput';
 import { cn } from '@/lib/utils';
 import {
@@ -130,6 +130,7 @@ export function CompleteSaleModal({
   const [buyerState, setBuyerState] = useState('');
   const [buyerCep, setBuyerCep] = useState('');
   const [storeId, setStoreId] = useState('');
+  const [sellerName, setSellerName] = useState('');
 
   useEffect(() => {
     if (open && isRestrictedSeller && sellerStore?.storeId) {
@@ -221,6 +222,15 @@ export function CompleteSaleModal({
         setVehicleId(ps.vehicle_id || '');
 
         const ext = (ps.external_data || {}) as any;
+        const initialSeller =
+          ext?.seller_name ||
+          ext?.operator_name ||
+          ext?.vendedor ||
+          ps.operator?.full_name ||
+          ((ps as any).created_by && (ps as any).created_by.length > 20 ? '' : (ps as any).created_by) ||
+          (profile?.full_name && !profile.full_name.toLowerCase().startsWith('shineray') ? profile.full_name : '');
+        if (initialSeller) setSellerName(initialSeller);
+
         const v = ps.vehicle || vehicles.find((x) => x.id === ps.vehicle_id);
         if (v) {
           setVehicleModel(`${v.brand} ${v.model} ${v.year}`.trim());
@@ -599,6 +609,50 @@ export function CompleteSaleModal({
       }
 
       // Atualiza ou insere o contrato no Supabase com status 'concluido'
+      const isUuid = (val: any) =>
+        typeof val === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      const psTarget =
+        initialPreSale?.id === selectedPreSaleId
+          ? initialPreSale
+          : contracts.find((c) => c.id === selectedPreSaleId);
+      const extPs = (psTarget?.external_data || {}) as any;
+
+      const resolvedSeller =
+        sellerName ||
+        extPs.seller_name ||
+        extPs.operator_name ||
+        extPs.vendedor ||
+        psTarget?.operator?.full_name ||
+        (profile?.full_name && !profile.full_name.toLowerCase().startsWith('shineray') ? profile.full_name : 'Vendedor');
+
+      const isMoc =
+        storeId === 'store-montesclaros' ||
+        storeId === STORE_MONTESCLAROS_UUID ||
+        storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+        (storeId || '').toLowerCase().includes('montes') ||
+        (storeId || '').toLowerCase().includes('moc') ||
+        (selectedStoreData?.storeId || '').toLowerCase().includes('montes') ||
+        selectedStoreData?.storeId === STORE_MONTESCLAROS_UUID ||
+        selectedStoreData?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+        (selectedStoreData?.storeName || '').toLowerCase().includes('montes') ||
+        (sellerStore?.storeId || '').toLowerCase().includes('montes') ||
+        sellerStore?.storeId === STORE_MONTESCLAROS_UUID ||
+        sellerStore?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+        (buyerCity || '').toLowerCase().includes('montes') ||
+        resolvedSeller.toLowerCase().includes('mariana') ||
+        resolvedSeller.toLowerCase().includes('sabrina') ||
+        resolvedSeller.toLowerCase().includes('halana') ||
+        resolvedSeller.toLowerCase().includes('natan');
+
+      let effectiveStoreId = isUuid(targetStoreId)
+        ? targetStoreId
+        : (isUuid(selectedStoreData?.storeId) ? selectedStoreData.storeId : null);
+      if (!effectiveStoreId || isMoc) {
+        effectiveStoreId = isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID;
+      }
+
       const payload: any = {
         buyer_name: buyerName.trim().toUpperCase(),
         buyer_cpf: unmaskedCpf,
@@ -616,10 +670,17 @@ export function CompleteSaleModal({
         status: 'concluido', // Concluída oficialmente! Saiu de Pré-NF para Venda
         notes: notes || null,
         signed_at: new Date().toISOString(),
+        store_id: effectiveStoreId,
         external_data: {
+          ...extPs,
           nf_requested: true,
           completed_at: new Date().toISOString(),
           completed_by: profile?.full_name || 'Vendedor',
+          seller_name: resolvedSeller,
+          operator_name: resolvedSeller,
+          vendedor: resolvedSeller,
+          store_name: isMoc ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS' : 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS',
+          store_id: effectiveStoreId,
           chassi: vehicleChassis.trim().toUpperCase(),
           cor: vehicleColor,
           ano: vehicleYear,
@@ -645,35 +706,9 @@ export function CompleteSaleModal({
         },
       };
 
-      const isUuid = (val: any) =>
-        typeof val === 'string' &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-
-      const isMoc =
-        storeId === 'store-montesclaros' ||
-        storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-        (storeId || '').toLowerCase().includes('montes') ||
-        (selectedStoreData?.storeId || '').toLowerCase().includes('montes') ||
-        selectedStoreData?.storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-        (selectedStoreData?.storeName || '').toLowerCase().includes('montes') ||
-        (sellerStore?.storeId || '').toLowerCase().includes('montes') ||
-        sellerStore?.storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-        (buyerCity || '').toLowerCase().includes('montes') ||
-        (profile?.full_name || '').toLowerCase().includes('mariana') ||
-        (profile?.full_name || '').toLowerCase().includes('sabrina') ||
-        (profile?.full_name || '').toLowerCase().includes('halana') ||
-        (profile?.full_name || '').toLowerCase().includes('natan');
-
       if (templateId && isUuid(templateId)) {
         payload.template_id = templateId;
       }
-      let effectiveStoreId = isUuid(targetStoreId)
-        ? targetStoreId
-        : (isUuid(selectedStoreData?.storeId) ? selectedStoreData.storeId : null);
-      if (!effectiveStoreId) {
-        effectiveStoreId = isMoc ? 'e8254a81-d669-464b-9806-457ba25ce7f0' : 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
-      }
-      payload.store_id = effectiveStoreId;
 
       let finalVehicleId = vehicleId && isUuid(vehicleId) ? vehicleId : null;
 
