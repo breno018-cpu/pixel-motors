@@ -4,6 +4,7 @@ import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { INITIAL_USER_BACKUP_CSV, parseBackupCsv, SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { resolveSaleStore } from '@/lib/storeResolution';
 import { resolveSellerDisplayName, isValidSellerName } from '@/lib/sellerSanitizer';
+import { fetchCloudSyncState, GLOBAL_SYNC_CONTRACT_NUMBER, initCloudSalesRealtime } from '@/lib/cloudSalesSync';
 import officialContractsSeed from '@/data/officialContractsSeed.json';
 
 export interface ContractVehicle {
@@ -220,6 +221,7 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
 }
 
 async function fetchConsolidatedContracts(): Promise<Contract[]> {
+  initCloudSalesRealtime();
   let dbContracts: Contract[] = [];
   try {
     await ensureSupabaseSession();
@@ -231,10 +233,16 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
         store:stores(id, name),
         reseller:resellers(id, full_name)
       `)
+      .neq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER)
       .order('created_at', { ascending: false });
 
     if (data && Array.isArray(data)) {
-      dbContracts = data as Contract[];
+      dbContracts = (data as Contract[]).filter(
+        (c) =>
+          c.contract_number !== GLOBAL_SYNC_CONTRACT_NUMBER &&
+          (c as any).contract_type !== 'system_state' &&
+          (c as any).external_data?.is_system_record !== true
+      );
     }
   } catch (err) {
     console.warn('Consulta ao Supabase contracts falhou, usando base consolidada:', err);
@@ -270,7 +278,13 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
     };
   });
 
-  const sheetRows = getMonthlySheetRows();
+  // Carrega estado de sincronização em nuvem (exclusões, cancelamentos e linhas da planilha oficial)
+  const cloudSync = await fetchCloudSyncState();
+
+  const sheetRows = cloudSync.sheet_rows && cloudSync.sheet_rows.length > 0
+    ? cloudSync.sheet_rows
+    : getMonthlySheetRows();
+
   const seenIds = new Set(hydratedDb.map((c) => c.id));
 
   const fromSheet = sheetRows
@@ -281,9 +295,10 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
   const typedSeed = (officialContractsSeed as unknown as Contract[]) || [];
   const fromSeed = typedSeed.filter((sc) => !seenIds.has(sc.id));
 
-  // Aplica filtro de exclusões e cancelamentos locais/persistentes
-  const deletedIds = new Set<string>();
-  const cancelledIds = new Set<string>();
+  // Aplica filtro de exclusões e cancelamentos sincronizados em nuvem + local
+  const deletedIds = new Set<string>(cloudSync.deleted_ids || []);
+  const cancelledIds = new Set<string>(cloudSync.cancelled_ids || []);
+
   try {
     const rawDel = localStorage.getItem('dealflow_deleted_contract_ids');
     if (rawDel) {
@@ -297,9 +312,13 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
     }
   } catch {}
 
-  const isDeleted = (c: Contract) =>
-    deletedIds.has(c.id) ||
-    (c.contract_number ? deletedIds.has(c.contract_number) : false);
+  const isDeleted = (c: Contract) => {
+    if (deletedIds.has(c.id)) return true;
+    if (c.contract_number && deletedIds.has(c.contract_number)) return true;
+    const cleanQt = (c.contract_number || '').replace(/^[A-Z]+-/, '').trim();
+    if (cleanQt && (deletedIds.has(cleanQt) || deletedIds.has(cleanQt.padStart(2, '0')))) return true;
+    return false;
+  };
 
   const applyStatusOverrides = (c: Contract): Contract => {
     if (cancelledIds.has(c.id) || (c.contract_number && cancelledIds.has(c.contract_number))) {

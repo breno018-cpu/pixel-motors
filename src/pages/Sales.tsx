@@ -389,9 +389,13 @@ export default function Sales() {
       }
     } catch {}
 
-    const isDeleted = (c: any) =>
-      deletedIds.has(c.id) ||
-      (c.contract_number ? deletedIds.has(c.contract_number) : false);
+    const isDeleted = (c: any) => {
+      if (deletedIds.has(c.id)) return true;
+      if (c.contract_number && deletedIds.has(c.contract_number)) return true;
+      const cleanQt = (c.contract_number || '').replace(/^[A-Z]+-/, '').trim();
+      if (cleanQt && (deletedIds.has(cleanQt) || deletedIds.has(cleanQt.padStart(2, '0')))) return true;
+      return false;
+    };
 
     const applyStatusOverrides = (c: any) => {
       if (cancelledIds.has(c.id) || (c.contract_number && cancelledIds.has(c.contract_number))) {

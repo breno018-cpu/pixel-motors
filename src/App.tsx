@@ -34,8 +34,15 @@ import { ConcurrentSessionModal } from "@/components/security/ConcurrentSessionM
 import { ConfirmationProvider } from "@/contexts/ConfirmationContext";
 import { DateFilterProvider } from "@/contexts/DateFilterContext";
 import { queryClient } from "@/lib/queryClient";
+import { useEffect } from "react";
+import { initCloudSalesRealtime } from "@/lib/cloudSalesSync";
 
-const App = () => (
+const App = () => {
+  useEffect(() => {
+    initCloudSalesRealtime();
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <AuthProvider>
@@ -263,6 +270,7 @@ const App = () => (
       </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

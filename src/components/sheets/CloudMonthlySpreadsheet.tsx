@@ -103,6 +103,11 @@ import {
   formatCurrencyBRL,
 } from '@/lib/dealershipSheetParser';
 import {
+  cloudSaveSheetRows,
+  fetchCloudSyncState,
+  cloudDeleteSale,
+} from '@/lib/cloudSalesSync';
+import {
   ReceiptAttachmentManager,
   getSaleReceipts,
   addReceiptFileToSale,
@@ -350,16 +355,40 @@ export function CloudMonthlySpreadsheet({
   const [commentRow, setCommentRow] = useState<SheetRowV9 | null>(null);
   const [commentInput, setCommentInput] = useState('');
 
-  // Consulta das Linhas na Nuvem + Cache Local v9.0
+  // Consulta das Linhas na Nuvem (Supabase DEALFLOW_GLOBAL_SYNC) + Cache Local v9.0
   const { data: sheetRows = [], isLoading } = useQuery<SheetRowV9[]>({
     queryKey: ['cloud-monthly-sheet-v9'],
     queryFn: async () => {
+      // 1. Prioriza a base oficial compartilhada em nuvem no Supabase
+      try {
+        const cloudState = await fetchCloudSyncState();
+        if (cloudState.sheet_rows && cloudState.sheet_rows.length > 0) {
+          const sanitized = cloudState.sheet_rows.map((r: SheetRowV9) => {
+            const isMoc = isMontesClarosStore({
+              store_id: r.store_id,
+              store_name: r.store_name,
+              vendedor: r.vendedor,
+              regiao: r.regiao,
+              observacoes: r.observacoes,
+            });
+            return {
+              ...r,
+              store_id: r.store_id || (isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID),
+              store_name: r.store_name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
+            };
+          });
+          return sanitized;
+        }
+      } catch (e) {
+        console.warn('Erro ao ler linhas da planilha na nuvem:', e);
+      }
+
+      // 2. Cache local do navegador
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Garante que linhas existentes sem store_id tenham a concessionária canônica calculada
             const sanitized = parsed.map((r: SheetRowV9) => {
               const isMoc = isMontesClarosStore({
                 store_id: r.store_id,
@@ -381,10 +410,10 @@ export function CloudMonthlySpreadsheet({
         console.warn('Erro ao ler cache de planilhas v9:', e);
       }
 
-      // Inicializa com as linhas da base oficial (incluindo Montes Claros e Divinópolis)
+      // 3. Inicializa com as linhas da base oficial (incluindo Montes Claros e Divinópolis)
       const seeded = convertContractsSeedToSheetRows();
       if (seeded && seeded.length > 0) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
+        cloudSaveSheetRows(seeded);
         return seeded;
       }
 
@@ -393,13 +422,13 @@ export function CloudMonthlySpreadsheet({
       localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
       return rows;
     },
-    staleTime: 30_000,
+    staleTime: 15_000,
   });
 
-  // Mutação para Salvar Atualizações e Sincronizar com Vendas / Dashboard
+  // Mutação para Salvar Atualizações e Sincronizar em Nuvem com Todos os Usuários
   const saveRowsMutation = useMutation({
     mutationFn: async (updatedRows: SheetRowV9[]) => {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedRows));
+      await cloudSaveSheetRows(updatedRows);
       return updatedRows;
     },
     onSuccess: (updated) => {
@@ -893,11 +922,12 @@ export function CloudMonthlySpreadsheet({
     });
   };
 
-  // Excluir Linha
+  // Excluir Linha Globalmente
   const handleDeleteRow = async (id: string) => {
+    const targetRow = sheetRows.find((r) => r.id === id);
     const ok = await confirm({
       title: 'Excluir Lançamento da Planilha?',
-      description: 'Deseja realmente remover esta linha de venda da planilha mensal?',
+      description: `Deseja realmente remover a venda ${targetRow?.cliente ? `de ${targetRow.cliente}` : ''} (${targetRow?.qt || id})? Esta exclusão será refletida em todos os computadores.`,
       confirmText: 'Excluir Linha',
       cancelText: 'Cancelar',
       variant: 'destructive',
@@ -905,8 +935,17 @@ export function CloudMonthlySpreadsheet({
     if (!ok) return;
 
     const updated = sheetRows.filter((r) => r.id !== id);
-    saveRowsMutation.mutate(updated);
-    toast({ title: 'Lançamento removido' });
+    if (targetRow) {
+      await cloudDeleteSale({
+        id: targetRow.id,
+        contract_number: targetRow.qt,
+        chassis: targetRow.chassi,
+        buyer_name: targetRow.cliente,
+      });
+    } else {
+      saveRowsMutation.mutate(updated);
+    }
+    toast({ title: 'Lançamento removido globalmente' });
   };
 
   // Meses Disponíveis

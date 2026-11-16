@@ -91,6 +91,28 @@ export function useConsolidatedSales() {
   const consolidatedSales = useMemo(() => {
     const salesMap = new Map<string, ConsolidatedSaleItem>();
 
+    const deletedIds = new Set<string>();
+    const cancelledIds = new Set<string>();
+    try {
+      const rawDel = localStorage.getItem('dealflow_deleted_contract_ids');
+      if (rawDel) {
+        const parsed = JSON.parse(rawDel);
+        if (Array.isArray(parsed)) parsed.forEach((x: string) => deletedIds.add(String(x)));
+      }
+      const rawCanc = localStorage.getItem('dealflow_cancelled_contract_ids');
+      if (rawCanc) {
+        const parsed = JSON.parse(rawCanc);
+        if (Array.isArray(parsed)) parsed.forEach((x: string) => cancelledIds.add(String(x)));
+      }
+    } catch {}
+
+    const isDeletedItem = (id?: string, contractNumber?: string, qt?: string) => {
+      if (id && deletedIds.has(id)) return true;
+      if (contractNumber && deletedIds.has(contractNumber)) return true;
+      if (qt && (deletedIds.has(qt) || deletedIds.has(String(qt).padStart(2, '0')))) return true;
+      return false;
+    };
+
     const makeDedupeKey = (item: {
       id?: string;
       chassi?: string;
@@ -124,6 +146,8 @@ export function useConsolidatedSales() {
 
     // 1. Processa vendas da planilha oficial v9.0
     monthlySheetRows.forEach((r) => {
+      if (isDeletedItem(r.id, undefined, r.qt)) return;
+
       const parts = r.data.split('/');
       let dateObj = new Date();
       if (parts.length === 3) {
@@ -141,6 +165,8 @@ export function useConsolidatedSales() {
         },
         employees
       );
+
+      const isCanc = cancelledIds.has(r.id) || (r.qt && (cancelledIds.has(r.qt) || cancelledIds.has(String(r.qt).padStart(2, '0'))));
 
       const saleItem: ConsolidatedSaleItem = {
         id: r.id,
@@ -165,7 +191,7 @@ export function useConsolidatedSales() {
         boleto: r.boleto || 0,
         custos: r.custos || 0,
         lead_mapping: r.lead_mapping || 'Balcão',
-        is_permitted: Boolean(r.is_permitted),
+        is_permitted: isCanc ? false : Boolean(r.is_permitted),
         vehicle_type: 'moto',
       };
 
@@ -175,6 +201,7 @@ export function useConsolidatedSales() {
 
     // 2. Processa contratos gerados na plataforma
     (contracts || []).forEach((c) => {
+      if (isDeletedItem(c.id, c.contract_number)) return;
       if (c.id && (c.id.startsWith('sheet-') || c.id.startsWith('row-v9-'))) {
         return;
       }

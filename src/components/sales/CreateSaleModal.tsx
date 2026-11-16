@@ -55,6 +55,7 @@ import { isUserSellerRestricted, resolveUserSellerStore } from '@/lib/salesScope
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { getMonthlySheetRows } from '@/hooks/useContracts';
+import { cloudSaveSheetRows } from '@/lib/cloudSalesSync';
 import { cn } from '@/lib/utils';
 import { AddressFormFields } from './AddressFormFields';
 import { type AddressData, INITIAL_ADDRESS } from '@/lib/cepService';
@@ -616,9 +617,9 @@ export function CreateSaleModal({
         },
       };
 
-      // Adiciona na planilha local imediatamente
+      // Adiciona na planilha em nuvem (e localmente) imediatamente
       const updatedRows = [...currentRows, newSheetRow];
-      localStorage.setItem('dealflow_cloud_monthly_sheet_v9', JSON.stringify(updatedRows));
+      await cloudSaveSheetRows(updatedRows);
 
       // Sincroniza o período ativo do sistema para o mês da venda recém-criada
       try {
