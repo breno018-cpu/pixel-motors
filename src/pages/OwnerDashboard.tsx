@@ -569,67 +569,6 @@ export default function OwnerDashboard() {
         }
       />
 
-      {/* BARRA DE FILTROS GLOBAIS */}
-      <Card className="rounded-2xl border shadow-xs bg-card">
-        <CardContent className="p-3.5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={storeFilter} onValueChange={setStoreFilter}>
-                <SelectTrigger className="h-8 text-xs w-44 rounded-xl">
-                  <SelectValue placeholder="Concessionária" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as Concessionárias</SelectItem>
-                  <SelectItem value="montesclaros">Montes Claros (MOC)</SelectItem>
-                  <SelectItem value="divinopolis">Divinópolis (DIV)</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={periodPreset} onValueChange={setPeriodPreset}>
-                <SelectTrigger className="h-8 text-xs w-40 rounded-xl">
-                  <SelectValue placeholder="Período" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="this_month">Mês Atual (Novembro)</SelectItem>
-                  <SelectItem value="last_month">Mês Anterior (Outubro)</SelectItem>
-                  <SelectItem value="7days">Últimos 7 dias</SelectItem>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="custom">Data Personalizada</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {periodPreset === 'custom' && (
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="date"
-                    className="h-8 text-xs w-32 rounded-xl"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                  <span className="text-xs text-muted-foreground">até</span>
-                  <Input
-                    type="date"
-                    className="h-8 text-xs w-32 rounded-xl"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="relative w-64">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="h-8 pl-8 text-xs rounded-xl"
-                placeholder="Buscar cliente, chassi, vendedor..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* 2. NAVEGAÇÃO ENTRE AS ABAS ESTRATÉGICAS */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-6">
         <TabsList className="bg-muted/70 p-1.5 rounded-2xl w-full grid grid-cols-2 md:grid-cols-6 max-w-6xl mx-auto shadow-inner">
@@ -686,6 +625,61 @@ export default function OwnerDashboard() {
         {/* ABA 1: CAIXA & RESULTADOS FINANCEIROS                               */}
         {/* =================================================================== */}
         <TabsContent value="caixa" className="space-y-6 mt-0">
+          {/* Barra de Filtros Contextual da Aba Caixa & Margens */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-card border shadow-xs">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-primary" />
+              <div>
+                <h4 className="text-xs font-bold text-foreground">Fluxo de Caixa & Margens de Venda</h4>
+                <p className="text-[11px] text-muted-foreground">Apuração de faturamento, liquidações bancárias e lucro bruto.</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={storeFilter} onValueChange={setStoreFilter}>
+                <SelectTrigger className="h-8 text-xs w-44 rounded-xl">
+                  <SelectValue placeholder="Concessionária" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Concessionárias</SelectItem>
+                  <SelectItem value="montesclaros">Montes Claros (MOC)</SelectItem>
+                  <SelectItem value="divinopolis">Divinópolis (DIV)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={periodPreset} onValueChange={setPeriodPreset}>
+                <SelectTrigger className="h-8 text-xs w-40 rounded-xl">
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="this_month">Mês Atual (Novembro)</SelectItem>
+                  <SelectItem value="last_month">Mês Anterior (Outubro)</SelectItem>
+                  <SelectItem value="7days">Últimos 7 dias</SelectItem>
+                  <SelectItem value="today">Hoje</SelectItem>
+                  <SelectItem value="custom">Data Personalizada</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {periodPreset === 'custom' && (
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="date"
+                    className="h-8 text-xs w-32 rounded-xl"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                  <span className="text-xs text-muted-foreground">até</span>
+                  <Input
+                    type="date"
+                    className="h-8 text-xs w-32 rounded-xl"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* 4 Cards de Liquidez e Caixa Real */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1: Faturamento Bruto */}
