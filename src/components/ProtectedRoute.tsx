@@ -20,6 +20,20 @@ export function ProtectedRoute({ children, requiredRole, allowedRoles, permissio
   const location = useLocation();
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const { needsAcceptance, isChecking, markAccepted } = useEulaAcceptance();
+  const [authTimedOut, setAuthTimedOut] = useState(false);
+
+  // Sempre reabrir o diálogo quando mustChangePassword mudar para true
+  useEffect(() => {
+    if (mustChangePassword) {
+      setPasswordDialogOpen(true);
+    }
+  }, [mustChangePassword]);
+
+  // Timeout de segurança: se isLoading demorar mais de 1.5s, libera a visualização
+  useEffect(() => {
+    const t = setTimeout(() => setAuthTimedOut(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   // Bloqueio de colaborador desligado/demitido com credenciais revogadas
   if (profile && profile.is_active === false) {
@@ -48,20 +62,6 @@ export function ProtectedRoute({ children, requiredRole, allowedRoles, permissio
       </div>
     );
   }
-
-  // Sempre reabrir o diálogo quando mustChangePassword mudar para true
-  useEffect(() => {
-    if (mustChangePassword) {
-      setPasswordDialogOpen(true);
-    }
-  }, [mustChangePassword]);
-
-  // Timeout de segurança: se isLoading demorar mais de 1.5s, libera a visualização
-  const [authTimedOut, setAuthTimedOut] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setAuthTimedOut(true), 1500);
-    return () => clearTimeout(t);
-  }, []);
 
   const needsInitialData = Boolean(user && !isDataReady && roles.length === 0);
 
