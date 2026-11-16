@@ -194,7 +194,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 w-full min-w-0 pb-12">
       <PageHeader
         title="Relatórios e Metas"
         description={`Desempenho comercial de ${MONTHS[month - 1]} de ${year}`}

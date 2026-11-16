@@ -156,11 +156,11 @@ export default function MotoInvoices() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+    <div className="space-y-6 pb-12">
       <PageHeader
         title="NF de Motos"
-        description="Solicitações de faturamento e notas fiscais de motos das lojas."
-        actions={<Button onClick={() => setOpen(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova NF de Moto</Button>}
+        description="Solicitações de faturamento e notas fiscais de motos das lojas de Montes Claros e Divinópolis."
+        actions={<Button size="sm" onClick={() => setOpen(true)} className="gap-1.5 font-semibold"><Plus className="w-3.5 h-3.5" /> Nova NF de Moto</Button>}
       />
 
       <Card>

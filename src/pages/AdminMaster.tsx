@@ -254,64 +254,54 @@ export default function AdminMaster() {
   const activeCount = users.filter((u) => u.is_active).length;
 
   return (
-    <div className="space-y-6">
-      {/* Top Header Executivo */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/80 pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <ShieldCheck className="w-6 h-6 stroke-[2.2px]" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                Painel Administrativo
-                <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
-                  Gestão Geral
-                </Badge>
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Gerencie usuários, permissões, lojas de Montes Claros e Divinópolis, e notas fiscais.
-              </p>
-            </div>
+    <div className="space-y-6 pb-12">
+      {/* 1. CABEÇALHO PADRONIZADO */}
+      <PageHeader
+        title="Painel Administrativo"
+        description="Gerencie usuários, permissões, lojas de Montes Claros e Divinópolis, e notas fiscais."
+        badge={
+          <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
+            Gestão Geral
+          </Badge>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                purgeFictitiousData();
+                toast({
+                  title: 'Dados fictícios removidos',
+                  description: 'Todos os veículos, vendas e contratos simulados foram apagados. A Folha de Pagamento foi preservada.',
+                });
+                setTimeout(() => window.location.reload(), 600);
+              }}
+              className="text-xs gap-1.5 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Limpar Dados Fictícios
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportOpen(true)}
+              className="text-xs gap-1.5"
+            >
+              <Database className="w-3.5 h-3.5 text-muted-foreground" />
+              Exportar Dados
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setUserModalOpen(true)}
+              className="text-xs gap-1.5 shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Novo Usuário / Acesso
+            </Button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              purgeFictitiousData();
-              toast({
-                title: 'Dados fictícios removidos',
-                description: 'Todos os veículos, vendas e contratos simulados foram apagados. A Folha de Pagamento foi preservada.',
-              });
-              setTimeout(() => window.location.reload(), 600);
-            }}
-            className="text-xs gap-1.5 text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Limpar Dados Fictícios
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setExportOpen(true)}
-            className="text-xs gap-1.5"
-          >
-            <Database className="w-3.5 h-3.5 text-muted-foreground" />
-            Exportar Dados
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setUserModalOpen(true)}
-            className="text-xs gap-1.5 shadow-sm"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Novo Usuário / Acesso
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Cards de Métricas e Comando Executivo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">

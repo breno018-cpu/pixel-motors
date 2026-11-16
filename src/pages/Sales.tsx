@@ -585,8 +585,8 @@ export default function Sales() {
   };
 
   return (
-    <div className="space-y-5 pb-8">
-      {/* CABEÇALHO */}
+    <div className="space-y-6 pb-12">
+      {/* CABEÇALHO PADRONIZADO */}
       <PageHeader
         title="Vendas"
         description="Vendas faturadas, pré-vendas e emissão de contratos das lojas de Montes Claros e Divinópolis."
@@ -596,7 +596,7 @@ export default function Sales() {
               <Button
                 size="sm"
                 onClick={() => setCreateSaleOpen(true)}
-                className="gap-2 h-9 px-4 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
+                className="gap-1.5 font-semibold"
               >
                 <Plus className="w-4 h-4" />
                 Cadastrar Venda

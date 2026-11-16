@@ -331,7 +331,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto w-full min-w-0 page-transition pb-12">
+    <div className="space-y-6 w-full min-w-0 pb-12">
       {/* Header */}
       <PageHeader
         title={isManagement ? "Configurações do Sistema" : "Meu Perfil & Configurações"}

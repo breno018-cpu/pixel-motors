@@ -43,18 +43,18 @@ export default function Inspections() {
               onClick={() => setApiConfigOpen(true)}
               size="sm"
               variant="outline"
-              className="h-10 gap-2 font-semibold border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400 shadow-sm"
+              className="gap-1.5 font-medium border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
             >
-              <Key className="w-4 h-4 text-amber-500" />
+              <Key className="w-3.5 h-3.5 text-amber-500" />
               API DETRAN / SENATRAN
             </Button>
 
             <Button
               onClick={() => setNewDialogOpen(true)}
               size="sm"
-              className="h-10 gap-2 font-bold shadow-md shadow-primary/25 bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="gap-1.5 font-semibold"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               Nova Vistoria (CRLV-e)
             </Button>
           </div>

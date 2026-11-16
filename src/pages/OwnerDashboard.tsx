@@ -57,6 +57,7 @@ import { useStores } from '@/hooks/useStores';
 import { useEmployees } from '@/hooks/useEmployees';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { exportToXLSX } from '@/lib/export';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { GeographicSalesRadiusMap } from '@/components/dashboard/GeographicSalesRadiusMap';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -527,72 +528,65 @@ export default function OwnerDashboard() {
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
-      {/* =================================================================== */}
-      {/* 1. CABEÇALHO EXECUTIVO MASTER                                      */}
-      {/* =================================================================== */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white p-6 rounded-3xl shadow-xl border border-slate-700/50">
-        <div className="space-y-2">
+      {/* 1. CABEÇALHO PADRONIZADO */}
+      <PageHeader
+        title="Painel do Dono"
+        description="Acompanhe o faturamento geral, compare o desempenho das lojas de Montes Claros e Divinópolis, veja resultados por vendedor e simule metas."
+        badge={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              <Crown className="w-3.5 h-3.5 text-amber-400" />
-              Acesso da Diretoria
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              <Crown className="w-3 h-3 text-amber-500" />
+              Diretoria
             </span>
-            <Badge variant="outline" className="text-slate-300 border-slate-600 font-mono text-[11px]">
+            <Badge variant="outline" className="text-muted-foreground border-border text-[10px]">
               Montes Claros &amp; Divinópolis
             </Badge>
           </div>
-          <h1 className="text-2xl lg:text-3xl font-display font-extrabold tracking-tight flex items-center gap-3">
-            <span>Painel do Dono</span>
-          </h1>
-          <p className="text-slate-300 text-xs lg:text-sm max-w-3xl leading-relaxed">
-            Acompanhe o faturamento geral, compare o desempenho das lojas de <strong className="text-white">Montes Claros</strong> e{' '}
-            <strong className="text-white">Divinópolis</strong>, veja os resultados por vendedor e simule metas.
-          </p>
-        </div>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refresh}
+              disabled={isRefreshing}
+              className="gap-1.5 font-medium"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
 
-        {/* Botões de Ação Executiva */}
-        <div className="flex flex-wrap items-center gap-2 self-stretch lg:self-auto shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={refresh}
-            disabled={isRefreshing}
-            className="bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl gap-2 font-medium"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>Atualizar</span>
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportXLSX}
+              className="gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-500" />
+              Exportar XLSX
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportXLSX}
-            className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-500/40 rounded-xl gap-2 font-medium"
-          >
-            <Download className="w-4 h-4 text-emerald-300" />
-            <span>Exportar XLSX</span>
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.print()}
+              className="gap-1.5 font-medium"
+            >
+              <Printer className="w-3.5 h-3.5 text-muted-foreground" />
+              Imprimir
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.print()}
-            className="bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl gap-2 font-medium"
-          >
-            <Printer className="w-4 h-4 text-slate-300" />
-            <span>Imprimir</span>
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={() => navigate('/')}
-            className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2 font-semibold shadow-md"
-          >
-            <Store className="w-4 h-4" />
-            <span>Voltar ao Dashboard Geral</span>
-          </Button>
-        </div>
-      </div>
+            <Button
+              size="sm"
+              onClick={() => navigate('/')}
+              className="gap-1.5 font-semibold"
+            >
+              <Store className="w-3.5 h-3.5" />
+              Painel Geral
+            </Button>
+          </div>
+        }
+      />
 
       {/* =================================================================== */}
       {/* 2. BARRA DE FILTROS GLOBAIS ("O que ele quiser")                   */}

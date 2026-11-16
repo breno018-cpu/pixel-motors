@@ -184,14 +184,14 @@ export function MainLayout({ children }: MainLayoutProps) {
       </header>
       
       <main className="mt-14 flex-1 p-3 sm:p-5 lg:p-6 pb-20 md:pb-6 min-w-0 w-full">
-        <div className="w-full min-w-0 animate-fade-in">
+        <div className="w-full max-w-[1600px] mx-auto min-w-0 animate-fade-in">
           {children}
         </div>
       </main>
       
       {/* Footer */}
       <footer className="py-3 px-4 sm:px-6 pb-20 md:pb-3 border-t border-border/70 bg-background/50 w-full">
-        <div className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground/70 gap-2">
+        <div className="w-full max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground/70 gap-2">
           <p>
             <span className="font-extrabold text-foreground/90 tracking-wide font-display">SHINERAY MOTOS</span> • Montes Claros &amp; Divinópolis
           </p>

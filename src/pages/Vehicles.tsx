@@ -602,15 +602,15 @@ export default function Vehicles() {
         title="Estoque de Motos"
         description="Motos disponíveis nas lojas de Montes Claros e Divinópolis."
         actions={
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportCsv}
               disabled={filteredVehicles.length === 0}
-              className="h-8 sm:h-9 text-xs"
+              className="gap-1.5 font-medium"
             >
-              <Download className="mr-1.5 h-3.5 w-3.5" />
+              <Download className="h-3.5 w-3.5" />
               Exportar
             </Button>
             {canRegisterVehicles && (
@@ -624,13 +624,13 @@ export default function Vehicles() {
                     setTransferType('loja_para_loja');
                     setTransferOpen(true);
                   }}
-                  className="h-8 sm:h-9 text-xs"
+                  className="gap-1.5 font-medium"
                 >
-                  <ArrowLeftRight className="mr-1.5 h-3.5 w-3.5" />
+                  <ArrowLeftRight className="h-3.5 w-3.5" />
                   Transferir
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)} className="h-8 sm:h-9 text-xs">
-                  <ScanLine className="mr-1.5 h-3.5 w-3.5" />
+                <Button variant="outline" size="sm" onClick={() => setScannerOpen(true)} className="gap-1.5 font-medium">
+                  <ScanLine className="h-3.5 w-3.5" />
                   Bipar Chassi
                 </Button>
                 <Button 
@@ -638,7 +638,7 @@ export default function Vehicles() {
                   size="sm" 
                   onClick={() => handleTabChange('laudos')} 
                   className={cn(
-                    "h-8 sm:h-9 gap-1.5 text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-bold",
+                    "gap-1.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-medium",
                     tab === 'laudos' && "bg-emerald-500/15 border-emerald-500/60 ring-2 ring-emerald-500/20"
                   )}
                   title="Laudos e vistorias das motos"
@@ -650,7 +650,7 @@ export default function Vehicles() {
                   variant="outline" 
                   size="sm" 
                   onClick={() => setBatchOpen(true)} 
-                  className="h-8 sm:h-9 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
+                  className="gap-1.5 border-primary/30 text-primary hover:bg-primary/5 font-medium"
                   title="Cadastrar várias motos colando a lista de chassis"
                 >
                   <Boxes className="h-3.5 w-3.5" />
@@ -660,18 +660,18 @@ export default function Vehicles() {
                   size="sm" 
                   onClick={() => handleTabChange('entrada')} 
                   className={cn(
-                    "h-8 sm:h-9 gap-1.5 text-xs font-semibold shadow-xs",
+                    "gap-1.5 font-semibold",
                     tab === 'entrada'
                       ? "bg-red-700 text-white ring-2 ring-red-500/30"
-                      : "bg-red-600 hover:bg-red-700 text-white"
+                      : "bg-primary hover:bg-primary/90 text-primary-foreground"
                   )}
                   title="Recebimento de caminhão com motos novas"
                 >
                   <Truck className="h-3.5 w-3.5" />
                   Recebimento
                 </Button>
-                <Button size="sm" onClick={() => setFormOpen(true)} className="h-8 sm:h-9 text-xs gap-1 font-bold">
-                  <Plus className="mr-1 h-3.5 w-3.5" />
+                <Button size="sm" onClick={() => setFormOpen(true)} className="gap-1.5 font-semibold">
+                  <Plus className="h-3.5 w-3.5" />
                   Nova Moto
                 </Button>
               </>

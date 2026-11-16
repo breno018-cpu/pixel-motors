@@ -132,13 +132,13 @@ export default function Financing() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
+    <div className="space-y-6 pb-12">
       <PageHeader
         title="Financiamentos"
-        description="Simulações e cálculo de parcelas de financiamento para clientes das lojas."
+        description="Simulações e cálculo de parcelas de financiamento para clientes das lojas de Montes Claros e Divinópolis."
         actions={
-          <Button onClick={() => setSimOpen(true)} className="gap-2">
-            <Calculator className="w-4 h-4" /> Nova Simulação
+          <Button size="sm" onClick={() => setSimOpen(true)} className="gap-1.5 font-semibold">
+            <Calculator className="w-3.5 h-3.5" /> Nova Simulação
           </Button>
         }
       />

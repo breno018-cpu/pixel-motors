@@ -186,15 +186,17 @@ export default function Contracts() {
   const totalCount = templates?.length || 0;
 
   return (
-    <div className="space-y-5 pb-8">
+    <div className="space-y-6 pb-12">
       {/* Header */}
       <PageHeader
         title="Modelos de Contratos"
-        description="Modelos de contratos de venda, termos de retirada e recibos para as lojas."
-        actions={<Button onClick={handleNew}>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Modelo
-        </Button>}
+        description="Modelos de contratos de venda, termos de retirada e recibos para as lojas de Montes Claros e Divinópolis."
+        actions={
+          <Button size="sm" onClick={handleNew} className="gap-1.5 font-semibold">
+            <Plus className="w-3.5 h-3.5" />
+            Novo Modelo
+          </Button>
+        }
       />
 
       {/* Type tiles (clickable filters) */}

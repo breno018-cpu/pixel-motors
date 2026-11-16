@@ -175,13 +175,13 @@ export default function Consignments() {
   };
 
   return (
-    <div className="space-y-5 pb-8">
+    <div className="space-y-6 pb-12">
       <PageHeader
         title="Consignações"
-        description="Motos consignadas com revendedores e parceiros das lojas."
+        description="Motos consignadas com revendedores e parceiros das lojas de Montes Claros e Divinópolis."
         actions={
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
+          <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5 font-semibold">
+            <Plus className="w-3.5 h-3.5" />
             Nova Consignação
           </Button>
         }

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCatalog } from "@/hooks/useCatalog";
 import { CatalogProduct, CatalogPromo, CatalogSyncAction, CatalogData } from "@/types/catalog";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -1364,131 +1365,79 @@ export default function CatalogControl() {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* 1. CABEÇALHO COM AÇÕES GLOBAIS */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <Store className="w-6 h-6 text-primary" />
-              Catálogo de Motos
-            </h1>
+      {/* 1. CABEÇALHO PADRONIZADO */}
+      <PageHeader
+        title="Catálogo de Motos"
+        description="Gerencie os modelos exibidos no catálogo, estoque disponível, preços, parcelas e promoções."
+        badge={
+          <Badge variant="secondary" className="text-xs font-mono">
+            {products.length} Modelos
+          </Badge>
+        }
+        actions={
+          <div className="flex items-center flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isLoading || isRefetching}
+              className="gap-1.5 font-medium"
+              title="Recarregar dados do catálogo"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? "animate-spin" : ""}`} />
+              Recarregar
+            </Button>
 
-            {/* Contagem de Modelos Cadastrados */}
-            <div className="flex items-center gap-1.5 ml-2">
-              <Badge variant="secondary" className="text-xs font-mono">
-                {products.length} Modelos
-              </Badge>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReorderDialogOpen(true)}
+              className="gap-1.5 font-medium"
+              title="Reordenar modelos por Drag-and-Drop ou posição numérica"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 text-primary" />
+              Reordenar
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHeroDialogOpen(true)}
+              className="gap-1.5 font-medium"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              Destaques ({heroCount})
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkSyncRealStock}
+              disabled={isBulkSyncingStock}
+              className="gap-1.5 font-medium border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+              title="Sincronizar em 1 clique o estoque do catálogo com as motos físicas no pátio"
+            >
+              <Boxes className={`w-3.5 h-3.5 ${isBulkSyncingStock ? "animate-spin" : ""}`} />
+              Sincronizar Pátio
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfigOpen(true)}
+              className="gap-1.5 font-medium"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Taxas &amp; Loja
+            </Button>
+
+            <Button size="sm" onClick={handleNewProduct} className="gap-1.5 font-semibold">
+              <Plus className="w-4 h-4" />
+              Novo Veículo
+            </Button>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gerencie os modelos exibidos no catálogo, estoque disponível, preços, parcelas e promoções.
-          </p>
-        </div>
-
-        {/* Botões de Ações Rápidas do Cabeçalho */}
-        <div className="flex items-center flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isLoading || isRefetching}
-            className="gap-1.5 font-medium"
-            title="Recarregar dados do catálogo"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
-            Recarregar Dados
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setReorderDialogOpen(true)}
-            className="gap-1.5 font-medium"
-            title="Reordenar modelos por Drag-and-Drop ou posição numérica"
-          >
-            <ArrowUpDown className="w-4 h-4 text-primary" />
-            Reordenar Motos
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setHeroDialogOpen(true)}
-            className="gap-1.5 font-medium"
-          >
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            Carrossel Topo ({heroCount})
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCampaignOpen(true)}
-            className="gap-1.5 font-medium"
-          >
-            <Megaphone className="w-4 h-4 text-primary" />
-            Campanha
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setChatDialogOpen(true)}
-            className="gap-1.5 font-medium"
-          >
-            <Bot className="w-4 h-4 text-blue-500" />
-            Testar IA
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBulkSyncRealStock}
-            disabled={isBulkSyncingStock}
-            className="gap-1.5 font-bold border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
-            title="Sincronizar em 1 clique o estoque do catálogo com as motos físicas no pátio"
-          >
-            <Boxes className={`w-4 h-4 ${isBulkSyncingStock ? "animate-spin" : ""}`} />
-            Sincronizar com Pátio Real
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setRestoreDialogOpen(true)}
-            className="gap-1.5 font-medium border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
-            title="Restaurar a Linha Oficial Shineray e Elétricas completa"
-          >
-            <RotateCcw className="w-4 h-4 text-amber-500" />
-            Restaurar Catálogo Oficial
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setImportDialogOpen(true)}
-            className="gap-1.5 font-medium"
-          >
-            <Download className="w-4 h-4 text-emerald-500" />
-            Importar Estoque
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setConfigOpen(true)}
-            className="gap-1.5 font-medium"
-          >
-            <Settings className="w-4 h-4" />
-            Taxas & Loja
-          </Button>
-
-          <Button size="sm" onClick={handleNewProduct} className="gap-1.5 font-semibold">
-            <Plus className="w-4 h-4" />
-            Novo Veículo
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* 2. SELETOR PRINCIPAL: PARTE NO CATÁLOGO (SHINERAY, ELÉTRICAS, OFF-ROAD, SEMI-NOVOS) */}
       <div className="p-3.5 rounded-2xl border bg-card/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">

@@ -263,7 +263,7 @@ export default function Spreadsheets() {
   const totalVolume = liveRows.reduce((acc, r) => acc + (r.valor || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 w-full min-w-0 pb-12">
       <PageHeader
         title="Planilha Mensal de Vendas"
         description="Planilha de vendas das lojas com exportação e sincronização para Excel Online."

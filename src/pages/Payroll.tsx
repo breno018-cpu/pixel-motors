@@ -742,7 +742,7 @@ export default function Payroll() {
   };
 
   return (
-    <div className="space-y-5 pb-8">
+    <div className="space-y-6 pb-12">
       <PayrollAlert />
 
       <PageHeader

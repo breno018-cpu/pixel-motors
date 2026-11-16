@@ -155,7 +155,7 @@ export default function Ads() {
   const storesWithoutHandle = activeStores.filter((s) => !s.instagram_handle);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 pb-12">
       <PageHeader
         title="Anúncios"
         description="Controle de campanhas de anúncios e origem dos clientes das lojas."

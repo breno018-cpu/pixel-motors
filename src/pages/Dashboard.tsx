@@ -35,6 +35,7 @@ import {
   Crown,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -1058,60 +1059,62 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6 w-full min-w-0 pb-12 animate-fade-in overflow-hidden">
-      {/* ======================================================== */}
-      {/* 1. CABEÇALHO COM FILTROS                                 */}
-      {/* ======================================================== */}
-      <div className="flex flex-col gap-4 border-b border-border/40 pb-5 min-w-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-foreground flex items-center gap-2 font-display truncate">
-                <Compass className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0" />
-                <span className="truncate">Painel de Vendas</span>
-              </h1>
-              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] uppercase font-black tracking-wider px-2.5 py-0.5 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
-                Shineray Motos
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1 max-w-3xl leading-relaxed">
-              Acompanhamento de vendas, faturamento e estoque das lojas de <strong className="text-foreground">Montes Claros</strong> e{' '}
-              <strong className="text-foreground">Divinópolis</strong>.
-            </p>
-          </div>
-        </div>
-
-        {/* Banner de Acesso ao Painel do Dono */}
-        {(isAdmin || hasElevatedAccess) && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white shadow-lg border border-slate-700/60 animate-fade-in">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-center shrink-0">
-                <Crown className="w-5 h-5 text-amber-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm tracking-tight text-white">Painel do Dono</h3>
-                  <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-300 border-amber-500/40">Diretoria</Badge>
-                </div>
-                <p className="text-xs text-slate-300">
-                  Resumo financeiro das duas lojas, comparativo de vendas, metas do mês e faturamento por cidade.
-                </p>
-              </div>
-            </div>
+    <div className="space-y-6 w-full min-w-0 pb-12 animate-fade-in">
+      {/* 1. CABEÇALHO PADRONIZADO */}
+      <PageHeader
+        title="Painel de Vendas"
+        description="Acompanhamento de vendas, faturamento e estoque das lojas de Montes Claros e Divinópolis."
+        badge={
+          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
+            Shineray Motos
+          </Badge>
+        }
+        actions={
+          <div className="flex items-center gap-2">
             <Button
+              variant="outline"
               size="sm"
-              onClick={() => navigate('/owner-dashboard')}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-xl shadow-xs shrink-0 gap-1.5"
+              onClick={handleExportExecutiveReport}
+              className="gap-1.5"
             >
-              <Crown className="w-3.5 h-3.5 text-slate-950" />
-              Ver Painel do Dono
-              <ArrowUpRight className="w-3.5 h-3.5 text-slate-950" />
+              <Download className="w-3.5 h-3.5 text-primary" />
+              Exportar XLSX
             </Button>
           </div>
-        )}
+        }
+      />
 
-        {/* BARRA DE FILTROS INTEGRADOS (Responsiva com flex wrap que não ultrapassa a tela) */}
+      {/* Banner de Acesso ao Painel do Dono */}
+      {(isAdmin || hasElevatedAccess) && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-card border border-amber-500/30 dark:border-amber-500/20 shadow-xs animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <Crown className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm tracking-tight text-foreground">Painel do Dono</h3>
+                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">Diretoria</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Resumo financeiro das duas lojas, comparativo de vendas, metas do mês e faturamento por cidade.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => navigate('/owner-dashboard')}
+            className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-xs shrink-0 gap-1.5"
+          >
+            <Crown className="w-3.5 h-3.5" />
+            Ver Painel do Dono
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      )}
+
+      {/* BARRA DE FILTROS INTEGRADOS (Responsiva com flex wrap que não ultrapassa a tela) */}
         <GlassView
           glassEffectStyle="regular"
           className="flex flex-wrap items-center gap-2 p-2 rounded-2xl border border-white/20 dark:border-white/10 shadow-sm w-full min-w-0"
@@ -1242,7 +1245,6 @@ export default function Dashboard() {
             )}
           </div>
         </GlassView>
-      </div>
 
       {/* ======================================================== */}
       {/* 2. RESUMO DE VENDAS E METAS                              */}

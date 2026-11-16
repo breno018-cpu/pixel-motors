@@ -282,7 +282,7 @@ export default function ExternalSales() {
   ) : <PanelCard><div className="py-14 text-center text-sm text-muted-foreground">Nenhum veículo disponível no momento.</div></PanelCard>;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 pb-12">
       <PageHeader
         title="Vendas Externas"
         description={hasElevatedAccess ? 'Vendas, desempenho e comissões organizados por área' : `Seu painel de vendas externas, ${profile?.full_name?.split(' ')[0] || ''}`}
@@ -291,11 +291,12 @@ export default function ExternalSales() {
             {periodPicker}
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setFreightDialogOpen(true)}
-              className="h-10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-semibold"
+              className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-medium"
             >
-              <Truck className="mr-2 h-4 w-4" />
-              Cotar Frete & Logística
+              <Truck className="mr-1.5 h-3.5 w-3.5" />
+              Cotar Frete &amp; Logística
             </Button>
             {canRegister && (
               <Button className="h-10" onClick={() => setSaleDialogOpen(true)}>

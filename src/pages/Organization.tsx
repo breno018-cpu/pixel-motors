@@ -51,7 +51,7 @@ export default function Organization() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6 pb-12">
       <PageHeader title="Organização" description="Lojas, equipe interna e parceiros externos em um só lugar." />
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-5">

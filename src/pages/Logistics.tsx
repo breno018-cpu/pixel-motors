@@ -31,6 +31,7 @@ import { DeliveryManageModal } from '@/components/logistics/DeliveryManageModal'
 import { AuthorizedEntryDeliveryTermModal } from '@/components/logistics/AuthorizedEntryDeliveryTermModal';
 import { TRANSPORT_LOGISTICS_METHODS } from '@/lib/transportLogistics';
 import { exportToXLSX } from '@/lib/export';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -167,39 +168,27 @@ export default function Logistics() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* 1. Header Oficial com Expo Glass */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <Truck className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black font-display tracking-tight text-foreground flex items-center gap-2">
-                Logística &amp; Entregas
-                <Badge variant="outline" className="text-xs border-primary/30 text-primary">
-                  Montes Claros &amp; Divinópolis
-                </Badge>
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Controle de fretes, entregas aos clientes e termos de recebimento.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
+      {/* 1. CABEÇALHO PADRONIZADO */}
+      <PageHeader
+        title="Logística & Entregas"
+        description="Controle de fretes, entregas aos clientes e termos de recebimento das lojas de Montes Claros e Divinópolis."
+        badge={
+          <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+            Montes Claros &amp; Divinópolis
+          </Badge>
+        }
+        actions={
           <Button
             size="sm"
-            variant="glass"
+            variant="outline"
             onClick={handleExportXLSX}
-            className="h-9 px-3 text-xs gap-1.5 font-bold rounded-xl"
+            className="gap-1.5 font-medium"
           >
             <Download className="w-3.5 h-3.5 text-primary" />
-            Exportar XLS
+            Exportar XLSX
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* 2. Resumo de Entregas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
