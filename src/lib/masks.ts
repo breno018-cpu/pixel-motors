@@ -58,7 +58,30 @@ export function maskCurrency(value: string | number | null | undefined): string 
       currency: 'BRL',
     }).format(value).replace(/\u00a0/g, ' ');
   }
-  const clean = String(value).replace(/\D/g, '');
+  const str = String(value).trim();
+  if (!str) return '';
+
+  // Se já possui formatação de moeda com vírgula ou símbolo R$
+  if (str.includes(',') || str.includes('R$')) {
+    const clean = str.replace(/\D/g, '');
+    if (!clean) return '';
+    const numericValue = parseInt(clean, 10) / 100;
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(numericValue).replace(/\u00a0/g, ' ');
+  }
+
+  // Se for número puro digitado ou colado sem vírgula (ex: "15000", "18990", "9490")
+  const parsed = parseFloat(str);
+  if (!isNaN(parsed)) {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(parsed).replace(/\u00a0/g, ' ');
+  }
+
+  const clean = str.replace(/\D/g, '');
   if (!clean) return '';
   const numericValue = parseInt(clean, 10) / 100;
   return new Intl.NumberFormat('pt-BR', {

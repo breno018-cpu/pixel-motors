@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Bike, Car, Building2, DollarSign, Wrench, CheckCircle2, 
-  Loader2, Sparkles, Lock, Hash, Calendar, Palette, ShieldCheck, RefreshCw, ScanLine, Zap, Boxes 
+  Loader2, Sparkles, Lock, Hash, Calendar, Palette, ShieldCheck, RefreshCw, ScanLine, Zap, Boxes,
+  ChevronDown, ChevronUp 
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { recognizeFromChassis, resolveModelYearFromVin, extractYearFromVIN } from '@/lib/chassisRecognition';
@@ -79,6 +80,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   } | null>(null);
   const [isDecodingChassis, setIsDecodingChassis] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const lastDecodedVinRef = useRef<string>('');
 
   // Reset COMPLETO de todas as abas e campos sempre que o modal abre
@@ -554,47 +556,34 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
           </div>
 
           {/* ========================================================================= */}
-          {/* CAMPOS DESBLOQUEADOS: CHASSI, ANO FABRICAÇÃO, ANO MODELO, COR, PLACA, VALOR */}
+          {/* PASSO 2: DADOS ESSENCIAIS DO VEÍCULO (SIMPLIFICADO EM 1 LINHA LIMPA)      */}
           {/* ========================================================================= */}
-          <div className="space-y-3.5 pt-1">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-primary" />
-                Campos Liberados para Preenchimento &amp; Edição
-              </h4>
-              <Badge variant="outline" className="text-[10px] text-primary border-primary/30">
-                DESBLOQUEADOS
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="space-y-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <Label className="text-xs font-semibold">Ano Fabricação *</Label>
+                <Label className="text-xs font-semibold flex items-center justify-between">
+                  <span>Modelo *</span>
+                  {patternLocked && (
+                    <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5" /> Padrão
+                    </span>
+                  )}
+                </Label>
                 <Input
-                  type="number"
-                  value={manufactureYear}
-                  onChange={(e) => setManufactureYear(e.target.value)}
-                  placeholder="Ex: 2026"
-                  className="h-10 text-xs mt-1 font-semibold"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs font-semibold">Ano Modelo *</Label>
-                <Input
-                  type="number"
-                  value={year}
-                  onChange={(e) => setYear(e.target.value)}
-                  placeholder="Ex: 2026"
-                  className="h-10 text-xs mt-1 font-semibold"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  disabled={patternLocked}
+                  placeholder="Ex: SHI 175 EFI..."
+                  className={`h-10 text-xs mt-1 font-bold uppercase ${
+                    patternLocked ? 'bg-muted/60 text-muted-foreground' : ''
+                  }`}
                   required
                 />
               </div>
 
               <div>
                 <Label className="text-xs font-semibold flex items-center gap-1">
-                  <Palette className="w-3 h-3 text-primary" />
+                  <Palette className="w-3.5 h-3.5 text-primary" />
                   Cor *
                 </Label>
                 <Select value={color} onValueChange={setColor}>
@@ -612,38 +601,113 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               </div>
 
               <div>
-                <Label className="text-xs font-semibold">Placa (Opcional)</Label>
+                <Label className="text-xs font-bold text-foreground flex items-center gap-1">
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                  Preço de Venda (R$) *
+                </Label>
                 <Input
-                  value={plate}
-                  onChange={(e) => setPlate(formatPlate(e.target.value))}
-                  placeholder="ABC-1D23"
-                  className="h-10 text-xs mt-1 font-mono uppercase"
-                  maxLength={8}
+                  type="text"
+                  inputMode="numeric"
+                  value={salePrice}
+                  onChange={(e) => setSalePrice(maskCurrency(e.target.value))}
+                  placeholder="R$ 0,00"
+                  className="h-10 text-xs mt-1 font-mono font-bold bg-primary/5 border-primary/40 text-foreground"
+                  required
                 />
               </div>
             </div>
 
-            {/* PRECIFICAÇÃO (VALOR DE VENDA E CUSTO) — DESBLOQUEADOS */}
-            <div className="p-4 rounded-xl border bg-muted/20 space-y-3">
-              <Label className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                Valores Comerciais (Desbloqueados)
-              </Label>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* BOTÃO EXPANSOR DE DETALHES COMPLEMENTARES */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="w-full flex items-center justify-between p-2.5 rounded-xl border border-dashed border-border hover:bg-muted/30 transition-colors text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
+                <span className="text-left">
+                  {showAdvanced
+                    ? 'Ocultar Detalhes Complementares'
+                    : 'Detalhes Complementares (Ano, Placa, Custo, Loja, Renavam, Garantia)'}
+                </span>
+              </span>
+              <span className="flex items-center gap-1 text-[11px] font-bold text-primary shrink-0">
+                {showAdvanced ? (
+                  <>Menos <ChevronUp className="w-3.5 h-3.5" /></>
+                ) : (
+                  <>Expandir ({year || '2026'}, {storeId ? 'Loja OK' : ''}) <ChevronDown className="w-3.5 h-3.5" /></>
+                )}
+              </span>
+            </button>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* DETALHES AVANÇADOS (EXPANSÍVEL - ZERO POLUIÇÃO VISUAL NA TELA PRINCIPAL)  */}
+          {/* ========================================================================= */}
+          {showAdvanced && (
+            <div className="space-y-4 pt-3 border-t animate-fade-in text-xs">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                  Ficha Técnica &amp; Dados Complementares
+                </h4>
+                {patternLocked && (
+                  <Badge variant="secondary" className="text-[10px] gap-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                    <Lock className="w-3 h-3" />
+                    PADRÃO MONTADORA
+                  </Badge>
+                )}
+              </div>
+
+              {/* Anos e Identificação */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <Label className="text-xs font-bold text-foreground">Preço de Venda / Tabela (R$) *</Label>
+                  <Label className="text-xs font-semibold">Ano Fabricação</Label>
                   <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={salePrice}
-                    onChange={(e) => setSalePrice(maskCurrency(e.target.value))}
-                    placeholder="R$ 0,00"
-                    className="h-10 text-xs mt-1 font-mono font-bold bg-primary/5 border-primary/40 text-foreground"
-                    required
+                    type="number"
+                    value={manufactureYear}
+                    onChange={(e) => setManufactureYear(e.target.value)}
+                    placeholder="Ex: 2026"
+                    className="h-9 text-xs mt-1 font-semibold"
                   />
                 </div>
 
+                <div>
+                  <Label className="text-xs font-semibold">Ano Modelo</Label>
+                  <Input
+                    type="number"
+                    value={year}
+                    onChange={(e) => setYear(e.target.value)}
+                    placeholder="Ex: 2026"
+                    className="h-9 text-xs mt-1 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold">Placa (Opcional)</Label>
+                  <Input
+                    value={plate}
+                    onChange={(e) => setPlate(formatPlate(e.target.value))}
+                    placeholder="ABC-1D23"
+                    className="h-9 text-xs mt-1 font-mono uppercase"
+                    maxLength={8}
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold">Renavam (Opcional)</Label>
+                  <Input
+                    value={renavam}
+                    onChange={(e) => setRenavam(e.target.value)}
+                    placeholder="00000000000"
+                    className="h-9 text-xs mt-1 font-mono"
+                    maxLength={11}
+                  />
+                </div>
+              </div>
+
+              {/* Custo e Margem */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-border/40">
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Custo de Aquisição / NF Fábrica (R$)</Label>
                   <Input
@@ -652,13 +716,34 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                     value={purchasePrice}
                     onChange={(e) => setPurchasePrice(maskCurrency(e.target.value))}
                     placeholder="R$ 0,00"
-                    className="h-10 text-xs mt-1 font-mono"
+                    className="h-9 text-xs mt-1 font-mono"
                   />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-primary" />
+                    Concessionária / Pátio de Destino *
+                  </Label>
+                  <Select value={storeId} onValueChange={setStoreId}>
+                    <SelectTrigger className="h-9 text-xs mt-1">
+                      <SelectValue placeholder="Selecione a loja" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stores
+                        .filter((s) => s.is_active !== false)
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               {marginPct !== null && (
-                <div className="p-2.5 rounded-lg border bg-background flex items-center justify-between text-xs">
+                <div className="p-2 rounded-lg border bg-muted/30 flex items-center justify-between text-xs">
                   <span>
                     Margem Estimada:{' '}
                     <strong className="font-mono text-foreground">
@@ -676,220 +761,63 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                   </Badge>
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* ========================================================================= */}
-          {/* CAMPOS BLOQUEADOS: MARCA, MODELO, CILINDRADA, CAMBIO, COMBUSTÍVEL, GARANTIA*/}
-          {/* ========================================================================= */}
-          <div className="space-y-3.5 pt-2 border-t">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-primary" />
-                Ficha Técnica &amp; Padrão da Montadora
-              </h4>
-              {patternLocked ? (
-                <Badge variant="secondary" className="text-[10px] gap-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30">
-                  <Lock className="w-3 h-3" />
-                  TRAVADO PELO PADRÃO
-                </Badge>
-              ) : (
-                <span className="text-[10px] text-muted-foreground">
-                  Preenchido ao digitar o Chassi
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs font-semibold flex items-center gap-1">
-                  Marca *
-                  {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-                </Label>
-                <Input
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  disabled={patternLocked}
-                  placeholder="Preenchido pelo padrão..."
-                  className={`h-10 text-xs mt-1 font-semibold uppercase ${
-                    patternLocked ? 'bg-muted/70 text-muted-foreground cursor-not-allowed select-none' : ''
-                  }`}
-                  required
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <Label className="text-xs font-semibold flex items-center gap-1">
-                  Modelo *
-                  {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-                </Label>
-                <Input
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  disabled={patternLocked}
-                  placeholder="Preenchido pelo padrão..."
-                  className={`h-10 text-xs mt-1 font-semibold uppercase ${
-                    patternLocked ? 'bg-muted/70 text-muted-foreground cursor-not-allowed select-none' : ''
-                  }`}
-                  required
-                />
-              </div>
-            </div>
-
-            {isElectric ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Especificações Técnicas (Marca, Cilindrada, Transmissão, Combustível, Garantia) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t border-border/40">
                 <div>
-                  <Label className="text-xs font-semibold flex items-center gap-1 text-emerald-800 dark:text-emerald-200">
-                    <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                    Potência do Motor (Watts) *
-                  </Label>
+                  <Label className="text-xs font-semibold">Marca</Label>
                   <Input
-                    type="number"
-                    value={engineCc}
-                    onChange={(e) => setEngineCc(e.target.value)}
-                    placeholder="Ex: 2000 Watts"
-                    className="h-10 text-xs mt-1 font-bold text-emerald-700 dark:text-emerald-300 bg-background"
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Motos elétricas usam Watts (W), não cilindradas.</p>
-                </div>
-
-                <div>
-                  <Label className="text-xs font-semibold flex items-center gap-1 text-muted-foreground">
-                    Propulsão
-                  </Label>
-                  <div className="h-10 px-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 flex items-center text-xs font-bold text-emerald-800 dark:text-emerald-200 mt-1">
-                    100% Elétrica
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-xs font-semibold flex items-center gap-1 text-muted-foreground">
-                    Câmbio / Marchas
-                  </Label>
-                  <div className="h-10 px-3 rounded-md border bg-muted/50 flex items-center text-xs text-muted-foreground mt-1">
-                    Direta (Sem Câmbio)
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Moto elétrica não possui câmbio.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-xs font-semibold flex items-center gap-1">
-                    Cilindrada (cc)
-                    {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-                  </Label>
-                  <Input
-                    type="number"
-                    value={engineCc}
-                    onChange={(e) => setEngineCc(e.target.value)}
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
                     disabled={patternLocked}
-                    placeholder="Preenchido pelo padrão..."
-                    className={`h-10 text-xs mt-1 ${
-                      patternLocked ? 'bg-muted/70 text-muted-foreground cursor-not-allowed select-none' : ''
+                    className={`h-9 text-xs mt-1 font-semibold uppercase ${
+                      patternLocked ? 'bg-muted/70 text-muted-foreground' : ''
                     }`}
                   />
                 </div>
 
                 <div>
-                  <Label className="text-xs font-semibold flex items-center gap-1">
-                    Combustível
-                    {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
+                  <Label className="text-xs font-semibold">
+                    {isElectric ? 'Potência do Motor (Watts)' : 'Cilindrada (cc)'}
                   </Label>
-                  <Select
-                    value={fuelType}
-                    onValueChange={(val) => {
-                      setFuelType(val);
-                      if (val === 'eletrico') {
-                        setIsElectric(true);
-                        setTransmission('direta');
-                        setEngineCc('2000');
-                        setPatternLocked(false);
-                      }
-                    }}
-                    disabled={patternLocked}
-                  >
-                    <SelectTrigger className={`h-10 text-xs mt-1 ${patternLocked ? 'bg-muted/70 cursor-not-allowed' : ''}`}>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gasolina">Gasolina</SelectItem>
-                      <SelectItem value="flex">Flex</SelectItem>
-                      <SelectItem value="eletrico">Elétrico</SelectItem>
-                      <SelectItem value="diesel">Diesel</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    type="number"
+                    value={engineCc}
+                    onChange={(e) => setEngineCc(e.target.value)}
+                    disabled={patternLocked && !isElectric}
+                    placeholder={isElectric ? '2000' : '125'}
+                    className={`h-9 text-xs mt-1 ${
+                      patternLocked && !isElectric ? 'bg-muted/70 text-muted-foreground' : ''
+                    }`}
+                  />
                 </div>
 
                 <div>
-                  <Label className="text-xs font-semibold flex items-center gap-1">
-                    Câmbio / Transmissão
-                    {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-                  </Label>
-                  <Select value={transmission} onValueChange={setTransmission} disabled={patternLocked}>
-                    <SelectTrigger className={`h-10 text-xs mt-1 ${patternLocked ? 'bg-muted/70 cursor-not-allowed' : ''}`}>
-                      <SelectValue placeholder="Selecione..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Manual</SelectItem>
-                      <SelectItem value="semi_automatico">Semi-automático</SelectItem>
-                      <SelectItem value="automatico">Automático / CVT</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs font-semibold">Garantia (Meses)</Label>
+                  <Input
+                    type="number"
+                    value={warrantyMonths}
+                    onChange={(e) => setWarrantyMonths(e.target.value)}
+                    disabled={patternLocked}
+                    placeholder="12"
+                    className={`h-9 text-xs mt-1 ${
+                      patternLocked ? 'bg-muted/70 text-muted-foreground' : ''
+                    }`}
+                  />
                 </div>
               </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-semibold flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-primary" />
-                  Concessionária / Pátio de Destino *
-                </Label>
-                <Select value={storeId} onValueChange={setStoreId}>
-                  <SelectTrigger className="h-10 text-xs mt-1">
-                    <SelectValue placeholder="Selecione a loja" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stores
-                      .filter((s) => s.is_active !== false)
-                      .map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
               <div>
-                <Label className="text-xs font-semibold flex items-center gap-1">
-                  Garantia de Fábrica (Meses)
-                  {patternLocked && <Lock className="w-3 h-3 text-muted-foreground" />}
-                </Label>
-                <Input
-                  type="number"
-                  value={warrantyMonths}
-                  onChange={(e) => setWarrantyMonths(e.target.value)}
-                  disabled={patternLocked}
-                  placeholder="Ex: 12"
-                  className={`h-10 text-xs mt-1 ${
-                    patternLocked ? 'bg-muted/70 text-muted-foreground cursor-not-allowed select-none' : ''
-                  }`}
+                <Label className="text-xs font-semibold">Observações / Detalhes Adicionais</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ex: 0km pronta entrega, acompanha manual e chave reserva..."
+                  className="text-xs mt-1 min-h-[45px]"
                 />
               </div>
             </div>
-
-            <div>
-              <Label className="text-xs font-semibold">Observações / Detalhes Adicionais</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex: 0km pronta entrega, acompanha manual e chave reserva..."
-                className="text-xs mt-1 min-h-[50px]"
-              />
-            </div>
-          </div>
+          )}
 
           {/* Rodapé com Ações */}
           <DialogFooter className="pt-4 border-t gap-2 sm:gap-0">

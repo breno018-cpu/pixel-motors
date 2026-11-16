@@ -877,42 +877,37 @@ export function CreateSaleModal({
           )}
 
           {/* SEÇÃO 1: LOJA, VENDEDOR E DATA */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-primary" />
-                1. Concessionária & Operador
-              </h4>
-              {isRestrictedSeller && (
-                <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border border-primary/20">
-                  Dados Oficiais Bloqueados pelo Sistema
-                </Badge>
-              )}
-            </div>
-
-            {isRestrictedSeller && (
-              <div className="text-[11px] bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 rounded-md px-3 py-1.5 flex items-center gap-2">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>
-                  Concessionária, Vendedor e Data são preenchidos automaticamente com seus dados oficiais e não podem ser alterados.
+          {isRestrictedSeller ? (
+            <div className="flex flex-wrap items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-primary/20 text-xs">
+              <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+                <span className="flex items-center gap-1.5 font-bold text-foreground">
+                  <Building2 className="w-3.5 h-3.5 text-primary" /> {sellerStore.storeName}
+                </span>
+                <span className="text-border hidden sm:inline">|</span>
+                <span className="flex items-center gap-1.5 font-bold text-foreground">
+                  <User className="w-3.5 h-3.5 text-primary" /> {profile?.full_name || 'Vendedor'}
+                </span>
+                <span className="text-border hidden sm:inline">|</span>
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" /> {new Date().toLocaleDateString('pt-BR')} (Hoje)
                 </span>
               </div>
-            )}
+              <Badge variant="outline" className="text-[10px] text-primary bg-primary/5 font-semibold">
+                Operador Oficial
+              </Badge>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-primary" />
+                  1. Concessionária & Operador
+                </h4>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs font-semibold">Concessionária</Label>
-                {isRestrictedSeller ? (
-                  <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-muted/40 flex items-center justify-between text-xs font-medium text-foreground">
-                    <span className="flex items-center gap-2 truncate">
-                      <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <span className="truncate">{sellerStore.storeName}</span>
-                    </span>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
-                      Bloqueado
-                    </Badge>
-                  </div>
-                ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs font-semibold">Concessionária</Label>
                   <Select value={storeId} onValueChange={setStoreId}>
                     <SelectTrigger className="h-10 text-xs mt-1">
                       <SelectValue placeholder="Selecione a loja" />
@@ -927,82 +922,56 @@ export function CreateSaleModal({
                         ))}
                     </SelectContent>
                   </Select>
-                )}
-              </div>
+                </div>
 
-              <div>
-                <Label className="text-xs font-semibold">Vendedor</Label>
-                {isRestrictedSeller ? (
-                  <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-muted/40 flex items-center justify-between text-xs font-medium text-foreground">
-                    <span className="flex items-center gap-2 truncate">
-                      <User className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <span className="truncate">{profile?.full_name || 'Seu Usuário'}</span>
-                    </span>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
-                      Bloqueado
-                    </Badge>
-                  </div>
-                ) : (
-                  <>
-                    <Select
-                      value={sellerName}
-                      onValueChange={(val) => {
-                        setSellerName(val);
-                        const clean = val.toLowerCase().trim();
-                        if (
-                          clean.includes('mariana') ||
-                          clean.includes('sabrina') ||
-                          clean.includes('halana') ||
-                          clean.includes('natan')
-                        ) {
-                          setStoreId('store-montesclaros');
-                        } else if (
-                          clean.includes('lilian') ||
-                          clean.includes('geibriel') ||
-                          clean.includes('carlos')
-                        ) {
-                          setStoreId('store-divinopolis');
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-10 text-xs mt-1">
-                        <SelectValue placeholder="Selecione o vendedor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PRESET_SELLERS.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="OUTRO">Outro Vendedor...</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {sellerName === 'OUTRO' && (
-                      <Input
-                        placeholder="Nome do vendedor"
-                        value={customSeller}
-                        onChange={(e) => setCustomSeller(e.target.value)}
-                        className="h-9 text-xs mt-1.5"
-                        required
-                      />
-                    )}
-                  </>
-                )}
-              </div>
+                <div>
+                  <Label className="text-xs font-semibold">Vendedor</Label>
+                  <Select
+                    value={sellerName}
+                    onValueChange={(val) => {
+                      setSellerName(val);
+                      const clean = val.toLowerCase().trim();
+                      if (
+                        clean.includes('mariana') ||
+                        clean.includes('sabrina') ||
+                        clean.includes('halana') ||
+                        clean.includes('natan')
+                      ) {
+                        setStoreId('store-montesclaros');
+                      } else if (
+                        clean.includes('lilian') ||
+                        clean.includes('geibriel') ||
+                        clean.includes('carlos')
+                      ) {
+                        setStoreId('store-divinopolis');
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-10 text-xs mt-1">
+                      <SelectValue placeholder="Selecione o vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRESET_SELLERS.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="OUTRO">Outro Vendedor...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {sellerName === 'OUTRO' && (
+                    <Input
+                      placeholder="Nome do vendedor"
+                      value={customSeller}
+                      onChange={(e) => setCustomSeller(e.target.value)}
+                      className="h-9 text-xs mt-1.5"
+                      required
+                    />
+                  )}
+                </div>
 
-              <div>
-                <Label className="text-xs font-semibold">Data da Venda</Label>
-                {isRestrictedSeller ? (
-                  <div className="h-10 px-3 mt-1 rounded-md border border-primary/30 bg-muted/40 flex items-center justify-between text-xs font-medium text-foreground">
-                    <span className="flex items-center gap-2 truncate">
-                      <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <span>{new Date().toLocaleDateString('pt-BR')} (Hoje)</span>
-                    </span>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground">
-                      Bloqueado
-                    </Badge>
-                  </div>
-                ) : (
+                <div>
+                  <Label className="text-xs font-semibold">Data da Venda</Label>
                   <Input
                     type="date"
                     value={saleDate}
@@ -1010,10 +979,10 @@ export function CreateSaleModal({
                     className="h-10 text-xs mt-1"
                     required
                   />
-                )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* SEÇÃO 2: VEÍCULO */}
           <div className="space-y-3 pt-2 border-t">
@@ -1217,10 +1186,36 @@ export function CreateSaleModal({
               </Badge>
             </div>
 
-            {/* Como foi feita a venda (Método Principal) */}
+            {/* Como foi feita a venda (Método Principal com Atalhos Rápidos) */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-foreground">Como foi feita a venda? (Método de Pagamento) *</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { value: 'a_vista_pix', label: 'PIX / Transferência' },
+                  { value: 'financiamento_entrada', label: 'Financiamento com Entrada' },
+                  { value: 'financiamento_100', label: 'Financiamento 100%' },
+                  { value: 'cartao_credito', label: 'Cartão de Crédito' },
+                  { value: 'a_vista_dinheiro', label: 'Dinheiro Espécie' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => handlePaymentMethodChange(opt.value)}
+                    className={`px-3 py-1.5 text-xs rounded-xl font-semibold transition-all border cursor-pointer ${
+                      paymentMethodCategory === opt.value
+                        ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                        : 'bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border-border'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs font-bold text-foreground">Como foi feita a venda? (Método Principal) *</Label>
+                <Label className="text-xs font-semibold text-muted-foreground">Outras formas ou personalização</Label>
                 <Select value={paymentMethodCategory} onValueChange={handlePaymentMethodChange}>
                   <SelectTrigger className="h-10 text-xs mt-1 font-semibold">
                     <SelectValue placeholder="Selecione a forma de fechamento" />
