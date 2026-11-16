@@ -1058,6 +1058,8 @@ export default function Dashboard() {
     });
   };
 
+  const handleExportExecutiveReport = handleExportDashboard;
+
   return (
     <div className="space-y-6 w-full min-w-0 pb-12 animate-fade-in">
       {/* 1. CABEÇALHO PADRONIZADO */}
@@ -1075,7 +1077,7 @@ export default function Dashboard() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleExportExecutiveReport}
+              onClick={handleExportDashboard}
               className="gap-1.5"
             >
               <Download className="w-3.5 h-3.5 text-primary" />
