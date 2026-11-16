@@ -1060,7 +1060,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 w-full min-w-0 pb-12 animate-fade-in overflow-hidden">
       {/* ======================================================== */}
-      {/* 1. CABEÇALHO EXECUTIVO COM FILTROS AVANÇADOS             */}
+      {/* 1. CABEÇALHO COM FILTROS                                 */}
       {/* ======================================================== */}
       <div className="flex flex-col gap-4 border-b border-border/40 pb-5 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
@@ -1068,21 +1068,21 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-foreground flex items-center gap-2 font-display truncate">
                 <Compass className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0" />
-                <span className="truncate">Cockpit Executivo Comercial</span>
+                <span className="truncate">Painel de Vendas</span>
               </h1>
               <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] uppercase font-black tracking-wider px-2.5 py-0.5 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
-                Dealership v9.0
+                Shineray Motos
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1 max-w-3xl leading-relaxed">
-              Gestão executiva de <strong className="text-foreground">Divinópolis</strong> e{' '}
-              <strong className="text-foreground">Montes Claros</strong> com rastreabilidade total de contratos, F&I e estoque.
+              Acompanhamento de vendas, faturamento e estoque das lojas de <strong className="text-foreground">Montes Claros</strong> e{' '}
+              <strong className="text-foreground">Divinópolis</strong>.
             </p>
           </div>
         </div>
 
-        {/* Banner Executivo de Acesso Direto ao Painel do Dono */}
+        {/* Banner de Acesso ao Painel do Dono */}
         {(isAdmin || hasElevatedAccess) && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white shadow-lg border border-slate-700/60 animate-fade-in">
             <div className="flex items-center gap-3">
@@ -1091,11 +1091,11 @@ export default function Dashboard() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm tracking-tight text-white">Painel do Dono da Loja (Centro de Comando 360°)</h3>
-                  <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-300 border-amber-500/40">Exclusivo Diretoria</Badge>
+                  <h3 className="font-bold text-sm tracking-tight text-white">Painel do Dono</h3>
+                  <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-300 border-amber-500/40">Diretoria</Badge>
                 </div>
                 <p className="text-xs text-slate-300">
-                  Visão panorâmica para a diretoria: Ver KPIs consolidados, Dividir e cruzar dados por vendedor/loja/modelo, Mapear rotas de entrega e Simular cenários de metas e margens.
+                  Resumo financeiro das duas lojas, comparativo de vendas, metas do mês e faturamento por cidade.
                 </p>
               </div>
             </div>
@@ -1105,7 +1105,7 @@ export default function Dashboard() {
               className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs rounded-xl shadow-xs shrink-0 gap-1.5"
             >
               <Crown className="w-3.5 h-3.5 text-slate-950" />
-              Abrir Painel do Dono
+              Ver Painel do Dono
               <ArrowUpRight className="w-3.5 h-3.5 text-slate-950" />
             </Button>
           </div>
@@ -1245,7 +1245,7 @@ export default function Dashboard() {
       </div>
 
       {/* ======================================================== */}
-      {/* 2. KPIS EXECUTIVOS COM DADOS REAIS & AUDITADOS           */}
+      {/* 2. RESUMO DE VENDAS E METAS                              */}
       {/* ======================================================== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Faturamento Total */}
@@ -1257,7 +1257,7 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Faturamento Consolidado
+              Faturamento Total
             </span>
             <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
               <DollarSign className="w-4 h-4" />
@@ -1271,7 +1271,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold mt-1">
               <TrendingUp className="w-3.5 h-3.5 text-primary" />
               <span>
-                {metrics.totalVendas} vendas faturadas/ativas no período
+                {metrics.totalVendas} vendas no período selecionado
               </span>
             </div>
           </div>
@@ -1279,7 +1279,7 @@ export default function Dashboard() {
           {/* Barra de Meta Comercial */}
           <div className="mt-4 pt-3 border-t border-border/40 space-y-1.5">
             <div className="flex justify-between text-[11px] font-semibold text-muted-foreground">
-              <span>Meta da Unidade ({formatCurrencyBRL(metrics.metaFaturamento)})</span>
+              <span>Meta da Loja ({formatCurrencyBRL(metrics.metaFaturamento)})</span>
               <span className="font-bold text-foreground">{metrics.progressoMetaValor}%</span>
             </div>
             <Progress value={metrics.progressoMetaValor} className="h-1.5 bg-muted/60" />
@@ -1295,7 +1295,7 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Volume de Vendas
+              Motos Vendidas
             </span>
             <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
               <Bike className="w-4 h-4" />
@@ -1304,21 +1304,21 @@ export default function Dashboard() {
 
           <div className="mt-3">
             <div className="text-2xl lg:text-3xl font-black font-display text-foreground tracking-tight flex items-baseline gap-2">
-              <span>{metrics.totalVendas} {metrics.totalVendas === 1 ? 'veículo' : 'veículos'}</span>
+              <span>{metrics.totalVendas} {metrics.totalVendas === 1 ? 'moto' : 'motos'}</span>
               <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-                ({metrics.vendasFaturadas} liberados)
+                ({metrics.vendasFaturadas} liberadas)
               </span>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-semibold mt-1">
               <Clock className="w-3.5 h-3.5" />
-              <span>{metrics.preVendasPendentes} em fase de análise pré-venda</span>
+              <span>{metrics.preVendasPendentes} em pré-venda (aguardando NF)</span>
             </div>
           </div>
 
           {/* Barra de Meta de Unidades */}
           <div className="mt-4 pt-3 border-t border-border/40 space-y-1.5">
             <div className="flex justify-between text-[11px] font-semibold text-muted-foreground">
-              <span>Meta ({metrics.metaMotos} Unidades)</span>
+              <span>Meta ({metrics.metaMotos} Motos)</span>
               <span className="font-bold text-foreground">{metrics.progressoMetaMotos}%</span>
             </div>
             <Progress value={metrics.progressoMetaMotos} className="h-1.5 bg-muted/60" />
@@ -1334,7 +1334,7 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Ticket Médio Efetivo
+              Ticket Médio
             </span>
             <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
               <BadgePercent className="w-4 h-4" />
@@ -1346,12 +1346,12 @@ export default function Dashboard() {
               {formatCurrencyBRL(metrics.ticketMedio)}
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mt-1">
-              <span>Média real por unidade negociada</span>
+              <span>Valor médio por moto vendida</span>
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Mais vendido:</span>
+            <span>Mais vendida:</span>
             <strong className="text-foreground font-black truncate max-w-[170px]" title={topModel?.name}>
               {topModel ? `${topModel.name} (${topModel.count} un)` : 'Sem vendas'}
             </strong>
@@ -1367,7 +1367,7 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Mix de Liquidação
+              Financiamentos
             </span>
             <div className="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
               <Landmark className="w-4 h-4" />
@@ -1379,12 +1379,12 @@ export default function Dashboard() {
               {formatCurrencyBRL(metrics.totalFinanciado)}
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              Financiado Bancário ({metrics.percentualFinanciado.toFixed(0)}% do volume total)
+              Financiado em banco ({metrics.percentualFinanciado.toFixed(0)}% do total)
             </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-[11px]">
-            <span className="text-muted-foreground">Entradas no Caixa:</span>
+            <span className="text-muted-foreground">Entradas / Pix:</span>
             <strong className="text-emerald-600 dark:text-emerald-400 font-black">
               {formatCurrencyBRL(metrics.totalAVista)}
             </strong>
@@ -1393,7 +1393,7 @@ export default function Dashboard() {
       </div>
 
       {/* ======================================================== */}
-      {/* 3. NAVEGAÇÃO EXECUTIVA SIMPLIFICADA                      */}
+      {/* 3. NAVEGAÇÃO DE ABAS                                     */}
       {/* ======================================================== */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 w-full min-w-0">
         <GlassView
@@ -1406,28 +1406,28 @@ export default function Dashboard() {
               className="h-9 px-4 text-xs font-bold gap-2 rounded-xl shrink-0 whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-white shadow-xs transition-all"
             >
               <Activity className="w-4 h-4 shrink-0" />
-              <span>Visão Geral Executiva</span>
+              <span>Visão Geral</span>
             </TabsTrigger>
             <TabsTrigger
               value="flow"
               className="h-9 px-4 text-xs font-bold gap-2 rounded-xl shrink-0 whitespace-nowrap text-sky-600 dark:text-sky-400 data-[state=active]:bg-sky-600 data-[state=active]:text-white shadow-xs transition-all"
             >
               <Workflow className="w-4 h-4 shrink-0" />
-              <span>Fluxo Operacional (6 Etapas)</span>
+              <span>Etapas da Venda</span>
             </TabsTrigger>
             <TabsTrigger
               value="geo"
               className="h-9 px-4 text-xs font-bold gap-2 rounded-xl shrink-0 whitespace-nowrap text-emerald-600 dark:text-emerald-400 data-[state=active]:bg-emerald-600 data-[state=active]:text-white shadow-xs transition-all"
             >
               <Globe2 className="w-4 h-4 shrink-0" />
-              <span>Atlas de Entregas & Raio Geográfico</span>
+              <span>Vendas por Região</span>
             </TabsTrigger>
             <TabsTrigger
               value="logistics"
               className="h-9 px-4 text-xs font-bold gap-2 rounded-xl shrink-0 whitespace-nowrap text-sky-600 dark:text-sky-400 data-[state=active]:bg-sky-600 data-[state=active]:text-white shadow-xs transition-all"
             >
               <Truck className="w-4 h-4 shrink-0" />
-              <span>Logística & Despacho</span>
+              <span>Entregas e Fretes</span>
             </TabsTrigger>
           </TabsList>
         </GlassView>
@@ -1445,10 +1445,10 @@ export default function Dashboard() {
                   <div>
                     <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-primary" />
-                      Evolução Diária & Ritmo de Vendas
+                      Vendas por Dia
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Faturamento diário e linha de crescimento acumulado no período.
+                      Faturamento diário e quantidade de motos vendidas no período.
                     </CardDescription>
                   </div>
                   <Badge variant="outline" className="font-mono text-xs font-bold">
@@ -1504,10 +1504,10 @@ export default function Dashboard() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                   <PieChartIcon className="w-4 h-4 text-emerald-500" />
-                  Mix de Pagamentos
+                  Formas de Pagamento
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Distribuição dos canais de liquidação financeira.
+                  Pix, financiamento, dinheiro, cartão e boleto.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1570,7 +1570,7 @@ export default function Dashboard() {
                 <Landmark className="w-4 h-4" />
               </div>
               <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-foreground">Instituição Principal de F&I</h4>
+                <h4 className="text-xs font-bold text-foreground">Banco Líder em Financiamento</h4>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   {bankAnalytics[0] ? (
                     <>
@@ -1589,9 +1589,9 @@ export default function Dashboard() {
                 <Clock className="w-4 h-4" />
               </div>
               <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-foreground">Status Operacional</h4>
+                <h4 className="text-xs font-bold text-foreground">Situação das Vendas</h4>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  {metrics.vendasFaturadas} vendas faturadas e {metrics.preVendasPendentes} em fase de análise pré-venda.
+                  {metrics.vendasFaturadas} vendas faturadas e {metrics.preVendasPendentes} em fase de pré-venda (aguardando NF).
                 </p>
               </div>
             </div>
@@ -1605,14 +1605,14 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                     <Award className="w-4 h-4 text-amber-500" />
-                    Ranking de Consultores Comerciais
+                    Ranking de Vendedores
                   </CardTitle>
                   <Badge variant="outline" className="font-bold text-xs">
-                    {sellerRankings.length} consultores
+                    {sellerRankings.length} {sellerRankings.length === 1 ? 'vendedor' : 'vendedores'}
                   </Badge>
                 </div>
                 <CardDescription className="text-xs">
-                  Volume de vendas, faturamento e atingimento de metas.
+                  Vendas realizadas, faturamento e atingimento da meta individual.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2.5">
@@ -1661,14 +1661,14 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                     <Landmark className="w-4 h-4 text-cyan-500" />
-                    Distribuição Bancária & F&I
+                    Financiamentos por Banco
                   </CardTitle>
                   <Badge variant="outline" className="font-bold text-xs">
-                    {bankAnalytics.length} instituições
+                    {bankAnalytics.length} bancos parceiros
                   </Badge>
                 </div>
                 <CardDescription className="text-xs">
-                  Valores liquidados e penetração de cada banco parceiro.
+                  Valores financiados e quantidade de contratos por banco.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2.5">
@@ -1810,10 +1810,10 @@ export default function Dashboard() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-foreground">
-                  Coordenação de Logística & Frotas
+                  Entregas &amp; Fretes
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Gestão de saídas rodoviárias, carretas cegonha, guinchos dedicados e termos de entrega
+                  Controle de entregas aos clientes, rotas, transportes e comprovantes
                 </p>
               </div>
             </div>
@@ -1824,7 +1824,7 @@ export default function Dashboard() {
               className="bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs gap-1.5 rounded-xl shadow-xs"
             >
               <Truck className="w-4 h-4" />
-              Abrir Central Completa de Logística
+              Ver Todas as Entregas
             </Button>
           </div>
 
@@ -1845,10 +1845,10 @@ export default function Dashboard() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                     <Navigation className="w-4 h-4 text-sky-500" />
-                    Modalidades de Transporte Homologadas
+                    Opções de Frete e Entrega
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Capacidade operacional e tarifas por km rodoviário
+                    Prazos médios e valores de frete por km
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2.5">

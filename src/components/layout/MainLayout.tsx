@@ -189,14 +189,14 @@ export function MainLayout({ children }: MainLayoutProps) {
         </div>
       </main>
       
-      {/* Footer Executivo */}
+      {/* Footer */}
       <footer className="py-3 px-4 sm:px-6 pb-20 md:pb-3 border-t border-border/70 bg-background/50 w-full">
         <div className="w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground/70 gap-2">
           <p>
-            <span className="font-extrabold text-foreground/90 tracking-wide font-display">PIXEL MOTORS</span> OS • Plataforma Operacional de Gestão de Concessionárias
+            <span className="font-extrabold text-foreground/90 tracking-wide font-display">SHINERAY MOTOS</span> • Montes Claros &amp; Divinópolis
           </p>
           <p className="text-[10px]">
-            Base Verídica Autenticada • Proteção de Margem Ativa
+            Sistema de Vendas e Gestão de Concessionárias
           </p>
         </div>
       </footer>

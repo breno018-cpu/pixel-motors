@@ -599,8 +599,8 @@ export default function Vehicles() {
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        title="Estoque"
-        description="Disponibilidade e giro de pátio."
+        title="Estoque de Motos"
+        description="Motos disponíveis nas lojas de Montes Claros e Divinópolis."
         actions={
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <Button
@@ -641,7 +641,7 @@ export default function Vehicles() {
                     "h-8 sm:h-9 gap-1.5 text-xs border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 font-bold",
                     tab === 'laudos' && "bg-emerald-500/15 border-emerald-500/60 ring-2 ring-emerald-500/20"
                   )}
-                  title="Abrir aba de laudos periciais cautelares, vistorias e procedência"
+                  title="Laudos e vistorias das motos"
                 >
                   <FileCheck className="h-3.5 w-3.5" />
                   Laudos ({inspections.length})
@@ -651,7 +651,7 @@ export default function Vehicles() {
                   size="sm" 
                   onClick={() => setBatchOpen(true)} 
                   className="h-8 sm:h-9 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
-                  title="Cadastre múltiplas motos de uma remessa de fábrica colando a lista de chassis"
+                  title="Cadastrar várias motos colando a lista de chassis"
                 >
                   <Boxes className="h-3.5 w-3.5" />
                   Entrada em Lote
@@ -665,14 +665,14 @@ export default function Vehicles() {
                       ? "bg-red-700 text-white ring-2 ring-red-500/30"
                       : "bg-red-600 hover:bg-red-700 text-white"
                   )}
-                  title="Receber caminhão: anexe a imagem da lista do caminhão e bipe as caixas das motos"
+                  title="Recebimento de caminhão com motos novas"
                 >
                   <Truck className="h-3.5 w-3.5" />
                   Recebimento
                 </Button>
                 <Button size="sm" onClick={() => setFormOpen(true)} className="h-8 sm:h-9 text-xs gap-1 font-bold">
                   <Plus className="mr-1 h-3.5 w-3.5" />
-                  Novo Veículo
+                  Nova Moto
                 </Button>
               </>
             )}

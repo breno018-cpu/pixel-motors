@@ -176,13 +176,13 @@ export default function Logistics() {
             </div>
             <div>
               <h1 className="text-2xl font-black font-display tracking-tight text-foreground flex items-center gap-2">
-                Logística, Frotas & Entregas
+                Logística &amp; Entregas
                 <Badge variant="outline" className="text-xs border-primary/30 text-primary">
-                  MG Regional
+                  Montes Claros &amp; Divinópolis
                 </Badge>
               </h1>
               <p className="text-xs text-muted-foreground">
-                Coordenação de despachos rodoviários, carretas cegonha, guinchos dedicados e termos de entrega GOV.BR
+                Controle de fretes, entregas aos clientes e termos de recebimento.
               </p>
             </div>
           </div>
@@ -201,14 +201,14 @@ export default function Logistics() {
         </div>
       </div>
 
-      {/* 2. KPIs Executivos de Logística */}
+      {/* 2. Resumo de Entregas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <GlassView glassEffectStyle="regular" className="p-4 rounded-2xl border space-y-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Total de Entregas Mapeadas
+            Total de Entregas
           </span>
           <div className="text-2xl font-black font-display text-foreground">{metrics.total}</div>
-          <span className="text-[10px] text-muted-foreground">Veículos vendidos para entrega</span>
+          <span className="text-[10px] text-muted-foreground">Motos para entrega</span>
         </GlassView>
 
         <GlassView glassEffectStyle="regular" className="p-4 rounded-2xl border space-y-1">
@@ -218,12 +218,12 @@ export default function Logistics() {
           <div className="text-2xl font-black font-display text-emerald-600 dark:text-emerald-400">
             {metrics.entregues}
           </div>
-          <span className="text-[10px] text-muted-foreground">{metrics.taxaConclusao}% da frota entregue</span>
+          <span className="text-[10px] text-muted-foreground">{metrics.taxaConclusao}% já entregues</span>
         </GlassView>
 
         <GlassView glassEffectStyle="regular" className="p-4 rounded-2xl border space-y-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-            Em Transporte Ativo
+            Em Transporte
           </span>
           <div className="text-2xl font-black font-display text-sky-600 dark:text-sky-400">
             {metrics.emTransporte}
@@ -243,12 +243,12 @@ export default function Logistics() {
 
         <GlassView glassEffectStyle="regular" className="p-4 rounded-2xl border space-y-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
-            Frete Rodoviário Estimado
+            Total em Fretes
           </span>
           <div className="text-2xl font-black font-display text-purple-600 dark:text-purple-400">
             {formatCurrencyBRL(metrics.custoTotalFrete)}
           </div>
-          <span className="text-[10px] text-muted-foreground">Custo total consolidado em rotas</span>
+          <span className="text-[10px] text-muted-foreground">Valor total estimado</span>
         </GlassView>
       </div>
 
@@ -315,10 +315,10 @@ export default function Logistics() {
           <div>
             <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
               <Route className="w-4 h-4 text-primary" />
-              Fila Operacional de Entregas & Despacho
+              Fila de Entregas
             </CardTitle>
             <CardDescription className="text-xs">
-              {filteredDeliveries.length} veículos listados de acordo com os filtros selecionados
+              {filteredDeliveries.length} entregas encontradas com os filtros selecionados
             </CardDescription>
           </div>
           <Badge variant="outline" className="text-xs font-bold font-mono">

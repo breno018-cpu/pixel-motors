@@ -189,8 +189,8 @@ export default function Contracts() {
     <div className="space-y-5 pb-8">
       {/* Header */}
       <PageHeader
-        title="Contratos"
-        description="Crie e gerencie modelos para usar na aba Vendas."
+        title="Modelos de Contratos"
+        description="Modelos de contratos de venda, termos de retirada e recibos para as lojas."
         actions={<Button onClick={handleNew}>
           <Plus className="w-4 h-4 mr-2" />
           Novo Modelo

@@ -535,19 +535,18 @@ export default function OwnerDashboard() {
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
               <Crown className="w-3.5 h-3.5 text-amber-400" />
-              Ala Executiva da Diretoria • Acesso do Proprietário
+              Acesso da Diretoria
             </span>
             <Badge variant="outline" className="text-slate-300 border-slate-600 font-mono text-[11px]">
-              2 Concessionárias Ativas
+              Montes Claros &amp; Divinópolis
             </Badge>
           </div>
           <h1 className="text-2xl lg:text-3xl font-display font-extrabold tracking-tight flex items-center gap-3">
-            <span>Painel do Dono & Centro de Comando 360°</span>
+            <span>Painel do Dono</span>
           </h1>
           <p className="text-slate-300 text-xs lg:text-sm max-w-3xl leading-relaxed">
-            Visão panorâmica e fatiamento dinâmico: divida métricas por loja, vendedor, modelo ou forma de pagamento, e
-            mapeie a penetração geográfica das concessionárias de <strong className="text-white">Divinópolis</strong> e{' '}
-            <strong className="text-white">Montes Claros</strong>.
+            Acompanhe o faturamento geral, compare o desempenho das lojas de <strong className="text-white">Montes Claros</strong> e{' '}
+            <strong className="text-white">Divinópolis</strong>, veja os resultados por vendedor e simule metas.
           </p>
         </div>
 
@@ -743,7 +742,7 @@ export default function OwnerDashboard() {
             className="rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all py-2.5"
           >
             <TrendingUp className="w-4 h-4 shrink-0" />
-            <span>1. VER (Cockpit)</span>
+            <span>1. Visão Geral</span>
           </TabsTrigger>
 
           <TabsTrigger
@@ -751,7 +750,7 @@ export default function OwnerDashboard() {
             className="rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all py-2.5"
           >
             <Layers className="w-4 h-4 shrink-0" />
-            <span>2. DIVIDIR (Fatiar)</span>
+            <span>2. Análise Detalhada</span>
           </TabsTrigger>
 
           <TabsTrigger
@@ -759,7 +758,7 @@ export default function OwnerDashboard() {
             className="rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all py-2.5"
           >
             <Compass className="w-4 h-4 shrink-0" />
-            <span>3. MAPEAR (Cidades & Rotas)</span>
+            <span>3. Vendas por Cidade</span>
           </TabsTrigger>
 
           <TabsTrigger
@@ -767,7 +766,7 @@ export default function OwnerDashboard() {
             className="rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all py-2.5"
           >
             <Calculator className="w-4 h-4 shrink-0" />
-            <span>4. SIMULAR (Metas)</span>
+            <span>4. Simulador de Metas</span>
           </TabsTrigger>
         </TabsList>
 
@@ -859,14 +858,14 @@ export default function OwnerDashboard() {
                 <div>
                   <CardTitle className="text-base font-bold flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-primary" />
-                    Comparativo Executivo entre as Concessionárias
+                    Comparativo entre as Lojas
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Desempenho comparado de faturamento, volume de motos e ticket médio por unidade.
+                    Faturamento, quantidade de motos e ticket médio de cada loja.
                   </CardDescription>
                 </div>
                 <Badge variant="outline" className="font-mono text-xs">
-                  Rede Oficial L1MA Motors
+                  Montes Claros &amp; Divinópolis
                 </Badge>
               </div>
             </CardHeader>
@@ -1054,10 +1053,10 @@ export default function OwnerDashboard() {
                 <div>
                   <CardTitle className="text-base font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
                     <Layers className="w-5 h-5 text-indigo-600" />
-                    Motor de Fatiamento Multi-Dimensional
+                    Análise Detalhada de Vendas
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Escolha a dimensão e a métrica desejada para dissecar o negócio sob qualquer perspectiva.
+                    Selecione como quer agrupar as vendas e a métrica desejada (faturamento, volume ou ticket médio).
                   </CardDescription>
                 </div>
 
@@ -1289,10 +1288,10 @@ export default function OwnerDashboard() {
             <CardHeader className="bg-muted/40 border-b pb-4">
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <Compass className="w-5 h-5 text-emerald-600" />
-                Atlas Cartográfico de Vendas & Rotas de Clientes
+                Mapa de Vendas por Cidade
               </CardTitle>
               <CardDescription className="text-xs">
-                Visualização espacial das rotas, polos de Divinópolis e Montes Claros, e dispersão das motos vendidas.
+                Distribuição das vendas entre as cidades atendidas pelas lojas de Montes Claros e Divinópolis.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -1315,18 +1314,17 @@ export default function OwnerDashboard() {
         </TabsContent>
 
         {/* ================================================================= */}
-        {/* ABA 4: SIMULAR (METAS, CENÁRIOS E PROJEÇÕES DO PROPRIETÁRIO)      */}
+        {/* ABA 4: SIMULADOR DE METAS                                         */}
         {/* ================================================================= */}
         <TabsContent value="simular" className="space-y-6 mt-0">
           <Card className="rounded-3xl border shadow-md">
             <CardHeader className="bg-muted/40 border-b pb-4">
               <CardTitle className="text-base font-bold flex items-center gap-2 text-amber-600 dark:text-amber-400">
                 <Calculator className="w-5 h-5 text-amber-600" />
-                Simulador Executivo de Metas & Rentabilidade
+                Simulador de Metas e Faturamento
               </CardTitle>
               <CardDescription className="text-xs">
-                Ajuste os parâmetros abaixo para projetar o faturamento, volume de financiamentos bancários e retorno
-                estimado do grupo.
+                Simule cenários ajustando a meta de motos vendidas, ticket médio e percentual de financiamento.
               </CardDescription>
             </CardHeader>
 

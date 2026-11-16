@@ -501,14 +501,14 @@ export function ChassisSearchInput({
               setModalSearch(value);
               setModalOpen(true);
             }}
-            title="Abrir Localizador Avançado de Chassi"
+            title="Buscar chassi no estoque"
           >
             <Search className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>
 
-      {/* Dropdown de Sugestões Inteligentes */}
+      {/* Dropdown de Sugestões de Chassi */}
       {dropdownOpen && searchResults.length > 0 && (
         <div className="absolute left-0 right-0 top-full mt-1 bg-card border rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-border/60 max-h-72 overflow-y-auto animate-in fade-in-50 zoom-in-95">
           <div className="p-2 bg-muted/40 text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
@@ -599,11 +599,11 @@ export function ChassisSearchInput({
         </div>
       )}
 
-      {/* Cartão de Reconhecimento Inteligente / Sugestão Não-Intrusiva */}
+      {/* Identificação de Chassi */}
       {isDecoding ? (
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-0.5">
           <Loader2 className="w-3 h-3 animate-spin text-primary" />
-          <span>Decodificando padrão do chassi VIN...</span>
+          <span>Identificando modelo pelo chassi...</span>
         </div>
       ) : decodedInfo && (decodedInfo.model || decodedInfo.year) ? (
         <div className="flex items-center justify-between gap-2 p-2 bg-primary/5 border border-primary/20 rounded-xl text-xs mt-1">

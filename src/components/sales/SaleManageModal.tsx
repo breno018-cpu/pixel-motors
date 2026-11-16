@@ -697,14 +697,14 @@ export function SaleManageModal({
             <div>
               <div className="flex items-center gap-2">
                 <DialogTitle className="text-base font-bold text-foreground">
-                  Gestão da Venda & Emissão de 2ª Via
+                  Detalhes da Venda &amp; 2ª Via
                 </DialogTitle>
                 <Badge variant="outline" className="text-xs font-mono font-bold bg-background">
                   {contractNumber || sale.contract_number}
                 </Badge>
               </div>
               <DialogDescription className="text-xs text-muted-foreground">
-                Altere dados cadastrais do cliente, condições de finalização, contrato e emita 2ª vias oficiais.
+                Consulte ou edite dados do cliente, moto, pagamento e emita documentos.
               </DialogDescription>
             </div>
           </div>

@@ -1364,24 +1364,24 @@ export default function CatalogControl() {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* 1. CABEÇALHO EXECUTIVO COM STATUS SSE E AÇÕES GLOBAIS */}
+      {/* 1. CABEÇALHO COM AÇÕES GLOBAIS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
               <Store className="w-6 h-6 text-primary" />
-              Painel de Controle e Gestão do Catálogo L1MA Motors
+              Catálogo de Motos
             </h1>
 
             {/* Contagem de Modelos Cadastrados */}
             <div className="flex items-center gap-1.5 ml-2">
               <Badge variant="secondary" className="text-xs font-mono">
-                {products.length} Modelos Cadastrados
+                {products.length} Modelos
               </Badge>
             </div>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Controle direto de em qual parte do catálogo cada veículo é exibido (Shineray, Elétricas, Off-Road, Semi-novos), estoque, preços, promoções e sincronização em tempo real.
+            Gerencie os modelos exibidos no catálogo, estoque disponível, preços, parcelas e promoções.
           </p>
         </div>
 

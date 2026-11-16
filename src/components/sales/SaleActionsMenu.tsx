@@ -694,7 +694,7 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
             className="text-primary font-bold focus:text-primary cursor-pointer"
           >
             <Printer className="w-4 h-4 mr-2 text-primary" />
-            Emitir 2ª Via Oficial
+            Emitir 2ª Via
           </DropdownMenuItem>
 
           <DropdownMenuItem
@@ -705,7 +705,7 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
             className="font-medium cursor-pointer"
           >
             <Pencil className="w-4 h-4 mr-2 text-primary" />
-            Alterar Dados / Gestão
+            Editar Venda
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
@@ -743,13 +743,13 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
           <DropdownMenuItem onClick={handleEmitInvoicePng} className="cursor-pointer">
             <ImageDown className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
             <span className="font-semibold text-amber-700 dark:text-amber-300">
-              {sale.status === 'pre_venda' ? 'Emitir Papel de NF' : 'Solicitar NF (PNG)'}
+              Solicitação de NF (PNG)
             </span>
           </DropdownMenuItem>
 
           <DropdownMenuItem onClick={() => setFreightOpen(true)} className="text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer">
             <Truck className="w-4 h-4 mr-2 text-emerald-600 dark:text-emerald-400" />
-            Simular Frete & Logística
+            Calcular Frete
           </DropdownMenuItem>
 
           {/* Etapas de Conclusão / Revisão */}

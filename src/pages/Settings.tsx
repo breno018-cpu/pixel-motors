@@ -334,11 +334,11 @@ export default function Settings() {
     <div className="space-y-6 max-w-6xl mx-auto w-full min-w-0 page-transition pb-12">
       {/* Header */}
       <PageHeader
-        title={isManagement ? "Painel de Configurações Master" : "Meu Perfil & Configurações"}
+        title={isManagement ? "Configurações do Sistema" : "Meu Perfil & Configurações"}
         description={
           isManagement
-            ? "Gestão centralizada das concessionárias, segurança de sessão única, bancos F&I, identidade e preferências."
-            : "Gerencie as informações da sua conta, credenciais de acesso e segurança pessoal."
+            ? "Configurações das lojas, bancos de financiamento, dados da empresa e segurança."
+            : "Gerencie seus dados de acesso, senha e preferências."
         }
       />
 
@@ -354,13 +354,13 @@ export default function Settings() {
           {isManagement && (
             <TabsTrigger value="stores" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
               <Building2 className="w-4 h-4 text-primary shrink-0" />
-              <span className="truncate min-w-0 flex-1">Lojas & Matriz</span>
+              <span className="truncate min-w-0 flex-1">Lojas</span>
             </TabsTrigger>
           )}
           {isManagement && (
             <TabsTrigger value="logistics" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
               <Truck className="w-4 h-4 text-primary shrink-0" />
-              <span className="truncate min-w-0 flex-1">Logística & Frete</span>
+              <span className="truncate min-w-0 flex-1">Logística &amp; Frete</span>
             </TabsTrigger>
           )}
           {isManagement && (
@@ -376,13 +376,13 @@ export default function Settings() {
           {isManagement && (
             <TabsTrigger value="appearance" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
               <Palette className="w-4 h-4 text-primary shrink-0" />
-              <span className="truncate min-w-0 flex-1">Identidade</span>
+              <span className="truncate min-w-0 flex-1">Visual</span>
             </TabsTrigger>
           )}
           {isManagement && (
             <TabsTrigger value="banks" className="gap-2 text-xs px-2.5 rounded-xl py-2 font-bold min-w-0 max-w-full overflow-hidden data-[state=active]:bg-card data-[state=active]:shadow-xs">
               <Landmark className="w-4 h-4 text-primary shrink-0" />
-              <span className="truncate min-w-0 flex-1">Bancos & F&I</span>
+              <span className="truncate min-w-0 flex-1">Bancos &amp; Financiamento</span>
             </TabsTrigger>
           )}
           {isManagement && (

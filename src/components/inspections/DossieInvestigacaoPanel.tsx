@@ -205,19 +205,19 @@ export function DossieInvestigacaoPanel() {
           <div className="space-y-1.5 max-w-2xl">
             <div className="flex items-center gap-2">
               <Badge className="bg-primary text-primary-foreground font-black text-[10px] tracking-wider uppercase px-2.5 py-0.5">
-                Dossiê Jurídico & Pericial
+                Consulta de Procedência
               </Badge>
               <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 bg-emerald-500/10 font-bold text-xs gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                Blindagem Comercial DealFlow
+                Histórico Veicular
               </Badge>
             </div>
             <h2 className="text-xl md:text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
               <Search className="w-6 h-6 text-primary" />
-              Central de Investigação & Antecedentes Veiculares
+              Consulta de Placa, Débitos e Restrições
             </h2>
             <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">
-              Varredura aprofundada de restrições jurídicas (<strong>RENAJUD</strong>), histórico de furto/roubo, leilões/seguradoras, bloqueios tributários de IPVA/multas e gravames financeiros antes de aprovar qualquer veículo na concessionária.
+              Verifique multas, débitos de IPVA, restrições judiciais (<strong>RENAJUD</strong>), histórico de leilão, furto/roubo e gravame financeiro.
             </p>
           </div>
 
@@ -246,7 +246,7 @@ export function DossieInvestigacaoPanel() {
               className="h-11 px-5 rounded-2xl font-bold gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 w-full sm:w-auto"
             >
               <Sparkles className="w-4 h-4" />
-              Abrir Dossiê
+              Consultar Placa
             </Button>
           </div>
         </div>

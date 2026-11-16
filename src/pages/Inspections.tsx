@@ -35,8 +35,8 @@ export default function Inspections() {
     <div className="space-y-6 pb-12">
       {/* Top Header */}
       <PageHeader
-        title="Investigação, Laudos & Procedência Veicular"
-        description="Dossiê investigativo de antecedentes, bloqueios judiciais RENAJUD, histórico de leilão/sinistro, vistoria presencial e portais oficiais."
+        title="Vistoria &amp; Laudos"
+        description="Consulta de débitos, multas, restrições judiciais (RENAJUD), histórico de leilão e laudos cautelares."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -61,7 +61,7 @@ export default function Inspections() {
         }
       />
 
-      {/* ABAS DO MÓDULO DE INVESTIGAÇÃO & LAUDOS */}
+      {/* ABAS DO MÓDULO DE VISTORIA & LAUDOS */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-5">
         <TabsList className="h-11 rounded-2xl border bg-muted/40 p-1 shadow-xs flex flex-wrap w-fit gap-1">
           <TabsTrigger
@@ -69,7 +69,7 @@ export default function Inspections() {
             className="gap-2 text-xs font-bold px-4 rounded-xl data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
           >
             <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            Dossiê & Investigação Veicular
+            Consulta de Placa &amp; Débitos
           </TabsTrigger>
 
           <TabsTrigger
@@ -77,7 +77,7 @@ export default function Inspections() {
             className="gap-2 text-xs font-bold px-4 rounded-xl data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
           >
             <FileCheck className="h-4 w-4 text-sky-500" />
-            Laudos Cautelares & Seminovos ({inspections.length})
+            Laudos Cautelares ({inspections.length})
           </TabsTrigger>
 
           <TabsTrigger
@@ -85,7 +85,7 @@ export default function Inspections() {
             className="gap-2 text-xs font-bold px-4 rounded-xl data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
           >
             <Wrench className="h-4 w-4 text-indigo-500" />
-            Vistoria PDI & Entrada 0km
+            Revisão de Entrada (PDI 0km)
           </TabsTrigger>
 
           <TabsTrigger
@@ -93,7 +93,7 @@ export default function Inspections() {
             className="gap-2 text-xs font-bold px-4 rounded-xl data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
           >
             <Globe2 className="h-4 w-4 text-amber-500" />
-            Consultas DETRAN & Portais Oficiais
+            Consultas DETRAN
           </TabsTrigger>
         </TabsList>
 

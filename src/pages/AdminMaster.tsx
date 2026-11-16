@@ -264,13 +264,13 @@ export default function AdminMaster() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                Ala Administrativa Master
+                Painel Administrativo
                 <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20">
-                  Controle Executivo
+                  Gestão Geral
                 </Badge>
               </h1>
               <p className="text-sm text-muted-foreground">
-                Comando centralizado de acessos, governança de cargos, filiais, precificação e integridade operacional.
+                Gerencie usuários, permissões, lojas de Montes Claros e Divinópolis, e notas fiscais.
               </p>
             </div>
           </div>
@@ -390,39 +390,39 @@ export default function AdminMaster() {
           <TabsList className="h-10 bg-muted/70 p-1 w-full sm:w-auto inline-flex justify-start">
             <TabsTrigger value="usuarios" className="gap-2 text-xs font-medium">
               <Users className="w-3.5 h-3.5" />
-              Usuários & Acessos
+              Usuários &amp; Acessos
             </TabsTrigger>
             <TabsTrigger value="cargos" className="gap-2 text-xs font-medium">
               <Shield className="w-3.5 h-3.5" />
-              Governança & Permissões
+              Cargos &amp; Permissões
             </TabsTrigger>
             <TabsTrigger value="lojas" className="gap-2 text-xs font-medium">
               <Building2 className="w-3.5 h-3.5" />
-              Filiais & Lojas
+              Lojas
             </TabsTrigger>
             <TabsTrigger value="catalogo" className="gap-2 text-xs font-medium">
               <Car className="w-3.5 h-3.5" />
-              Catálogo & Tabela de Preços
+              Catálogo &amp; Preços
             </TabsTrigger>
             <TabsTrigger value="bancos" className="gap-2 text-xs font-medium">
               <Landmark className="w-3.5 h-3.5" />
-              F&I & Bancos
+              Bancos &amp; Financiamento
             </TabsTrigger>
             <TabsTrigger value="dre" className="gap-2 text-xs font-medium font-semibold text-primary">
               <DollarSign className="w-3.5 h-3.5" />
-              DRE & Finanças
+              Financeiro &amp; DRE
             </TabsTrigger>
             <TabsTrigger value="nfs-lojas" className="gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
               <ReceiptText className="w-3.5 h-3.5" />
-              Controle de NFs (Entrada / Cancelamento)
+              Entrada &amp; Cancelamento NF
             </TabsTrigger>
             <TabsTrigger value="auditoria" className="gap-2 text-xs font-medium">
               <Activity className="w-3.5 h-3.5" />
-              Trilha de Auditoria
+              Histórico de Ações
             </TabsTrigger>
             <TabsTrigger value="seguranca" className="gap-2 text-xs font-medium">
               <Database className="w-3.5 h-3.5" />
-              Sincronização & Backup
+              Backup &amp; Dados
             </TabsTrigger>
           </TabsList>
         </div>
@@ -437,7 +437,7 @@ export default function AdminMaster() {
                     Controle de Usuários e Equipe
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Gerencie quem acessa o DealFlow, redefina senhas instantaneamente, vincule a lojas e consulte desempenho.
+                    Cadastre vendedores e gestores, defina senhas, vincule a lojas e configure permissões de acesso.
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">

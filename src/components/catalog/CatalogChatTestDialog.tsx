@@ -29,7 +29,7 @@ export function CatalogChatTestDialog({
     {
       role: "assistant",
       content:
-        "Olá! Sou a IA Assistente da L1MA Motors Concessionária. Como posso ajudar com os modelos, preços e condições de pagamento hoje?",
+        "Olá! Sou o assistente virtual da Shineray Motos. Como posso te ajudar com os modelos, preços e formas de pagamento hoje?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -74,7 +74,7 @@ export function CatalogChatTestDialog({
       {
         role: "assistant",
         content:
-          "Olá! Sou a IA Assistente da L1MA Motors Concessionária. Como posso ajudar com os modelos, preços e condições de pagamento hoje?",
+          "Olá! Sou o assistente virtual da Shineray Motos. Como posso te ajudar com os modelos, preços e formas de pagamento hoje?",
       },
     ]);
   };
@@ -86,14 +86,14 @@ export function CatalogChatTestDialog({
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-base">
               <Bot className="w-5 h-5 text-primary" />
-              Testar IA Assistente Virtual (POST /api/chat)
+              Testar Atendente Virtual do Catálogo
             </div>
             <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary">
-              Endpoint Ativo
+              Ativo
             </Badge>
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Teste como a inteligência artificial generativa responde aos clientes e recomenda as motos consultando os 79 modelos em tempo real.
+            Teste como o assistente virtual responde aos clientes com base no estoque e preços dos modelos cadastrados.
           </DialogDescription>
         </DialogHeader>
 
@@ -131,7 +131,7 @@ export function CatalogChatTestDialog({
           {loading && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>A IA da L1MA Motors está consultando o catálogo...</span>
+              <span>Consultando os modelos do catálogo...</span>
             </div>
           )}
         </div>
@@ -154,7 +154,7 @@ export function CatalogChatTestDialog({
         {/* Input */}
         <div className="flex items-center gap-2 pt-1">
           <Input
-            placeholder="Digite uma pergunta para a IA da concessionária..."
+            placeholder="Digite uma pergunta como se fosse um cliente..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}

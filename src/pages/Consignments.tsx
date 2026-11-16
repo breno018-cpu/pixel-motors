@@ -178,7 +178,7 @@ export default function Consignments() {
     <div className="space-y-5 pb-8">
       <PageHeader
         title="Consignações"
-        description="Contratos de veículos com revendedores parceiros."
+        description="Motos consignadas com revendedores e parceiros das lojas."
         actions={
           <Button onClick={() => setCreateOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />

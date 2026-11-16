@@ -915,7 +915,7 @@ export function CreateSaleModal({
                   Cadastrar Nova Venda
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Registre a venda diretamente no sistema, mapa de calor e planilha mensal da concessionária.
+                  Preencha os dados do cliente, moto e pagamento para registrar a venda.
                 </DialogDescription>
               </div>
             </div>

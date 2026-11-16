@@ -86,9 +86,8 @@ export function CatalogDescDialog({
               Onde esta descrição é utilizada?
             </p>
             <p className="text-blue-300">
-              Este texto alimenta o <strong>card dinâmico compartilhado no WhatsApp</strong>, o{" "}
-              <strong>modal de detalhes</strong>, o <strong>carrossel do topo</strong> e as{" "}
-              <strong>respostas da Inteligência Artificial</strong>.
+              Este texto é exibido no <strong>card do WhatsApp</strong>, no{" "}
+              <strong>detalhe da moto</strong> e no <strong>catálogo público</strong> para os clientes.
             </p>
           </div>
         </div>

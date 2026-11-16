@@ -135,7 +135,7 @@ export default function Financing() {
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
       <PageHeader
         title="Financiamentos"
-        description="Simulações bancárias e cálculo de parcelas por concessionária."
+        description="Simulações e cálculo de parcelas de financiamento para clientes das lojas."
         actions={
           <Button onClick={() => setSimOpen(true)} className="gap-2">
             <Calculator className="w-4 h-4" /> Nova Simulação

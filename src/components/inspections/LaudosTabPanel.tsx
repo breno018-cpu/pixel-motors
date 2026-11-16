@@ -394,14 +394,14 @@ export function LaudosTabPanel({ vehiclesInStock = [] }: LaudosTabPanelProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-base md:text-lg text-foreground tracking-tight">
-                  Emissão Inteligente de Laudo Cautelar
+                  Emissão Rápida de Laudo Cautelar
                 </span>
                 <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
-                  OCR CRLV-e + DETRAN
+                  CRLV-e / Placa
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
-                Arraste o PDF do <strong>CRLV-e Gov.br</strong> do cliente ou digite a placa da moto. O sistema extrai chassi, renavam e restrições legais instantaneamente, gerando o laudo com fé pública.
+                Envie o documento do <strong>CRLV-e</strong> ou digite a placa da moto para preencher os dados do veículo e emitir o laudo de vistoria.
               </p>
             </div>
           </div>

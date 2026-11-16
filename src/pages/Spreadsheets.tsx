@@ -265,8 +265,8 @@ export default function Spreadsheets() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
-        title="Planilha de Vendas em Nuvem v9.0"
-        description="Controle operacional e financeiro completo com todas as colunas da concessionária, placar de vendedores, divisão mensal e integração com Excel Online (OneDrive)."
+        title="Planilha Mensal de Vendas"
+        description="Planilha de vendas das lojas com exportação e sincronização para Excel Online."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button

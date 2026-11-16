@@ -158,7 +158,7 @@ export default function Ads() {
     <div className="space-y-5">
       <PageHeader
         title="Anúncios"
-        description="Mapeie o que cada loja está anunciando e de onde cada venda realmente saiu."
+        description="Controle de campanhas de anúncios e origem dos clientes das lojas."
         actions={<>
           <Select value={storeId} onValueChange={setStoreId}>
             <SelectTrigger className="h-9 w-[220px]">

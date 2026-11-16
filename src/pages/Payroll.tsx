@@ -854,7 +854,7 @@ export default function Payroll() {
                 className="h-9 text-xs"
               >
                 <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-                Compliance CLT ({relatorioIA.scoreSaudeFolha}%)
+                Conferência CLT ({relatorioIA.scoreSaudeFolha}%)
               </Button>
 
               <Button
@@ -888,8 +888,8 @@ export default function Payroll() {
 
           {exibirAuditoriaIA && (
             <PanelCard
-              title="Diagnóstico de Compliance Trabalhista (CLT)"
-              description={relatorioIA.parecerExecutivo}
+              title="Conferência Trabalhista (CLT)"
+              description="Validação de encargos, INSS, IRRF e DSR para fechamento do mês."
               aside={
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-xs">

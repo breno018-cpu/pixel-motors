@@ -586,10 +586,10 @@ export default function Sales() {
 
   return (
     <div className="space-y-5 pb-8">
-      {/* CABEÇALHO COM AÇÕES DIRETAS E CLARAS */}
+      {/* CABEÇALHO */}
       <PageHeader
-        title="Vendas & Faturamento"
-        description="Acompanhe vendas faturadas, emissão de NF e integração com as concessionárias de Divinópolis e Montes Claros."
+        title="Vendas"
+        description="Vendas faturadas, pré-vendas e emissão de contratos das lojas de Montes Claros e Divinópolis."
         actions={
           <div className="flex items-center gap-2">
             {canCreateSales && (
