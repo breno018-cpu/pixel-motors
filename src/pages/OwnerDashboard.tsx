@@ -34,6 +34,7 @@ import {
   Store,
   Wallet,
   Car,
+  ReceiptText,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -58,6 +59,7 @@ import { useEmployees } from '@/hooks/useEmployees';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { exportToXLSX } from '@/lib/export';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { OwnerFiscalInvoicesPanel } from '@/components/dashboard/OwnerFiscalInvoicesPanel';
 import { GeographicSalesRadiusMap } from '@/components/dashboard/GeographicSalesRadiusMap';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,8 +95,8 @@ export default function OwnerDashboard() {
   const { data: stores } = useStores();
   const { data: employees } = useEmployees();
 
-  // Controle de Abas Principais: VER, DIVIDIR, MAPEAR, SIMULAR
-  const [activeMainTab, setActiveMainTab] = useState<'ver' | 'dividir' | 'mapear' | 'simular'>('ver');
+  // Controle de Abas Principais: VER, DIVIDIR, MAPEAR, SIMULAR, NFS
+  const [activeMainTab, setActiveMainTab] = useState<'ver' | 'dividir' | 'mapear' | 'simular' | 'nfs'>('ver');
 
   // =========================================================================
   // FILTROS GLOBAIS ("O que ele quiser")
@@ -730,7 +732,7 @@ export default function OwnerDashboard() {
       {/* 3. NAVEGAÇÃO ENTRE OS 4 PILARES: VER, DIVIDIR, MAPEAR, SIMULAR      */}
       {/* =================================================================== */}
       <Tabs value={activeMainTab} onValueChange={(v: any) => setActiveMainTab(v)} className="space-y-6">
-        <TabsList className="bg-muted/70 p-1.5 rounded-2xl w-full grid grid-cols-4 max-w-4xl mx-auto shadow-inner">
+        <TabsList className="bg-muted/70 p-1.5 rounded-2xl w-full grid grid-cols-2 sm:grid-cols-5 max-w-5xl mx-auto shadow-inner">
           <TabsTrigger
             value="ver"
             className="rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all py-2.5"
@@ -760,7 +762,15 @@ export default function OwnerDashboard() {
             className="rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all py-2.5"
           >
             <Calculator className="w-4 h-4 shrink-0" />
-            <span>4. Simulador de Metas</span>
+            <span>4. Simulador Metas</span>
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="nfs"
+            className="rounded-xl text-xs sm:text-sm font-bold gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all py-2.5"
+          >
+            <ReceiptText className="w-4 h-4 shrink-0" />
+            <span>5. Controle de NFs</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1478,6 +1488,13 @@ export default function OwnerDashboard() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ================================================================= */}
+        {/* ABA 5: CONTROLE FISCAL DE ENTRADAS & CANCELAMENTOS (DIRETORIA)    */}
+        {/* ================================================================= */}
+        <TabsContent value="nfs" className="space-y-6 mt-0">
+          <OwnerFiscalInvoicesPanel />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Plus, FileText, Download, Trash2, Bike, ImageDown } from 'lucide-react';
+import { Plus, FileText, Download, Trash2, Bike, ImageDown, XCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useStores } from '@/hooks/useStores';
 import { useVehicles } from '@/hooks/useVehicles';
-import { useInvoices, useUpsertInvoice, useDeleteInvoice, InvoiceItem } from '@/hooks/useInvoices';
+import { useInvoices, useUpsertInvoice, useCancelInvoice, useDeleteInvoice, InvoiceItem } from '@/hooks/useInvoices';
 import { downloadInvoicePDF } from '@/lib/invoicePdf';
 import { maskCPFCNPJ, maskPhone, maskCurrency, parseCurrency } from '@/lib/masks';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
@@ -39,8 +39,16 @@ export default function MotoInvoices() {
   const { data: vehicles = [] } = useVehicles();
   const { data: invoices = [], isLoading } = useInvoices();
   const upsert = useUpsertInvoice();
+  const cancelInvoiceMutation = useCancelInvoice();
   const del = useDeleteInvoice();
   const { toast } = useToast();
+
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedInvoiceToCancel, setSelectedInvoiceToCancel] = useState<any>(null);
+  const [cancelDate, setCancelDate] = useState(new Date().toISOString().slice(0, 10));
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelType, setCancelType] = useState<'estorno' | 'credito' | 'devolucao'>('estorno');
+  const [cancelProtocol, setCancelProtocol] = useState('');
 
   const availableVehicles = useMemo(
     () => vehicles.filter((v) => v.status !== 'vendido'),
@@ -131,6 +139,37 @@ export default function MotoInvoices() {
     setOpen(false);
   };
 
+  const handleConfirmCancel = async () => {
+    if (!selectedInvoiceToCancel) return;
+    if (!cancelReason.trim()) {
+      toast({ variant: 'destructive', title: 'Informe o motivo do cancelamento.' });
+      return;
+    }
+    try {
+      await cancelInvoiceMutation.mutateAsync({
+        id: selectedInvoiceToCancel.id,
+        cancellation_date: cancelDate,
+        cancellation_reason: cancelReason,
+        cancellation_type: cancelType,
+        sefaz_protocol: cancelProtocol || undefined,
+      });
+      toast({
+        title: 'Nota Fiscal cancelada com sucesso',
+        description: `NF ${selectedInvoiceToCancel.invoice_number} registrada como cancelada (${cancelType === 'credito' ? 'Crédito Fiscal na Fábrica' : 'Estorno Financeiro'}).`,
+      });
+      setCancelDialogOpen(false);
+      setSelectedInvoiceToCancel(null);
+      setCancelReason('');
+      setCancelProtocol('');
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao cancelar NF',
+        description: e?.message || 'Tente novamente.',
+      });
+    }
+  };
+
   const emitPng = async (inv: any) => {
     try {
       const firstItem = (inv.items || [])[0];
@@ -200,11 +239,40 @@ export default function MotoInvoices() {
                     <TableCell className="text-right font-semibold text-primary">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(inv.total) || 0)}
                     </TableCell>
-                    <TableCell><Badge variant={inv.status === 'emitida' ? 'default' : 'secondary'}>{inv.status}</Badge></TableCell>
-                    <TableCell className="flex gap-1">
-                      <Button size="icon" variant="ghost" title="Baixar PDF da NF" onClick={() => downloadInvoicePDF(inv)}><Download className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost" title="Baixar PNG de solicitação de emissão" onClick={() => emitPng(inv)}><ImageDown className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => del.mutate(inv.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    <TableCell>
+                      {inv.status === 'cancelada' ? (
+                        <div className="space-y-0.5">
+                          <Badge variant="destructive" className="text-[10px] font-bold">Cancelada</Badge>
+                          <div className="text-[10px] text-muted-foreground">
+                            {inv.cancellation_type === 'credito' ? 'Crédito' : 'Estorno'}
+                          </div>
+                        </div>
+                      ) : (
+                        <Badge variant="default" className="text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700">Emitida</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="flex items-center gap-1 justify-end">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Baixar PDF da NF" onClick={() => downloadInvoicePDF(inv)}>
+                        <Download className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Baixar PNG de solicitação de emissão" onClick={() => emitPng(inv)}>
+                        <ImageDown className="w-4 h-4 text-amber-500" />
+                      </Button>
+                      {inv.status !== 'cancelada' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedInvoiceToCancel(inv);
+                            setCancelDialogOpen(true);
+                          }}
+                          className="h-8 text-xs font-semibold text-destructive border-destructive/30 hover:bg-destructive/10 gap-1 px-2"
+                          title="Cancelar Nota Fiscal (Estorno ou Crédito)"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Cancelar</span>
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -352,6 +420,101 @@ export default function MotoInvoices() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={submit} disabled={upsert.isPending}><FileText className="w-4 h-4 mr-1.5" /> Emitir Nota Fiscal</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Cancelamento Contábil de NF */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="w-5 h-5" /> Cancelar Nota Fiscal
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              O cancelamento contábil preserva o histórico fiscal. A data do cancelamento define se o crédito ou estorno entra na semana/mês atual para controle da diretoria.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedInvoiceToCancel && (
+            <div className="space-y-3.5 text-xs py-1">
+              <div className="bg-muted/50 p-3 rounded-xl space-y-1 border">
+                <div className="flex justify-between font-semibold">
+                  <span>NF: {selectedInvoiceToCancel.invoice_number}</span>
+                  <span className="text-primary font-mono font-bold">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(selectedInvoiceToCancel.total) || 0)}
+                  </span>
+                </div>
+                <div className="text-muted-foreground">Cliente: {selectedInvoiceToCancel.customer_name}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Emissão Original: {new Date(selectedInvoiceToCancel.issue_date).toLocaleDateString('pt-BR')}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Data do Cancelamento (Competência da Semana) *</Label>
+                <Input
+                  type="date"
+                  className="h-9 mt-1 text-xs"
+                  value={cancelDate}
+                  onChange={(e) => setCancelDate(e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Esta data determinará em qual semana/mês o estorno/crédito será contabilizado no Painel do Dono.
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Destino Financeiro do Cancelamento *</Label>
+                <Select value={cancelType} onValueChange={(val: any) => setCancelType(val)}>
+                  <SelectTrigger className="h-9 mt-1 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="estorno">Estorno Financeiro a Receber (Devolução em R$)</SelectItem>
+                    <SelectItem value="credito">Crédito Fiscal na Fábrica (Abatimento em Faturamento Futuro)</SelectItem>
+                    <SelectItem value="devolucao">Devolução de Mercadoria Simples</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Protocolo SEFAZ / Chave de Cancelamento (Opcional)</Label>
+                <Input
+                  className="h-9 mt-1 text-xs font-mono"
+                  placeholder="Ex: 131240000000000"
+                  value={cancelProtocol}
+                  onChange={(e) => setCancelProtocol(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Motivo do Cancelamento *</Label>
+                <Textarea
+                  className="mt-1 text-xs"
+                  rows={2}
+                  placeholder="Ex: Desistência do cliente, erro nos dados cadastrais ou reemissão necessária..."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setCancelDialogOpen(false)}>
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmCancel}
+              disabled={cancelInvoiceMutation.isPending}
+              className="gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Confirmar Cancelamento Fiscal
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
