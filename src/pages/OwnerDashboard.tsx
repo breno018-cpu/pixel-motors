@@ -571,53 +571,53 @@ export default function OwnerDashboard() {
 
       {/* 2. NAVEGAÇÃO ENTRE AS ABAS ESTRATÉGICAS */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-6">
-        <TabsList className="bg-muted/70 p-1.5 rounded-2xl w-full grid grid-cols-2 md:grid-cols-6 max-w-6xl mx-auto shadow-inner">
+        <TabsList className="bg-muted/40 p-1 rounded-xl border border-border/80 w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 max-w-5xl mx-auto shadow-xs">
           <TabsTrigger
             value="caixa"
-            className="rounded-xl text-xs font-bold gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xs py-2.5"
+            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
           >
-            <DollarSign className="w-4 h-4 shrink-0" />
-            <span>1. Caixa &amp; Margens</span>
+            <DollarSign className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>Caixa &amp; Margens</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="nfs"
-            className="rounded-xl text-xs font-bold gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-xs py-2.5"
+            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
           >
-            <ReceiptText className="w-4 h-4 shrink-0" />
-            <span>2. Controle de NFs</span>
+            <ReceiptText className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>Controle de NFs</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="patio"
-            className="rounded-xl text-xs font-bold gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-xs py-2.5"
+            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
           >
-            <Bike className="w-4 h-4 shrink-0" />
-            <span>3. Pátio em R$</span>
+            <Bike className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>Pátio em R$</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="vendedores"
-            className="rounded-xl text-xs font-bold gap-2 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-xs py-2.5"
+            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
           >
-            <Users className="w-4 h-4 shrink-0" />
-            <span>4. Vendedores &amp; Comissões</span>
+            <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>Vendedores</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="comprovantes"
-            className="rounded-xl text-xs font-bold gap-2 data-[state=active]:bg-rose-600 data-[state=active]:text-white data-[state=active]:shadow-xs py-2.5"
+            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
           >
-            <Paperclip className="w-4 h-4 shrink-0" />
-            <span>5. Comprovantes</span>
+            <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>Comprovantes</span>
           </TabsTrigger>
 
           <TabsTrigger
             value="planilha"
-            className="rounded-xl text-xs font-bold gap-2 data-[state=active]:bg-amber-600 data-[state=active]:text-white data-[state=active]:shadow-xs py-2.5"
+            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
           >
-            <FileSpreadsheet className="w-4 h-4 shrink-0" />
-            <span>6. Planilha Interna</span>
+            <FileSpreadsheet className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>Planilha</span>
           </TabsTrigger>
         </TabsList>
 
@@ -626,18 +626,18 @@ export default function OwnerDashboard() {
         {/* =================================================================== */}
         <TabsContent value="caixa" className="space-y-6 mt-0">
           {/* Barra de Filtros Contextual da Aba Caixa & Margens */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-card border shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/80 shadow-xs">
             <div className="flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-primary" />
               <div>
-                <h4 className="text-xs font-bold text-foreground">Fluxo de Caixa & Margens de Venda</h4>
+                <h4 className="text-xs font-bold text-foreground">Fluxo de Caixa &amp; Margens de Venda</h4>
                 <p className="text-[11px] text-muted-foreground">Apuração de faturamento, liquidações bancárias e lucro bruto.</p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <Select value={storeFilter} onValueChange={setStoreFilter}>
-                <SelectTrigger className="h-8 text-xs w-44 rounded-xl">
+                <SelectTrigger className="h-8 text-xs w-44 rounded-lg">
                   <SelectValue placeholder="Concessionária" />
                 </SelectTrigger>
                 <SelectContent>
@@ -648,7 +648,7 @@ export default function OwnerDashboard() {
               </Select>
 
               <Select value={periodPreset} onValueChange={setPeriodPreset}>
-                <SelectTrigger className="h-8 text-xs w-40 rounded-xl">
+                <SelectTrigger className="h-8 text-xs w-40 rounded-lg">
                   <SelectValue placeholder="Período" />
                 </SelectTrigger>
                 <SelectContent>
@@ -664,14 +664,14 @@ export default function OwnerDashboard() {
                 <div className="flex items-center gap-1.5">
                   <Input
                     type="date"
-                    className="h-8 text-xs w-32 rounded-xl"
+                    className="h-8 text-xs w-32 rounded-lg"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
                   <span className="text-xs text-muted-foreground">até</span>
                   <Input
                     type="date"
-                    className="h-8 text-xs w-32 rounded-xl"
+                    className="h-8 text-xs w-32 rounded-lg"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -683,77 +683,69 @@ export default function OwnerDashboard() {
           {/* 4 Cards de Liquidez e Caixa Real */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1: Faturamento Bruto */}
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-1.5">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Faturamento Bruto</span>
-                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <DollarSign className="w-4 h-4" />
-                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Faturamento Bruto</span>
+                  <DollarSign className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <div className="text-2xl font-black text-foreground">
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.totalRevenue)}
                 </div>
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                  <span>{executiveMetrics.count} motos faturadas</span>
-                  <span className="text-muted-foreground/60">• Ticket médio: {formatCurrencyBRL(executiveMetrics.avgTicket)}</span>
+                  <span>{executiveMetrics.count} motos</span>
+                  <span>• Ticket médio: {formatCurrencyBRL(executiveMetrics.avgTicket)}</span>
                 </p>
               </CardContent>
             </Card>
 
             {/* Card 2: Entradas Imediatas (PIX / Dinheiro) */}
-            <Card className="rounded-2xl border border-emerald-500/20 shadow-xs bg-emerald-500/5">
-              <CardContent className="p-4 space-y-1.5">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Caixa Imediato (PIX / Dinheiro)</span>
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600">
-                    <QrCode className="w-4 h-4" />
-                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Caixa Imediato (PIX / Dinheiro)</span>
+                  <QrCode className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.totalCashPix)}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   {executiveMetrics.totalRevenue > 0
-                    ? `${((executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100).toFixed(1)}% do faturamento total já liquidado`
+                    ? `${((executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100).toFixed(1)}% liquidado à vista`
                     : 'Sem faturamento'}
                 </p>
               </CardContent>
             </Card>
 
             {/* Card 3: Financiamentos a Receber dos Bancos */}
-            <Card className="rounded-2xl border border-blue-500/20 shadow-xs bg-blue-500/5">
-              <CardContent className="p-4 space-y-1.5">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Financiamentos dos Bancos</span>
-                  <div className="w-8 h-8 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-600">
-                    <Landmark className="w-4 h-4" />
-                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Financiamentos dos Bancos</span>
+                  <Landmark className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.totalFinancing)}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Repasses em análise/liquidação (BV, Pan, Santander)
+                  Repasses bancários em liquidação
                 </p>
               </CardContent>
             </Card>
 
             {/* Card 4: Lucro Bruto Estimado */}
-            <Card className="rounded-2xl border border-amber-500/20 shadow-xs bg-amber-500/5">
-              <CardContent className="p-4 space-y-1.5">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Lucro Bruto Real Estimado</span>
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-600">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Lucro Bruto Estimado</span>
+                  <TrendingUp className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.estimatedGrossProfit)}
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Margem média da operação:</span>
-                  <Badge variant="outline" className="text-amber-600 font-bold border-amber-500/30 text-[10px]">
+                  <span>Margem média:</span>
+                  <Badge variant="outline" className="font-mono font-bold text-[10px]">
                     {executiveMetrics.grossMarginPercent.toFixed(1)}%
                   </Badge>
                 </div>
@@ -763,86 +755,83 @@ export default function OwnerDashboard() {
 
           {/* Comparativo entre Montes Claros e Divinópolis */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="rounded-2xl border shadow-xs bg-card">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
               <CardHeader className="p-4 pb-2 border-b">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Store className="w-4 h-4 text-primary" /> Concessionária Montes Claros
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                    <Store className="w-4 h-4 text-primary" /> Concessionária Montes Claros (Matriz)
                   </CardTitle>
-                  <Badge variant="outline" className="text-xs font-bold font-mono">
-                    {executiveMetrics.mocShare.toFixed(1)}% das vendas
+                  <Badge variant="outline" className="text-[10px] font-bold font-mono">
+                    {executiveMetrics.mocShare.toFixed(1)}% do faturamento
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-muted/40 p-2.5 rounded-xl border">
+                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
-                    <p className="text-base font-black text-primary mt-0.5">{formatCurrencyBRL(executiveMetrics.mocRevenue)}</p>
+                    <p className="text-base font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(executiveMetrics.mocRevenue)}</p>
                   </div>
-                  <div className="bg-muted/40 p-2.5 rounded-xl border">
+                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold">Motos Faturadas</span>
-                    <p className="text-base font-black text-foreground mt-0.5">{executiveMetrics.mocCount} un.</p>
+                    <p className="text-base font-black font-mono text-foreground mt-0.5">{executiveMetrics.mocCount} un.</p>
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground flex justify-between pt-1">
-                  <span>Ticket Médio:</span>
-                  <span className="font-bold text-foreground">{formatCurrencyBRL(executiveMetrics.mocAvgTicket)}</span>
+                  <span>Ticket Médio Unitário:</span>
+                  <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.mocAvgTicket)}</span>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border shadow-xs bg-card">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
               <CardHeader className="p-4 pb-2 border-b">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Store className="w-4 h-4 text-emerald-600" /> Concessionária Divinópolis
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                    <Store className="w-4 h-4 text-primary" /> Concessionária Divinópolis (Filial)
                   </CardTitle>
-                  <Badge variant="outline" className="text-xs font-bold font-mono">
-                    {executiveMetrics.divShare.toFixed(1)}% das vendas
+                  <Badge variant="outline" className="text-[10px] font-bold font-mono">
+                    {executiveMetrics.divShare.toFixed(1)}% do faturamento
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-muted/40 p-2.5 rounded-xl border">
+                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
-                    <p className="text-base font-black text-emerald-600 mt-0.5">{formatCurrencyBRL(executiveMetrics.divRevenue)}</p>
+                    <p className="text-base font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(executiveMetrics.divRevenue)}</p>
                   </div>
-                  <div className="bg-muted/40 p-2.5 rounded-xl border">
+                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold">Motos Faturadas</span>
-                    <p className="text-base font-black text-foreground mt-0.5">{executiveMetrics.divCount} un.</p>
+                    <p className="text-base font-black font-mono text-foreground mt-0.5">{executiveMetrics.divCount} un.</p>
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground flex justify-between pt-1">
-                  <span>Ticket Médio:</span>
-                  <span className="font-bold text-foreground">{formatCurrencyBRL(executiveMetrics.divAvgTicket)}</span>
+                  <span>Ticket Médio Unitário:</span>
+                  <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.divAvgTicket)}</span>
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Tabela de Lucratividade & Margem por Modelo de Moto */}
-          <Card className="rounded-2xl border shadow-xs overflow-hidden">
-            <CardHeader className="p-4 border-b bg-muted/20">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
+          <Card className="rounded-xl border border-border/80 shadow-xs overflow-hidden">
+            <CardHeader className="p-3.5 border-b bg-muted/20">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                 <Bike className="w-4 h-4 text-primary" />
-                Margem Real e Lucro Líquido por Modelo de Moto
+                Margem e Lucratividade por Modelo de Moto
               </CardTitle>
-              <CardDescription className="text-xs">
-                Ranking de faturamento, volume de unidades e margem de contribuição bruta gerada por cada modelo.
-              </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/30 border-b">
                   <TableRow>
-                    <TableHead>Modelo da Motocicleta</TableHead>
-                    <TableHead className="text-center">Unidades Faturadas</TableHead>
-                    <TableHead className="text-right">Faturamento Total</TableHead>
-                    <TableHead className="text-right">Ticket Médio Unitário</TableHead>
-                    <TableHead className="text-right">Margem Bruta Estimada (R$)</TableHead>
-                    <TableHead className="text-right">Participação</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Modelo da Motocicleta</TableHead>
+                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Unidades</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Faturamento</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Ticket Médio</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Margem Bruta (R$)</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Participação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -854,17 +843,17 @@ export default function OwnerDashboard() {
                     </TableRow>
                   ) : (
                     modelProfitability.map((m, idx) => (
-                      <TableRow key={idx} className="hover:bg-muted/30">
+                      <TableRow key={idx} className="hover:bg-muted/20 border-b border-border/40">
                         <TableCell className="font-bold text-xs flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] shrink-0">
+                          <span className="w-5 h-5 rounded-md bg-muted font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
                             {idx + 1}
                           </span>
                           <span>{m.model}</span>
                         </TableCell>
-                        <TableCell className="text-center font-bold text-xs">{m.count} un.</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-xs text-primary">{formatCurrencyBRL(m.revenue)}</TableCell>
+                        <TableCell className="text-center font-bold font-mono text-xs">{m.count} un.</TableCell>
+                        <TableCell className="text-right font-mono font-bold text-xs text-foreground">{formatCurrencyBRL(m.revenue)}</TableCell>
                         <TableCell className="text-right font-mono text-xs text-muted-foreground">{formatCurrencyBRL(m.avgTicket)}</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-xs text-emerald-600">{formatCurrencyBRL(m.marginValue)}</TableCell>
+                        <TableCell className="text-right font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">{formatCurrencyBRL(m.marginValue)}</TableCell>
                         <TableCell className="text-right font-mono text-xs">{m.share.toFixed(1)}%</TableCell>
                       </TableRow>
                     ))
@@ -875,24 +864,21 @@ export default function OwnerDashboard() {
           </Card>
 
           {/* Repasses por Banco de Financiamento */}
-          <Card className="rounded-2xl border shadow-xs overflow-hidden">
-            <CardHeader className="p-4 border-b bg-muted/20">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Landmark className="w-4 h-4 text-blue-600" />
+          <Card className="rounded-xl border border-border/80 shadow-xs overflow-hidden">
+            <CardHeader className="p-3.5 border-b bg-muted/20">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-primary" />
                 Financiamentos Bancários por Instituição
               </CardTitle>
-              <CardDescription className="text-xs">
-                Valores repassados e em liquidação por financeira (BV, Pan, Santander, Altis, Motrix).
-              </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/30 border-b">
                   <TableRow>
-                    <TableHead>Instituição Financeira</TableHead>
-                    <TableHead className="text-center">Contratos Financiados</TableHead>
-                    <TableHead className="text-right">Total Financiado a Receber</TableHead>
-                    <TableHead className="text-right">Participação no Financiado</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Instituição Financeira</TableHead>
+                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Contratos</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Total Financiado</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Participação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -906,10 +892,10 @@ export default function OwnerDashboard() {
                     bankDistribution.map((b, idx) => {
                       const share = executiveMetrics.totalFinancing > 0 ? (b.totalFinanced / executiveMetrics.totalFinancing) * 100 : 0;
                       return (
-                        <TableRow key={idx}>
+                        <TableRow key={idx} className="hover:bg-muted/20 border-b border-border/40">
                           <TableCell className="font-bold text-xs">{b.bank}</TableCell>
-                          <TableCell className="text-center font-bold text-xs">{b.count} contratos</TableCell>
-                          <TableCell className="text-right font-mono font-bold text-xs text-blue-600">{formatCurrencyBRL(b.totalFinanced)}</TableCell>
+                          <TableCell className="text-center font-mono font-bold text-xs">{b.count} contratos</TableCell>
+                          <TableCell className="text-right font-mono font-bold text-xs text-foreground">{formatCurrencyBRL(b.totalFinanced)}</TableCell>
                           <TableCell className="text-right font-mono text-xs">{share.toFixed(1)}%</TableCell>
                         </TableRow>
                       );
@@ -933,66 +919,61 @@ export default function OwnerDashboard() {
         {/* =================================================================== */}
         <TabsContent value="patio" className="space-y-6 mt-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Valor Total do Estoque Parado</span>
-                <div className="text-2xl font-black text-primary">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Valor Total do Estoque</span>
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.totalStockValue)}
                 </div>
-                <p className="text-xs text-muted-foreground">Capital imobilizado em {executiveMetrics.totalStockCount} motocicletas</p>
+                <p className="text-[11px] text-muted-foreground">{executiveMetrics.totalStockCount} motos em pátio</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pátio Montes Claros</span>
-                <div className="text-2xl font-black text-foreground">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pátio Montes Claros</span>
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.mocStockValue)}
                 </div>
-                <p className="text-xs text-muted-foreground">{executiveMetrics.mocStockCount} motocicletas em estoque físico</p>
+                <p className="text-[11px] text-muted-foreground">{executiveMetrics.mocStockCount} motos disponíveis</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pátio Divinópolis</span>
-                <div className="text-2xl font-black text-foreground">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pátio Divinópolis</span>
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.divStockValue)}
                 </div>
-                <p className="text-xs text-muted-foreground">{executiveMetrics.divStockCount} motocicletas em estoque físico</p>
+                <p className="text-[11px] text-muted-foreground">{executiveMetrics.divStockCount} motos disponíveis</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Modelos no Catálogo</span>
-                <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Modelos no Catálogo</span>
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {modelStockSummary.length} modelos
                 </div>
-                <p className="text-xs text-muted-foreground">Linhas ativas com unidades físicas disponíveis</p>
+                <p className="text-[11px] text-muted-foreground">Linhas ativas com estoque físico</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Listagem do Estoque do Pátio focada em MODELOS E QUANTIDADES */}
-          <Card className="rounded-2xl border shadow-xs overflow-hidden">
-            <CardHeader className="p-4 border-b bg-muted/20">
+          <Card className="rounded-xl border border-border/80 shadow-xs overflow-hidden bg-card">
+            <CardHeader className="p-3.5 border-b bg-muted/20">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                <div>
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Bike className="w-4 h-4 text-primary" />
-                    Motocicletas Disponíveis no Pátio
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Consolidado estratégico por modelo e volume de unidades disponíveis no estoque das lojas.
-                  </CardDescription>
-                </div>
+                <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                  <Bike className="w-4 h-4 text-primary" />
+                  Estoque de Motocicletas por Modelo &amp; Volume
+                </CardTitle>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative w-56">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      className="h-8 pl-8 text-xs rounded-xl"
+                      className="h-8 pl-8 text-xs rounded-lg"
                       placeholder="Filtrar por modelo ou cor..."
                       value={stockSearch}
                       onChange={(e) => setStockSearch(e.target.value)}
@@ -1000,7 +981,7 @@ export default function OwnerDashboard() {
                   </div>
 
                   <Select value={stockStoreFilter} onValueChange={(val: any) => setStockStoreFilter(val)}>
-                    <SelectTrigger className="h-8 text-xs w-44 rounded-xl">
+                    <SelectTrigger className="h-8 text-xs w-44 rounded-lg">
                       <SelectValue placeholder="Concessionária" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1011,7 +992,7 @@ export default function OwnerDashboard() {
                   </Select>
 
                   <Select value={stockSortBy} onValueChange={(val: any) => setStockSortBy(val)}>
-                    <SelectTrigger className="h-8 text-xs w-44 rounded-xl">
+                    <SelectTrigger className="h-8 text-xs w-44 rounded-lg">
                       <SelectValue placeholder="Ordenar por" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1026,7 +1007,7 @@ export default function OwnerDashboard() {
                     variant="outline"
                     size="sm"
                     onClick={exportModelStockExcel}
-                    className="h-8 text-xs gap-1.5 rounded-xl border-dashed"
+                    className="h-8 text-xs gap-1.5 rounded-lg border-dashed"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Exportar Excel
@@ -1038,16 +1019,16 @@ export default function OwnerDashboard() {
             <CardContent className="p-0">
               <div className="max-h-[550px] overflow-y-auto">
                 <Table>
-                  <TableHeader className="sticky top-0 bg-background z-10 shadow-xs">
+                  <TableHeader className="sticky top-0 bg-muted/40 z-10 border-b">
                     <TableRow>
-                      <TableHead>Modelo da Motocicleta</TableHead>
-                      <TableHead className="text-center font-bold">Qtd Total no Pátio</TableHead>
-                      <TableHead className="text-center">Montes Claros</TableHead>
-                      <TableHead className="text-center">Divinópolis</TableHead>
-                      <TableHead className="text-right">Preço Médio Unitário</TableHead>
-                      <TableHead className="text-right">Capital Total no Pátio</TableHead>
-                      <TableHead>Cores em Estoque</TableHead>
-                      <TableHead className="text-center">Ação</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-wider">Modelo da Motocicleta</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Total em Pátio</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Montes Claros</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Divinópolis</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Preço Médio</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Capital Total</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-wider">Cores em Estoque</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1059,7 +1040,7 @@ export default function OwnerDashboard() {
                       </TableRow>
                     ) : (
                       modelStockSummary.map((item) => (
-                        <TableRow key={item.model} className="hover:bg-muted/30">
+                        <TableRow key={item.model} className="hover:bg-muted/20 border-b border-border/40">
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-xs text-foreground">{item.model}</span>
@@ -1070,20 +1051,20 @@ export default function OwnerDashboard() {
                           </TableCell>
 
                           <TableCell className="text-center">
-                            <Badge className="font-black text-xs px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/25">
-                              {item.totalCount} {item.totalCount === 1 ? 'moto' : 'motos'}
-                            </Badge>
-                          </TableCell>
-
-                          <TableCell className="text-center">
-                            <span className="font-semibold text-xs text-foreground">
-                              {item.mocCount} un
+                            <span className="font-mono font-bold text-xs text-foreground">
+                              {item.totalCount} un.
                             </span>
                           </TableCell>
 
                           <TableCell className="text-center">
-                            <span className="font-semibold text-xs text-foreground">
-                              {item.divCount} un
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {item.mocCount} un.
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-center">
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {item.divCount} un.
                             </span>
                           </TableCell>
 
@@ -1091,15 +1072,15 @@ export default function OwnerDashboard() {
                             {formatCurrencyBRL(item.avgPrice)}
                           </TableCell>
 
-                          <TableCell className="text-right font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                          <TableCell className="text-right font-mono font-bold text-xs text-foreground">
                             {formatCurrencyBRL(item.totalValue)}
                           </TableCell>
 
                           <TableCell>
                             <div className="flex flex-wrap gap-1 max-w-[280px]">
                               {item.colorCounts.slice(0, 4).map((c) => (
-                                <Badge key={c.color} variant="secondary" className="text-[10px] px-1.5 py-0">
-                                  {c.color}: <strong className="ml-1">{c.count}</strong>
+                                <Badge key={c.color} variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">
+                                  {c.color}: <strong className="ml-1 font-semibold">{c.count}</strong>
                                 </Badge>
                               ))}
                               {item.colorCounts.length > 4 && (
@@ -1146,13 +1127,13 @@ export default function OwnerDashboard() {
 
               <div className="overflow-y-auto flex-1 border rounded-xl mt-2 max-h-[500px]">
                 <Table>
-                  <TableHeader className="sticky top-0 bg-muted/80 z-10">
+                  <TableHeader className="sticky top-0 bg-muted/80 z-10 border-b">
                     <TableRow>
-                      <TableHead>Chassi</TableHead>
-                      <TableHead>Cor</TableHead>
-                      <TableHead>Concessionária</TableHead>
-                      <TableHead className="text-right">Preço de Venda</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-wider">Chassi</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-wider">Cor</TableHead>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-wider">Concessionária</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Preço de Venda</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1160,11 +1141,11 @@ export default function OwnerDashboard() {
                       const store = stores.find((s) => s.id === veh.store_id);
                       const isMoc = (store?.name || store?.city || '').toUpperCase().includes('MONTES');
                       return (
-                        <TableRow key={veh.id} className="text-xs hover:bg-muted/30">
+                        <TableRow key={veh.id} className="text-xs hover:bg-muted/20 border-b border-border/40">
                           <TableCell className="font-mono font-bold">{veh.chassis || '—'}</TableCell>
                           <TableCell className="text-muted-foreground">{veh.color || 'Padrão'}</TableCell>
                           <TableCell className="font-medium">{isMoc ? 'Montes Claros' : 'Divinópolis'}</TableCell>
-                          <TableCell className="text-right font-mono font-bold text-primary">
+                          <TableCell className="text-right font-mono font-bold text-foreground">
                             {formatCurrencyBRL(Number(veh.sale_price) || 0)}
                           </TableCell>
                           <TableCell className="text-center">
@@ -1187,59 +1168,56 @@ export default function OwnerDashboard() {
         {/* =================================================================== */}
         <TabsContent value="vendedores" className="space-y-6 mt-0">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Total de Comissões a Pagar</span>
-                <div className="text-2xl font-black text-indigo-600">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total de Comissões a Pagar</span>
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(totalCommissionsToPay)}
                 </div>
-                <p className="text-xs text-muted-foreground">Estimativa acumulada sobre as vendas do período</p>
+                <p className="text-[11px] text-muted-foreground">Acumulado a liquidar com a equipe de vendas</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Consultores Ativos</span>
-                <div className="text-2xl font-black text-foreground">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Consultores Ativos</span>
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {sellerPerformance.length} consultores
                 </div>
-                <p className="text-xs text-muted-foreground">Com vendas registradas no período selecionado</p>
+                <p className="text-[11px] text-muted-foreground">Com vendas registradas no período selecionado</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Ticket Médio por Vendedor</span>
-                <div className="text-2xl font-black text-primary">
+            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ticket Médio por Consultor</span>
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.avgTicket)}
                 </div>
-                <p className="text-xs text-muted-foreground">Média geral das operações</p>
+                <p className="text-[11px] text-muted-foreground">Média geral por operação faturada</p>
               </CardContent>
             </Card>
           </div>
 
-          <Card className="rounded-2xl border shadow-xs overflow-hidden">
-            <CardHeader className="p-4 border-b bg-muted/20">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-500" />
-                Ranking de Vendas e Comissões por Vendedor
+          <Card className="rounded-xl border border-border/80 shadow-xs overflow-hidden bg-card">
+            <CardHeader className="p-3.5 border-b bg-muted/20">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-primary" />
+                Desempenho Comercial &amp; Comissões a Pagar
               </CardTitle>
-              <CardDescription className="text-xs">
-                Acompanhe quem está vendendo, o faturamento gerado e o montante de comissão a pagar para cada consultor.
-              </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/30 border-b">
                   <TableRow>
-                    <TableHead className="w-16">Posição</TableHead>
-                    <TableHead>Vendedor / Consultor</TableHead>
-                    <TableHead>Concessionária</TableHead>
-                    <TableHead className="text-center">Motos Vendidas</TableHead>
-                    <TableHead className="text-right">Faturamento Gerado</TableHead>
-                    <TableHead className="text-right">Ticket Médio</TableHead>
-                    <TableHead className="text-center">Taxa de Comissão</TableHead>
-                    <TableHead className="text-right">Comissão a Pagar (R$)</TableHead>
+                    <TableHead className="w-16 text-[10px] font-bold uppercase tracking-wider">Posição</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Vendedor / Consultor</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Concessionária</TableHead>
+                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Motos</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Faturamento</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Ticket Médio</TableHead>
+                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Comissão %</TableHead>
+                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Comissão Total (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1251,33 +1229,23 @@ export default function OwnerDashboard() {
                     </TableRow>
                   ) : (
                     sellerPerformance.map((seller, idx) => (
-                      <TableRow key={idx} className="hover:bg-muted/30">
+                      <TableRow key={idx} className="hover:bg-muted/20 border-b border-border/40">
                         <TableCell>
-                          <Badge
-                            className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs p-0 ${
-                              idx === 0
-                                ? 'bg-amber-500 text-slate-950'
-                                : idx === 1
-                                ? 'bg-slate-400 text-slate-950'
-                                : idx === 2
-                                ? 'bg-amber-700 text-white'
-                                : 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            {idx + 1}º
-                          </Badge>
+                          <span className="w-5 h-5 rounded-md bg-muted font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+                            #{idx + 1}
+                          </span>
                         </TableCell>
                         <TableCell className="font-bold text-xs text-foreground">{seller.name}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{seller.store}</TableCell>
-                        <TableCell className="text-center font-black text-xs">{seller.count} un.</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-xs text-primary">{formatCurrencyBRL(seller.revenue)}</TableCell>
+                        <TableCell className="text-center font-bold font-mono text-xs">{seller.count} un.</TableCell>
+                        <TableCell className="text-right font-mono font-bold text-xs text-foreground">{formatCurrencyBRL(seller.revenue)}</TableCell>
                         <TableCell className="text-right font-mono text-xs text-muted-foreground">{formatCurrencyBRL(seller.avgTicket)}</TableCell>
                         <TableCell className="text-center font-mono text-xs">
-                          <Badge variant="outline" className="font-mono text-[10px]">
+                          <span className="font-mono text-[11px] text-muted-foreground font-semibold">
                             {seller.commissionRate.toFixed(1)}%
-                          </Badge>
+                          </span>
                         </TableCell>
-                        <TableCell className="text-right font-mono font-black text-xs text-indigo-600">
+                        <TableCell className="text-right font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
                           {formatCurrencyBRL(seller.commissionTotal)}
                         </TableCell>
                       </TableRow>
