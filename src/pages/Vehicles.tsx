@@ -1148,7 +1148,91 @@ export default function Vehicles() {
               title="Relação Geral de Unidades"
               description={`${filteredVehicles.length} ${filteredVehicles.length === 1 ? 'veículo listado' : 'veículos listados'} com chassi, alocação e tempo de pátio`}
             >
-              <div className="overflow-x-auto">
+              {/* Visualização Mobile: Cards Verticais Touch */}
+              <div className="md:hidden space-y-2.5">
+                {filteredVehicles.map((vehicle) => {
+                  const store = stores?.find((s) => s.id === vehicle.store_id);
+                  const reseller = resellers?.find((r) => r.id === vehicle.reseller_id);
+                  const days = getDaysInStock(vehicle.created_at);
+
+                  return (
+                    <div
+                      key={`mob-veh-${vehicle.id}`}
+                      className="rounded-xl border bg-card p-3 shadow-xs space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Badge
+                            variant="outline"
+                            className={cn('text-[9.5px] px-1.5 py-0 h-4.5', statusConfig[vehicle.status].class)}
+                          >
+                            {statusConfig[vehicle.status].label}
+                          </Badge>
+                          <span className="font-bold text-foreground text-xs truncate">
+                            {vehicle.brand} {vehicle.model}
+                          </span>
+                        </div>
+                        <span className="font-mono font-bold text-xs text-foreground shrink-0">
+                          {formatCurrency(Number(vehicle.sale_price) || 0)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/50">
+                        <span className="text-foreground font-medium">{vehicle.color || 'Sem cor'} · {vehicle.year}</span>
+                        <span className="font-mono text-[11px]">{vehicle.chassis ? `#${vehicle.chassis.slice(-6)}` : vehicle.plate || '—'}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span className="truncate">{store?.name?.replace('Concessionária ', '') || reseller?.full_name || 'Estoque'}</span>
+                        <span>{days}d no pátio</span>
+                      </div>
+
+                      {/* Ações rápidas */}
+                      <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-border/40">
+                        {canCreateSales && vehicle.status !== 'vendido' && (
+                          Boolean(userStore?.id && vehicle.store_id && !isMatchingStore(vehicle.store_id, userStore.id)) ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRequestTransfer(vehicle)}
+                              className="h-7 px-2 text-xs font-bold border-amber-500/50 text-amber-700 dark:text-amber-400 hover:bg-amber-500/15"
+                            >
+                              <ArrowLeftRight className="h-3 w-3 mr-1 text-amber-600" />
+                              Transferir
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => setSaleVehicleId(vehicle.id)}
+                              className="h-7 px-2.5 text-xs font-bold"
+                            >
+                              <ShoppingBag className="h-3 w-3 mr-1" />
+                              Vender
+                            </Button>
+                          )
+                        )}
+                        {vehicle.status === 'disponivel' && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setReserveVehicleId(vehicle.id)}
+                            className="h-7 px-2 text-xs"
+                          >
+                            Reservar
+                          </Button>
+                        )}
+                        <VehicleActionsMenu vehicle={vehicle} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Visualização Desktop: Tabela Tradicional */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -1343,13 +1427,13 @@ export default function Vehicles() {
             </PanelCard>
           ) : (
             /* VISÃO AGRUPADA POR MODELO COM EXPANSÃO INLINE */
-            <div className="overflow-x-auto rounded-xl border border-border/70 bg-card shadow-2xs">
-              <div className="flex min-w-[760px] items-center justify-between border-b border-border/60 bg-muted/20 px-5 py-3.5">
+            <div className="rounded-xl border border-border/70 bg-card shadow-2xs overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/60 bg-muted/20 px-4 sm:px-5 py-3 sm:py-3.5 gap-1.5">
                 <div>
                   <h2 className="font-display text-sm font-semibold text-foreground">
                     Modelos no Estoque
                   </h2>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground hidden sm:block">
                     Clique em uma cor para filtrar, expanda a linha para ação rápida ou abra o detalhamento do modelo
                   </p>
                 </div>
@@ -1364,7 +1448,7 @@ export default function Vehicles() {
                   const isExpanded = expandedModels.has(group.key);
                   return (
                     <div key={group.key} className="transition-colors">
-                      <div className="group grid min-w-[760px] gap-4 px-5 py-3.5 hover:bg-muted/20 lg:grid-cols-[minmax(200px,1.2fr)_minmax(180px,1.2fr)_140px_100px_160px] lg:items-center">
+                      <div className="group flex flex-col lg:grid lg:grid-cols-[minmax(200px,1.2fr)_minmax(180px,1.2fr)_140px_100px_160px] lg:items-center gap-3 p-3.5 sm:px-5 sm:py-3.5 hover:bg-muted/20">
                         <div className="flex items-center gap-3">
                           <button
                             type="button"

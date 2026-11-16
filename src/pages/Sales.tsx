@@ -567,24 +567,24 @@ export default function Sales() {
 
       {/* Alerta de Escopo Restrito para Vendedores */}
       {isRestrictedSeller && (
-        <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-primary/30 bg-primary/5 text-xs text-primary font-medium">
-          <User className="w-4 h-4 shrink-0 text-primary" />
-          <span>
-            <strong>Painel Individual do Vendedor:</strong> Você está visualizando exclusivamente as suas próprias vendas registradas (<strong>{profile?.full_name || 'Seu Perfil'}</strong>). Vendas de outros colaboradores são estritamente restritas à gerência.
+        <div className="flex items-center gap-2 p-2 sm:p-2.5 rounded-xl border border-primary/30 bg-primary/5 text-xs text-primary font-medium">
+          <User className="w-3.5 h-3.5 shrink-0 text-primary" />
+          <span className="truncate">
+            Painel Individual: <strong>{profile?.full_name || 'Vendedor'}</strong>
           </span>
         </div>
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label={isRestrictedSeller ? "Minhas Vendas Faturadas" : "Vendas Faturadas"} value={totalSales} icon={ShoppingCart} tone="success" />
-        <StatCard label={isRestrictedSeller ? "Minhas Pré-Vendas (NF)" : "Pré-Vendas (NF Solicitada)"} value={preSalesCount} icon={FileText} tone="warning" />
-        <StatCard label={isRestrictedSeller ? "Meu Faturamento" : "Receita Faturada"} value={formatCurrency(totalRevenue)} icon={DollarSign} />
-        <StatCard label={isRestrictedSeller ? "Meu Ticket Médio" : "Ticket médio"} value={formatCurrency(avgTicket)} icon={TrendingUp} tone="neutral" />
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+        <StatCard label={isRestrictedSeller ? "Minhas Faturadas" : "Vendas Faturadas"} value={totalSales} icon={ShoppingCart} tone="success" small />
+        <StatCard label={isRestrictedSeller ? "Minhas Pré-Vendas" : "Pré-Vendas (NF)"} value={preSalesCount} icon={FileText} tone="warning" small />
+        <StatCard label={isRestrictedSeller ? "Meu Faturamento" : "Receita Faturada"} value={formatCurrency(totalRevenue)} icon={DollarSign} small />
+        <StatCard label={isRestrictedSeller ? "Ticket Médio" : "Ticket médio"} value={formatCurrency(avgTicket)} icon={TrendingUp} tone="neutral" small />
       </div>
 
       {/* ABAS DO MÓDULO DE VENDAS */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-muted/50 rounded-2xl border w-fit">
+      <div className="flex items-center gap-1 sm:gap-1.5 p-1 bg-muted/50 rounded-xl sm:rounded-2xl border overflow-x-auto no-scrollbar w-full sm:w-fit">
         <Button
           size="sm"
           variant={activeTab === 'todas' ? 'default' : 'ghost'}
@@ -592,10 +592,10 @@ export default function Sales() {
             setActiveTab('todas');
             setStatusFilter('all');
           }}
-          className="text-xs font-bold gap-2 h-9 px-3.5 rounded-xl shadow-xs"
+          className="text-xs font-bold gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl shadow-xs shrink-0"
         >
-          <ShoppingCart className="w-4 h-4" />
-          Todas as Vendas ({baseFilteredSales.length})
+          <ShoppingCart className="w-3.5 h-3.5" />
+          <span>Todas ({baseFilteredSales.length})</span>
         </Button>
         <Button
           size="sm"
@@ -605,14 +605,14 @@ export default function Sales() {
             setStatusFilter('all');
           }}
           className={cn(
-            "text-xs font-bold gap-2 h-9 px-3.5 rounded-xl transition-colors",
+            "text-xs font-bold gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl transition-colors shrink-0",
             activeTab === 'faturadas'
               ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
               : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
           )}
         >
-          <CheckCircle className="w-4 h-4 text-emerald-500" />
-          Vendas Faturadas ({completedSales.length})
+          <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+          <span>Faturadas ({completedSales.length})</span>
         </Button>
         <Button
           size="sm"
@@ -622,28 +622,28 @@ export default function Sales() {
             setStatusFilter('all');
           }}
           className={cn(
-            "text-xs font-bold gap-2 h-9 px-3.5 rounded-xl transition-colors",
+            "text-xs font-bold gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl transition-colors shrink-0",
             activeTab === 'pre_venda'
               ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
               : "text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
           )}
         >
-          <FileText className="w-4 h-4 text-amber-500" />
-          Pré-Vendas & NF ({preSalesCount})
+          <FileText className="w-3.5 h-3.5 text-amber-500" />
+          <span>Pré-Vendas ({preSalesCount})</span>
         </Button>
         <Button
           size="sm"
           variant={activeTab === 'segunda_via' ? 'default' : 'ghost'}
           onClick={() => setActiveTab('segunda_via')}
           className={cn(
-            "text-xs font-bold gap-2 h-9 px-3.5 rounded-xl transition-colors",
+            "text-xs font-bold gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl transition-colors shrink-0",
             activeTab === 'segunda_via'
               ? "bg-red-600 hover:bg-red-700 text-white shadow-xs"
               : "text-red-700 dark:text-red-400 hover:bg-red-500/10"
           )}
         >
-          <Printer className="w-4 h-4 text-red-500" />
-          Gestão & 2ª Via Oficial
+          <Printer className="w-3.5 h-3.5 text-red-500" />
+          <span>2ª Via</span>
         </Button>
         {!isRestrictedSeller && (
           <Button
@@ -651,14 +651,15 @@ export default function Sales() {
             variant={activeTab === 'planilha' ? 'default' : 'ghost'}
             onClick={() => setActiveTab('planilha')}
             className={cn(
-              "text-xs font-bold gap-2 h-9 px-3.5 rounded-xl transition-colors",
+              "text-xs font-bold gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-lg sm:rounded-xl transition-colors shrink-0",
               activeTab === 'planilha'
                 ? "bg-sky-600 hover:bg-sky-700 text-white"
                 : "text-sky-700 dark:text-sky-400 hover:bg-sky-500/10"
             )}
           >
-            <FileSpreadsheet className="w-4 h-4 text-sky-500" />
-            Planilha de Vendas & Excel Online
+            <FileSpreadsheet className="w-3.5 h-3.5 text-sky-500" />
+            <span className="hidden sm:inline">Planilha de Vendas & Excel Online</span>
+            <span className="sm:hidden">Planilha</span>
           </Button>
         )}
       </div>
@@ -675,131 +676,131 @@ export default function Sales() {
         <div className="space-y-4">
           {/* Filters */}
           <FilterBar>
-        <div className="relative min-w-0 flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por cliente, CPF/CNPJ, contrato, chassi..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-10 pl-9 text-xs"
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {/* Concessionária Filter */}
-          <Select
-            value={storeFilter}
-            onValueChange={(val) => {
-              setStoreFilter(val);
-              if (val !== 'all' && resellerFilter !== 'all') {
-                setResellerFilter('all');
-              }
-            }}
-          >
-            <SelectTrigger className="w-[195px] h-10 text-xs">
-              <Store className="w-3.5 h-3.5 mr-1.5 text-primary" />
-              <SelectValue placeholder="Concessionária" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as Concessionárias (MG)</SelectItem>
-              {(stores || [])
-                .filter((s) => s.is_active !== false)
-                .map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-
-          {/* Vendedor Filter */}
-          {isRestrictedSeller ? (
-            <div className="flex items-center gap-1.5 px-3 h-10 rounded-xl border border-primary/30 bg-primary/10 text-xs font-semibold text-primary">
-              <User className="w-3.5 h-3.5" />
-              <span>Minhas Vendas ({profile?.full_name || 'Vendedor'})</span>
+            <div className="relative min-w-0 flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente, CPF, contrato, chassi..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 sm:h-10 pl-9 text-xs w-full"
+              />
             </div>
-          ) : (
-            <Select value={resellerFilter} onValueChange={setResellerFilter}>
-              <SelectTrigger className="w-[165px] h-10 text-xs">
-                <User className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                <SelectValue placeholder="Vendedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  {storeFilter === 'all' ? 'Toda Equipe' : 'Equipe da Loja'}
-                </SelectItem>
-                {sellerOptions.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
 
-          {/* Status Filter */}
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[170px] h-10 text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              <SelectItem value="pre_venda">Pré-venda (NF)</SelectItem>
-              <SelectItem value="concluido">Quitado / Faturado</SelectItem>
-              <SelectItem value="pendente">Aguardando aprovação</SelectItem>
-              <SelectItem value="assinado">Assinado</SelectItem>
-              <SelectItem value="cancelado">Cancelado</SelectItem>
-            </SelectContent>
-          </Select>
+            <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2 w-full sm:w-auto">
+              {/* Concessionária Filter */}
+              <Select
+                value={storeFilter}
+                onValueChange={(val) => {
+                  setStoreFilter(val);
+                  if (val !== 'all' && resellerFilter !== 'all') {
+                    setResellerFilter('all');
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[175px] h-9 sm:h-10 text-xs">
+                  <Store className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+                  <SelectValue placeholder="Loja" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Lojas</SelectItem>
+                  {(stores || [])
+                    .filter((s) => s.is_active !== false)
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
 
-          {/* Period Filter */}
-          <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[185px] h-10 text-xs font-medium">
-              <Calendar className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
-              <SelectValue placeholder="Selecione o período" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[340px]">
-              <SelectItem value="month">Este mês ({currentMonthLabel})</SelectItem>
-              <SelectItem value="lastmonth">Mês anterior ({lastMonthLabel})</SelectItem>
-              <SelectItem value="today">Hoje</SelectItem>
-              <SelectItem value="7d">Últimos 7 dias</SelectItem>
-              <SelectItem value="30d">Últimos 30 dias</SelectItem>
-              <SelectItem value="90d">Últimos 90 dias</SelectItem>
-              <SelectItem value="365d">Este ano ({new Date().getFullYear()})</SelectItem>
-              <SelectItem value="all">Todo o período ({allSales.length} vendas)</SelectItem>
-              {availablePeriods.length > 0 && (
-                <>
-                  <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-t my-1">
-                    Meses Específicos
-                  </div>
-                  {availablePeriods.map((p) => (
-                    <SelectItem key={p.key} value={p.key}>
-                      {p.label} ({p.count})
+              {/* Vendedor Filter */}
+              {isRestrictedSeller ? (
+                <div className="flex items-center gap-1.5 px-2.5 h-9 sm:h-10 rounded-xl border border-primary/30 bg-primary/10 text-xs font-semibold text-primary truncate w-full sm:w-auto">
+                  <User className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{profile?.full_name?.split(' ')[0] || 'Vendedor'}</span>
+                </div>
+              ) : (
+                <Select value={resellerFilter} onValueChange={setResellerFilter}>
+                  <SelectTrigger className="w-full sm:w-[155px] h-9 sm:h-10 text-xs">
+                    <User className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+                    <SelectValue placeholder="Vendedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      {storeFilter === 'all' ? 'Toda Equipe' : 'Equipe da Loja'}
                     </SelectItem>
-                  ))}
-                </>
+                    {sellerOptions.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
-            </SelectContent>
-          </Select>
 
-          {(search || storeFilter !== 'all' || resellerFilter !== 'all' || statusFilter !== 'all' || periodFilter !== defaultMonthKey) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearch('');
-                setStoreFilter('all');
-                setResellerFilter('all');
-                setStatusFilter('all');
-                resetToActiveMonth();
-              }}
-              className="h-10 text-xs px-2.5 text-muted-foreground hover:text-foreground"
-            >
-              Resetar filtros
-            </Button>
-          )}
-        </div>
-      </FilterBar>
+              {/* Status Filter */}
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[150px] h-9 sm:h-10 text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="pre_venda">Pré-venda (NF)</SelectItem>
+                  <SelectItem value="concluido">Quitado / Faturado</SelectItem>
+                  <SelectItem value="pendente">Aguardando aprovação</SelectItem>
+                  <SelectItem value="assinado">Assinado</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Period Filter */}
+              <Select value={periodFilter} onValueChange={setPeriodFilter}>
+                <SelectTrigger className="w-full sm:w-[165px] h-9 sm:h-10 text-xs font-medium">
+                  <Calendar className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+                  <SelectValue placeholder="Período" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[340px]">
+                  <SelectItem value="month">Este mês ({currentMonthLabel})</SelectItem>
+                  <SelectItem value="lastmonth">Mês anterior ({lastMonthLabel})</SelectItem>
+                  <SelectItem value="today">Hoje</SelectItem>
+                  <SelectItem value="7d">Últimos 7 dias</SelectItem>
+                  <SelectItem value="30d">Últimos 30 dias</SelectItem>
+                  <SelectItem value="90d">Últimos 90 dias</SelectItem>
+                  <SelectItem value="365d">Este ano ({new Date().getFullYear()})</SelectItem>
+                  <SelectItem value="all">Todo o período ({allSales.length} vendas)</SelectItem>
+                  {availablePeriods.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-t my-1">
+                        Meses Específicos
+                      </div>
+                      {availablePeriods.map((p) => (
+                        <SelectItem key={p.key} value={p.key}>
+                          {p.label} ({p.count})
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+
+              {(search || storeFilter !== 'all' || resellerFilter !== 'all' || statusFilter !== 'all' || periodFilter !== defaultMonthKey) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearch('');
+                    setStoreFilter('all');
+                    setResellerFilter('all');
+                    setStatusFilter('all');
+                    resetToActiveMonth();
+                  }}
+                  className="col-span-2 sm:col-span-1 h-8 sm:h-10 text-xs px-2.5 text-muted-foreground hover:text-foreground"
+                >
+                  Resetar filtros
+                </Button>
+              )}
+            </div>
+          </FilterBar>
 
       {/* Table */}
       {contractsLoading ? (
@@ -863,7 +864,121 @@ export default function Sales() {
           description="Acompanhe as pré-vendas com NF solicitada e as vendas faturadas com contrato emitido."
           aside={<span className="text-xs font-medium text-muted-foreground">{filteredSales.length} registros</span>}
         >
-          <div className="overflow-x-auto">
+          {/* Visualização Mobile Otimizada: Cards Verticais Touch sem Scroll Lateral */}
+          <div className="md:hidden space-y-2.5">
+            {filteredSales.map((sale) => {
+              const statusInfo = statusConfig[sale.status] || statusConfig.pendente;
+              const vehicle = sale.vehicle;
+              const VehicleIcon = vehicle?.vehicle_type === 'moto' ? Bike : Car;
+              const isPreSale = sale.status === 'pre_venda';
+              const receiptsCount = Math.max(
+                getSaleReceipts(sale.id).length,
+                ((sale.external_data as any)?.receipts as any[])?.length || 0,
+                sale.evidence_paths?.length || 0,
+              );
+
+              return (
+                <div
+                  key={`mobile-${sale.id}`}
+                  className={cn(
+                    "rounded-2xl border bg-card/90 p-3 shadow-xs space-y-2.5 transition-all relative",
+                    isPreSale && "bg-amber-500/5 border-amber-500/30",
+                    (sale as any).review_status === 'questionada' && "border-destructive/40 bg-destructive/5"
+                  )}
+                >
+                  {/* Top: Contrato / Ref + Status Badge + Ações */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-mono text-xs font-bold text-foreground">
+                        {sale.contract_number}
+                      </span>
+                      <Badge variant="secondary" className={cn("text-[9.5px] font-bold px-2 py-0 h-4.5 shrink-0", statusInfo.class)}>
+                        {statusInfo.label}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedSaleForReceipts(sale);
+                          setReceiptsModalOpen(true);
+                        }}
+                        className={cn(
+                          'h-7 w-7 p-0',
+                          receiptsCount > 0 ? 'text-primary' : 'text-muted-foreground'
+                        )}
+                        title="Comprovantes"
+                      >
+                        <Paperclip className="w-3.5 h-3.5" />
+                        {receiptsCount > 0 && (
+                          <span className="text-[9px] font-mono font-bold ml-0.5">{receiptsCount}</span>
+                        )}
+                      </Button>
+                      <SaleActionsMenu 
+                        sale={sale}
+                        vehicleName={vehicle ? `${vehicle.brand} ${vehicle.model} ${vehicle.year}` : undefined}
+                        storeName={sale.store?.name}
+                        resellerName={sale.reseller?.full_name}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Meio: Cliente & Veículo */}
+                  <div className="space-y-1.5 pt-1 border-t border-border/50 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-foreground truncate">{sale.buyer_name}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground shrink-0">{formatCPFDisplay(sale.buyer_cpf)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <VehicleIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="font-medium text-foreground truncate">
+                        {vehicle ? `${vehicle.brand} ${vehicle.model}` : (sale as any).external_data?.vehicle_model_custom || 'Veículo não informado'}
+                      </span>
+                      {vehicle?.color && (
+                        <span className="text-[10px] text-muted-foreground shrink-0">({vehicle.color})</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rodapé: Loja/Vendedor + Data + Preço */}
+                  <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/40 text-[11px]">
+                    <div className="flex items-center gap-1 text-muted-foreground truncate">
+                      <span className="truncate">{sale.store?.name?.replace('Concessionária ', '') || 'Loja'}</span>
+                      <span>•</span>
+                      <span className="truncate">{(sale as any).operator?.full_name || (sale as any).external_data?.seller_name || 'Vendedor'}</span>
+                      <span>•</span>
+                      <span className="shrink-0">{formatDate(sale.created_at)}</span>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="font-display font-black text-xs text-foreground">
+                        {formatCurrency(Number(sale.sale_price))}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Ação rápida direta para Pré-Venda: Concluir Cadastro */}
+                  {isPreSale && canCreateSales && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleStartCompleteExisting(sale)}
+                      className="w-full h-7 text-[11px] gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 shadow-2xs mt-1"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      Concluir Cadastro & Faturar
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Visualização Desktop: Tabela Tradicional com 9 Colunas */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">

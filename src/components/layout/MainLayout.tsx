@@ -75,17 +75,17 @@ export function MainLayout({ children }: MainLayoutProps) {
       
       {/* Top bar executiva com expo-glass-effect */}
       <header
-        className={`fixed top-0 right-0 h-14 expo-glass-header z-40 flex items-center justify-between px-3 sm:px-6 transition-[left] duration-200 overflow-hidden ${
-          isMobile ? 'left-0 pl-14' : collapsed ? 'left-16' : 'left-56'
+        className={`fixed top-0 right-0 h-14 expo-glass-header z-40 flex items-center justify-between px-2.5 sm:px-6 transition-[left] duration-200 overflow-hidden ${
+          isMobile ? 'left-0' : collapsed ? 'left-16' : 'left-56'
         }`}
       >
         {/* Lado Esquerdo: Logo Oficial da Pixel Motors & Identificador da Unidade */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-card/90 border border-border/70 shadow-xs select-none">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-xl bg-card/90 border border-border/70 shadow-xs select-none">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0B0F17] shrink-0 p-0.5 shadow-xs border border-white/10">
               <AeroBladeMark size={20} variant="default" />
             </div>
-            <div className="hidden sm:flex items-center gap-1.5 leading-none font-display font-black text-xs tracking-tight">
+            <div className="flex items-center gap-1 leading-none font-display font-black text-[11px] sm:text-xs tracking-tight">
               <span className="text-foreground">PIXEL</span>
               <span className="text-red-600 font-extrabold tracking-wider">MOTORS</span>
             </div>

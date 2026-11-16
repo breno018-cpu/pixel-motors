@@ -373,20 +373,10 @@ export function Sidebar() {
     </div>
   );
 
-  // Mobile: hamburger + Sheet
+  // Mobile: BottomNav + Sheet aberto via botão de menu da barra inferior (sem botão duplicado flutuante no topo)
   if (isMobile) {
     return (
       <>
-        {/* Mobile top bar trigger */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMobileOpen(true)}
-          className="fixed top-2 left-2 z-50 h-10 w-10 bg-sidebar text-white rounded-lg shadow-lg border border-sidebar-border"
-        >
-          <Menu className="w-5 h-5 text-white" />
-        </Button>
-
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetContent side="left" className="p-0 w-[280px] bg-sidebar border-sidebar-border">
             <SheetHeader className="sr-only">
