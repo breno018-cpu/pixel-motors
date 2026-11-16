@@ -28,8 +28,7 @@ export function purgeFictitiousData(): void {
     ['df_local_table_v1_', 'df_local_table_v2_', 'df_local_table_v3_', 'df_local_table_v4_', 'df_local_table_v5_'].forEach((pfx) => {
       wipedTables.forEach((tbl) => localStorage.removeItem(`${pfx}${tbl}`));
     });
-    // Limpa também planilhas temporárias com dados simulados
-    localStorage.removeItem('dealflow_cloud_monthly_sheet_v9');
+    // Preserva dealflow_cloud_monthly_sheet_v9 para não apagar vendas reais do usuário
     localStorage.removeItem('dealflow_cloud_monthly_sheet_v8');
     localStorage.removeItem('dealflow_cloud_monthly_sheet_v7');
     localStorage.removeItem('dealflow_cloud_monthly_sheet');
@@ -56,8 +55,8 @@ export function purgeFictitiousData(): void {
   }
 }
 
-// Executa automaticamente para garantir banco limpo
-purgeFictitiousData();
+// NÃO executar automaticamente para não apagar dados do usuário
+// purgeFictitiousData();
 
 function nowIso() {
   return new Date().toISOString();
