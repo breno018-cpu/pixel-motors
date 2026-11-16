@@ -38,7 +38,7 @@ interface VehicleActionsMenuProps {
 
 export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
   const navigate = useNavigate();
-  const { isAdmin, isManager, canCreateSales } = useAuth();
+  const { isAdmin, isManager, canCreateSales, canRegisterVehicles, can } = useAuth();
   const { data: stores } = useStores();
   const { data: resellers } = useResellers();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -96,14 +96,14 @@ export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
             Dossiê & Investigação Veicular
           </DropdownMenuItem>
           
-          {isAdmin || isManager ? (
+          {isAdmin || isManager || canRegisterVehicles || can('vehicles.edit') ? (
             <DropdownMenuItem onClick={() => setEditOpen(true)}>
               <Pencil className="w-4 h-4 mr-2" />
               Editar informações
             </DropdownMenuItem>
           ) : null}
           
-          {isAdmin || isManager ? (otherStores && otherStores.length > 0 && (
+          {isAdmin || isManager || canRegisterVehicles ? (otherStores && otherStores.length > 0 && (
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <ArrowRightLeft className="w-4 h-4 mr-2" />
@@ -155,7 +155,7 @@ export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
             </DropdownMenuItem>
           )}
           
-          {(isAdmin || isManager) && vehicle.status === 'reservado' && (
+          {(isAdmin || isManager || canCreateSales) && vehicle.status === 'reservado' && (
             <DropdownMenuItem onClick={() => updateStatus.mutate({ id: vehicle.id, status: 'disponivel' })}>
               <Tag className="w-4 h-4 mr-2" />
               Marcar disponível
