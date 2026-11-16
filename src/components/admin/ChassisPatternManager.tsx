@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Pencil, Trash2, Search, Bike, Car } from 'lucide-react';
 import { maskCurrency, parseCurrency } from '@/lib/masks';
+import { DEFAULT_PATTERNS } from '@/lib/chassisRecognition';
 
 interface PatternForm {
   wmi_code: string;
@@ -49,12 +50,25 @@ export function ChassisPatternManager({ embedded = false }: { embedded?: boolean
   const { data: patterns = [], isLoading } = useQuery({
     queryKey: ['chassis-patterns'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('chassis_patterns')
-        .select('*')
-        .order('brand', { ascending: true });
-      if (error) throw error;
-      return data;
+      let dbPatterns: any[] = [];
+      try {
+        const { data, error } = await supabase
+          .from('chassis_patterns')
+          .select('*')
+          .order('brand', { ascending: true });
+        if (!error && data && data.length > 0) {
+          dbPatterns = data;
+        }
+      } catch (err) {
+        console.warn('Erro ao consultar chassis_patterns:', err);
+      }
+      if (dbPatterns.length === 0) {
+        return DEFAULT_PATTERNS.map((p, idx) => ({
+          ...p,
+          id: `default-${idx}`,
+        }));
+      }
+      return dbPatterns;
     },
   });
 

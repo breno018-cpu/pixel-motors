@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   Bike, Car, Building2, DollarSign, Wrench, CheckCircle2, 
   Loader2, Sparkles, Lock, Hash, Calendar, Palette, ShieldCheck, RefreshCw, ScanLine, Zap, Boxes,
-  ChevronDown, ChevronUp 
+  ChevronDown, ChevronUp, AlertTriangle, Info, XCircle, ShieldAlert, ListChecks 
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { recognizeFromChassis, resolveModelYearFromVin, extractYearFromVIN } from '@/lib/chassisRecognition';
@@ -29,11 +29,19 @@ import {
 } from '@/components/ui/select';
 import { useStores } from '@/hooks/useStores';
 import { useCreateVehicle } from '@/hooks/useMutations';
+import { useVehicles } from '@/hooks/useVehicles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import { STANDARD_COLORS, formatPlate } from '@/lib/vehicleCatalog';
 import { maskCurrency, parseCurrency } from '@/lib/masks';
+import { 
+  validateMotoRegistration, 
+  validateChassisVin, 
+  validateLicensePlate, 
+  validateRenavamNumber, 
+  validateVehicleYears 
+} from '@/lib/motoValidation';
 
 interface VehicleFormDialogProps {
   open: boolean;
@@ -43,6 +51,7 @@ interface VehicleFormDialogProps {
 
 export function VehicleFormDialog({ open, onOpenChange, initialChassis }: VehicleFormDialogProps) {
   const { data: stores = [] } = useStores();
+  const { data: vehicles = [] } = useVehicles();
   const createVehicle = useCreateVehicle();
   const { userStore } = useAuth();
   const { toast } = useToast();
@@ -260,54 +269,122 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const profitNum = saleNum - costNum;
   const marginPct = saleNum > 0 && costNum > 0 ? ((profitNum / saleNum) * 100).toFixed(1) : null;
 
+  // Mecanismo de Validação Completa e Real em Tempo Real (ISO 3779 / CONTRAN 282 e 996 / Mercosul)
+  const validation = useMemo(() => {
+    return validateMotoRegistration(
+      {
+        storeId,
+        vehicleType,
+        brand,
+        model,
+        year,
+        manufactureYear,
+        color,
+        chassis,
+        isElectric,
+        plate,
+        renavam,
+        purchasePrice,
+        salePrice,
+        mileage,
+        engineCc,
+        fuelType,
+        transmission,
+      },
+      vehicles
+    );
+  }, [
+    storeId,
+    vehicleType,
+    brand,
+    model,
+    year,
+    manufactureYear,
+    color,
+    chassis,
+    isElectric,
+    plate,
+    renavam,
+    purchasePrice,
+    salePrice,
+    mileage,
+    engineCc,
+    fuelType,
+    transmission,
+    vehicles,
+  ]);
+
+  const chassisCheck = useMemo(() => {
+    return validateChassisVin(chassis, isElectric, vehicles);
+  }, [chassis, isElectric, vehicles]);
+
+  const plateCheck = useMemo(() => {
+    return validateLicensePlate(plate);
+  }, [plate]);
+
+  const renavamCheck = useMemo(() => {
+    return validateRenavamNumber(renavam);
+  }, [renavam]);
+
+  const yearCheck = useMemo(() => {
+    const y = parseInt(year, 10) || new Date().getFullYear();
+    const my = parseInt(manufactureYear, 10) || y;
+    return validateVehicleYears(my, y);
+  }, [year, manufactureYear]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 1. Validação Rigorosa e Real de Cadastro de Motos
+    if (!validation.isValid) {
+      const errorList = Object.values(validation.errors);
+      toast({
+        variant: 'destructive',
+        title: 'Validação Oficial Não Atendida',
+        description: errorList[0] || 'Corrija os campos com inconsistências antes de prosseguir.',
+      });
+
+      // Se houver pendência em campo avançado ou loja, expande para o usuário ver
+      if (
+        validation.errors.storeId ||
+        validation.errors.year ||
+        validation.errors.plate ||
+        validation.errors.renavam ||
+        validation.errors.color
+      ) {
+        setShowAdvanced(true);
+      }
+      return;
+    }
+
+    // 2. Alerta de Margem Comercial Negativa
+    if (validation.warnings.pricing) {
+      const proceed = await confirm({
+        title: 'Atenção: Margem Comercial Negativa',
+        description: `${validation.warnings.pricing} Deseja prosseguir com o cadastro da moto com margem negativa?`,
+        confirmText: 'Prosseguir Mesmo Assim',
+        cancelText: 'Revisar Valores',
+        variant: 'destructive',
+      });
+      if (!proceed) return;
+    }
+
     const cleanChassis = chassis.trim().toUpperCase();
-
-    // Moto a Combustão EXIGE chassi (mínimo 5 caracteres).
-    // Moto Elétrica PODE ser cadastrada sem chassi (o chassi ou motor será inserido na hora da venda).
-    if (!isElectric && (!cleanChassis || cleanChassis.length < 5)) {
-      toast({
-        variant: 'destructive',
-        title: 'Chassi Obrigatório',
-        description: 'Digite o chassi do veículo para prosseguir com o cadastro, ou ative a opção de Moto Elétrica.',
-      });
-      return;
-    }
-
-    if (!brand.trim() || !model.trim()) {
-      toast({
-        variant: 'destructive',
-        title: 'Marca e Modelo obrigatórios',
-        description: isElectric
-          ? 'Informe a marca e o modelo da moto elétrica.'
-          : 'Aguarde o reconhecimento do padrão pelo chassi ou informe o modelo.',
-      });
-      return;
-    }
-
-    if (saleNum <= 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Valor de Venda obrigatório',
-        description: 'Informe um valor de venda válido maior que zero.',
-      });
-      return;
-    }
-
     const finalQuantity = isElectric ? Math.max(1, massQuantity) : 1;
     const finalChassis = cleanChassis || (isElectric ? 'A DEFINIR NA VENDA' : '');
+
+    const selectedStore = stores.find((s) => s.id === storeId);
+    const storeLabel = selectedStore?.name || 'Concessionária';
 
     const confirmed = await confirm({
       title: finalQuantity > 1 ? `Confirmar Cadastro em Massa (${finalQuantity} Unidades)?` : 'Confirmar Cadastro no Estoque?',
       description: finalQuantity > 1
-        ? `Deseja registrar ${finalQuantity} unidades idênticas de ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) no estoque? Elas ficarão separadas no catálogo aguardando código para venda.`
+        ? `Deseja registrar ${finalQuantity} unidades idênticas de ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) no estoque da ${storeLabel}? Elas ficarão separadas no catálogo aguardando código para venda.`
         : `Deseja registrar ${brand.trim().toUpperCase()} ${model.trim().toUpperCase()} (${color.trim() || 'Preta'}) - ${
             isElectric
               ? (finalChassis === 'A DEFINIR NA VENDA' ? 'Sem chassi (será inserido na venda)' : `Nº da Moto/Motor: ${finalChassis}`)
               : `Chassi ${finalChassis}`
-          } no estoque disponível?`,
+          } no estoque disponível da ${storeLabel}?`,
       confirmText: finalQuantity > 1 ? `Sim, Cadastrar ${finalQuantity} Unidades` : 'Sim, Cadastrar Veículo',
       cancelText: 'Revisar',
       variant: 'default',
@@ -494,6 +571,50 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               )}
             </div>
 
+            {/* FEEDBACK DE VALIDAÇÃO OFICIAL DO CHASSI EM TEMPO REAL (ISO 3779 / CONTRAN) */}
+            {!isElectric && chassis.length > 0 && (
+              <div className="space-y-1.5 pt-0.5">
+                {/* 1. Alerta de Letras Proibidas pela Norma ISO 3779 / CONTRAN */}
+                {(chassis.includes('I') || chassis.includes('O') || chassis.includes('Q')) && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs font-semibold">
+                    <ShieldAlert className="w-4 h-4 shrink-0" />
+                    <span>
+                      Letras Proibidas (ISO 3779 / CONTRAN): As letras <strong>I</strong>, <strong>O</strong> e <strong>Q</strong> são proibidas no mundo inteiro em chassis de veículos.
+                    </span>
+                  </div>
+                )}
+
+                {/* 2. Alerta de Chassi Duplicado no Estoque */}
+                {chassisCheck.isDuplicate && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-destructive/15 border border-destructive/40 text-destructive text-xs">
+                    <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5 min-w-0">
+                      <p className="font-black uppercase tracking-wider text-[11px]">Chassi Duplicado no Sistema</p>
+                      <p className="font-medium">{chassisCheck.error}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Indicador de Chassi Válido ou Incompleto */}
+                {!chassisCheck.isDuplicate && !chassis.includes('I') && !chassis.includes('O') && !chassis.includes('Q') && (
+                  chassis.length === 17 ? (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Chassi Oficial de 17 caracteres validado conforme a norma ISO 3779 / CONTRAN.</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Info className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Faltam <strong>{17 - chassis.length}</strong> caracteres para completar os 17 dígitos do chassi oficial.</span>
+                      </div>
+                      <span className="font-mono font-bold text-[11px]">{chassis.length}/17</span>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
             {/* Aviso Compacto de Moto Elétrica e Controle de Massa */}
             {isElectric && (
               <div className="space-y-2">
@@ -613,9 +734,12 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                   placeholder="Ex: SHI 175 EFI..."
                   className={`h-10 text-xs mt-1 font-bold uppercase ${
                     patternLocked ? 'bg-muted/60 text-muted-foreground' : ''
-                  }`}
+                  } ${validation.errors.model && model.trim().length > 0 ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                   required
                 />
+                {validation.errors.model && model.trim().length > 0 && (
+                  <p className="text-[10px] text-destructive mt-1 font-medium">{validation.errors.model}</p>
+                )}
               </div>
 
               <div>
@@ -624,7 +748,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                   Cor *
                 </Label>
                 <Select value={color} onValueChange={setColor}>
-                  <SelectTrigger className="h-10 text-xs mt-1 font-semibold">
+                  <SelectTrigger className={`h-10 text-xs mt-1 font-semibold ${validation.errors.color && color ? 'border-destructive' : ''}`}>
                     <SelectValue placeholder="Selecione a cor" />
                   </SelectTrigger>
                   <SelectContent>
@@ -635,6 +759,9 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                     ))}
                   </SelectContent>
                 </Select>
+                {validation.errors.color && (
+                  <p className="text-[10px] text-destructive mt-1 font-medium">{validation.errors.color}</p>
+                )}
               </div>
 
               <div>
@@ -648,9 +775,14 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                   value={salePrice}
                   onChange={(e) => setSalePrice(maskCurrency(e.target.value))}
                   placeholder="R$ 0,00"
-                  className="h-10 text-xs mt-1 font-mono font-bold bg-primary/5 border-primary/40 text-foreground"
+                  className={`h-10 text-xs mt-1 font-mono font-bold bg-primary/5 border-primary/40 text-foreground ${
+                    validation.errors.salePrice && salePrice ? 'border-destructive focus-visible:ring-destructive' : ''
+                  }`}
                   required
                 />
+                {validation.errors.salePrice && salePrice && (
+                  <p className="text-[10px] text-destructive mt-1 font-medium">{validation.errors.salePrice}</p>
+                )}
               </div>
             </div>
 
@@ -697,50 +829,63 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               </div>
 
               {/* Anos e Identificação */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <Label className="text-xs font-semibold">Ano Fabricação</Label>
-                  <Input
-                    type="number"
-                    value={manufactureYear}
-                    onChange={(e) => setManufactureYear(e.target.value)}
-                    placeholder="Ex: 2026"
-                    className="h-9 text-xs mt-1 font-semibold"
-                  />
+              <div className="space-y-1">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <Label className="text-xs font-semibold">Ano Fabricação</Label>
+                    <Input
+                      type="number"
+                      value={manufactureYear}
+                      onChange={(e) => setManufactureYear(e.target.value)}
+                      placeholder="Ex: 2026"
+                      className={`h-9 text-xs mt-1 font-semibold ${validation.errors.year ? 'border-destructive' : ''}`}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-semibold">Ano Modelo</Label>
+                    <Input
+                      type="number"
+                      value={year}
+                      onChange={(e) => setYear(e.target.value)}
+                      placeholder="Ex: 2026"
+                      className={`h-9 text-xs mt-1 font-semibold ${validation.errors.year ? 'border-destructive' : ''}`}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-semibold">Placa (Opcional)</Label>
+                    <Input
+                      value={plate}
+                      onChange={(e) => setPlate(formatPlate(e.target.value))}
+                      placeholder="ABC-1D23"
+                      className={`h-9 text-xs mt-1 font-mono uppercase ${validation.errors.plate ? 'border-destructive' : ''}`}
+                      maxLength={8}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-semibold">Renavam (Opcional)</Label>
+                    <Input
+                      value={renavam}
+                      onChange={(e) => setRenavam(e.target.value)}
+                      placeholder="00000000000"
+                      className={`h-9 text-xs mt-1 font-mono ${validation.errors.renavam ? 'border-destructive' : ''}`}
+                      maxLength={11}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label className="text-xs font-semibold">Ano Modelo</Label>
-                  <Input
-                    type="number"
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                    placeholder="Ex: 2026"
-                    className="h-9 text-xs mt-1 font-semibold"
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-xs font-semibold">Placa (Opcional)</Label>
-                  <Input
-                    value={plate}
-                    onChange={(e) => setPlate(formatPlate(e.target.value))}
-                    placeholder="ABC-1D23"
-                    className="h-9 text-xs mt-1 font-mono uppercase"
-                    maxLength={8}
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-xs font-semibold">Renavam (Opcional)</Label>
-                  <Input
-                    value={renavam}
-                    onChange={(e) => setRenavam(e.target.value)}
-                    placeholder="00000000000"
-                    className="h-9 text-xs mt-1 font-mono"
-                    maxLength={11}
-                  />
-                </div>
+                {/* Mensagens de erro de Anos, Placa e Renavam */}
+                {validation.errors.year && (
+                  <p className="text-[10px] text-destructive font-medium">{validation.errors.year}</p>
+                )}
+                {validation.errors.plate && plate && (
+                  <p className="text-[10px] text-destructive font-medium">{validation.errors.plate}</p>
+                )}
+                {validation.errors.renavam && renavam && (
+                  <p className="text-[10px] text-destructive font-medium">{validation.errors.renavam}</p>
+                )}
               </div>
 
               {/* Custo e Margem */}
@@ -763,7 +908,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                     Concessionária / Pátio de Destino *
                   </Label>
                   <Select value={storeId} onValueChange={setStoreId}>
-                    <SelectTrigger className="h-9 text-xs mt-1">
+                    <SelectTrigger className={`h-9 text-xs mt-1 ${validation.errors.storeId ? 'border-destructive' : ''}`}>
                       <SelectValue placeholder="Selecione a loja" />
                     </SelectTrigger>
                     <SelectContent>
@@ -776,6 +921,9 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                         ))}
                     </SelectContent>
                   </Select>
+                  {validation.errors.storeId && (
+                    <p className="text-[10px] text-destructive mt-1 font-medium">{validation.errors.storeId}</p>
+                  )}
                 </div>
               </div>
 
@@ -855,6 +1003,71 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               </div>
             </div>
           )}
+
+          {/* ========================================================================= */}
+          {/* PAINEL DE VALIDAÇÃO OFICIAL EM TEMPO REAL (CONTRAN 282 / 996 / ISO 3779)  */}
+          {/* ========================================================================= */}
+          <div className="p-3.5 rounded-xl border bg-muted/20 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <ListChecks className={`w-4 h-4 shrink-0 ${validation.isValid ? 'text-emerald-600' : 'text-amber-500'}`} />
+                <span className="text-xs font-bold text-foreground truncate">
+                  Checklist de Validação Oficial (ISO 3779 / CONTRAN)
+                </span>
+              </div>
+              <Badge
+                variant="outline"
+                className={`text-[10px] font-bold shrink-0 ${
+                  validation.isValid
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                }`}
+              >
+                {validation.isValid ? '100% VÁLIDO' : `${Object.keys(validation.errors).length} PENDÊNCIA(S)`}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {validation.checklist.map((item) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-1.5 p-1.5 rounded-lg border text-[11px] transition-colors ${
+                    item.passed
+                      ? 'bg-emerald-500/5 border-emerald-500/25 text-emerald-800 dark:text-emerald-300'
+                      : item.required
+                      ? 'bg-destructive/5 border-destructive/25 text-destructive'
+                      : 'bg-muted/40 border-border/60 text-muted-foreground'
+                  }`}
+                  title={item.message}
+                >
+                  {item.passed ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  ) : item.required ? (
+                    <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                  ) : (
+                    <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  )}
+                  <span className="truncate font-medium">{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Aviso de erro prioritário */}
+            {!validation.isValid && Object.keys(validation.errors).length > 0 && (
+              <div className="flex items-start gap-1.5 p-2 rounded-lg bg-destructive/10 border border-destructive/25 text-destructive text-xs">
+                <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                <span className="font-medium">{Object.values(validation.errors)[0]}</span>
+              </div>
+            )}
+
+            {/* Alerta de margem negativa */}
+            {validation.warnings.pricing && (
+              <div className="flex items-start gap-1.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <span className="font-medium">{validation.warnings.pricing}</span>
+              </div>
+            )}
+          </div>
 
           {/* Rodapé com Ações */}
           <DialogFooter className="pt-4 border-t gap-2 sm:gap-0">

@@ -37,7 +37,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useQueryClient } from '@tanstack/react-query';
-import { saveVehiclesToCache, type Vehicle } from '@/hooks/useVehicles';
+import { useVehicles, saveVehiclesToCache, type Vehicle } from '@/hooks/useVehicles';
+import { validateChassisVin } from '@/lib/motoValidation';
 import { 
   SHINERAY_OFFICIAL_LINEUP, 
   MULTIBRAND_MOTOS, 
@@ -52,6 +53,7 @@ interface BatchVehicleEntryDialogProps {
 
 export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntryDialogProps) {
   const { data: stores } = useStores();
+  const { data: existingVehicles = [] } = useVehicles();
   const { userStore, isAdmin } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -99,16 +101,47 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
 
   const handleSubmit = async () => {
     if (!storeId && !userStore?.id) {
-      alert('Selecione a loja de destino.');
+      toast({
+        variant: 'destructive',
+        title: 'Loja Obrigatória',
+        description: 'Selecione a loja de destino para o lote.',
+      });
       return;
     }
     if (effectiveChassisList.length === 0) {
-      alert(
-        isElectricModel
+      toast({
+        variant: 'destructive',
+        title: 'Chassis Não Informados',
+        description: isElectricModel
           ? 'Informe a quantidade de motos elétricas sem chassi ou cole os números de moto/motor.'
-          : 'Informe ou cole ao menos um número de chassi válido.'
-      );
+          : 'Informe ou cole ao menos um número de chassi válido.',
+      });
       return;
+    }
+
+    // Validação Rigorosa de Chassis do Lote (ISO 3779 / CONTRAN / Duplicidades)
+    if (!isElectricModel) {
+      const seenInBatch = new Set<string>();
+      for (const ch of effectiveChassisList) {
+        const check = validateChassisVin(ch, false, existingVehicles);
+        if (!check.isValid) {
+          toast({
+            variant: 'destructive',
+            title: `Chassi Inválido no Lote: ${ch}`,
+            description: check.error,
+          });
+          return;
+        }
+        if (seenInBatch.has(ch)) {
+          toast({
+            variant: 'destructive',
+            title: 'Chassi Duplicado no Mesmo Lote',
+            description: `O chassi ${ch} foi informado mais de uma vez na caixa de texto.`,
+          });
+          return;
+        }
+        seenInBatch.add(ch);
+      }
     }
 
     setIsSubmitting(true);

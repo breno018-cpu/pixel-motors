@@ -14,7 +14,7 @@ interface VehiclePattern {
   default_sale_price?: number;
 }
 
-interface StoredVehiclePattern {
+export interface StoredVehiclePattern {
   brand: string;
   model_name: string | null;
   engine_cc: number | null;
@@ -30,31 +30,51 @@ interface StoredVehiclePattern {
   default_sale_price?: number | null;
 }
 
-const DEFAULT_PATTERNS: StoredVehiclePattern[] = [
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SHF250', model_name: 'SHI 250 EFI', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 18900, default_sale_price: 23330 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'R1F125', model_name: 'RIO 125 EFI', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 10500, default_sale_price: 13490 },
+export const DEFAULT_PATTERNS: StoredVehiclePattern[] = [
+  // --- SHINERAY MOTOS (Linha Oficial) ---
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'JTS125', model_name: 'JET 125', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 9800, default_sale_price: 13990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'NJ1125', model_name: 'NEW JET 125', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 9800, default_sale_price: 14990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SHF175', model_name: 'SHI 175 EFI', engine_cc: 175, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 14200, default_sale_price: 19990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'NS1175', model_name: 'NEW SHI 175', engine_cc: 175, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 13500, default_sale_price: 18990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SHF250', model_name: 'SHI 250 EFI', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 18900, default_sale_price: 22990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'PHS050', model_name: 'PHOENIX 50', engine_cc: 50, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 6, default_purchase_price: 6200, default_sale_price: 9990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'XY50', model_name: 'PHOENIX 50', engine_cc: 50, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 6, default_purchase_price: 6200, default_sale_price: 9990 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'R1C125', model_name: 'RIO 125', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 10000, default_sale_price: 12990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SHF175', model_name: 'SHI 175 EFI', engine_cc: 175, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 14200, default_sale_price: 17990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'NS1175', model_name: 'NEW SHI 175', engine_cc: 175, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 13500, default_sale_price: 17500 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'NJ1125', model_name: 'NEW JET 125 SS', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 9800, default_sale_price: 12690 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'JTS125', model_name: 'JET 125 SS', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 9800, default_sale_price: 12690 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'PHS050', model_name: 'PHOENIX 50 EFI', engine_cc: 50, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 6, default_purchase_price: 6200, default_sale_price: 7990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'STF200', model_name: 'STORM 200 EFI', engine_cc: 200, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 16900, default_sale_price: 20990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'R1F125', model_name: 'RIO 125 EFI', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 10500, default_sale_price: 13490 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'STF200', model_name: 'STORM 200', engine_cc: 200, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 16900, default_sale_price: 23990 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'DVF250', model_name: 'DENVER 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 22900, default_sale_price: 28990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'WRK125', model_name: 'WORKER 125', engine_cc: 125, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 6, default_purchase_price: 7400, default_sale_price: 9490 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'TIT250', model_name: 'TITANIUM 250 EFI', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 20500, default_sale_price: 25990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'TTF250', model_name: 'TITANIUM 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 20500, default_sale_price: 25990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'FREE150', model_name: 'FREE 150 EFI', engine_cc: 150, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 11800, default_sale_price: 14990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'CS2170', model_name: 'SHI 170 / NEW FREE 170', engine_cc: 170, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 12000, default_sale_price: 15000 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'TTF250', model_name: 'TITANIUM 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 20500, default_sale_price: 27990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'TIT250', model_name: 'TITANIUM 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 20500, default_sale_price: 27990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'FREE150', model_name: 'FREE 150', engine_cc: 150, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 11800, default_sale_price: 14990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'CS2170', model_name: 'NEW FREE 170', engine_cc: 170, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 12000, default_sale_price: 15990 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'JF1150', model_name: 'JEF 150', engine_cc: 150, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 11500, default_sale_price: 14500 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'JF1170', model_name: 'NEW JEF 170', engine_cc: 170, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 13900, default_sale_price: 17990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SW1400', model_name: 'SCRAMBLER 400', engine_cc: 400, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 26000, default_sale_price: 32990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SB1400', model_name: 'SBM 400S', engine_cc: 400, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 26000, default_sale_price: 32990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SW1400', model_name: 'SCRAMBLER 400', engine_cc: 400, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 26000, default_sale_price: 26990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SB1400', model_name: 'SBM 400S', engine_cc: 400, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 26000, default_sale_price: 36990 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SB1250', model_name: 'SBM 250S', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 36, default_purchase_price: 21000, default_sale_price: 26990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SB3250', model_name: 'SBM 250S', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 36, default_purchase_price: 21000, default_sale_price: 26990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'ST1250', model_name: 'SBM 250 T 6B', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 36, default_purchase_price: 21000, default_sale_price: 26990 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SB4400', model_name: 'DENVER 400', engine_cc: 400, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 36, default_purchase_price: 28000, default_sale_price: 35990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'ARF250', model_name: 'IRON 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 21000, default_sale_price: 26990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'FLF250', model_name: 'FLASH 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 21000, default_sale_price: 26990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'ULF150', model_name: 'URBAN LITE 150', engine_cc: 150, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 12500, default_sale_price: 15990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'ARF250', model_name: 'IRON 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 21000, default_sale_price: 25990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'FLF250', model_name: 'FLASH 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 21000, default_sale_price: 23990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'ULF150', model_name: 'URBAN LITE 150', engine_cc: 150, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 12500, default_sale_price: 17990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'URB150', model_name: 'URBAN 150', engine_cc: 150, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 16000, default_sale_price: 22990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'WRK125', model_name: 'WORKER 125', engine_cc: 125, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 6, default_purchase_price: 7400, default_sale_price: 9490 },
+
+  // --- HONDA MOTOS ---
+  { wmi_code: '9C2', brand: 'HONDA', vehicle_type: 'moto', model_pattern: 'KC09', model_name: 'CG 160 FAN', engine_cc: 162, fuel_type: 'flex', transmission: 'manual', warranty_months: 36, default_purchase_price: 14500, default_sale_price: 18500 },
+  { wmi_code: '9C2', brand: 'HONDA', vehicle_type: 'moto', model_pattern: 'KC08', model_name: 'CG 160 TITAN', engine_cc: 162, fuel_type: 'flex', transmission: 'manual', warranty_months: 36, default_purchase_price: 15500, default_sale_price: 19900 },
+  { wmi_code: '9C2', brand: 'HONDA', vehicle_type: 'moto', model_pattern: 'KC10', model_name: 'CG 160 START', engine_cc: 162, fuel_type: 'flex', transmission: 'manual', warranty_months: 36, default_purchase_price: 13000, default_sale_price: 16500 },
+  { wmi_code: '9C2', brand: 'HONDA', vehicle_type: 'moto', model_pattern: 'JC75', model_name: 'BIZ 125', engine_cc: 124, fuel_type: 'flex', transmission: 'semi_automatico', warranty_months: 36, default_purchase_price: 13500, default_sale_price: 17200 },
+  { wmi_code: '9C2', brand: 'HONDA', vehicle_type: 'moto', model_pattern: 'JC67', model_name: 'POP 110I', engine_cc: 109, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 36, default_purchase_price: 9000, default_sale_price: 11500 },
+  { wmi_code: '9C2', brand: 'HONDA', vehicle_type: 'moto', model_pattern: 'KC13', model_name: 'NXR 160 BROS', engine_cc: 162, fuel_type: 'flex', transmission: 'manual', warranty_months: 36, default_purchase_price: 18000, default_sale_price: 22500 },
+  { wmi_code: '9C2', brand: 'HONDA', vehicle_type: 'moto', model_pattern: 'PC62', model_name: 'CB 300F TWISTER', engine_cc: 293, fuel_type: 'flex', transmission: 'manual', warranty_months: 36, default_purchase_price: 21000, default_sale_price: 25900 },
+
+  // --- YAMAHA MOTOS ---
+  { wmi_code: '9C6', brand: 'YAMAHA', vehicle_type: 'moto', model_pattern: 'RG02', model_name: 'FAZER FZ25', engine_cc: 249, fuel_type: 'flex', transmission: 'manual', warranty_months: 36, default_purchase_price: 19500, default_sale_price: 24500 },
+  { wmi_code: '9C6', brand: 'YAMAHA', vehicle_type: 'moto', model_pattern: 'KE19', model_name: 'FACTOR 150', engine_cc: 149, fuel_type: 'flex', transmission: 'manual', warranty_months: 36, default_purchase_price: 13500, default_sale_price: 17500 },
+  { wmi_code: '9C6', brand: 'YAMAHA', vehicle_type: 'moto', model_pattern: 'KE18', model_name: 'CROSSER 150', engine_cc: 149, fuel_type: 'flex', transmission: 'manual', warranty_months: 36, default_purchase_price: 17500, default_sale_price: 21900 },
+  { wmi_code: '9C6', brand: 'YAMAHA', vehicle_type: 'moto', model_pattern: 'RG01', model_name: 'LANDER 250', engine_cc: 249, fuel_type: 'flex', transmission: 'manual', warranty_months: 36, default_purchase_price: 22500, default_sale_price: 27900 },
 ];
 
 const DEFAULT_YEAR_CODES = [
@@ -187,6 +207,15 @@ export async function recognizeFromChassis(chassis: string): Promise<VehiclePatt
   if (matched.length === 0) return null;
 
   return toVehiclePattern(matched[0]);
+}
+
+function normalizeFuelType(fuel?: string | null): string {
+  if (!fuel) return 'gasolina';
+  const clean = fuel.toLowerCase().trim();
+  if (clean.includes('eletri')) return 'eletrico';
+  if (clean.includes('flex')) return 'flex';
+  if (clean.includes('diesel')) return 'diesel';
+  return 'gasolina';
 }
 
 function toVehiclePattern(pattern: StoredVehiclePattern): VehiclePattern {

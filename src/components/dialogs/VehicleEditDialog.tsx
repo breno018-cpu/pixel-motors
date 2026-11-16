@@ -28,11 +28,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useStores } from '@/hooks/useStores';
+import { useVehicles } from '@/hooks/useVehicles';
 import { useUpdateVehicle } from '@/hooks/useVehicleMutations';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import { ModelCatalogSelect } from '@/components/vehicles/ModelCatalogSelect';
 import { STANDARD_COLORS, isElectricVehicle } from '@/lib/vehicleCatalog';
+import { 
+  validateChassisVin, 
+  validateLicensePlate, 
+  validateRenavamNumber, 
+  validateVehicleYears 
+} from '@/lib/motoValidation';
 
 const vehicleSchema = z.object({
   chassis: z.string().max(50).optional().or(z.literal('')),
@@ -89,8 +97,10 @@ interface VehicleEditDialogProps {
 
 export function VehicleEditDialog({ vehicle, open, onOpenChange }: VehicleEditDialogProps) {
   const { data: stores } = useStores();
+  const { data: allVehicles = [] } = useVehicles();
   const updateVehicle = useUpdateVehicle();
   const { isAdmin, isManager } = useAuth();
+  const { toast } = useToast();
   const confirm = useConfirm();
 
   const form = useForm<VehicleFormData>({
@@ -144,6 +154,67 @@ export function VehicleEditDialog({ vehicle, open, onOpenChange }: VehicleEditDi
 
   const onSubmit = async (data: VehicleFormData) => {
     if (!vehicle) return;
+
+    const isElectric = isElectricVehicle({
+      fuel_type: data.fuel_type || vehicle.fuel_type,
+      model: data.model || vehicle.model,
+      brand: data.brand || vehicle.brand,
+      notes: data.notes || vehicle.notes,
+    });
+
+    // 1. Validação de Chassi (se modificado por admin)
+    if (isAdmin && data.chassis && data.chassis !== vehicle.chassis) {
+      const otherVehicles = allVehicles.filter((v) => v.id !== vehicle.id);
+      const chassisCheck = validateChassisVin(data.chassis, isElectric, otherVehicles);
+      if (!chassisCheck.isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Chassi Inválido (ISO 3779 / CONTRAN)',
+          description: chassisCheck.error,
+        });
+        return;
+      }
+    }
+
+    // 2. Validação de Placa (se informada)
+    if (data.plate && data.plate.trim()) {
+      const plateCheck = validateLicensePlate(data.plate);
+      if (!plateCheck.isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Placa Inválida',
+          description: plateCheck.error,
+        });
+        return;
+      }
+      data.plate = plateCheck.formatted || data.plate.toUpperCase().trim();
+    }
+
+    // 3. Validação de Renavam (se informado)
+    if (data.renavam && data.renavam.trim()) {
+      const renavamCheck = validateRenavamNumber(data.renavam);
+      if (!renavamCheck.isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Renavam Inválido',
+          description: renavamCheck.error,
+        });
+        return;
+      }
+    }
+
+    // 4. Validação de Anos
+    if (data.manufacture_year && data.year) {
+      const yearCheck = validateVehicleYears(data.manufacture_year, data.year);
+      if (!yearCheck.isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Inconsistência de Anos',
+          description: yearCheck.error,
+        });
+        return;
+      }
+    }
 
     const payload: Record<string, unknown> = {
         brand: data.brand,
