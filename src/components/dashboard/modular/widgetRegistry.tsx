@@ -171,7 +171,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
 export const DASHBOARD_PRESETS: DashboardPreset[] = [
   {
     id: 'executivo_padrao',
-    name: 'Cockpit Executivo (Padrão)',
+    name: 'Painel Executivo (Padrão)',
     description: 'Visão equilibrada com KPIs, evolução de vendas, mix financeiro, ranking e estoque.',
     blocks: [
       { id: 'b-kpi', widgetId: 'kpis_summary', colSpan: 'full', visible: true, order: 1 },

@@ -1087,35 +1087,6 @@ export default function Dashboard() {
         }
       />
 
-      {/* Banner de Acesso ao Cockpit da Diretoria */}
-      {(isAdmin || hasElevatedAccess) && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-card border border-amber-500/30 dark:border-amber-500/20 shadow-xs animate-fade-in">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
-              <Crown className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm tracking-tight text-foreground">Cockpit da Diretoria</h3>
-                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">Diretoria</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Fluxo de caixa real, pátio em R$, controle de NFs, comissões e auditoria de comprovantes.
-              </p>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            onClick={() => navigate('/owner-dashboard')}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-xs shrink-0 gap-1.5"
-          >
-            <Crown className="w-3.5 h-3.5" />
-            Acessar Cockpit da Diretoria
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      )}
-
       {/* BARRA DE FILTROS INTEGRADOS (Responsiva com flex wrap que não ultrapassa a tela) */}
         <GlassView
           glassEffectStyle="regular"
