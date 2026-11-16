@@ -325,7 +325,7 @@ export function SalesSecondCopyCenter({ sales }: SalesSecondCopyCenterProps) {
                           {veh?.brand || 'SHINERAY'} {veh?.model || (sale.external_data as any)?.vehicle_model_custom || 'Moto'}
                         </p>
                         <p className="text-[10px] font-mono text-muted-foreground">
-                          {veh?.chassis ? `#${veh.chassis.slice(-8)}` : (sale.external_data as any)?.chassi || '0 KM'}
+                          {veh?.chassis ? `#${String(veh.chassis).slice(-8)}` : (sale.external_data as any)?.chassi || '0 KM'}
                         </p>
                       </TableCell>
 

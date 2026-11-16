@@ -420,7 +420,7 @@ export function SaleManageModal({
             if (
               r.id === sale.id ||
               (vehicleChassis && r.chassi === vehicleChassis) ||
-              r.cliente.toUpperCase().includes(buyerName.toUpperCase().slice(0, 4))
+              (Boolean(r.cliente && buyerName) && String(r.cliente).toUpperCase().includes(String(buyerName).toUpperCase().slice(0, 4)))
             ) {
               return {
                 ...r,

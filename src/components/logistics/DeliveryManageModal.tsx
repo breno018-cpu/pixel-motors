@@ -110,7 +110,7 @@ export function DeliveryManageModal({
               Gestão de Despacho & Motorista
             </DialogTitle>
             <Badge variant="outline" className="font-mono text-xs font-bold text-primary">
-              {delivery.chassi.slice(-8) || delivery.chassi}
+              {delivery.chassi ? String(delivery.chassi).slice(-8) : 'S/ Chassi'}
             </Badge>
           </div>
           <DialogDescription className="text-xs">

@@ -753,7 +753,7 @@ export function CompleteSaleModal({
           const updated = list.map((r) => {
             if (
               (vehicleChassis && r.chassi === vehicleChassis) ||
-              r.cliente.toUpperCase().includes(buyerName.toUpperCase().slice(0, 5))
+              (Boolean(r.cliente && buyerName) && String(r.cliente).toUpperCase().includes(String(buyerName).toUpperCase().slice(0, 5)))
             ) {
               return {
                 ...r,

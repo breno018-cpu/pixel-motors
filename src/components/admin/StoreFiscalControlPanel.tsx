@@ -855,7 +855,7 @@ export function StoreFiscalControlPanel() {
                       {(rec.access_key || rec.sefaz_protocol) && (
                         <div className="p-2 rounded-lg bg-muted/40 text-[10px] font-mono flex items-center justify-between gap-2">
                           <span className="truncate text-muted-foreground">
-                            {rec.access_key ? `Chave: ${rec.access_key.slice(0, 18)}...` : `Prot: ${rec.sefaz_protocol}`}
+                            {rec.access_key ? `Chave: ${String(rec.access_key).slice(0, 18)}...` : `Prot: ${rec.sefaz_protocol}`}
                           </span>
                           {rec.access_key && (
                             <button

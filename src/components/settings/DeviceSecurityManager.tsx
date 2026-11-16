@@ -195,7 +195,7 @@ export function DeviceSecurityManager() {
                 <p className="text-xs text-muted-foreground mt-0.5">
                   ID do Hardware:{' '}
                   <span className="font-mono font-bold text-foreground">
-                    {fingerprint?.deviceId.slice(0, 18)}...
+                    {fingerprint?.deviceId ? `${fingerprint.deviceId.slice(0, 18)}...` : 'Identificando...'}
                   </span>{' '}
                   • Resolução: {fingerprint?.screenResolution}
                 </p>

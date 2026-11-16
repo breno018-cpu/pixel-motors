@@ -2212,7 +2212,7 @@ export function CloudMonthlySpreadsheet({
         {renderEditableCell(
           row,
           'chassi',
-          row.chassi ? `#${row.chassi.slice(-6)}` : '—',
+          row.chassi ? `#${String(row.chassi).slice(-6)}` : '—',
           'font-mono text-[11px] text-muted-foreground truncate max-w-[120px]'
         )}
 

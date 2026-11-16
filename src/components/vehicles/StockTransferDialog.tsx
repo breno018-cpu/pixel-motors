@@ -132,7 +132,7 @@ export function StockTransferDialog({
                 {available.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
                     {v.brand} {v.model} {v.year} {v.color ? `— ${v.color}` : ''}{' '}
-                    {v.chassis ? `— ${v.chassis.slice(-6)}` : ''}
+                    {v.chassis ? `— ${String(v.chassis).slice(-6)}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>

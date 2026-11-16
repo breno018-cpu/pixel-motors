@@ -203,7 +203,7 @@ export function ChassisYearCodeManager() {
           <p className={`text-xs ${testResult.year ? 'text-success' : 'text-warning'}`}>
             {testResult.year
               ? `Código ${testResult.code} → ${testResult.manufactureYear ? `fabricação ${testResult.manufactureYear} / ` : ''}ano modelo ${testResult.year}${testResult.brand ? ` (regra da marca ${testResult.brand})` : ' (regra geral)'}`
-              : `Nenhuma regra cadastrada para "${testVin.slice(9, 11)}" — cadastre o código acima para o ano preencher certo.`}
+              : `Nenhuma regra cadastrada para "${(testVin || '').slice(9, 11)}" — cadastre o código acima para o ano preencher certo.`}
           </p>
         )}
       </div>

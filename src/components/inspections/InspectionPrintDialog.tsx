@@ -363,7 +363,7 @@ export function InspectionPrintDialog({
             <div className="hidden sm:flex flex-col items-center justify-center p-2 rounded-xl border-2 border-foreground/15 bg-muted/10 text-center space-y-1">
               <QrCode className="w-10 h-10 text-foreground/80" />
               <div className="font-mono text-[8px] text-muted-foreground uppercase tracking-wider">
-                Autenticidade #{inspection.id.slice(0, 8).toUpperCase()}
+                Autenticidade #{inspection.id ? inspection.id.slice(0, 8).toUpperCase() : 'OFICIAL'}
               </div>
               <div className="text-[7.5px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-tight">
                 Conforme CRLV-e Gov.br

@@ -82,7 +82,7 @@ export function AuthorizedEntryDeliveryTermModal({
                 Via Oficial de Transporte
               </Badge>
               <div className="text-[11px] font-mono text-slate-500 mt-1">
-                Ref: #{delivery.chassi.slice(-8) || delivery.saleId}
+                Ref: #{delivery.chassi ? String(delivery.chassi).slice(-8) : delivery.saleId}
               </div>
             </div>
           </div>

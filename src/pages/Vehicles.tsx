@@ -1179,7 +1179,7 @@ export default function Vehicles() {
 
                       <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/50">
                         <span className="text-foreground font-medium">{vehicle.color || 'Sem cor'} · {vehicle.year}</span>
-                        <span className="font-mono text-[11px]">{vehicle.chassis ? `#${vehicle.chassis.slice(-6)}` : vehicle.plate || '—'}</span>
+                        <span className="font-mono text-[11px]">{vehicle?.chassis ? `#${String(vehicle.chassis).slice(-6)}` : vehicle?.plate || '—'}</span>
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground">

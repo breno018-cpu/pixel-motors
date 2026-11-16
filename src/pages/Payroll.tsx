@@ -1464,7 +1464,7 @@ export default function Payroll() {
                     </div>
                   </div>
                   <Badge variant="outline" className="text-[10px] font-mono">
-                    ID: {selectedStoreId === 'all' ? 'GLOBAL' : selectedStoreId.slice(0, 8)}
+                    ID: {selectedStoreId === 'all' ? 'GLOBAL' : (selectedStoreId ? selectedStoreId.slice(0, 8) : 'GERAL')}
                   </Badge>
                 </div>
 

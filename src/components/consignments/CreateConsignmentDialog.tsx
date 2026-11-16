@@ -236,7 +236,7 @@ export function CreateConsignmentDialog({
                 <SelectContent>
                   {availableVehicles.map((v) => (
                     <SelectItem key={v.id} value={v.id} className="text-xs">
-                      {v.brand} {v.model} ({v.chassis.slice(-6)})
+                      {v.brand} {v.model} ({v.chassis ? String(v.chassis).slice(-6) : 'S/ Chassi'})
                     </SelectItem>
                   ))}
                 </SelectContent>

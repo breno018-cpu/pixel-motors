@@ -1023,7 +1023,7 @@ export function CreateSaleModal({
                   <SelectContent>
                     {availableVehicles.map((v) => (
                       <SelectItem key={v.id} value={v.id}>
-                        {v.brand} {v.model} ({v.year}) {v.chassis ? `— Chassi: ${v.chassis.slice(-6)}` : ''}
+                        {v.brand} {v.model} ({v.year}) {v.chassis ? `— Chassi: ${String(v.chassis).slice(-6)}` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

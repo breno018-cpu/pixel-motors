@@ -355,7 +355,7 @@ export default function Logistics() {
                       <TableCell>
                         <div className="font-bold text-foreground">{item.modelo}</div>
                         <div className="text-[11px] font-mono text-muted-foreground">
-                          {item.chassi.slice(-8) || item.chassi}
+                          {item.chassi ? String(item.chassi).slice(-8) : '—'}
                         </div>
                       </TableCell>
 

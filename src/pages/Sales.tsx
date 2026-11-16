@@ -1030,7 +1030,7 @@ export default function Sales() {
                             <div>
                               <p className="text-xs font-semibold text-foreground">{vehicle.brand} {vehicle.model}</p>
                               <p className="text-[11px] text-muted-foreground font-mono">
-                                {vehicle.year} {vehicle.chassis && `— #${vehicle.chassis.slice(-6)}`}
+                                {vehicle.year} {vehicle?.chassis ? `— #${String(vehicle.chassis).slice(-6)}` : ''}
                               </p>
                             </div>
                           </div>
