@@ -32,6 +32,7 @@ import { SaleReceiptsModal } from '@/components/sales/SaleReceiptsModal';
 import { getSaleReceipts } from '@/components/sales/ReceiptAttachmentManager';
 import { ConsolidatedSaleItem } from '@/hooks/useConsolidatedSales';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
+import { isMontesClarosStore, getStoreDisplayName } from '@/lib/storeResolution';
 
 interface ExecutiveSalesReceiptsAuditorProps {
   sales: ConsolidatedSaleItem[];
@@ -111,11 +112,11 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
 
       // 2. Filtro de Loja
       if (storeFilter !== 'all') {
-        const storeUpper = (sale.store_name || '').toUpperCase();
-        if (storeFilter === 'montesclaros' && !storeUpper.includes('MONTES CLAROS') && !storeUpper.includes('MOC')) {
+        const isMoc = isMontesClarosStore(sale);
+        if (storeFilter === 'montesclaros' && !isMoc) {
           return false;
         }
-        if (storeFilter === 'divinopolis' && !storeUpper.includes('DIVINOPOLIS')) {
+        if (storeFilter === 'divinopolis' && isMoc) {
           return false;
         }
       }
@@ -359,7 +360,7 @@ export function ExecutiveSalesReceiptsAuditor({ sales }: ExecutiveSalesReceiptsA
 
                       <TableCell>
                         <div className="text-xs font-semibold text-foreground">
-                          {sale.store_name?.includes('MONTES') ? 'Montes Claros' : 'Divinópolis'}
+                          {getStoreDisplayName(sale)}
                         </div>
                         <div className="text-[11px] text-muted-foreground">Vend.: {sale.vendedor || '—'}</div>
                       </TableCell>

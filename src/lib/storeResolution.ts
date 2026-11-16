@@ -65,6 +65,87 @@ export function isMatchingStore(vehicleStoreId: string | null | undefined, filte
   return cleanFilter === cleanVehicleStore;
 }
 
+/**
+ * Verifica de forma definitiva e à prova de falhas de caixa (case-insensitive)
+ * se uma venda, linha de planilha ou registro pertence à concessionária de Montes Claros.
+ */
+export function isMontesClarosStore(storeOrSale?: {
+  store_id?: string | null;
+  raw_store_id?: string | null;
+  store_name?: string | null;
+  store?: { id?: string; name?: string; city?: string } | null;
+  vendedor?: string | null;
+  operator?: { full_name?: string } | null;
+  regiao?: string | null;
+  observacoes?: string | null;
+} | null): boolean {
+  if (!storeOrSale) return false;
+
+  const sId = String(
+    storeOrSale.store_id ||
+    storeOrSale.raw_store_id ||
+    storeOrSale.store?.id ||
+    ''
+  ).toLowerCase().trim();
+
+  if (
+    sId === 'store-montesclaros' ||
+    sId === STORE_MONTESCLAROS_UUID ||
+    sId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+    sId.includes('montes') ||
+    sId.includes('moc')
+  ) {
+    return true;
+  }
+
+  const sName = String(
+    storeOrSale.store_name ||
+    storeOrSale.store?.name ||
+    storeOrSale.store?.city ||
+    ''
+  ).toLowerCase().trim();
+
+  if (sName.includes('montes') || sName.includes('moc') || sName.includes('polo norte')) {
+    return true;
+  }
+
+  // Verifica lotação canônica do consultor de vendas
+  const vend = String(
+    storeOrSale.vendedor ||
+    storeOrSale.operator?.full_name ||
+    ''
+  ).toLowerCase().trim();
+
+  if (vend) {
+    for (const [key, storeId] of Object.entries(SELLER_TO_STORE_MAP)) {
+      if (vend.includes(key)) {
+        return storeId === 'store-montesclaros';
+      }
+    }
+  }
+
+  // Observações operacionais
+  const obs = String(storeOrSale.observacoes || '').toLowerCase();
+  if (obs.includes('montes claros') || obs.includes('moc') || obs.includes('polo norte')) {
+    return true;
+  }
+
+  // Região ou cidade
+  const reg = String(storeOrSale.regiao || '').toLowerCase();
+  if (reg.includes('montes') || reg.includes('moc')) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Retorna o nome amigável e canônico da concessionária ('Montes Claros' | 'Divinópolis')
+ */
+export function getStoreDisplayName(storeOrSale?: any): 'Montes Claros' | 'Divinópolis' {
+  return isMontesClarosStore(storeOrSale) ? 'Montes Claros' : 'Divinópolis';
+}
+
 export interface ResolvedStore {
   storeId: string;
   storeName: string;

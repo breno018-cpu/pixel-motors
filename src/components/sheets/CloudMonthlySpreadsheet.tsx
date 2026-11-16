@@ -83,6 +83,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { exportToXLSX, exportDealershipWorksheetMultiStore } from '@/lib/export';
 import { useStores } from '@/hooks/useStores';
+import { isMontesClarosStore } from '@/lib/storeResolution';
 import { TabTransition } from '@/components/ui/TabTransition';
 import * as XLSX from 'xlsx';
 import {
@@ -880,9 +881,13 @@ export function CloudMonthlySpreadsheet({
   const filteredRows = useMemo(() => {
     return monthRows.filter((r) => {
       if (selectedStoreFilter !== 'all') {
-        const reg = (r.regiao || '').toUpperCase();
-        if (selectedStoreFilter === 'MOC' && !reg.includes('MOC') && !reg.includes('MONTES CLAROS')) return false;
-        else if (selectedStoreFilter !== 'MOC' && (reg.includes('MOC') || reg.includes('MONTES CLAROS'))) return false;
+        const isMoc = isMontesClarosStore({
+          vendedor: r.vendedor,
+          regiao: r.regiao,
+          observacoes: r.observacoes,
+        });
+        if (selectedStoreFilter === 'MOC' && !isMoc) return false;
+        else if (selectedStoreFilter !== 'MOC' && isMoc) return false;
       }
       if (selectedSellerFilter !== 'all' && r.vendedor !== selectedSellerFilter) return false;
       if (selectedBankFilter !== 'all' && r.banco !== selectedBankFilter) return false;

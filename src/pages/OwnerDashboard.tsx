@@ -49,6 +49,7 @@ import { useStores } from '@/hooks/useStores';
 import { useEmployees } from '@/hooks/useEmployees';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { exportToXLSX } from '@/lib/export';
+import { isMontesClarosStore, getStoreDisplayName } from '@/lib/storeResolution';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { OwnerFiscalInvoicesPanel } from '@/components/dashboard/OwnerFiscalInvoicesPanel';
 import { ExecutiveSalesReceiptsAuditor } from '@/components/dashboard/ExecutiveSalesReceiptsAuditor';
@@ -149,9 +150,9 @@ export default function OwnerDashboard() {
     return sales.filter((item) => {
       // 1. Filtro de Loja
       if (storeFilter !== 'all') {
-        const itemStoreNorm = (item.store_name || '').toUpperCase();
-        if (storeFilter === 'divinopolis' && !itemStoreNorm.includes('DIVINOPOLIS')) return false;
-        if (storeFilter === 'montesclaros' && !itemStoreNorm.includes('MONTES CLAROS') && !itemStoreNorm.includes('MOC')) return false;
+        const isMoc = isMontesClarosStore(item);
+        if (storeFilter === 'divinopolis' && isMoc) return false;
+        if (storeFilter === 'montesclaros' && !isMoc) return false;
       }
 
       // 2. Busca por texto
@@ -218,8 +219,7 @@ export default function OwnerDashboard() {
     let divCount = 0;
 
     filteredSales.forEach((s) => {
-      const name = (s.store_name || '').toUpperCase();
-      if (name.includes('MONTES CLAROS') || name.includes('MOC')) {
+      if (isMontesClarosStore(s)) {
         mocRevenue += s.valor || 0;
         mocCount += 1;
       } else {
@@ -332,7 +332,7 @@ export default function OwnerDashboard() {
       const sellerName = s.vendedor?.trim() || 'Vendedor Não Identificado';
       const curr = map.get(sellerName) || {
         name: sellerName,
-        store: s.store_name?.includes('MONTES') ? 'Montes Claros' : 'Divinópolis',
+        store: getStoreDisplayName(s),
         count: 0,
         revenue: 0,
         commissionRate: 1.5,

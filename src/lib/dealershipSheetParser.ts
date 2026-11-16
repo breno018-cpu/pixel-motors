@@ -1,4 +1,5 @@
 import officialContractsSeed from '@/data/officialContractsSeed.json';
+import { isMontesClarosStore } from '@/lib/storeResolution';
 
 export interface SheetRowComment {
   id: string;
@@ -208,7 +209,11 @@ export function convertContractsSeedToSheetRows(): SheetRowV9[] {
       ) || 0;
     const bankName = c.financing_bank || (finVal > 0 ? 'FINANCIAMENTO' : 'À VISTA');
 
-    let cityStr = c.store?.name?.includes('Montes Claros') ? 'Montes Claros' : 'Divinópolis';
+    let cityStr = isMontesClarosStore({
+      store_id: c.store_id || c.store?.id,
+      store_name: c.store?.name,
+      vendedor: c.vendedor || c.operator?.full_name,
+    }) ? 'Montes Claros' : 'Divinópolis';
     if (c.buyer_address) {
       const parts = c.buyer_address.split('-');
       if (parts.length >= 2) {
