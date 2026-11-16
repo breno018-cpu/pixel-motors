@@ -506,9 +506,9 @@ export function CreateSaleModal({
       }
 
       const nextQtNumber = String(currentRows.length + 1).padStart(2, '0');
-      const effectiveStoreId = storeId || (isRestrictedSeller ? sellerStore?.storeId : STORE_DIVINOPOLIS_UUID);
-      const effectiveSaleDate = saleDate || new Date().toISOString().split('T')[0];
-      const effectiveSeller = activeSeller || resolvedDefaultSeller || currentSellerName || 'Vendedor';
+      const effectiveStoreId = isRestrictedSeller ? initialStoreUuid : (storeId || initialStoreUuid);
+      const effectiveSaleDate = isRestrictedSeller ? new Date().toISOString().split('T')[0] : (saleDate || new Date().toISOString().split('T')[0]);
+      const effectiveSeller = isRestrictedSeller ? (resolvedDefaultSeller || currentSellerName || 'Vendedor') : (activeSeller || resolvedDefaultSeller || currentSellerName || 'Vendedor');
 
       const cleanSeller = effectiveSeller.toLowerCase().trim();
       const isMoc =
@@ -980,9 +980,14 @@ export function CreateSaleModal({
               <div>
                 <Label className="text-xs font-semibold">Concessionária</Label>
                 {isRestrictedSeller ? (
-                  <div className="h-10 px-3 rounded-md border bg-muted/40 flex items-center gap-2 text-xs font-bold mt-1 text-foreground">
-                    <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span className="truncate">{sellerStore.storeName}</span>
+                  <div className="h-10 px-3 rounded-md border border-primary/20 bg-muted/40 flex items-center justify-between text-xs font-bold mt-1 text-foreground">
+                    <div className="flex items-center gap-2 truncate">
+                      <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="truncate">{sellerStore.storeName}</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground font-mono">
+                      Automático
+                    </Badge>
                   </div>
                 ) : (
                   <Select value={storeId} onValueChange={setStoreId}>
@@ -1004,59 +1009,87 @@ export function CreateSaleModal({
 
               <div>
                 <Label className="text-xs font-semibold">Vendedor Responsável</Label>
-                <Select
-                  value={sellerName}
-                  onValueChange={(val) => {
-                    setSellerName(val);
-                    const clean = val.toLowerCase().trim();
-                    if (
-                      clean.includes('mariana') ||
-                      clean.includes('sabrina') ||
-                      clean.includes('halana') ||
-                      clean.includes('natan')
-                    ) {
-                      setStoreId(STORE_MONTESCLAROS_UUID);
-                    } else if (
-                      clean.includes('lilian') ||
-                      clean.includes('geibriel') ||
-                      clean.includes('carlos') ||
-                      clean.includes('daniel')
-                    ) {
-                      setStoreId(STORE_DIVINOPOLIS_UUID);
-                    }
-                  }}
-                >
-                  <SelectTrigger className="h-10 text-xs mt-1 font-medium">
-                    <SelectValue placeholder="Selecione o vendedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableSellers.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="OUTRO">Outro Vendedor...</SelectItem>
-                  </SelectContent>
-                </Select>
-                {sellerName === 'OUTRO' && (
-                  <Input
-                    placeholder="Nome do vendedor"
-                    value={customSeller}
-                    onChange={(e) => setCustomSeller(e.target.value)}
-                    className="h-9 text-xs mt-1.5"
-                    required
-                  />
+                {isRestrictedSeller ? (
+                  <div className="h-10 px-3 rounded-md border border-primary/20 bg-muted/40 flex items-center justify-between text-xs font-bold mt-1 text-foreground">
+                    <div className="flex items-center gap-2 truncate">
+                      <User className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="truncate">{resolvedDefaultSeller}</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground font-mono">
+                      Automático
+                    </Badge>
+                  </div>
+                ) : (
+                  <>
+                    <Select
+                      value={sellerName}
+                      onValueChange={(val) => {
+                        setSellerName(val);
+                        const clean = val.toLowerCase().trim();
+                        if (
+                          clean.includes('mariana') ||
+                          clean.includes('sabrina') ||
+                          clean.includes('halana') ||
+                          clean.includes('natan')
+                        ) {
+                          setStoreId(STORE_MONTESCLAROS_UUID);
+                        } else if (
+                          clean.includes('lilian') ||
+                          clean.includes('geibriel') ||
+                          clean.includes('carlos') ||
+                          clean.includes('daniel')
+                        ) {
+                          setStoreId(STORE_DIVINOPOLIS_UUID);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-10 text-xs mt-1 font-medium">
+                        <SelectValue placeholder="Selecione o vendedor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSellers.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="OUTRO">Outro Vendedor...</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {sellerName === 'OUTRO' && (
+                      <Input
+                        placeholder="Nome do vendedor"
+                        value={customSeller}
+                        onChange={(e) => setCustomSeller(e.target.value)}
+                        className="h-9 text-xs mt-1.5"
+                        required
+                      />
+                    )}
+                  </>
                 )}
               </div>
 
               <div>
                 <Label className="text-xs font-semibold">Data da Venda</Label>
-                <Input
-                  type="date"
-                  value={saleDate}
-                  onChange={(e) => setSaleDate(e.target.value)}
-                  className="h-10 text-xs mt-1"
-                />
+                {isRestrictedSeller ? (
+                  <div className="h-10 px-3 rounded-md border border-primary/20 bg-muted/40 flex items-center justify-between text-xs font-bold mt-1 text-foreground">
+                    <div className="flex items-center gap-2 truncate">
+                      <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="truncate">
+                        {new Date().toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-background shrink-0 text-muted-foreground font-mono">
+                      Automático
+                    </Badge>
+                  </div>
+                ) : (
+                  <Input
+                    type="date"
+                    value={saleDate}
+                    onChange={(e) => setSaleDate(e.target.value)}
+                    className="h-10 text-xs mt-1"
+                  />
+                )}
               </div>
             </div>
           </div>
