@@ -151,16 +151,19 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
     (userFullName.includes(saleSellerName) || saleSellerName.includes(userFullName))
   );
 
+  const isPowerUser = isAdmin || isManager || hasElevatedAccess;
   const isOwner = Boolean(
-    hasElevatedAccess ||
+    isPowerUser ||
     (!!user && sale.created_by === user.id) ||
     isOwnerByName
   );
 
   const isQuestioned = sale.review_status === 'questionada';
   const canFixQuestioned = isQuestioned && (hasElevatedAccess || (isSeller && isOwner));
-  const canEditOwn = hasElevatedAccess || (isOwner && can('sales.edit')) || isSeller;
-  const canDeleteOwn = hasElevatedAccess || (isOwner && can('sales.delete'));
+  const canEditOwn = isPowerUser || (isOwner && can('sales.edit')) || isSeller;
+  const canDeleteOwn = isPowerUser || (isOwner && can('sales.delete'));
+  const canCancel = sale.status !== 'cancelado' && (isPowerUser || canDeleteOwn);
+  const canDelete = isPowerUser || canDeleteOwn;
 
   const questionSale = useMutation({
     mutationFn: async () => {
@@ -364,7 +367,11 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
   const cancelSale = useMutation({
     mutationFn: async () => {
       const wasCompleted = sale.status === 'concluido';
-      if (sale.id && !String(sale.id).startsWith('sheet-')) {
+      const isUuid = (val: any) =>
+        typeof val === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      if (sale.id && isUuid(sale.id)) {
         const { error } = await supabase
           .from('contracts')
           .update({
@@ -372,31 +379,52 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
             ...(wasCompleted ? { signed_at: null } : {}),
           })
           .eq('id', sale.id);
-        if (error) console.warn('Erro ao cancelar contrato no Supabase:', error);
+        if (error) console.warn('[cancelSale] Erro ao cancelar contrato no Supabase:', error);
       }
 
-      // Return vehicle to disponível
+      // Registra cancelamento no storage persistente para nunca ressurgir
+      try {
+        const cancKey = 'dealflow_cancelled_contract_ids';
+        const existing: string[] = JSON.parse(localStorage.getItem(cancKey) || '[]');
+        if (sale.id && !existing.includes(sale.id)) existing.push(sale.id);
+        if (sale.contract_number && !existing.includes(sale.contract_number)) existing.push(sale.contract_number);
+        localStorage.setItem(cancKey, JSON.stringify(existing));
+      } catch {}
+
+      // Retorna veículo para disponível
       const targetVehicleId = sale.vehicle_id;
-      if (targetVehicleId && !String(targetVehicleId).startsWith('veh-sheet')) {
+      if (targetVehicleId && isUuid(targetVehicleId)) {
         await supabase
           .from('vehicles')
           .update({ status: 'disponivel' })
           .eq('id', targetVehicleId);
-      } else if (sale.vehicle?.chassis || (sale.external_data as any)?.chassi) {
-        const ch = sale.vehicle?.chassis || (sale.external_data as any)?.chassi;
+      }
+      const ch = sale.vehicle?.chassis || (sale.external_data as any)?.chassi || (sale as any).chassi;
+      if (ch && typeof ch === 'string' && ch.trim().length >= 4) {
         await supabase
           .from('vehicles')
           .update({ status: 'disponivel' })
           .ilike('chassis', `%${ch.trim()}%`);
       }
 
-      // Atualiza também na planilha local
+      // Atualiza também na planilha local com match abrangente
       try {
         const stored = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
         if (stored) {
           const list = JSON.parse(stored);
+          const cleanQt = (sale.contract_number || '').replace(/^[A-Z]+-/, '').trim();
+          const cleanCh = String(ch || '').trim().toUpperCase();
+          const cleanBuyer = (sale.buyer_name || '').trim().toUpperCase();
+
           const updated = list.map((r: any) => {
-            if (r.id === sale.id || r.qt === sale.contract_number) {
+            const isMatch =
+              r.id === sale.id ||
+              r.qt === sale.contract_number ||
+              (cleanQt && String(r.qt).padStart(2, '0') === cleanQt.padStart(2, '0')) ||
+              (cleanCh && r.chassi && String(r.chassi).toUpperCase() === cleanCh) ||
+              (cleanBuyer && r.cliente && String(r.cliente).toUpperCase().includes(cleanBuyer.slice(0, 5)));
+
+            if (isMatch) {
               return { ...r, tipo_registro: 'cancelado', is_permitted: false };
             }
             return r;
@@ -412,6 +440,7 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
       toast({ title: 'Venda cancelada', description: 'A venda foi cancelada e a moto retornou ao estoque disponível.' });
     },
     onError: () => {
@@ -421,33 +450,67 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
 
   const deleteSale = useMutation({
     mutationFn: async () => {
-      if (sale.id && !String(sale.id).startsWith('sheet-')) {
+      const isUuid = (val: any) =>
+        typeof val === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      if (sale.id && isUuid(sale.id)) {
         const { error } = await supabase
           .from('contracts')
           .delete()
           .eq('id', sale.id);
-        if (error) console.warn('Erro ao deletar contrato no Supabase:', error);
+        if (error) {
+          console.warn('[deleteSale] Delete direto falhou, aplicando cancelamento com nota:', error);
+          await supabase
+            .from('contracts')
+            .update({ status: 'cancelado', notes: '[REGISTRO EXCLUÍDO]' })
+            .eq('id', sale.id);
+        }
       }
 
+      // Registra exclusão na lista negra persistente
+      try {
+        const delKey = 'dealflow_deleted_contract_ids';
+        const existing: string[] = JSON.parse(localStorage.getItem(delKey) || '[]');
+        if (sale.id && !existing.includes(sale.id)) existing.push(sale.id);
+        if (sale.contract_number && !existing.includes(sale.contract_number)) existing.push(sale.contract_number);
+        localStorage.setItem(delKey, JSON.stringify(existing));
+      } catch {}
+
+      // Retorna veículo para disponível
       const targetVehicleId = sale.vehicle_id;
-      if (targetVehicleId && !String(targetVehicleId).startsWith('veh-sheet')) {
+      if (targetVehicleId && isUuid(targetVehicleId)) {
         await supabase
           .from('vehicles')
           .update({ status: 'disponivel' })
           .eq('id', targetVehicleId);
-      } else if (sale.vehicle?.chassis || (sale.external_data as any)?.chassi) {
-        const ch = sale.vehicle?.chassis || (sale.external_data as any)?.chassi;
+      }
+      const ch = sale.vehicle?.chassis || (sale.external_data as any)?.chassi || (sale as any).chassi;
+      if (ch && typeof ch === 'string' && ch.trim().length >= 4) {
         await supabase
           .from('vehicles')
           .update({ status: 'disponivel' })
           .ilike('chassis', `%${ch.trim()}%`);
       }
 
+      // Remove da planilha local
       try {
         const stored = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
         if (stored) {
           const list = JSON.parse(stored);
-          const filtered = list.filter((r: any) => r.id !== sale.id && r.qt !== sale.contract_number);
+          const cleanQt = (sale.contract_number || '').replace(/^[A-Z]+-/, '').trim();
+          const cleanCh = String(ch || '').trim().toUpperCase();
+          const cleanBuyer = (sale.buyer_name || '').trim().toUpperCase();
+
+          const filtered = list.filter((r: any) => {
+            const isMatch =
+              r.id === sale.id ||
+              r.qt === sale.contract_number ||
+              (cleanQt && String(r.qt).padStart(2, '0') === cleanQt.padStart(2, '0')) ||
+              (cleanCh && r.chassi && String(r.chassi).toUpperCase() === cleanCh) ||
+              (cleanBuyer && r.cliente && String(r.cliente).toUpperCase().includes(cleanBuyer.slice(0, 5)));
+            return !isMatch;
+          });
           localStorage.setItem('dealflow_cloud_monthly_sheet_v9', JSON.stringify(filtered));
         }
       } catch {}
@@ -605,17 +668,30 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground">
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuContent
+          align="end"
+          side="bottom"
+          avoidCollisions={true}
+          collisionPadding={12}
+          className="w-56 max-h-[min(480px,calc(100vh-80px))] overflow-y-auto overscroll-contain shadow-2xl z-50 border border-border/80 bg-popover/95 backdrop-blur-md p-1.5"
+        >
+          {/* Cabeçalho de Identificação */}
+          <div className="px-2 py-1.5 border-b border-border/50 mb-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ações da Venda</p>
+            <p className="font-mono text-xs font-bold text-foreground truncate">{sale.contract_number}</p>
+          </div>
+
+          {/* Destaque Principal */}
           <DropdownMenuItem
             onClick={() => {
               setManageDefaultTab('documentos');
               setManageOpen(true);
             }}
-            className="text-primary font-bold focus:text-primary"
+            className="text-primary font-bold focus:text-primary cursor-pointer"
           >
             <Printer className="w-4 h-4 mr-2 text-primary" />
             Emitir 2ª Via Oficial
@@ -626,7 +702,7 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
               setManageDefaultTab('cadastro');
               setManageOpen(true);
             }}
-            className="font-medium"
+            className="font-medium cursor-pointer"
           >
             <Pencil className="w-4 h-4 mr-2 text-primary" />
             Alterar Dados / Gestão
@@ -634,12 +710,13 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
+          {/* Documentos & Consulta */}
+          <DropdownMenuItem onClick={() => setDetailsOpen(true)} className="cursor-pointer">
             <Eye className="w-4 h-4 mr-2" />
             Visualizar venda
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => setReceiptsModalOpen(true)}>
+          <DropdownMenuItem onClick={() => setReceiptsModalOpen(true)} className="cursor-pointer">
             <Paperclip className="w-4 h-4 mr-2 text-primary" />
             <span>Comprovantes da venda</span>
             {receiptsCount > 0 && (
@@ -650,120 +727,118 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
           </DropdownMenuItem>
 
           {sale.status !== 'pre_venda' && (
-            <DropdownMenuItem onClick={handleExportSale}>
+            <DropdownMenuItem onClick={handleExportSale} className="cursor-pointer">
               <Download className="w-4 h-4 mr-2" />
               Baixar contrato
             </DropdownMenuItem>
           )}
 
           {sale.status !== 'pre_venda' && (
-            <DropdownMenuItem onClick={handleDownloadPickupTerm} className="text-blue-600 dark:text-blue-400 font-medium">
+            <DropdownMenuItem onClick={handleDownloadPickupTerm} className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer">
               <ShieldCheck className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
-              Baixar Termo de Retirada (Gov.br)
+              Baixar Termo de Retirada
             </DropdownMenuItem>
           )}
 
-          <DropdownMenuItem onClick={handleEmitInvoicePng}>
+          <DropdownMenuItem onClick={handleEmitInvoicePng} className="cursor-pointer">
             <ImageDown className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
             <span className="font-semibold text-amber-700 dark:text-amber-300">
-              {sale.status === 'pre_venda' ? 'Emitir Papel de NF (PNG)' : 'Solicitar NF (PNG)'}
+              {sale.status === 'pre_venda' ? 'Emitir Papel de NF' : 'Solicitar NF (PNG)'}
             </span>
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => setFreightOpen(true)} className="text-emerald-600 dark:text-emerald-400 font-medium">
+          <DropdownMenuItem onClick={() => setFreightOpen(true)} className="text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer">
             <Truck className="w-4 h-4 mr-2 text-emerald-600 dark:text-emerald-400" />
             Simular Frete & Logística
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator />
+          {/* Etapas de Conclusão / Revisão */}
+          {(sale.status === 'pre_venda' || sale.status === 'pendente' || hasElevatedAccess) && <DropdownMenuSeparator />}
+
+          {sale.status === 'pre_venda' && (
+            <DropdownMenuItem
+              onClick={() => setFinalizeModalOpen(true)}
+              className="text-emerald-600 dark:text-emerald-400 font-semibold focus:text-emerald-700 cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-500" />
+              Finalizar Venda & Contrato
+            </DropdownMenuItem>
+          )}
+
+          {sale.status === 'pendente' && hasElevatedAccess && (
+            <DropdownMenuItem onClick={() => setSignDialogOpen(true)} className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer">
+              <FileCheck className="w-4 h-4 mr-2" />
+              Aprovar e concluir venda
+            </DropdownMenuItem>
+          )}
 
           {hasElevatedAccess && sale.status !== 'cancelado' && (
-            <DropdownMenuItem onClick={() => { setQuestionNote(sale.review_note || ''); setQuestionOpen(true); }}>
+            <DropdownMenuItem onClick={() => { setQuestionNote(sale.review_note || ''); setQuestionOpen(true); }} className="cursor-pointer">
               <MessageSquareWarning className="w-4 h-4 mr-2" />
               {isQuestioned ? 'Editar solicitação de revisão' : 'Solicitar revisão'}
             </DropdownMenuItem>
           )}
 
           {canFixQuestioned && (
-            <DropdownMenuItem onClick={() => setReviewEditOpen(true)}>
+            <DropdownMenuItem onClick={() => setReviewEditOpen(true)} className="cursor-pointer">
               <Wrench className="w-4 h-4 mr-2" />
               Ajustar proposta
             </DropdownMenuItem>
           )}
 
           {isQuestioned && hasElevatedAccess && (
-            <DropdownMenuItem onClick={() => clearQuestion.mutate()}>
+            <DropdownMenuItem onClick={() => clearQuestion.mutate()} className="cursor-pointer">
               <FileCheck className="w-4 h-4 mr-2" />
               Concluir revisão
             </DropdownMenuItem>
           )}
 
-          {sale.status === 'pre_venda' && (
-            <DropdownMenuItem
-              onClick={() => setFinalizeModalOpen(true)}
-              className="text-emerald-600 dark:text-emerald-400 font-semibold focus:text-emerald-700"
-            >
-              <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-500" />
-              Finalizar Venda (Concluir Cadastro & Emitir Contrato)
-            </DropdownMenuItem>
-          )}
-
-          {sale.status === 'pendente' && hasElevatedAccess && (
-            <DropdownMenuItem onClick={() => setSignDialogOpen(true)}>
-              <FileCheck className="w-4 h-4 mr-2" />
-              Aprovar e concluir venda
-            </DropdownMenuItem>
-          )}
-
-
-          {sale.status !== 'cancelado' && sale.status !== 'concluido' && (hasElevatedAccess || canDeleteOwn) && (
-            <DropdownMenuItem 
-              onClick={() => setCancelDialogOpen(true)}
-              className="text-destructive focus:text-destructive"
-            >
-              <XCircle className="w-4 h-4 mr-2" />
-              Cancelar venda
-            </DropdownMenuItem>
-          )}
-
-          {sale.status === 'concluido' && isAdmin && (
-            <DropdownMenuItem
-              onClick={() => setCancelDialogOpen(true)}
-              className="text-destructive focus:text-destructive"
-            >
-              <XCircle className="w-4 h-4 mr-2" />
-              Cancelar venda quitada
-            </DropdownMenuItem>
-          )}
-
-          {(isAdmin || canEditOwn || canDeleteOwn) && <DropdownMenuSeparator />}
-          {(isAdmin || canEditOwn) && (
-            <DropdownMenuItem onClick={() => setEditOpen(true)}>
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar venda
-            </DropdownMenuItem>
-          )}
-          {isAdmin && (
+          {/* Edição Administrativa */}
+          {(canEditOwn || isPowerUser) && (
             <>
-              <DropdownMenuItem onClick={loadOperators}>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setEditOpen(true)} className="cursor-pointer">
+                <Pencil className="w-4 h-4 mr-2" />
+                Editar venda
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {isPowerUser && (
+            <>
+              <DropdownMenuItem onClick={loadOperators} className="cursor-pointer">
                 <UserCog className="w-4 h-4 mr-2" />
                 Alterar operador
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => {
                 setNewDate(sale.created_at.split('T')[0]);
                 setDateDialogOpen(true);
-              }}>
+              }} className="cursor-pointer">
                 <CalendarDays className="w-4 h-4 mr-2" />
                 Alterar data da venda
               </DropdownMenuItem>
             </>
           )}
-          {(isAdmin || canDeleteOwn) && (
+
+          {/* AÇÕES DE CANCELAMENTO E EXCLUSÃO (Visíveis e Destacadas) */}
+          {(canCancel || canDelete) && <DropdownMenuSeparator />}
+
+          {canCancel && (
+            <DropdownMenuItem 
+              onClick={() => setCancelDialogOpen(true)}
+              className="text-amber-600 dark:text-amber-400 focus:text-amber-700 font-semibold cursor-pointer"
+            >
+              <XCircle className="w-4 h-4 mr-2 text-amber-500" />
+              {sale.status === 'concluido' ? 'Cancelar venda quitada' : 'Cancelar venda'}
+            </DropdownMenuItem>
+          )}
+
+          {canDelete && (
             <DropdownMenuItem 
               onClick={() => setDeleteDialogOpen(true)}
-              className="text-destructive focus:text-destructive"
+              className="text-destructive focus:text-destructive font-semibold cursor-pointer"
             >
-              <Trash2 className="w-4 h-4 mr-2" />
+              <Trash2 className="w-4 h-4 mr-2 text-destructive" />
               Excluir venda
             </DropdownMenuItem>
           )}

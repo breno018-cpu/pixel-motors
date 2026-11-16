@@ -338,7 +338,36 @@ export default function Sales() {
     const fromSheet = monthlySheetRows
       .filter((r) => !contractIds.has(r.id))
       .map((r) => sheetRowToContract(r, employees));
-    const rawConsolidated = [...fromContracts, ...fromSheet];
+
+    const deletedIds = new Set<string>();
+    const cancelledIds = new Set<string>();
+    try {
+      const rawDel = localStorage.getItem('dealflow_deleted_contract_ids');
+      if (rawDel) {
+        const parsed = JSON.parse(rawDel);
+        if (Array.isArray(parsed)) parsed.forEach((x: string) => deletedIds.add(String(x)));
+      }
+      const rawCanc = localStorage.getItem('dealflow_cancelled_contract_ids');
+      if (rawCanc) {
+        const parsed = JSON.parse(rawCanc);
+        if (Array.isArray(parsed)) parsed.forEach((x: string) => cancelledIds.add(String(x)));
+      }
+    } catch {}
+
+    const isDeleted = (c: any) =>
+      deletedIds.has(c.id) ||
+      (c.contract_number ? deletedIds.has(c.contract_number) : false);
+
+    const applyStatusOverrides = (c: any) => {
+      if (cancelledIds.has(c.id) || (c.contract_number && cancelledIds.has(c.contract_number))) {
+        return { ...c, status: 'cancelado' };
+      }
+      return c;
+    };
+
+    const rawConsolidated = [...fromContracts, ...fromSheet]
+      .filter((c) => !isDeleted(c))
+      .map(applyStatusOverrides);
 
     // Se o usuário for vendedor restrito, isola estritamente apenas suas próprias vendas
     if (isRestrictedSeller) {

@@ -22,7 +22,10 @@ import {
   Car,
   DollarSign,
   Landmark,
+  XCircle,
+  Trash2,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +86,8 @@ export function SaleManageModal({
   const { data: stores = [] } = useStores();
   const { data: banks = [] } = useFinancingBanks();
   const { data: templates = [] } = useActiveTemplates();
+  const { isAdmin, isManager, hasElevatedAccess } = useAuth();
+  const isPowerUser = isAdmin || isManager || hasElevatedAccess;
 
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [isSaving, setIsSaving] = useState(false);
@@ -473,6 +478,159 @@ export function SaleManageModal({
         title: 'Erro ao salvar alterações',
         description: err.message || 'Ocorreu uma falha ao persistir os dados.',
       });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelSale = async () => {
+    if (!sale) return;
+    const confirmed = window.confirm(
+      sale.status === 'concluido'
+        ? 'Esta venda está quitada. Deseja realmente cancelá-la? O veículo retornará ao estoque como disponível.'
+        : 'Deseja realmente cancelar esta venda? O veículo retornará ao estoque como disponível.'
+    );
+    if (!confirmed) return;
+
+    setIsSaving(true);
+    try {
+      const isUuid = (val: any) =>
+        typeof val === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      if (sale.id && isUuid(sale.id)) {
+        await supabase
+          .from('contracts')
+          .update({ status: 'cancelado' })
+          .eq('id', sale.id);
+      }
+
+      // Storage persistente de cancelados
+      try {
+        const cancKey = 'dealflow_cancelled_contract_ids';
+        const existing: string[] = JSON.parse(localStorage.getItem(cancKey) || '[]');
+        if (sale.id && !existing.includes(sale.id)) existing.push(sale.id);
+        if (sale.contract_number && !existing.includes(sale.contract_number)) existing.push(sale.contract_number);
+        localStorage.setItem(cancKey, JSON.stringify(existing));
+      } catch {}
+
+      // Retorna veículo ao estoque
+      if (sale.vehicle_id && isUuid(sale.vehicle_id)) {
+        await supabase.from('vehicles').update({ status: 'disponivel' }).eq('id', sale.vehicle_id);
+      }
+      if (vehicleChassis && vehicleChassis.length >= 4) {
+        await supabase.from('vehicles').update({ status: 'disponivel' }).ilike('chassis', `%${vehicleChassis.trim()}%`);
+      }
+
+      // Atualiza na planilha local
+      try {
+        const stored = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const cleanQt = (sale.contract_number || '').replace(/^[A-Z]+-/, '').trim();
+          const cleanCh = (vehicleChassis || '').trim().toUpperCase();
+          const cleanBuyer = (buyerName || '').trim().toUpperCase();
+
+          const updated = list.map((r: any) => {
+            const isMatch =
+              r.id === sale.id ||
+              r.qt === sale.contract_number ||
+              (cleanQt && String(r.qt).padStart(2, '0') === cleanQt.padStart(2, '0')) ||
+              (cleanCh && r.chassi && String(r.chassi).toUpperCase() === cleanCh) ||
+              (cleanBuyer && r.cliente && String(r.cliente).toUpperCase().includes(cleanBuyer.slice(0, 5)));
+
+            if (isMatch) return { ...r, tipo_registro: 'cancelado', is_permitted: false };
+            return r;
+          });
+          localStorage.setItem('dealflow_cloud_monthly_sheet_v9', JSON.stringify(updated));
+        }
+      } catch {}
+
+      window.dispatchEvent(new CustomEvent('dealflow:sales-updated'));
+      window.dispatchEvent(new CustomEvent('dealflow:sheet-updated'));
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+
+      toast({ title: 'Venda cancelada', description: 'Status atualizado para cancelado e veículo liberado no estoque.' });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao cancelar', description: err?.message || 'Falha na operação.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteSale = async () => {
+    if (!sale) return;
+    const confirmed = window.confirm(
+      'TEM CERTEZA QUE DESEJA EXCLUIR ESTA VENDA DEFINITIVAMENTE? Esta ação não pode ser desfeita.'
+    );
+    if (!confirmed) return;
+
+    setIsSaving(true);
+    try {
+      const isUuid = (val: any) =>
+        typeof val === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      if (sale.id && isUuid(sale.id)) {
+        const { error } = await supabase.from('contracts').delete().eq('id', sale.id);
+        if (error) {
+          console.warn('[handleDeleteSale] Delete direto falhou, marcando status cancelado:', error);
+          await supabase.from('contracts').update({ status: 'cancelado', notes: '[EXCLUÍDO]' }).eq('id', sale.id);
+        }
+      }
+
+      // Storage persistente de excluídos
+      try {
+        const delKey = 'dealflow_deleted_contract_ids';
+        const existing: string[] = JSON.parse(localStorage.getItem(delKey) || '[]');
+        if (sale.id && !existing.includes(sale.id)) existing.push(sale.id);
+        if (sale.contract_number && !existing.includes(sale.contract_number)) existing.push(sale.contract_number);
+        localStorage.setItem(delKey, JSON.stringify(existing));
+      } catch {}
+
+      // Retorna veículo ao estoque
+      if (sale.vehicle_id && isUuid(sale.vehicle_id)) {
+        await supabase.from('vehicles').update({ status: 'disponivel' }).eq('id', sale.vehicle_id);
+      }
+      if (vehicleChassis && vehicleChassis.length >= 4) {
+        await supabase.from('vehicles').update({ status: 'disponivel' }).ilike('chassis', `%${vehicleChassis.trim()}%`);
+      }
+
+      // Remove da planilha local
+      try {
+        const stored = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const cleanQt = (sale.contract_number || '').replace(/^[A-Z]+-/, '').trim();
+          const cleanCh = (vehicleChassis || '').trim().toUpperCase();
+          const cleanBuyer = (buyerName || '').trim().toUpperCase();
+
+          const filtered = list.filter((r: any) => {
+            const isMatch =
+              r.id === sale.id ||
+              r.qt === sale.contract_number ||
+              (cleanQt && String(r.qt).padStart(2, '0') === cleanQt.padStart(2, '0')) ||
+              (cleanCh && r.chassi && String(r.chassi).toUpperCase() === cleanCh) ||
+              (cleanBuyer && r.cliente && String(r.cliente).toUpperCase().includes(cleanBuyer.slice(0, 5)));
+            return !isMatch;
+          });
+          localStorage.setItem('dealflow_cloud_monthly_sheet_v9', JSON.stringify(filtered));
+        }
+      } catch {}
+
+      window.dispatchEvent(new CustomEvent('dealflow:sales-updated'));
+      window.dispatchEvent(new CustomEvent('dealflow:sheet-updated'));
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+
+      toast({ title: 'Venda excluída', description: 'Registro excluído e veículo liberado no estoque.' });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: err?.message || 'Falha na operação.' });
     } finally {
       setIsSaving(false);
     }
@@ -1099,12 +1257,37 @@ export function SaleManageModal({
           </div>
         </Tabs>
 
-        {/* Rodapé do Modal */}
-        <DialogFooter className="px-6 py-3 border-t bg-muted/20 flex items-center justify-between">
-          <div className="text-xs text-muted-foreground">
-            {saleDate ? `Data de Registro: ${new Date(saleDate).toLocaleDateString('pt-BR')}` : ''}
-          </div>
+        {/* Rodapé do Modal com Ações Rápidas de Dono/Gestor */}
+        <DialogFooter className="px-6 py-3 border-t bg-muted/20 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
+            {isPowerUser && sale?.status !== 'cancelado' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCancelSale}
+                disabled={isSaving}
+                className="h-8 text-xs font-semibold text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 gap-1.5"
+              >
+                <XCircle className="w-3.5 h-3.5 text-amber-500" />
+                Cancelar Venda
+              </Button>
+            )}
+            {isPowerUser && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleDeleteSale}
+                disabled={isSaving}
+                className="h-8 text-xs font-semibold text-destructive hover:bg-destructive/10 gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                Excluir Venda
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="h-8 text-xs font-medium">
               Fechar
             </Button>
