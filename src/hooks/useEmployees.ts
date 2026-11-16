@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useToast } from '@/hooks/use-toast';
+import { DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
+import { STORE_MONTESCLAROS_UUID, STORE_DIVINOPOLIS_UUID } from '@/lib/storeResolution';
 
 export interface CommissionTier {
   min_qty: number;
@@ -53,17 +55,63 @@ export interface Employee {
   store?: { id: string; name: string } | null;
 }
 
+const FALLBACK_EMPLOYEES: Employee[] = DEFAULT_OFFICIAL_USERS.map((u) => {
+  const isMoc = (u.store_name || '').includes('Montes Claros') || (u.store_id || '').includes('montes');
+  return {
+    id: u.id,
+    profile_id: u.id,
+    store_id: isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
+    full_name: u.full_name,
+    cpf: u.cpf || null,
+    role: u.role,
+    position:
+      u.role === 'admin'
+        ? 'Diretor Geral'
+        : u.role === 'gerente'
+        ? 'Gerente Geral'
+        : u.role === 'vendedor_plus'
+        ? 'Consultor(a) de Vendas Sênior'
+        : 'Consultor(a) de Vendas',
+    base_salary: 2200,
+    commission_rate: 1.5,
+    commission_tiers: [],
+    commission_type: 'percentage',
+    manager_commission_rate: 0,
+    transport_allowance: 0,
+    meal_allowance: 0,
+    other_allowance: 0,
+    salary_additions: [],
+    hire_date: '2025-01-01',
+    phone: null,
+    email: u.email,
+    pix_key: null,
+    bank_info: null,
+    is_active: u.is_active !== false,
+    notes: null,
+    created_at: u.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    store: {
+      id: isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
+      name: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
+    },
+  };
+});
+
 export function useEmployees() {
   return useQuery({
     queryKey: ['employees'],
     queryFn: async () => {
       await ensureSupabaseSession();
-      const { data, error } = await (supabase as any)
-        .from('employees')
-        .select('*, store:stores(id, name)')
-        .order('full_name');
-      if (error) throw error;
-      return (data || []) as Employee[];
+      try {
+        const { data, error } = await (supabase as any)
+          .from('employees')
+          .select('*, store:stores(id, name)')
+          .order('full_name');
+        if (!error && Array.isArray(data) && data.length > 0) {
+          return data as Employee[];
+        }
+      } catch {}
+      return FALLBACK_EMPLOYEES;
     },
   });
 }

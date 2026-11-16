@@ -18,37 +18,13 @@ export function invalidateDealflowQueries() {
 }
 
 /**
- * Garante que a requisição ao Supabase utilize uma sessão JWT válida.
- * Evita que o Supabase RLS barre consultas ao estoque e vendas retornando lista vazia.
+ * Garante que a requisição ao Supabase utilize uma sessão JWT válida quando disponível.
  */
 export async function ensureSupabaseSession() {
   try {
     const { data } = await supabase.auth.getSession();
     if (data?.session) return data.session;
-
-    if (!sessionPromise) {
-      sessionPromise = supabase.auth
-        .signInWithPassword({
-          email: 'admbreno@index.com',
-          password: 'PixelMotors@2026',
-        })
-        .then(({ data: authData, error }) => {
-          if (error) {
-            console.warn('Auto-login error:', error.message);
-            return null;
-          }
-          if (authData?.session) {
-            invalidateDealflowQueries();
-          }
-          return authData?.session ?? null;
-        })
-        .catch(() => null)
-        .finally(() => {
-          sessionPromise = null;
-        });
-    }
-
-    return await sessionPromise;
+    return null;
   } catch {
     return null;
   }
