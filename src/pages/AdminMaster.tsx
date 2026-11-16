@@ -24,7 +24,8 @@ import {
   XCircle,
   UserX,
   UserCheck,
-  DollarSign
+  DollarSign,
+  ReceiptText
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -71,6 +72,7 @@ import { StockSyncSettings } from '@/components/settings/StockSyncSettings';
 import { ApiKeysManager } from '@/components/settings/ApiKeysManager';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { FinancialDREPanel } from '@/components/finance/FinancialDREPanel';
+import { StoreFiscalControlPanel } from '@/components/admin/StoreFiscalControlPanel';
 
 interface UserWithRole {
   id: string;
@@ -410,6 +412,10 @@ export default function AdminMaster() {
               <DollarSign className="w-3.5 h-3.5" />
               DRE & Finanças
             </TabsTrigger>
+            <TabsTrigger value="nfs-lojas" className="gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+              <ReceiptText className="w-3.5 h-3.5" />
+              Controle de NFs (Entrada / Cancelamento)
+            </TabsTrigger>
             <TabsTrigger value="auditoria" className="gap-2 text-xs font-medium">
               <Activity className="w-3.5 h-3.5" />
               Trilha de Auditoria
@@ -689,6 +695,11 @@ export default function AdminMaster() {
         {/* ABA: DRE E FINANÇAS */}
         <TabsContent value="dre" className="space-y-4">
           <FinancialDREPanel />
+        </TabsContent>
+
+        {/* ABA: CONTROLE FISCAL DE ENTRADA E CANCELAMENTO DE NFS NAS LOJAS */}
+        <TabsContent value="nfs-lojas" className="space-y-4">
+          <StoreFiscalControlPanel />
         </TabsContent>
 
         {/* ABA 6: TRILHA DE AUDITORIA */}
