@@ -39,22 +39,30 @@ export function useInvoices() {
   return useQuery({
     queryKey: ['invoices'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('invoices')
-        .select('*, store:stores(id, name, cnpj, address, city, state)')
-        .order('issue_date', { ascending: false });
-      if (error) throw error;
-      return (data || []).map((inv: any): Invoice => {
-        const itemObj = Array.isArray(inv.items) ? (inv.items[0] || {}) : (inv.items || {});
-        return {
-          ...inv,
-          cancellation_date: itemObj.cancellation_date || inv.cancellation_date || (inv.status === 'cancelada' ? inv.updated_at?.slice(0, 10) : null),
-          cancellation_reason: itemObj.cancellation_reason || inv.cancellation_reason || inv.notes || null,
-          cancellation_type: itemObj.cancellation_type || inv.cancellation_type || 'estorno',
-          sefaz_protocol: itemObj.sefaz_protocol || inv.sefaz_protocol || null,
-          cancelled_by: itemObj.cancelled_by || inv.cancelled_by || null,
-        };
-      }) as Invoice[];
+      try {
+        const { data, error } = await (supabase as any)
+          .from('invoices')
+          .select('*, store:stores(id, name, cnpj, address, city, state)')
+          .order('issue_date', { ascending: false });
+        if (error) {
+          console.warn('Consulta à tabela invoices retornou aviso, operando com fallback:', error);
+          return [];
+        }
+        return (data || []).map((inv: any): Invoice => {
+          const itemObj = Array.isArray(inv.items) ? (inv.items[0] || {}) : (inv.items || {});
+          return {
+            ...inv,
+            cancellation_date: itemObj.cancellation_date || inv.cancellation_date || (inv.status === 'cancelada' ? inv.updated_at?.slice(0, 10) : null),
+            cancellation_reason: itemObj.cancellation_reason || inv.cancellation_reason || inv.notes || null,
+            cancellation_type: itemObj.cancellation_type || inv.cancellation_type || 'estorno',
+            sefaz_protocol: itemObj.sefaz_protocol || inv.sefaz_protocol || null,
+            cancelled_by: itemObj.cancelled_by || inv.cancelled_by || null,
+          };
+        }) as Invoice[];
+      } catch (err) {
+        console.warn('Falha de conexão com invoices:', err);
+        return [];
+      }
     },
   });
 }
