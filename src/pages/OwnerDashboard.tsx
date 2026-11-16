@@ -32,7 +32,16 @@ import {
   Banknote,
   AlertTriangle,
   Trophy,
+  Eye,
+  Boxes,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConsolidatedSales, ConsolidatedSaleItem } from '@/hooks/useConsolidatedSales';
 import { useVehicles } from '@/hooks/useVehicles';
@@ -53,6 +62,63 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
 
+function getCanonicalModelName(rawModel: string | null | undefined): string {
+  if (!rawModel) return 'OUTROS MODELOS';
+  const upper = rawModel.trim().toUpperCase().replace(/\s+/g, ' ');
+  if (upper === 'JET' || upper === 'JET 125' || upper === 'JET125' || upper.startsWith('JET 125 ')) {
+    return 'JET 125';
+  }
+  if (upper.startsWith('NEW JET 125')) {
+    return 'NEW JET 125';
+  }
+  if (upper.startsWith('SHI 175') || upper.startsWith('SHI175')) {
+    return 'SHI 175 EFI';
+  }
+  if (upper.startsWith('NEW SHI 175')) {
+    return 'NEW SHI 175 EFI';
+  }
+  if (upper.startsWith('SHI 250') || upper.startsWith('SHI250')) {
+    return 'SHI 250 EFI';
+  }
+  if (upper.startsWith('PHOENIX')) {
+    return 'PHOENIX 50';
+  }
+  if (upper.startsWith('FREE 150')) {
+    return 'FREE 150';
+  }
+  if (upper.startsWith('NEW FREE 170')) {
+    return 'NEW FREE 170';
+  }
+  if (upper.startsWith('JEF 150')) {
+    return 'JEF 150';
+  }
+  if (upper.startsWith('TITANIUM')) {
+    return 'TITANIUM 250';
+  }
+  if (upper.startsWith('SBM 250')) {
+    return 'SBM 250S';
+  }
+  if (upper.startsWith('STORM 200') || upper === 'STORM') {
+    return 'STORM 200';
+  }
+  if (upper.startsWith('RIO 125')) {
+    return 'RIO 125';
+  }
+  return upper;
+}
+
+interface ModelStockGroup {
+  model: string;
+  brand: string;
+  totalCount: number;
+  mocCount: number;
+  divCount: number;
+  totalValue: number;
+  avgPrice: number;
+  colorCounts: { color: string; count: number }[];
+  vehicles: any[];
+}
+
 export default function OwnerDashboard() {
   const navigate = useNavigate();
   const { isAdmin, isManager, hasElevatedAccess } = useAuth();
@@ -71,6 +137,9 @@ export default function OwnerDashboard() {
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [stockSearch, setStockSearch] = useState<string>('');
+  const [stockStoreFilter, setStockStoreFilter] = useState<'all' | 'montesclaros' | 'divinopolis'>('all');
+  const [stockSortBy, setStockSortBy] = useState<'count_desc' | 'count_asc' | 'value_desc' | 'name_asc'>('count_desc');
+  const [selectedModelForChassis, setSelectedModelForChassis] = useState<ModelStockGroup | null>(null);
 
   // Filtragem dinâmica de vendas
   const filteredSales = useMemo(() => {
@@ -297,19 +366,133 @@ export default function OwnerDashboard() {
     return sellerPerformance.reduce((acc, s) => acc + s.commissionTotal, 0);
   }, [sellerPerformance]);
 
-  // Lista Filtrada do Estoque em Pátio
-  const availableStockList = useMemo(() => {
-    const list = vehicles.filter((v) => v.status === 'disponivel' || (v.status as any) === 'em_estoque');
-    if (!stockSearch.trim()) return list;
+  // Agrupamento Executivo do Pátio focado em MODELOS e QUANTIDADES
+  const modelStockSummary = useMemo(() => {
+    const inStock = vehicles.filter((v) => v.status === 'disponivel' || (v.status as any) === 'em_estoque');
+    const map = new Map<string, {
+      model: string;
+      brand: string;
+      totalCount: number;
+      mocCount: number;
+      divCount: number;
+      totalValue: number;
+      colorMap: Map<string, number>;
+      vehicles: typeof vehicles;
+    }>();
 
-    const q = stockSearch.toLowerCase().trim();
-    return list.filter((v) =>
-      (v.model || '').toLowerCase().includes(q) ||
-      (v.chassis || '').toLowerCase().includes(q) ||
-      (v.color || '').toLowerCase().includes(q) ||
-      (v.brand || '').toLowerCase().includes(q)
-    );
-  }, [vehicles, stockSearch]);
+    inStock.forEach((v) => {
+      const canonical = getCanonicalModelName(v.model);
+      const store = stores.find((s) => s.id === v.store_id);
+      const storeUpper = (store?.name || store?.city || '').toUpperCase();
+      const isMoc = storeUpper.includes('MONTES') || storeUpper.includes('MOC');
+      const isDiv = storeUpper.includes('DIVINOPOLIS') || storeUpper.includes('DIV');
+
+      const curr = map.get(canonical) || {
+        model: canonical,
+        brand: v.brand || 'SHINERAY',
+        totalCount: 0,
+        mocCount: 0,
+        divCount: 0,
+        totalValue: 0,
+        colorMap: new Map<string, number>(),
+        vehicles: [],
+      };
+
+      curr.totalCount += 1;
+      if (isDiv) curr.divCount += 1;
+      else curr.mocCount += 1; // Padrão Montes Claros (Matriz)
+
+      const price = Number(v.sale_price) || 0;
+      curr.totalValue += price;
+
+      const color = (v.color || 'Padrão').trim();
+      curr.colorMap.set(color, (curr.colorMap.get(color) || 0) + 1);
+
+      curr.vehicles.push(v);
+      map.set(canonical, curr);
+    });
+
+    let list: ModelStockGroup[] = Array.from(map.values()).map((item) => {
+      const colorCounts = Array.from(item.colorMap.entries())
+        .map(([color, count]) => ({ color, count }))
+        .sort((a, b) => b.count - a.count);
+      const avgPrice = item.totalCount > 0 ? item.totalValue / item.totalCount : 0;
+
+      return {
+        model: item.model,
+        brand: item.brand,
+        totalCount: item.totalCount,
+        mocCount: item.mocCount,
+        divCount: item.divCount,
+        totalValue: item.totalValue,
+        avgPrice,
+        colorCounts,
+        vehicles: item.vehicles,
+      };
+    });
+
+    // Filtro por Concessionária
+    if (stockStoreFilter === 'montesclaros') {
+      list = list.filter((m) => m.mocCount > 0);
+    } else if (stockStoreFilter === 'divinopolis') {
+      list = list.filter((m) => m.divCount > 0);
+    }
+
+    // Busca textual por modelo ou cor
+    if (stockSearch.trim()) {
+      const q = stockSearch.toLowerCase().trim();
+      list = list.filter(
+        (m) =>
+          m.model.toLowerCase().includes(q) ||
+          m.brand.toLowerCase().includes(q) ||
+          m.colorCounts.some((c) => c.color.toLowerCase().includes(q))
+      );
+    }
+
+    // Ordenação
+    if (stockSortBy === 'count_desc') {
+      list.sort((a, b) => b.totalCount - a.totalCount);
+    } else if (stockSortBy === 'count_asc') {
+      list.sort((a, b) => a.totalCount - b.totalCount);
+    } else if (stockSortBy === 'value_desc') {
+      list.sort((a, b) => b.totalValue - a.totalValue);
+    } else if (stockSortBy === 'name_asc') {
+      list.sort((a, b) => a.model.localeCompare(b.model));
+    }
+
+    return list;
+  }, [vehicles, stores, stockSearch, stockStoreFilter, stockSortBy]);
+
+  const exportModelStockExcel = () => {
+    const data = modelStockSummary.map((m) => ({
+      Modelo: m.model,
+      Marca: m.brand,
+      'Quantidade Total': m.totalCount,
+      'Qtd Montes Claros': m.mocCount,
+      'Qtd Divinópolis': m.divCount,
+      'Preço Médio Unitário': m.avgPrice,
+      'Valor Total no Pátio': m.totalValue,
+      'Cores Disponíveis': m.colorCounts.map((c) => `${c.color}: ${c.count}`).join(', '),
+    }));
+
+    exportToXLSX({
+      title: 'Estoque do Pátio Consolidado por Modelo',
+      module: 'vehicles',
+      filters: { Loja: stockStoreFilter, Ordenação: stockSortBy },
+      columns: [
+        { key: 'Modelo', label: 'Modelo', type: 'text' },
+        { key: 'Marca', label: 'Marca', type: 'text' },
+        { key: 'Quantidade Total', label: 'Quantidade Total', type: 'number' },
+        { key: 'Qtd Montes Claros', label: 'Qtd Montes Claros', type: 'number' },
+        { key: 'Qtd Divinópolis', label: 'Qtd Divinópolis', type: 'number' },
+        { key: 'Preço Médio Unitário', label: 'Preço Médio Unitário', type: 'currency' },
+        { key: 'Valor Total no Pátio', label: 'Valor Total no Pátio', type: 'currency' },
+        { key: 'Cores Disponíveis', label: 'Cores Disponíveis', type: 'text' },
+      ],
+      data,
+      userName: 'Diretoria Executiva',
+    });
+  };
 
   const exportExecutiveExcel = () => {
     const data = filteredSales.map((s) => ({
@@ -755,7 +938,7 @@ export default function OwnerDashboard() {
         {/* ABA 3: PÁTIO & VALOR DO ESTOQUE EM R$                              */}
         {/* =================================================================== */}
         <TabsContent value="patio" className="space-y-6 mt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Valor Total do Estoque Parado</span>
@@ -785,80 +968,224 @@ export default function OwnerDashboard() {
                 <p className="text-xs text-muted-foreground">{executiveMetrics.divStockCount} motocicletas em estoque físico</p>
               </CardContent>
             </Card>
+
+            <Card className="rounded-2xl border shadow-xs bg-card">
+              <CardContent className="p-4 space-y-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Modelos no Catálogo</span>
+                <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                  {modelStockSummary.length} modelos
+                </div>
+                <p className="text-xs text-muted-foreground">Linhas ativas com unidades físicas disponíveis</p>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Listagem do Estoque do Pátio */}
+          {/* Listagem do Estoque do Pátio focada em MODELOS E QUANTIDADES */}
           <Card className="rounded-2xl border shadow-xs overflow-hidden">
             <CardHeader className="p-4 border-b bg-muted/20">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-sm font-bold flex items-center gap-2">
                     <Bike className="w-4 h-4 text-primary" />
                     Motocicletas Disponíveis no Pátio
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Rastreie cada chassi parado no estoque, valor de venda e loja física.
+                    Consolidado estratégico por modelo e volume de unidades disponíveis no estoque das lojas.
                   </CardDescription>
                 </div>
-                <div className="relative w-64">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="h-8 pl-8 text-xs rounded-xl"
-                    placeholder="Filtrar por chassi, modelo ou cor..."
-                    value={stockSearch}
-                    onChange={(e) => setStockSearch(e.target.value)}
-                  />
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-56">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="h-8 pl-8 text-xs rounded-xl"
+                      placeholder="Filtrar por modelo ou cor..."
+                      value={stockSearch}
+                      onChange={(e) => setStockSearch(e.target.value)}
+                    />
+                  </div>
+
+                  <Select value={stockStoreFilter} onValueChange={(val: any) => setStockStoreFilter(val)}>
+                    <SelectTrigger className="h-8 text-xs w-44 rounded-xl">
+                      <SelectValue placeholder="Concessionária" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as Concessionárias</SelectItem>
+                      <SelectItem value="montesclaros">Pátio Montes Claros</SelectItem>
+                      <SelectItem value="divinopolis">Pátio Divinópolis</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={stockSortBy} onValueChange={(val: any) => setStockSortBy(val)}>
+                    <SelectTrigger className="h-8 text-xs w-44 rounded-xl">
+                      <SelectValue placeholder="Ordenar por" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="count_desc">Maior Quantidade</SelectItem>
+                      <SelectItem value="count_asc">Menor Quantidade</SelectItem>
+                      <SelectItem value="value_desc">Maior Valor Total</SelectItem>
+                      <SelectItem value="name_asc">Nome do Modelo (A-Z)</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={exportModelStockExcel}
+                    className="h-8 text-xs gap-1.5 rounded-xl border-dashed"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Exportar Excel
+                  </Button>
                 </div>
               </div>
             </CardHeader>
+
             <CardContent className="p-0">
-              <div className="max-h-[500px] overflow-y-auto">
+              <div className="max-h-[550px] overflow-y-auto">
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10 shadow-xs">
                     <TableRow>
-                      <TableHead>Modelo</TableHead>
-                      <TableHead>Cor</TableHead>
-                      <TableHead>Chassi</TableHead>
-                      <TableHead>Concessionária</TableHead>
-                      <TableHead className="text-right">Preço de Venda</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead>Modelo da Motocicleta</TableHead>
+                      <TableHead className="text-center font-bold">Qtd Total no Pátio</TableHead>
+                      <TableHead className="text-center">Montes Claros</TableHead>
+                      <TableHead className="text-center">Divinópolis</TableHead>
+                      <TableHead className="text-right">Preço Médio Unitário</TableHead>
+                      <TableHead className="text-right">Capital Total no Pátio</TableHead>
+                      <TableHead>Cores em Estoque</TableHead>
+                      <TableHead className="text-center">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {availableStockList.length === 0 ? (
+                    {modelStockSummary.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-xs">
-                          Nenhuma motocicleta disponível encontrada.
+                        <TableCell colSpan={8} className="text-center py-10 text-muted-foreground text-xs">
+                          Nenhum modelo disponível encontrado com os filtros aplicados.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      availableStockList.map((veh) => {
-                        const store = stores.find((s) => s.id === veh.store_id);
-                        return (
-                          <TableRow key={veh.id} className="hover:bg-muted/30">
-                            <TableCell className="font-bold text-xs">{veh.brand} {veh.model} {veh.year}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{veh.color || 'Padrão'}</TableCell>
-                            <TableCell className="font-mono text-xs">{veh.chassis || '—'}</TableCell>
-                            <TableCell className="text-xs font-semibold">
-                              {store?.name?.includes('MONTES') ? 'Montes Claros' : 'Divinópolis'}
-                            </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-xs text-primary">
-                              {formatCurrencyBRL(Number(veh.sale_price) || 0)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="outline" className="text-emerald-600 bg-emerald-500/10 border-emerald-500/30 text-[10px] font-bold">
-                                No Pátio
+                      modelStockSummary.map((item) => (
+                        <TableRow key={item.model} className="hover:bg-muted/30">
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-xs text-foreground">{item.model}</span>
+                              <Badge variant="outline" className="text-[9px] uppercase font-bold text-muted-foreground">
+                                {item.brand}
                               </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-center">
+                            <Badge className="font-black text-xs px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/25">
+                              {item.totalCount} {item.totalCount === 1 ? 'moto' : 'motos'}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell className="text-center">
+                            <span className="font-semibold text-xs text-foreground">
+                              {item.mocCount} un
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-center">
+                            <span className="font-semibold text-xs text-foreground">
+                              {item.divCount} un
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                            {formatCurrencyBRL(item.avgPrice)}
+                          </TableCell>
+
+                          <TableCell className="text-right font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
+                            {formatCurrencyBRL(item.totalValue)}
+                          </TableCell>
+
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1 max-w-[280px]">
+                              {item.colorCounts.slice(0, 4).map((c) => (
+                                <Badge key={c.color} variant="secondary" className="text-[10px] px-1.5 py-0">
+                                  {c.color}: <strong className="ml-1">{c.count}</strong>
+                                </Badge>
+                              ))}
+                              {item.colorCounts.length > 4 && (
+                                <span className="text-[10px] text-muted-foreground self-center">
+                                  +{item.colorCounts.length - 4} cores
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedModelForChassis(item)}
+                              className="h-7 text-[11px] gap-1 px-2.5 rounded-lg hover:border-primary/50"
+                              title="Consultar chassis individuais deste modelo"
+                            >
+                              <Eye className="w-3 h-3 text-primary" />
+                              Ver Chassis ({item.totalCount})
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
                     )}
                   </TableBody>
                 </Table>
               </div>
             </CardContent>
           </Card>
+
+          {/* Modal de Detalhes dos Chassis do Modelo */}
+          <Dialog open={!!selectedModelForChassis} onOpenChange={(open) => !open && setSelectedModelForChassis(null)}>
+            <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6 rounded-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold flex items-center gap-2">
+                  <Bike className="w-5 h-5 text-primary" />
+                  Chassis em Pátio — {selectedModelForChassis?.model}
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  Listagem física individual dos {selectedModelForChassis?.totalCount} veículos deste modelo em estoque físico.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="overflow-y-auto flex-1 border rounded-xl mt-2 max-h-[500px]">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-muted/80 z-10">
+                    <TableRow>
+                      <TableHead>Chassi</TableHead>
+                      <TableHead>Cor</TableHead>
+                      <TableHead>Concessionária</TableHead>
+                      <TableHead className="text-right">Preço de Venda</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedModelForChassis?.vehicles.map((veh) => {
+                      const store = stores.find((s) => s.id === veh.store_id);
+                      const isMoc = (store?.name || store?.city || '').toUpperCase().includes('MONTES');
+                      return (
+                        <TableRow key={veh.id} className="text-xs hover:bg-muted/30">
+                          <TableCell className="font-mono font-bold">{veh.chassis || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground">{veh.color || 'Padrão'}</TableCell>
+                          <TableCell className="font-medium">{isMoc ? 'Montes Claros' : 'Divinópolis'}</TableCell>
+                          <TableCell className="text-right font-mono font-bold text-primary">
+                            {formatCurrencyBRL(Number(veh.sale_price) || 0)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className="text-emerald-600 bg-emerald-500/10 border-emerald-500/30 text-[10px] font-bold">
+                              No Pátio
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* =================================================================== */}
