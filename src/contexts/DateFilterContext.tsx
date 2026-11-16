@@ -114,37 +114,45 @@ export function DateFilterProvider({ children }: { children: React.ReactNode }) 
       }
     });
 
+    // Garante que o mês corrente do calendário esteja SEMPRE presente nas competências disponíveis
+    const now = new Date();
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentLabel = `${MONTH_NAMES[now.getMonth()]} / ${now.getFullYear()}`;
+    if (!monthsMap.has(currentKey)) {
+      monthsMap.set(currentKey, {
+        key: currentKey,
+        label: currentLabel,
+        count: 0,
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+      });
+    }
+
     return Array.from(monthsMap.values()).sort((a, b) => b.key.localeCompare(a.key));
   }, [contracts, sheetVersion]);
 
-  // Determina o mês ativo padrão (o mais recente com dados ou o mês corrente)
+  // Determina o mês ativo padrão: SEMPRE a competência do calendário atual
   const defaultMonthKey = useMemo(() => {
     const now = new Date();
-    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
-    // Se há dados no mês corrente do calendário, usa ele
-    const hasCurrent = availablePeriods.some((p) => p.key === currentKey && p.count > 0);
-    if (hasCurrent) return currentKey;
-
-    // Caso contrário, se há algum mês com dados (ex: '2026-10'), usa o mais recente com vendas
-    if (availablePeriods.length > 0) {
-      return availablePeriods[0].key;
-    }
-
-    return currentKey;
-  }, [availablePeriods]);
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
 
   // Estado do filtro ativo (persistido no localStorage)
   const [periodFilter, setPeriodFilterState] = useState<string>(() => {
+    const now = new Date();
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return saved;
+      if (saved) {
+        // Se for 'all' ou o mês corrente, respeita o salvo
+        if (saved === 'all' || saved === currentKey) return saved;
+        // Se for um mês do passado (ex: '2026-10' enquanto estamos em '2026-11'),
+        // o padrão é inicializar no mês corrente para não ocultar novas vendas do dia!
+        return currentKey;
+      }
     } catch {
       // ignore
     }
-    // Padrão inicial: sempre o mês ativo com dados
-    const now = new Date();
-    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     return currentKey;
   });
 

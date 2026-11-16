@@ -1,5 +1,5 @@
 import { Employee } from '@/hooks/useEmployees';
-import { isMasterUser } from '@/lib/userService';
+import { isMasterUser, DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
 import { SELLER_TO_STORE_MAP } from '@/lib/storeResolution';
 
 /**
@@ -165,6 +165,8 @@ export function getUserSalesIdentity(
 
   // Tenta achar o colaborador associado na tabela employees
   const userEmailNorm = (auth.email || '').toLowerCase().trim();
+  const userNameNorm = normalizeName(auth.fullName);
+
   const linkedEmp = (employees || []).find((emp) => {
     if (emp.profile_id && auth.userId && emp.profile_id.toLowerCase() === auth.userId.toLowerCase()) {
       return true;
@@ -172,7 +174,7 @@ export function getUserSalesIdentity(
     if (emp.email && userEmailNorm && emp.email.toLowerCase().trim() === userEmailNorm) {
       return true;
     }
-    if (auth.fullName && emp.full_name && normalizeName(emp.full_name) === normalizeName(auth.fullName)) {
+    if (auth.fullName && emp.full_name && normalizeName(emp.full_name) === userNameNorm) {
       return true;
     }
     return false;
@@ -190,6 +192,42 @@ export function getUserSalesIdentity(
         });
       }
     }
+  }
+
+  // Cruzamento com DEFAULT_OFFICIAL_USERS para obter UUIDs oficiais do banco, aliases e logins legados
+  const matchedOfficial = DEFAULT_OFFICIAL_USERS.find((u) => {
+    if (auth.userId && u.id.toLowerCase() === auth.userId.toLowerCase()) return true;
+    if (auth.profileId && u.id.toLowerCase() === auth.profileId.toLowerCase()) return true;
+    if (userEmailNorm && u.email.toLowerCase() === userEmailNorm) return true;
+    if (u.aliases?.some((a) => a.toLowerCase() === userEmailNorm)) return true;
+    if (userNameNorm && normalizeName(u.full_name) === userNameNorm) return true;
+    return false;
+  });
+
+  if (matchedOfficial) {
+    if (matchedOfficial.id) userIds.add(matchedOfficial.id.toLowerCase());
+    if (matchedOfficial.email) {
+      userIds.add(matchedOfficial.email.toLowerCase());
+      const pfx = matchedOfficial.email.split('@')[0].toLowerCase();
+      userNames.add(normalizeName(pfx));
+    }
+    if (matchedOfficial.full_name) {
+      if (!linkedEmp) displayName = matchedOfficial.full_name;
+      const offNorm = normalizeName(matchedOfficial.full_name);
+      userNames.add(offNorm);
+      offNorm.split(' ').forEach((part) => {
+        if (part.length >= 3) userNames.add(part);
+      });
+    }
+    matchedOfficial.aliases?.forEach((alias) => {
+      const aliasClean = alias.toLowerCase().trim();
+      userIds.add(aliasClean);
+      userNames.add(normalizeName(aliasClean));
+      if (aliasClean.includes('@')) {
+        const pfx = aliasClean.split('@')[0];
+        userNames.add(normalizeName(pfx));
+      }
+    });
   }
 
   return { userIds, userNames, displayName };
@@ -213,16 +251,24 @@ export function isSaleOwnedByCurrentUser(
 
   const { userIds, userNames } = getUserSalesIdentity(auth, employees);
 
-  // 1. Verificação por IDs (UUID / Chave de criação / Reseller / Operador)
+  // 1. Verificação por IDs (UUID / Chave de criação / Reseller / Operador / Employee)
   const saleCreatedBy = (sale.created_by || '').trim().toLowerCase();
   const saleResellerId = (sale.reseller_id || '').trim().toLowerCase();
   const saleOperatorId = (sale.operator?.id || '').trim().toLowerCase();
   const saleUserId = (sale.user_id || '').trim().toLowerCase();
+  const saleEmployeeId = (sale.employee_id || '').trim().toLowerCase();
+  const saleSellerId = (sale.seller_id || (sale as any).external_data?.seller_id || '').trim().toLowerCase();
+  const saleExtCreatedBy = ((sale as any).external_data?.created_by || '').trim().toLowerCase();
+  const saleExtUserId = ((sale as any).external_data?.user_id || '').trim().toLowerCase();
 
   if (saleCreatedBy && userIds.has(saleCreatedBy)) return true;
   if (saleResellerId && userIds.has(saleResellerId)) return true;
   if (saleOperatorId && userIds.has(saleOperatorId)) return true;
   if (saleUserId && userIds.has(saleUserId)) return true;
+  if (saleEmployeeId && userIds.has(saleEmployeeId)) return true;
+  if (saleSellerId && userIds.has(saleSellerId)) return true;
+  if (saleExtCreatedBy && userIds.has(saleExtCreatedBy)) return true;
+  if (saleExtUserId && userIds.has(saleExtUserId)) return true;
 
   // 2. Verificação por Nomes (Vendedor, Operador, Planilha)
   const saleSellerNames = [

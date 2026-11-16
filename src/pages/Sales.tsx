@@ -820,12 +820,33 @@ export default function Sales() {
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
             <ShoppingCart className="h-7 w-7 text-primary" />
           </div>
-          <h3 className="font-display text-lg font-semibold text-foreground">Nenhuma venda encontrada</h3>
-          <p className="mb-4 mt-1 max-w-sm text-center text-sm text-muted-foreground">
-            {search || storeFilter !== 'all' || resellerFilter !== 'all' || periodFilter !== 'all' || statusFilter !== 'all'
-              ? 'Tente ajustar os filtros de busca.'
-              : 'Registre novas solicitações de NF ou finalize vendas para vê-las aqui.'}
-          </p>
+          <h3 className="font-display text-lg font-semibold text-foreground">
+            {activeTab === 'faturadas' && preSalesCount > 0
+              ? 'Nenhuma venda quitada/faturada ainda neste período'
+              : 'Nenhuma venda encontrada'}
+          </h3>
+          {activeTab === 'faturadas' && preSalesCount > 0 ? (
+            <div className="my-3 p-3 max-w-md bg-amber-500/10 border border-amber-500/30 rounded-xl text-center">
+              <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                Você possui {preSalesCount} pré-venda(s) com NF solicitada cadastrada(s) neste período.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveTab('pre_venda')}
+                className="mt-2.5 gap-2 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
+              >
+                <FileText className="w-4 h-4 text-amber-500" />
+                Ver Pré-Vendas & NF ({preSalesCount})
+              </Button>
+            </div>
+          ) : (
+            <p className="mb-4 mt-1 max-w-sm text-center text-sm text-muted-foreground">
+              {search || storeFilter !== 'all' || resellerFilter !== 'all' || periodFilter !== 'all' || statusFilter !== 'all'
+                ? 'Tente ajustar os filtros de busca ou o período selecionado.'
+                : 'Registre novas solicitações de NF ou finalize vendas para vê-las aqui.'}
+            </p>
+          )}
           {canCreateSales && (
             <Button
               onClick={() => setCreateSaleOpen(true)}

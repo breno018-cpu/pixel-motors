@@ -965,8 +965,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cleanNameMatched.includes('mariana') ||
         cleanNameMatched.includes('halana') ||
         cleanNameMatched.includes('sabrina') ||
-        cleanNameMatched.includes('natan') ||
-        cleanNameMatched.includes('daniel');
+        cleanNameMatched.includes('natan');
 
       const storeObj = {
         id: isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
