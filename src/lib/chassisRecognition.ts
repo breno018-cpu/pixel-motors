@@ -33,8 +33,9 @@ interface StoredVehiclePattern {
 const DEFAULT_PATTERNS: StoredVehiclePattern[] = [
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SHF250', model_name: 'SHI 250 EFI', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 18900, default_sale_price: 23330 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'R1F125', model_name: 'RIO 125 EFI', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 10500, default_sale_price: 13490 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'R1C125', model_name: 'RIO 125', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 10000, default_sale_price: 12990 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SHF175', model_name: 'SHI 175 EFI', engine_cc: 175, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 14200, default_sale_price: 17990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'NS1175', model_name: 'SHI 175 CARBURADA', engine_cc: 175, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 13500, default_sale_price: 17500 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'NS1175', model_name: 'NEW SHI 175', engine_cc: 175, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 13500, default_sale_price: 17500 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'NJ1125', model_name: 'NEW JET 125 SS', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 9800, default_sale_price: 12690 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'JTS125', model_name: 'JET 125 SS', engine_cc: 125, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 12, default_purchase_price: 9800, default_sale_price: 12690 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'PHS050', model_name: 'PHOENIX 50 EFI', engine_cc: 50, fuel_type: 'gasolina', transmission: 'semi_automatico', warranty_months: 6, default_purchase_price: 6200, default_sale_price: 7990 },
@@ -42,8 +43,18 @@ const DEFAULT_PATTERNS: StoredVehiclePattern[] = [
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'DVF250', model_name: 'DENVER 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 22900, default_sale_price: 28990 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'WRK125', model_name: 'WORKER 125', engine_cc: 125, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 6, default_purchase_price: 7400, default_sale_price: 9490 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'TIT250', model_name: 'TITANIUM 250 EFI', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 20500, default_sale_price: 25990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'TTF250', model_name: 'TITANIUM 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 20500, default_sale_price: 25990 },
   { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'FREE150', model_name: 'FREE 150 EFI', engine_cc: 150, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 11800, default_sale_price: 14990 },
-  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'CS2170', model_name: 'SHI 170', engine_cc: 170, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 12000, default_sale_price: 15000 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'CS2170', model_name: 'SHI 170 / NEW FREE 170', engine_cc: 170, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 12000, default_sale_price: 15000 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'JF1150', model_name: 'JEF 150', engine_cc: 150, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 11500, default_sale_price: 14500 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'JF1170', model_name: 'NEW JEF 170', engine_cc: 170, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 13900, default_sale_price: 17990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SW1400', model_name: 'SCRAMBLER 400', engine_cc: 400, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 26000, default_sale_price: 32990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SB1400', model_name: 'SBM 400S', engine_cc: 400, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 26000, default_sale_price: 32990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SB1250', model_name: 'SBM 250S', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 36, default_purchase_price: 21000, default_sale_price: 26990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'SB4400', model_name: 'DENVER 400', engine_cc: 400, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 36, default_purchase_price: 28000, default_sale_price: 35990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'ARF250', model_name: 'IRON 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 21000, default_sale_price: 26990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'FLF250', model_name: 'FLASH 250', engine_cc: 250, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 21000, default_sale_price: 26990 },
+  { wmi_code: '99H', brand: 'SHINERAY', vehicle_type: 'moto', model_pattern: 'ULF150', model_name: 'URBAN LITE 150', engine_cc: 150, fuel_type: 'gasolina', transmission: 'manual', warranty_months: 12, default_purchase_price: 12500, default_sale_price: 15990 },
 ];
 
 const DEFAULT_YEAR_CODES = [
@@ -61,66 +72,121 @@ const DEFAULT_YEAR_CODES = [
 /**
  * Recognizes vehicle data from a chassis/VIN number using database patterns
  */
+/**
+ * Normaliza strings para comparação de padrões de chassi.
+ */
+function normalizePatternToken(value?: string | null): string {
+  return (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+/**
+ * Extrai tokens canônicos de prefixo e modelo a partir da regra salva.
+ */
+function getPatternTokens(pattern: StoredVehiclePattern): {
+  wmi: string;
+  modelPattern: string;
+  fullPrefix: string;
+  bareModel: string;
+} {
+  const rawWmi = normalizePatternToken(pattern.wmi_code);
+  const rawModel = normalizePatternToken(pattern.model_pattern);
+
+  // Em números VIN padrão, o WMI da montadora tem 3 caracteres (ex: 99H para Shineray).
+  // Se wmi_code foi salvo com o código inteiro (ex: 99HNS1175), baseWmi são os 3 primeiros caracteres.
+  const baseWmi = rawWmi.length > 3 ? rawWmi.slice(0, 3) : rawWmi;
+
+  let bareModel = rawModel;
+  if (baseWmi && bareModel.startsWith(baseWmi)) {
+    bareModel = bareModel.slice(baseWmi.length);
+  } else if (!bareModel && rawWmi.length > 3) {
+    bareModel = rawWmi.slice(3);
+  }
+
+  let fullPrefix = '';
+  if (baseWmi && bareModel) {
+    fullPrefix = `${baseWmi}${bareModel}`;
+  } else if (bareModel) {
+    fullPrefix = bareModel;
+  } else if (rawWmi) {
+    fullPrefix = rawWmi;
+  }
+
+  return { wmi: baseWmi, modelPattern: rawModel, fullPrefix, bareModel };
+}
+
+function getPatternSpecificity(pattern: StoredVehiclePattern): number {
+  const { fullPrefix } = getPatternTokens(pattern);
+  return fullPrefix.length;
+}
+
+/**
+ * Verifica se um VIN informado corresponde estritamente ao padrão do modelo.
+ * REGRA CRÍTICA:
+ * - Se o padrão possui modelo (ex: 'NJ1125', 'SHF250'), o chassi DEVE conter o código completo do modelo.
+ * - NUNCA retorna true apenas por coincidir os primeiros 3 ou 4 dígitos do fabricante (ex: '99H' ou '99HN')!
+ */
+function patternMatchesVin(vin: string, pattern: StoredVehiclePattern): boolean {
+  const { wmi, fullPrefix, bareModel } = getPatternTokens(pattern);
+
+  if (!fullPrefix) return false;
+
+  // Quando existe código de modelo específico:
+  if (bareModel && bareModel.length >= 3) {
+    // 1. Prefixo exato completo: '99HNJ1125...' começa com '99HNJ1125'
+    if (fullPrefix && vin.startsWith(fullPrefix)) {
+      return true;
+    }
+
+    // 2. Inserção direta sem WMI: 'NJ1125...'
+    if (vin.startsWith(bareModel)) {
+      return true;
+    }
+
+    // 3. Se o chassi começa com o WMI do fabricante (ex: 99H), a seção VDS (posições 4 a 10) DEVE conter o modelo
+    if (wmi && vin.startsWith(wmi)) {
+      const vdsPortion = vin.slice(wmi.length, Math.max(wmi.length + bareModel.length + 2, 10));
+      if (vdsPortion.startsWith(bareModel) || (vdsPortion.length >= bareModel.length && vdsPortion.includes(bareModel))) {
+        return true;
+      }
+    }
+
+    // Se o modelo especificado não foi digitado na íntegra, NÃO É ESTE VEÍCULO!
+    return false;
+  }
+
+  // Apenas se o padrão NÃO tiver modelo cadastrado (padrão genérico de marca pura):
+  if (wmi && vin.startsWith(wmi)) {
+    return !pattern.model_name;
+  }
+
+  return false;
+}
+
+/**
+ * Reconhece dados técnicos do veículo a partir do número de chassi/VIN.
+ * Só aciona quando preenchida a parte necessária para descobrir o modelo (mínimo 7 a 9 caracteres).
+ */
 export async function recognizeFromChassis(chassis: string): Promise<VehiclePattern | null> {
-  if (!chassis || chassis.length < 3) return null;
+  if (!chassis) return null;
 
   const vin = chassis.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (vin.length < 3) return null;
+  // A leitura só deve ocorrer quando a parte necessária para identificar o modelo estiver digitada
+  // (WMI 3 dígitos + VDS mínimo de 4-6 dígitos = 7 a 9 caracteres).
+  if (vin.length < 7) return null;
 
-  const { data: allPatterns, error } = await supabase
+  const { data: allPatterns } = await supabase
     .from('chassis_patterns')
     .select('*');
 
   const patternSource = (allPatterns && allPatterns.length > 0) ? allPatterns : DEFAULT_PATTERNS;
 
   const sorted = [...patternSource]
-    .map((pattern) => ({
-      ...pattern,
-      wmi_code: normalizePatternToken(pattern.wmi_code),
-      model_pattern: normalizePatternToken(pattern.model_pattern),
-    }))
     .sort((a, b) => getPatternSpecificity(b) - getPatternSpecificity(a));
 
   const matched = sorted.filter((pattern) => patternMatchesVin(vin, pattern));
   if (matched.length === 0) return null;
 
   return toVehiclePattern(matched[0]);
-}
-
-function normalizeFuelType(fuel: string | null): string | undefined {
-  if (!fuel) return undefined;
-  const lower = fuel.toLowerCase().trim();
-  const map: Record<string, string> = {
-    'flex': 'flex', 'gasolina': 'gasolina', 'etanol': 'etanol',
-    'diesel': 'diesel', 'elétrico': 'eletrico', 'eletrico': 'eletrico',
-    'híbrido': 'hibrido', 'hibrido': 'hibrido',
-  };
-  return map[lower] || lower;
-}
-
-function normalizePatternToken(value?: string | null): string {
-  return (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-
-function getPatternSpecificity(pattern: StoredVehiclePattern): number {
-  const wmi = normalizePatternToken(pattern.wmi_code);
-  const model = normalizePatternToken(pattern.model_pattern);
-  return Math.max(wmi.length, model.length, `${wmi}${model}`.length);
-}
-
-function patternMatchesVin(vin: string, pattern: StoredVehiclePattern): boolean {
-  const wmi = normalizePatternToken(pattern.wmi_code);
-  const model = normalizePatternToken(pattern.model_pattern);
-
-  if (!wmi && !model) return false;
-
-  if (model) {
-    if (vin.startsWith(model)) return true;
-    if (wmi && vin.startsWith(`${wmi}${model}`)) return true;
-    if (wmi && vin.startsWith(wmi) && vin.slice(wmi.length).includes(model)) return true;
-  }
-
-  return !!wmi && vin.startsWith(wmi);
 }
 
 function toVehiclePattern(pattern: StoredVehiclePattern): VehiclePattern {

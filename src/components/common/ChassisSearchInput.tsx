@@ -152,7 +152,7 @@ export function ChassisSearchInput({
     if (!autoRecognize) return;
     const vin = cleanVin(value);
 
-    if (vin.length < 5 || vin === 'DISPENSADO') {
+    if (vin.length < 8 || vin === 'DISPENSADO') {
       setDecodedInfo(null);
       return;
     }

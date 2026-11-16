@@ -82,9 +82,21 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const [scannerOpen, setScannerOpen] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const lastDecodedVinRef = useRef<string>('');
+  const chassisDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (chassisDebounceRef.current) {
+        clearTimeout(chassisDebounceRef.current);
+      }
+    };
+  }, []);
 
   // Reset COMPLETO de todas as abas e campos sempre que o modal abre
   const resetForm = useCallback(() => {
+    if (chassisDebounceRef.current) {
+      clearTimeout(chassisDebounceRef.current);
+    }
     setChassis('');
     setIsElectric(false);
     setMassQuantity(1);
@@ -124,10 +136,11 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   }, [open, resetForm]);
 
   // Ferramenta de Análise Automática de Modelo por Chassi (VIN)
+  // Só aciona quando preenchida a parte necessária para descobrir o modelo (8+ caracteres).
   const triggerChassisRecognition = useCallback(
     async (rawVin: string) => {
       const cleanVin = (rawVin || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      if (cleanVin.length < 4) {
+      if (cleanVin.length < 8) {
         setChassisRecognized(null);
         setPatternLocked(false);
         return;
@@ -164,7 +177,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
           setYear(String(decodedYear));
           setManufactureYear(String(decodedManufactureYear));
 
-          // BLOQUEIA AUTOMATICAMENTE AS ESPECIFICAÇÕES TÉCNICAS E MODELO
+          // Aplica o padrão visualmente na tela com badge sem spam de notificações toast
           setPatternLocked(true);
           setChassisRecognized({
             matched: true,
@@ -172,19 +185,15 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
             model: pattern.model,
             year: decodedYear,
           });
-
-          toast({
-            title: 'Padrão Identificado com Sucesso!',
-            description: `${pattern.brand} ${pattern.model || ''} preenchido pelo padrão. Especificações bloqueadas com segurança.`,
-          });
         } else {
-          // Se não encontrou o padrão do modelo, mas conseguiu decodificar o ano
+          // Se não encontrou o padrão do modelo, mas conseguiu decodificar o ano (VIN >= 10 posições)
           const decodedYear = resolvedYear.year || extractYearFromVIN(cleanVin);
           if (decodedYear) {
             setYear(String(decodedYear));
             setManufactureYear(String(resolvedYear.manufactureYear || decodedYear));
           }
           setPatternLocked(false);
+          setChassisRecognized(null);
         }
       } catch (err) {
         console.error('Erro na análise de chassi:', err);
@@ -192,14 +201,14 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
         setIsDecodingChassis(false);
       }
     },
-    [toast]
+    []
   );
 
   useEffect(() => {
     if (open && initialChassis) {
       const clean = initialChassis.toUpperCase().replace(/[^A-Z0-9]/g, '');
       setChassis(clean);
-      if (clean.length >= 4) {
+      if (clean.length >= 8) {
         triggerChassisRecognition(clean);
       }
     }
@@ -226,12 +235,23 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const handleChassisChange = (val: string) => {
     const upper = val.toUpperCase().replace(/[^A-Z0-9-]/g, '');
     setChassis(upper);
-    if (!isElectric && upper.length >= 4) {
-      triggerChassisRecognition(upper);
-    } else if (!isElectric) {
+
+    if (chassisDebounceRef.current) {
+      clearTimeout(chassisDebounceRef.current);
+    }
+
+    const clean = upper.replace(/[^A-Z0-9]/g, '');
+    if (clean.length < 8) {
       setPatternLocked(false);
       setChassisRecognized(null);
       lastDecodedVinRef.current = '';
+      return;
+    }
+
+    if (!isElectric) {
+      chassisDebounceRef.current = setTimeout(() => {
+        triggerChassisRecognition(upper);
+      }, 400);
     }
   };
 
@@ -451,6 +471,12 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 autoFocus
                 value={chassis}
                 onChange={(e) => handleChassisChange(e.target.value)}
+                onBlur={() => {
+                  const clean = chassis.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                  if (!isElectric && clean.length >= 8) {
+                    triggerChassisRecognition(clean);
+                  }
+                }}
                 placeholder={
                   isElectric
                     ? 'Opcional: nº da moto/motor (ou deixe em branco para a venda)...'
@@ -463,7 +489,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
               {!isElectric && isDecodingChassis && (
                 <div className="absolute right-3.5 top-3 flex items-center gap-1.5 text-xs text-primary font-bold">
                   <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <span>Analisando...</span>
+                  <span>Analisando modelo...</span>
                 </div>
               )}
             </div>
@@ -538,19 +564,30 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 <div className="flex items-center gap-2 min-w-0">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <p className="font-bold truncate">
-                    Padrão: {brand} {model} {engineCc ? `(${engineCc}cc)` : ''}
+                    Padrão Detectado: {brand} {model} {engineCc ? `(${engineCc}cc)` : ''}
                   </p>
                 </div>
-                <Badge className="bg-emerald-600 text-white font-mono text-[10px] shrink-0 ml-2">
-                  APLICADO
-                </Badge>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <Badge className="bg-emerald-600 text-white font-mono text-[10px]">
+                    APLICADO
+                  </Badge>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPatternLocked(false)}
+                    className="h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground hover:bg-emerald-500/20"
+                  >
+                    Desbloquear
+                  </Button>
+                </div>
               </div>
             )}
 
-            {!isElectric && !patternLocked && chassis.length >= 4 && !isDecodingChassis && (
+            {!isElectric && !patternLocked && chassis.length >= 3 && !isDecodingChassis && (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                Digite os primeiros 8 a 10 dígitos do chassi para identificar o modelo automaticamente.
+                Digite os primeiros 8 a 10 dígitos do chassi (WMI + Código do Modelo) para preenchimento automático.
               </p>
             )}
           </div>
