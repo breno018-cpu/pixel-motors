@@ -1,8 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
-import { Search, Sun, Moon, Building2, ShieldCheck, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Sun, Moon, Building2, ShieldAlert } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StockSyncWatcher } from '@/components/sync/StockSyncWatcher';
@@ -12,7 +11,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApprovalRequests } from '@/hooks/useApprovalRequests';
 import { ApprovalCenterDialog } from '@/components/approvals/ApprovalCenterDialog';
 import { AeroBladeMark } from '@/components/brand/PixelLoomLogo';
-import { GlobalPeriodSelector } from '@/components/filters/GlobalPeriodSelector';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -79,48 +77,24 @@ export function MainLayout({ children }: MainLayoutProps) {
           isMobile ? 'left-0' : collapsed ? 'left-16' : 'left-56'
         }`}
       >
-        {/* Lado Esquerdo: Logo Oficial da Pixel Motors & Identificador da Unidade */}
+        {/* Lado Esquerdo: Identificação da Shineray Motos & Unidade */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-xl bg-card/90 border border-border/70 shadow-xs select-none">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0B0F17] shrink-0 p-0.5 shadow-xs border border-white/10">
-              <AeroBladeMark size={20} variant="default" />
+          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 rounded-xl bg-card border border-border shadow-xs select-none">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0 p-0.5 shadow-xs border border-primary/20">
+              <AeroBladeMark size={18} variant="default" />
             </div>
             <div className="flex items-center gap-1 leading-none font-display font-black text-[11px] sm:text-xs tracking-tight">
-              <span className="text-foreground">PIXEL</span>
-              <span className="text-red-600 font-extrabold tracking-wider">MOTORS</span>
+              <span className="text-foreground">SHINERAY</span>
+              <span className="text-primary font-extrabold tracking-wider">MOTOS</span>
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/60 border border-border/60 text-xs font-medium text-foreground">
-            <Building2 className="w-3.5 h-3.5 text-red-500 shrink-0" />
-            <span className="truncate max-w-[140px] lg:max-w-[200px]">
-              {userStore?.name || (isAdmin ? 'Todas as Unidades' : 'Unidade Matriz')}
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/60 border border-border/60 text-xs font-medium text-foreground">
+            <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="truncate max-w-[160px] lg:max-w-[240px]">
+              {userStore?.name || (isAdmin ? 'Montes Claros & Divinópolis' : 'Concessionária')}
             </span>
           </div>
-
-          {/* Seletor Global de Período / Mês */}
-          <div className="hidden sm:flex items-center">
-            <GlobalPeriodSelector />
-          </div>
-        </div>
-
-        {/* Centro: Barra de Busca Global */}
-        <div className="flex-1 max-w-md mx-2 sm:mx-4">
-          <Button
-            variant="outline"
-            onClick={() => setSearchOpen(true)}
-            className="w-full justify-start text-muted-foreground font-normal h-9 bg-card/60 hover:bg-card border-border/70 hover:border-border transition-all rounded-xl shadow-xs"
-          >
-            <Search className="w-3.5 h-3.5 mr-2 text-muted-foreground/80 shrink-0" />
-            <span className="flex-1 text-left text-xs truncate">
-              Buscar chassi, CPF, placa, cliente...
-            </span>
-            {!isMobile && (
-              <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-border/60 bg-muted/80 px-1.5 font-mono text-[10px] font-medium opacity-80 sm:flex">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            )}
-          </Button>
         </div>
 
         {/* Lado Direito: Status, Alternador de Tema e Colaborador */}
