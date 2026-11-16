@@ -20,6 +20,10 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -128,6 +132,7 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
   const [manageOpen, setManageOpen] = useState(false);
   const [manageDefaultTab, setManageDefaultTab] = useState<'cadastro' | 'veiculo' | 'finalizacao' | 'documentos'>('cadastro');
   const [freightOpen, setFreightOpen] = useState(false);
+  const [popupOpen, setPopupOpen] = useState(false);
 
   const receiptsCount = useMemo(() => {
     const local = getSaleReceipts(sale.id);
@@ -666,184 +671,337 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground">
-            <MoreHorizontal className="w-4 h-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          side="bottom"
-          avoidCollisions={true}
-          collisionPadding={12}
-          className="w-56 max-h-[min(480px,calc(100vh-80px))] overflow-y-auto overscroll-contain shadow-2xl z-50 border border-border/80 bg-popover/95 backdrop-blur-md p-1.5"
-        >
-          {/* Cabeçalho de Identificação */}
-          <div className="px-2 py-1.5 border-b border-border/50 mb-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ações da Venda</p>
-            <p className="font-mono text-xs font-bold text-foreground truncate">{sale.contract_number}</p>
+      {/* Botão Oficial dos 3 Pontos */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setPopupOpen(true)}
+        className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        title="Abrir menu de ações da venda"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </Button>
+
+      {/* POP-UP OFICIAL DE AÇÕES DA VENDA (Sempre visível no centro da tela) */}
+      <Dialog open={popupOpen} onOpenChange={setPopupOpen}>
+        <DialogContent className="sm:max-w-lg w-[94vw] p-0 overflow-hidden rounded-2xl border border-border shadow-2xl bg-card">
+          {/* Header do Pop-up */}
+          <div className="p-4 sm:p-5 border-b border-border bg-muted/40">
+            <div className="flex items-start justify-between gap-3 pr-6">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-display font-bold text-base sm:text-lg text-foreground">
+                    Ações da Venda
+                  </h3>
+                  <Badge variant="outline" className="font-mono text-xs font-bold border-primary/30 text-primary">
+                    {sale.contract_number}
+                  </Badge>
+                  {sale.status === 'concluido' || sale.status === 'assinado' ? (
+                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-semibold">
+                      Quitada
+                    </Badge>
+                  ) : sale.status === 'pre_venda' ? (
+                    <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-semibold">
+                      Pré-Venda (NF)
+                    </Badge>
+                  ) : sale.status === 'cancelado' ? (
+                    <Badge variant="destructive" className="text-[10px] font-semibold">
+                      Cancelada
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-[10px] font-semibold">
+                      Pendente
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 truncate max-w-sm">
+                  Cliente: <strong className="text-foreground">{sale.buyer_name}</strong>
+                  {vehicleName ? ` • ${vehicleName}` : ''}
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Destaque Principal */}
-          <DropdownMenuItem
-            onClick={() => {
-              setManageDefaultTab('documentos');
-              setManageOpen(true);
-            }}
-            className="text-primary font-bold focus:text-primary cursor-pointer"
-          >
-            <Printer className="w-4 h-4 mr-2 text-primary" />
-            Emitir 2ª Via
-          </DropdownMenuItem>
+          {/* Lista de Ações em Seções */}
+          <div className="p-4 sm:p-5 max-h-[70vh] overflow-y-auto space-y-4 text-xs">
+            {/* Bloco 1: Documentos & Emissão */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Documentos &amp; Emissões
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPopupOpen(false);
+                    setManageDefaultTab('documentos');
+                    setManageOpen(true);
+                  }}
+                  className="justify-start h-10 px-3 text-xs gap-2 font-bold text-primary border-primary/30 hover:bg-primary/5"
+                >
+                  <Printer className="w-4 h-4 text-primary shrink-0" />
+                  <span className="truncate">Emitir 2ª Via</span>
+                </Button>
 
-          <DropdownMenuItem
-            onClick={() => {
-              setManageDefaultTab('cadastro');
-              setManageOpen(true);
-            }}
-            className="font-medium cursor-pointer"
-          >
-            <Pencil className="w-4 h-4 mr-2 text-primary" />
-            Editar Venda
-          </DropdownMenuItem>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPopupOpen(false);
+                    handleEmitInvoicePng();
+                  }}
+                  className="justify-start h-10 px-3 text-xs gap-2 font-semibold text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/10"
+                >
+                  <ImageDown className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="truncate">Solicitação NF (PNG)</span>
+                </Button>
 
-          <DropdownMenuSeparator />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPopupOpen(false);
+                    setReceiptsModalOpen(true);
+                  }}
+                  className="justify-start h-10 px-3 text-xs gap-2 font-medium"
+                >
+                  <Paperclip className="w-4 h-4 text-primary shrink-0" />
+                  <span className="truncate">Comprovantes</span>
+                  {receiptsCount > 0 && (
+                    <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 font-mono font-bold">
+                      {receiptsCount}
+                    </Badge>
+                  )}
+                </Button>
 
-          {/* Documentos & Consulta */}
-          <DropdownMenuItem onClick={() => setDetailsOpen(true)} className="cursor-pointer">
-            <Eye className="w-4 h-4 mr-2" />
-            Visualizar venda
-          </DropdownMenuItem>
+                {sale.status !== 'pre_venda' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPopupOpen(false);
+                      handleExportSale();
+                    }}
+                    className="justify-start h-10 px-3 text-xs gap-2 font-medium"
+                  >
+                    <Download className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Baixar Contrato (PDF)</span>
+                  </Button>
+                )}
 
-          <DropdownMenuItem onClick={() => setReceiptsModalOpen(true)} className="cursor-pointer">
-            <Paperclip className="w-4 h-4 mr-2 text-primary" />
-            <span>Comprovantes da venda</span>
-            {receiptsCount > 0 && (
-              <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 font-mono font-bold">
-                {receiptsCount}
-              </Badge>
+                {sale.status !== 'pre_venda' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPopupOpen(false);
+                      handleDownloadPickupTerm();
+                    }}
+                    className="justify-start h-10 px-3 text-xs gap-2 font-medium text-blue-600 dark:text-blue-400"
+                  >
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Termo de Retirada</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Bloco 2: Gestão Comercial */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Gestão da Venda
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPopupOpen(false);
+                    setDetailsOpen(true);
+                  }}
+                  className="justify-start h-10 px-3 text-xs gap-2 font-medium"
+                >
+                  <Eye className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="truncate">Visualizar Venda</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPopupOpen(false);
+                    setManageDefaultTab('cadastro');
+                    setManageOpen(true);
+                  }}
+                  className="justify-start h-10 px-3 text-xs gap-2 font-medium"
+                >
+                  <Pencil className="w-4 h-4 text-primary shrink-0" />
+                  <span className="truncate">Editar Venda</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPopupOpen(false);
+                    setFreightOpen(true);
+                  }}
+                  className="justify-start h-10 px-3 text-xs gap-2 font-medium text-emerald-600 dark:text-emerald-400"
+                >
+                  <Truck className="w-4 h-4 shrink-0" />
+                  <span className="truncate">Calcular Frete</span>
+                </Button>
+
+                {sale.status === 'pre_venda' && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setPopupOpen(false);
+                      setFinalizeModalOpen(true);
+                    }}
+                    className="justify-start h-10 px-3 text-xs gap-2 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Finalizar Venda &amp; Contrato</span>
+                  </Button>
+                )}
+
+                {sale.status === 'pendente' && hasElevatedAccess && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setPopupOpen(false);
+                      setSignDialogOpen(true);
+                    }}
+                    className="justify-start h-10 px-3 text-xs gap-2 font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <FileCheck className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Aprovar e Concluir</span>
+                  </Button>
+                )}
+
+                {hasElevatedAccess && sale.status !== 'cancelado' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPopupOpen(false);
+                      setQuestionNote(sale.review_note || '');
+                      setQuestionOpen(true);
+                    }}
+                    className="justify-start h-10 px-3 text-xs gap-2 font-medium"
+                  >
+                    <MessageSquareWarning className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{isQuestioned ? 'Editar Revisão' : 'Solicitar Revisão'}</span>
+                  </Button>
+                )}
+
+                {canFixQuestioned && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPopupOpen(false);
+                      setReviewEditOpen(true);
+                    }}
+                    className="justify-start h-10 px-3 text-xs gap-2 font-medium"
+                  >
+                    <Wrench className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Ajustar Proposta</span>
+                  </Button>
+                )}
+
+                {isQuestioned && hasElevatedAccess && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPopupOpen(false);
+                      clearQuestion.mutate();
+                    }}
+                    className="justify-start h-10 px-3 text-xs gap-2 font-medium"
+                  >
+                    <FileCheck className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Concluir Revisão</span>
+                  </Button>
+                )}
+
+                {isPowerUser && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setPopupOpen(false);
+                        loadOperators();
+                      }}
+                      className="justify-start h-10 px-3 text-xs gap-2 font-medium"
+                    >
+                      <UserCog className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Alterar Operador</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setPopupOpen(false);
+                        setNewDate(sale.created_at.split('T')[0]);
+                        setDateDialogOpen(true);
+                      }}
+                      className="justify-start h-10 px-3 text-xs gap-2 font-medium"
+                    >
+                      <CalendarDays className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Alterar Data</span>
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Bloco 3: Cancelamento e Exclusão */}
+            {(canCancel || canDelete) && (
+              <div className="space-y-1.5 pt-2 border-t border-border">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-destructive">
+                  Ações Restritas
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {canCancel && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setPopupOpen(false);
+                        setCancelDialogOpen(true);
+                      }}
+                      className="justify-start h-10 px-3 text-xs gap-2 font-semibold text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                    >
+                      <XCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span className="truncate">{sale.status === 'concluido' ? 'Cancelar venda quitada' : 'Cancelar venda'}</span>
+                    </Button>
+                  )}
+
+                  {canDelete && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setPopupOpen(false);
+                        setDeleteDialogOpen(true);
+                      }}
+                      className="justify-start h-10 px-3 text-xs gap-2 font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive shrink-0" />
+                      <span className="truncate">Excluir venda</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
             )}
-          </DropdownMenuItem>
-
-          {sale.status !== 'pre_venda' && (
-            <DropdownMenuItem onClick={handleExportSale} className="cursor-pointer">
-              <Download className="w-4 h-4 mr-2" />
-              Baixar contrato
-            </DropdownMenuItem>
-          )}
-
-          {sale.status !== 'pre_venda' && (
-            <DropdownMenuItem onClick={handleDownloadPickupTerm} className="text-blue-600 dark:text-blue-400 font-medium cursor-pointer">
-              <ShieldCheck className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
-              Baixar Termo de Retirada
-            </DropdownMenuItem>
-          )}
-
-          <DropdownMenuItem onClick={handleEmitInvoicePng} className="cursor-pointer">
-            <ImageDown className="w-4 h-4 mr-2 text-amber-600 dark:text-amber-400" />
-            <span className="font-semibold text-amber-700 dark:text-amber-300">
-              Solicitação de NF (PNG)
-            </span>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => setFreightOpen(true)} className="text-emerald-600 dark:text-emerald-400 font-medium cursor-pointer">
-            <Truck className="w-4 h-4 mr-2 text-emerald-600 dark:text-emerald-400" />
-            Calcular Frete
-          </DropdownMenuItem>
-
-          {/* Etapas de Conclusão / Revisão */}
-          {(sale.status === 'pre_venda' || sale.status === 'pendente' || hasElevatedAccess) && <DropdownMenuSeparator />}
-
-          {sale.status === 'pre_venda' && (
-            <DropdownMenuItem
-              onClick={() => setFinalizeModalOpen(true)}
-              className="text-emerald-600 dark:text-emerald-400 font-semibold focus:text-emerald-700 cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-500" />
-              Finalizar Venda & Contrato
-            </DropdownMenuItem>
-          )}
-
-          {sale.status === 'pendente' && hasElevatedAccess && (
-            <DropdownMenuItem onClick={() => setSignDialogOpen(true)} className="text-emerald-600 dark:text-emerald-400 font-semibold cursor-pointer">
-              <FileCheck className="w-4 h-4 mr-2" />
-              Aprovar e concluir venda
-            </DropdownMenuItem>
-          )}
-
-          {hasElevatedAccess && sale.status !== 'cancelado' && (
-            <DropdownMenuItem onClick={() => { setQuestionNote(sale.review_note || ''); setQuestionOpen(true); }} className="cursor-pointer">
-              <MessageSquareWarning className="w-4 h-4 mr-2" />
-              {isQuestioned ? 'Editar solicitação de revisão' : 'Solicitar revisão'}
-            </DropdownMenuItem>
-          )}
-
-          {canFixQuestioned && (
-            <DropdownMenuItem onClick={() => setReviewEditOpen(true)} className="cursor-pointer">
-              <Wrench className="w-4 h-4 mr-2" />
-              Ajustar proposta
-            </DropdownMenuItem>
-          )}
-
-          {isQuestioned && hasElevatedAccess && (
-            <DropdownMenuItem onClick={() => clearQuestion.mutate()} className="cursor-pointer">
-              <FileCheck className="w-4 h-4 mr-2" />
-              Concluir revisão
-            </DropdownMenuItem>
-          )}
-
-          {/* Edição Administrativa */}
-          {(canEditOwn || isPowerUser) && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setEditOpen(true)} className="cursor-pointer">
-                <Pencil className="w-4 h-4 mr-2" />
-                Editar venda
-              </DropdownMenuItem>
-            </>
-          )}
-
-          {isPowerUser && (
-            <>
-              <DropdownMenuItem onClick={loadOperators} className="cursor-pointer">
-                <UserCog className="w-4 h-4 mr-2" />
-                Alterar operador
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                setNewDate(sale.created_at.split('T')[0]);
-                setDateDialogOpen(true);
-              }} className="cursor-pointer">
-                <CalendarDays className="w-4 h-4 mr-2" />
-                Alterar data da venda
-              </DropdownMenuItem>
-            </>
-          )}
-
-          {/* AÇÕES DE CANCELAMENTO E EXCLUSÃO (Visíveis e Destacadas) */}
-          {(canCancel || canDelete) && <DropdownMenuSeparator />}
-
-          {canCancel && (
-            <DropdownMenuItem 
-              onClick={() => setCancelDialogOpen(true)}
-              className="text-amber-600 dark:text-amber-400 focus:text-amber-700 font-semibold cursor-pointer"
-            >
-              <XCircle className="w-4 h-4 mr-2 text-amber-500" />
-              {sale.status === 'concluido' ? 'Cancelar venda quitada' : 'Cancelar venda'}
-            </DropdownMenuItem>
-          )}
-
-          {canDelete && (
-            <DropdownMenuItem 
-              onClick={() => setDeleteDialogOpen(true)}
-              className="text-destructive focus:text-destructive font-semibold cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4 mr-2 text-destructive" />
-              Excluir venda
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <SaleDetailsDialog
         sale={sale}
