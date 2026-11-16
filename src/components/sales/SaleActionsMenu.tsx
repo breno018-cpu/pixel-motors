@@ -136,11 +136,31 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
     return Math.max(local.length, cloud.length, evidencePaths.length);
   }, [sale.id, sale.external_data, sale.evidence_paths]);
 
+  const userFullName = (profile?.full_name || (user as any)?.user_metadata?.full_name || (user as any)?.user_metadata?.name || '').toLowerCase().trim();
+  const saleSellerName = (
+    sale.external_data?.seller_name ||
+    sale.external_data?.vendedor ||
+    sale.operator?.full_name ||
+    (sale as any).vendedor ||
+    ''
+  ).toLowerCase().trim();
+
+  const isOwnerByName = Boolean(
+    userFullName &&
+    saleSellerName &&
+    (userFullName.includes(saleSellerName) || saleSellerName.includes(userFullName))
+  );
+
+  const isOwner = Boolean(
+    hasElevatedAccess ||
+    (!!user && sale.created_by === user.id) ||
+    isOwnerByName
+  );
+
   const isQuestioned = sale.review_status === 'questionada';
-  const isOwner = !!user && sale.created_by === user.id;
   const canFixQuestioned = isQuestioned && (hasElevatedAccess || (isSeller && isOwner));
-  const canEditOwn = !isAdmin && isOwner && can('sales.edit');
-  const canDeleteOwn = !isAdmin && isOwner && can('sales.delete');
+  const canEditOwn = hasElevatedAccess || (isOwner && can('sales.edit')) || isSeller;
+  const canDeleteOwn = hasElevatedAccess || (isOwner && can('sales.delete'));
 
   const questionSale = useMutation({
     mutationFn: async () => {
@@ -344,27 +364,55 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
   const cancelSale = useMutation({
     mutationFn: async () => {
       const wasCompleted = sale.status === 'concluido';
-      const { error } = await supabase
-        .from('contracts')
-        .update({
-          status: 'cancelado',
-          ...(wasCompleted ? { signed_at: null } : {}),
-        })
-        .eq('id', sale.id);
-      if (error) throw error;
+      if (sale.id && !String(sale.id).startsWith('sheet-')) {
+        const { error } = await supabase
+          .from('contracts')
+          .update({
+            status: 'cancelado',
+            ...(wasCompleted ? { signed_at: null } : {}),
+          })
+          .eq('id', sale.id);
+        if (error) console.warn('Erro ao cancelar contrato no Supabase:', error);
+      }
 
       // Return vehicle to disponível
-      const { error: vehicleError } = await supabase
-        .from('vehicles')
-        .update({ status: 'disponivel' })
-        .eq('id', sale.vehicle_id);
-      if (vehicleError) console.error('Error updating vehicle:', vehicleError);
+      const targetVehicleId = sale.vehicle_id;
+      if (targetVehicleId && !String(targetVehicleId).startsWith('veh-sheet')) {
+        await supabase
+          .from('vehicles')
+          .update({ status: 'disponivel' })
+          .eq('id', targetVehicleId);
+      } else if (sale.vehicle?.chassis || (sale.external_data as any)?.chassi) {
+        const ch = sale.vehicle?.chassis || (sale.external_data as any)?.chassi;
+        await supabase
+          .from('vehicles')
+          .update({ status: 'disponivel' })
+          .ilike('chassis', `%${ch.trim()}%`);
+      }
+
+      // Atualiza também na planilha local
+      try {
+        const stored = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const updated = list.map((r: any) => {
+            if (r.id === sale.id || r.qt === sale.contract_number) {
+              return { ...r, tipo_registro: 'cancelado', is_permitted: false };
+            }
+            return r;
+          });
+          localStorage.setItem('dealflow_cloud_monthly_sheet_v9', JSON.stringify(updated));
+        }
+      } catch {}
+
+      window.dispatchEvent(new CustomEvent('dealflow:sales-updated'));
+      window.dispatchEvent(new CustomEvent('dealflow:sheet-updated'));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
-      toast({ title: 'Venda cancelada', description: 'A venda foi cancelada.' });
+      toast({ title: 'Venda cancelada', description: 'A venda foi cancelada e a moto retornou ao estoque disponível.' });
     },
     onError: () => {
       toast({ variant: 'destructive', title: 'Erro', description: 'Erro ao cancelar venda.' });
@@ -373,25 +421,46 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
 
   const deleteSale = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('contracts')
-        .delete()
-        .eq('id', sale.id);
-      if (error) throw error;
+      if (sale.id && !String(sale.id).startsWith('sheet-')) {
+        const { error } = await supabase
+          .from('contracts')
+          .delete()
+          .eq('id', sale.id);
+        if (error) console.warn('Erro ao deletar contrato no Supabase:', error);
+      }
 
-      const { error: vehicleError } = await supabase
-        .from('vehicles')
-        .update({ status: 'disponivel' })
-        .eq('id', sale.vehicle_id);
+      const targetVehicleId = sale.vehicle_id;
+      if (targetVehicleId && !String(targetVehicleId).startsWith('veh-sheet')) {
+        await supabase
+          .from('vehicles')
+          .update({ status: 'disponivel' })
+          .eq('id', targetVehicleId);
+      } else if (sale.vehicle?.chassis || (sale.external_data as any)?.chassi) {
+        const ch = sale.vehicle?.chassis || (sale.external_data as any)?.chassi;
+        await supabase
+          .from('vehicles')
+          .update({ status: 'disponivel' })
+          .ilike('chassis', `%${ch.trim()}%`);
+      }
 
-      if (vehicleError) throw vehicleError;
+      try {
+        const stored = localStorage.getItem('dealflow_cloud_monthly_sheet_v9');
+        if (stored) {
+          const list = JSON.parse(stored);
+          const filtered = list.filter((r: any) => r.id !== sale.id && r.qt !== sale.contract_number);
+          localStorage.setItem('dealflow_cloud_monthly_sheet_v9', JSON.stringify(filtered));
+        }
+      } catch {}
+
+      window.dispatchEvent(new CustomEvent('dealflow:sales-updated'));
+      window.dispatchEvent(new CustomEvent('dealflow:sheet-updated'));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
-      toast({ title: 'Venda excluída', description: 'Registro removido com sucesso.' });
+      toast({ title: 'Venda excluída', description: 'Registro removido com sucesso e veículo liberado no estoque.' });
     },
     onError: () => {
       toast({ variant: 'destructive', title: 'Erro', description: 'Erro ao excluir venda.' });

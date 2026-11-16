@@ -209,7 +209,7 @@ export function SaleEditDialog({ sale, open, onOpenChange, reviewMode = false }:
       }
       setDownPayCard(maskCurrency(Number(c.down_payment_card || 0)));
       setDownPayCardInstallments(String(c.down_payment_card_installments || 1));
-      setLeadSource(c.lead_source || '');
+      setLeadSource(c.lead_source || 'LOJA_PORTA');
       setLeadSourceDetail(c.lead_source_detail || '');
       setAdId(c.ad_id || '');
       setStoreId(c.store_id || '');
@@ -329,12 +329,12 @@ export function SaleEditDialog({ sale, open, onOpenChange, reviewMode = false }:
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-display">
             <ShieldCheck className="w-5 h-5 text-primary" />
-            {reviewMode ? 'Ajustar proposta em revisão' : 'Editar venda (administrador)'}
+            {reviewMode ? 'Ajustar proposta em revisão' : 'Editar Venda'}
           </DialogTitle>
           <DialogDescription>
             {reviewMode
               ? 'Ajuste os dados apontados na observação. Ao salvar, a venda será marcada como corrigida.'
-              : 'Ação restrita: ajuste os dados desta venda, inclusive a forma de pagamento e o status.'}
+              : 'Ajuste os dados do comprador, valores comerciais e forma de pagamento desta proposta.'}
           </DialogDescription>
         </DialogHeader>
 

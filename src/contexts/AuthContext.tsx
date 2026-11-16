@@ -146,6 +146,7 @@ function readAuthCache(): CachedUserData | null {
         'page.settings',
         'sales.create',
         'sales.edit',
+        'sales.delete',
         'vehicles.create',
         'logistics.calculate_freight',
       ];
@@ -649,6 +650,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'page.settings',
         'sales.create',
         'sales.edit',
+        'sales.delete',
         'vehicles.create',
         'vehicles.edit',
         'logistics.calculate_freight',
@@ -1159,7 +1161,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hasElevatedAccess) return true;
     if (permission === 'page.inspections' || permission === 'page.sales') return true;
     if (permission.startsWith('logistics.calculate')) return true;
-    if (isSeller && (permission === 'vehicles.create' || permission === 'vehicles.edit' || permission === 'page.vehicles')) return true;
+    if (isSeller && (
+      permission === 'sales.create' ||
+      permission === 'sales.edit' ||
+      permission === 'sales.delete' ||
+      permission === 'vehicles.create' ||
+      permission === 'vehicles.edit' ||
+      permission === 'page.vehicles'
+    )) return true;
     if (isLogistics && permission.startsWith('logistics.')) return true;
     return usePerms ? permissions.includes(permission) : legacyCan(roles, permission);
   };
@@ -1184,9 +1193,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 const LEGACY: Record<string, string[]> = {
   admin: ['*'],
   gerente: ['*'],
-  vendedor: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','vehicles.create','vehicles.edit','logistics.calculate_freight'],
-  vendedor_plus: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','vehicles.create','vehicles.edit','logistics.calculate_freight'],
-  vendedor_externo: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','vehicles.create','vehicles.edit','logistics.calculate_freight'],
+  vendedor: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','sales.delete','vehicles.create','vehicles.edit','logistics.calculate_freight'],
+  vendedor_plus: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','sales.delete','vehicles.create','vehicles.edit','logistics.calculate_freight'],
+  vendedor_externo: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','sales.delete','vehicles.create','vehicles.edit','logistics.calculate_freight'],
   coordenador_logistica: ['page.dashboard','page.vehicles','page.sales','page.inspections','page.settings','logistics.view_routes','logistics.manage_methods','logistics.dispatch','logistics.fleet_audit','logistics.calculate_freight'],
   motorista: ['page.dashboard','page.vehicles','page.inspections','page.settings','logistics.view_routes','logistics.driver_orders','logistics.delivery_checklist','logistics.calculate_freight'],
   revendedor: ['page.dashboard','page.vehicles','page.inspections','page.settings'],
