@@ -73,6 +73,7 @@ import { useContracts } from '@/hooks/useContracts';
 import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
 import { isMatchingStore, resolveSaleStore, OFFICIAL_STORES } from '@/lib/storeResolution';
+import { getCleanSellerOptions, matchesSellerFilter, resolveSellerDisplayName } from '@/lib/sellerSanitizer';
 import { exportToXLSX } from '@/lib/export';
 import {
   SheetRowV9,
@@ -310,7 +311,7 @@ export default function Dashboard() {
         store_name: resolvedStore.storeName,
         date: dateObj,
         dateStr: r.data,
-        vendedor: r.vendedor?.trim() || 'Vendedor',
+        vendedor: resolveSellerDisplayName(r.vendedor, employees) || 'Vendedor',
         chassi: r.chassi?.trim() || '',
         modelo: r.modelo?.trim() || 'Moto',
         cliente: r.cliente?.trim() || 'Cliente Balcão',
@@ -397,7 +398,7 @@ export default function Dashboard() {
         store_name: resolvedStore.storeName,
         date: dateObj,
         dateStr: dateObj.toLocaleDateString('pt-BR'),
-        vendedor: opFullName || 'Vendedor',
+        vendedor: resolveSellerDisplayName(opFullName || c.created_by, employees) || 'Vendedor',
         chassi: c.vehicle?.chassis || '',
         modelo: vehicleModel,
         cliente: c.buyer_name || 'Cliente Registrado',
@@ -477,67 +478,19 @@ export default function Dashboard() {
   // CATÁLOGO E FILTRAGEM INTELIGENTE DE VENDEDORES (NUNCA DESAPARECEM DOS FILTROS)
   // =========================================================================
   const allSellersList = useMemo(() => {
-    if (isRestrictedSeller) {
-      const myName = profile?.full_name || 'Minhas Vendas';
-      return [{ name: myName, storeId: 'all', storeLabel: 'Minhas Vendas' }];
-    }
-
-    const list: Array<{ name: string; storeId: string; storeLabel: string }> = [];
-    const seen = new Set<string>();
-
-    // 1. Dos colaboradores cadastrados no banco de dados (employees)
-    (employees || []).forEach((emp) => {
-      const role = (emp.role || '').toLowerCase();
-      const isComercial =
-        role.includes('vendedor') ||
-        role.includes('comercial') ||
-        role.includes('plus') ||
-        role.includes('externo');
-      if (isComercial && emp.full_name) {
-        const name = emp.full_name.trim();
-        const sId = emp.store_id || 'store-divinopolis';
-        const sLabel = sId === 'store-montesclaros' ? 'Montes Claros' : 'Divinópolis';
-        const key = `${name.toLowerCase()}::${sId}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          list.push({ name, storeId: sId, storeLabel: sLabel });
-        }
-      }
+    return getCleanSellerOptions({
+      employees,
+      allSales: consolidatedSales,
+      storeFilter: 'all',
+      isRestrictedSeller,
+      currentUserFullName: profile?.full_name,
     });
-
-    // 2. Das vendas consolidadas reais (vinculando vendedor à respectiva loja)
-    consolidatedSales.forEach((s) => {
-      if (s.vendedor) {
-        const name = s.vendedor.trim();
-        const sId = s.store_id || 'store-divinopolis';
-        const sLabel = sId === 'store-montesclaros' ? 'Montes Claros' : 'Divinópolis';
-        const key = `${name.toLowerCase()}::${sId}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          list.push({ name, storeId: sId, storeLabel: sLabel });
-        }
-      }
-    });
-
-    return list;
-  }, [employees, consolidatedSales]);
+  }, [employees, consolidatedSales, isRestrictedSeller, profile]);
 
   // Vendedores disponíveis respeitando o contexto da concessionária selecionada
   const availableSellers = useMemo(() => {
-    if (storeFilter === 'all') {
-      const uniqueByName = new Map<string, { name: string; storeLabel: string }>();
-      allSellersList.forEach((s) => {
-        if (!uniqueByName.has(s.name.toLowerCase())) {
-          uniqueByName.set(s.name.toLowerCase(), { name: s.name, storeLabel: s.storeLabel });
-        }
-      });
-      return Array.from(uniqueByName.values()).sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    return allSellersList
-      .filter((s) => s.storeId === storeFilter)
-      .map((s) => ({ name: s.name, storeLabel: s.storeLabel }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    if (storeFilter === 'all') return allSellersList;
+    return allSellersList.filter((s) => isMatchingStore(s.storeId, storeFilter));
   }, [allSellersList, storeFilter]);
 
   const handleStoreFilterChange = (newStore: string) => {
@@ -546,7 +499,7 @@ export default function Dashboard() {
       const sellerStillInStore = allSellersList.some(
         (s) =>
           s.name.toLowerCase() === sellerFilter.trim().toLowerCase() &&
-          (s.storeId === newStore || newStore === 'all')
+          isMatchingStore(s.storeId, newStore)
       );
       if (!sellerStillInStore) {
         setSellerFilter('all');
@@ -601,13 +554,7 @@ export default function Dashboard() {
 
       // 3. Filtro de vendedor
       if (sellerFilter !== 'all') {
-        const saleSeller = (s.vendedor || '').trim().toLowerCase();
-        const targetSeller = sellerFilter.trim().toLowerCase();
-        if (
-          saleSeller !== targetSeller &&
-          !saleSeller.includes(targetSeller) &&
-          !targetSeller.includes(saleSeller)
-        ) {
+        if (!matchesSellerFilter(s, sellerFilter, employees)) {
           return false;
         }
       }
@@ -617,7 +564,7 @@ export default function Dashboard() {
 
       return true;
     });
-  }, [consolidatedSales, isDateInPeriod, storeFilter, sellerFilter, vehicleTypeFilter]);
+  }, [consolidatedSales, isDateInPeriod, storeFilter, sellerFilter, vehicleTypeFilter, employees]);
 
   // Contratos Filtrados pelo Contexto de Loja e Vendedor
   const filteredContracts = useMemo(() => {
@@ -648,15 +595,7 @@ export default function Dashboard() {
         if (!isMatchingStore(resolved.storeId, storeFilter)) return false;
       }
       if (sellerFilter !== 'all') {
-        const seller = (
-          opFullName ||
-          (c as any).created_by ||
-          ''
-        )
-          .trim()
-          .toLowerCase();
-        const target = sellerFilter.trim().toLowerCase();
-        if (seller !== target && !seller.includes(target) && !target.includes(seller)) return false;
+        if (!matchesSellerFilter(c, sellerFilter, employees)) return false;
       }
       return true;
     });

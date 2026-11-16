@@ -4,6 +4,7 @@ import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { useToast } from '@/hooks/use-toast';
 import { DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
 import { STORE_MONTESCLAROS_UUID, STORE_DIVINOPOLIS_UUID } from '@/lib/storeResolution';
+import { isValidSellerName } from '@/lib/sellerSanitizer';
 
 export interface CommissionTier {
   min_qty: number;
@@ -108,7 +109,10 @@ export function useEmployees() {
           .select('*, store:stores(id, name)')
           .order('full_name');
         if (!error && Array.isArray(data) && data.length > 0) {
-          return data as Employee[];
+          const valid = data.filter((e: any) => isValidSellerName(e.full_name));
+          if (valid.length > 0) {
+            return valid as Employee[];
+          }
         }
       } catch {}
       return FALLBACK_EMPLOYEES;

@@ -22,6 +22,7 @@ import { useStores } from '@/hooks/useStores';
 import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
 import { resolveSaleStore, isMatchingStore } from '@/lib/storeResolution';
+import { getCleanSellerOptions, resolveSellerDisplayName, isValidSellerName, matchesSellerFilter } from '@/lib/sellerSanitizer';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
 import { useDateFilter } from '@/contexts/DateFilterContext';
@@ -190,7 +191,7 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
     },
     operator: (r as any).operator || {
       id: (r as any).user_id || (r as any).created_by || null,
-      full_name: r.vendedor || 'Vendedor',
+      full_name: resolveSellerDisplayName(r.vendedor, employees) || 'Vendedor',
     },
   };
 }
@@ -337,13 +338,15 @@ export default function Sales() {
   const allSales = useMemo(() => {
     const fromContracts = (contracts || []).map((c) => {
       const ext = (c.external_data || {}) as any;
-      const opFullName =
+      const rawOp =
         c.operator?.full_name ||
         ext.seller_name ||
         ext.operator_name ||
         ext.vendedor ||
         (c as any).vendedor ||
-        (c as any).seller_name;
+        (c as any).seller_name ||
+        c.created_by;
+      const opFullName = resolveSellerDisplayName(rawOp, employees) || null;
       const resolved = resolveSaleStore(
         {
           store_id: c.store_id,
@@ -363,7 +366,7 @@ export default function Sales() {
           id: resolved.storeId,
           name: resolved.storeName,
         },
-        operator: c.operator || (opFullName ? { full_name: opFullName } : null),
+        operator: opFullName ? { full_name: opFullName } : (c.operator && isValidSellerName(c.operator.full_name) ? c.operator : null),
       };
     });
     const contractIds = new Set(fromContracts.map((c) => c.id));
@@ -470,37 +473,16 @@ export default function Sales() {
     return Array.from(monthsMap.values()).sort((a, b) => b.key.localeCompare(a.key));
   }, [allSales]);
 
-  // Vendedores — colaboradores da loja selecionada + quem tiver vendas registradas
+  // Vendedores — colaboradores oficiais do banco de dados (employees e DEFAULT_OFFICIAL_USERS)
   const sellerOptions = useMemo(() => {
-    if (isRestrictedSeller) {
-      const myName = profile?.full_name || 'Minhas Vendas';
-      return [{ id: myName, name: myName }];
-    }
-
-    const map = new Map<string, string>();
-
-    // 1. Dos colaboradores cadastrados (employees)
-    (employees || []).forEach((emp) => {
-      const role = (emp.role || '').toLowerCase();
-      const isComercial = role.includes('vendedor') || role.includes('comercial') || role.includes('plus') || role.includes('externo');
-      if (isComercial && emp.full_name) {
-        const sId = emp.store_id || 'store-divinopolis';
-        if (storeFilter !== 'all' && sId !== storeFilter) return;
-        const key = emp.full_name.trim();
-        map.set(key, key);
-      }
+    return getCleanSellerOptions({
+      employees,
+      allSales,
+      storeFilter,
+      isRestrictedSeller,
+      currentUserFullName: profile?.full_name,
     });
-
-    // 2. Das vendas consolidadas
-    allSales.forEach((s: any) => {
-      const sellerName = (s.operator?.full_name || s.created_by || '').trim();
-      if (!sellerName) return;
-      if (storeFilter !== 'all' && s.store_id !== storeFilter) return;
-      map.set(sellerName, sellerName);
-    });
-
-    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [employees, allSales, storeFilter]);
+  }, [employees, allSales, storeFilter, isRestrictedSeller, profile]);
 
   // 1. Vendas que atendem aos filtros gerais (busca, loja, vendedor, período)
   const baseFilteredSales = useMemo(() => {
@@ -553,12 +535,10 @@ export default function Sales() {
       if (!matchesStore) return false;
 
       // 3. Filtro de Vendedor / Operador
-      const sellerName = ((sale as any).created_by || (sale as any).operator?.full_name || (sale as any).seller_name || (sale as any).vendedor || '').trim().toLowerCase();
-      const targetReseller = resellerFilter.trim().toLowerCase();
-      const matchesReseller = isRestrictedSeller || resellerFilter === 'all' ||
-        sellerName === targetReseller ||
-        sellerName.includes(targetReseller) ||
-        targetReseller.includes(sellerName);
+      const matchesReseller =
+        isRestrictedSeller ||
+        resellerFilter === 'all' ||
+        matchesSellerFilter(sale, resellerFilter, employees);
       if (!matchesReseller) return false;
 
       // 4. Filtro de Período
@@ -570,7 +550,7 @@ export default function Sales() {
 
       return true;
     });
-  }, [allSales, search, storeFilter, resellerFilter, periodFilter, isDateInPeriod, isRestrictedSeller]);
+  }, [allSales, search, storeFilter, resellerFilter, periodFilter, isDateInPeriod, isRestrictedSeller, employees]);
 
   // Contadores oficiais das abas e métricas baseadas no escopo atual
   const completedSales = useMemo(() => {
@@ -1052,7 +1032,7 @@ export default function Sales() {
                     <div className="flex items-center gap-1 text-muted-foreground truncate">
                       <span className="truncate">{sale.store?.name?.replace('Concessionária ', '') || 'Loja'}</span>
                       <span>•</span>
-                      <span className="truncate">{(sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || 'Vendedor'}</span>
+                      <span className="truncate">{resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || 'Vendedor'}</span>
                       <span>•</span>
                       <span className="shrink-0">{formatDate(sale.created_at)}</span>
                     </div>
@@ -1164,7 +1144,7 @@ export default function Sales() {
                       <TableCell className="hidden text-xs xl:table-cell">{sale.store?.name || '-'}</TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <span className="text-xs text-muted-foreground">
-                          {(sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || '-'}
+                          {resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || '-'}
                         </span>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right">

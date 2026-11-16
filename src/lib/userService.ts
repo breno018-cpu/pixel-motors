@@ -792,10 +792,27 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
     const assignedRole = roleMap.get(p.id) || (emp?.role as any) || 'vendedor';
     const effectiveRole = isMasterUser(p.full_name, p.email, p.id) ? assignedRole : 'vendedor';
 
+    const officialUser = DEFAULT_OFFICIAL_USERS.find(
+      (u) =>
+        (p.id && u.id.toLowerCase() === p.id.toLowerCase()) ||
+        (u.email && u.email.toLowerCase() === emailKey) ||
+        (u.aliases && (u.aliases.includes(emailKey) || (p.id && u.aliases.includes(p.id.toLowerCase()))))
+    );
+    const isBadName =
+      !p.full_name ||
+      p.full_name.trim().length < 3 ||
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.full_name.trim()) ||
+      /^\d+$/.test(p.full_name.trim()) ||
+      p.full_name.toLowerCase() === 'vendedor';
+
+    const cleanFullName = isBadName
+      ? (officialUser?.full_name || emp?.full_name || 'Colaborador')
+      : p.full_name;
+
     userMap.set(emailKey, {
       id: p.id,
       email: p.email,
-      full_name: p.full_name || 'Sem nome',
+      full_name: cleanFullName,
       cpf: emp?.cpf || res?.cpf || undefined,
       role: effectiveRole,
       store_id: resolvedStoreId,

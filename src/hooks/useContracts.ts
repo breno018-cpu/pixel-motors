@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { INITIAL_USER_BACKUP_CSV, parseBackupCsv, SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { resolveSaleStore } from '@/lib/storeResolution';
+import { resolveSellerDisplayName, isValidSellerName } from '@/lib/sellerSanitizer';
 import officialContractsSeed from '@/data/officialContractsSeed.json';
 
 export interface ContractVehicle {
@@ -256,10 +257,16 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
   const hydratedDb = dbContracts.map((c) => {
     const ext = (c.external_data || {}) as any;
     const sellerFromExt = ext.seller_name || ext.operator_name || ext.vendedor || (c as any).vendedor;
-    const opName = (c.created_by ? operatorMap[c.created_by] : null) || sellerFromExt || (c as any).created_by;
+    const rawOpName = (c.created_by ? operatorMap[c.created_by] : null) || sellerFromExt || (c as any).created_by;
+    const cleanOpName = resolveSellerDisplayName(rawOpName);
+
+    const existingOpName = c.operator?.full_name;
+    const cleanExisting = isValidSellerName(existingOpName) ? existingOpName : null;
+    const effectiveOpName = cleanExisting || cleanOpName;
+
     return {
       ...c,
-      operator: c.operator || (opName ? { full_name: opName } : null),
+      operator: effectiveOpName ? { full_name: effectiveOpName } : null,
     };
   });
 

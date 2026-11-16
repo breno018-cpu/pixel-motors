@@ -50,6 +50,7 @@ import {
   calculateFreightCost,
   type TransportLogisticsMethod,
 } from '@/lib/transportLogistics';
+import { resolveSellerDisplayName, isValidSellerName, matchesSellerFilter } from '@/lib/sellerSanitizer';
 
 export interface MonthlyCitySalesMapProps {
   sales?: Array<{
@@ -200,12 +201,14 @@ export function MonthlyCitySalesMap({
     return Array.from(monthsMap.values()).sort((a, b) => b.key.localeCompare(a.key));
   }, [sales]);
 
-  // Lista dinâmica de vendedores das vendas carregadas
+  // Lista dinâmica de vendedores das vendas carregadas (apenas vendedores humanos válidos)
   const availableSellers = useMemo(() => {
     const map = new Map<string, number>();
     (sales || []).forEach((s) => {
-      const v = (s.vendedor || '').trim();
-      if (v) map.set(v, (map.get(v) || 0) + 1);
+      const resolved = resolveSellerDisplayName(s.vendedor);
+      if (resolved && isValidSellerName(resolved)) {
+        map.set(resolved, (map.get(resolved) || 0) + 1);
+      }
     });
     return Array.from(map.entries())
       .map(([name, count]) => ({ name, count }))
@@ -282,11 +285,7 @@ export function MonthlyCitySalesMap({
 
     // 3. Filtro de Vendedor
     if (selectedSeller !== 'all') {
-      const target = selectedSeller.toLowerCase().trim();
-      list = list.filter((s) => {
-        const v = (s.vendedor || '').toLowerCase().trim();
-        return v === target || v.includes(target);
-      });
+      list = list.filter((s) => matchesSellerFilter(s, selectedSeller));
     }
 
     // 4. Filtro de Status da Venda

@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { exportToXLSX } from '@/lib/export';
+import { resolveSellerDisplayName } from '@/lib/sellerSanitizer';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { FinancialDREPanel } from '@/components/finance/FinancialDREPanel';
 
@@ -109,7 +110,7 @@ export default function Reports() {
   };
 
   const nameOf = (id?: string | null) =>
-    resolveSellerProfile(id)?.full_name || id || 'Consultor Comercial';
+    resolveSellerProfile(id)?.full_name || resolveSellerDisplayName(id) || 'Consultor Comercial';
 
   const performance = useMemo(() => {
     const map = new Map<string, { id: string; name: string; qty: number; value: number; margin: number }>();

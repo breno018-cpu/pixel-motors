@@ -54,6 +54,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { logActivity } from '@/lib/audit';
 import { fetchConsolidatedUsers, DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
+import { isValidSellerName } from '@/lib/sellerSanitizer';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -247,25 +248,21 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
       const users = await fetchConsolidatedUsers();
       if (users && users.length > 0) {
         const list = users
-          .filter((u) => u.is_active !== false)
-          .map((u) => ({ id: u.id, full_name: u.full_name || u.email }));
-        setOperators(list);
+          .filter((u) => u.is_active !== false && isValidSellerName(u.full_name))
+          .map((u) => ({ id: u.id, full_name: u.full_name }));
+        setOperators(list.length > 0 ? list : DEFAULT_OFFICIAL_USERS.map((u) => ({ id: u.id, full_name: u.full_name })));
       } else {
         const { data } = await supabase.from('profiles').select('id, full_name');
-        if (data && data.length > 0) {
-          setOperators(data);
+        const validProfiles = (data || []).filter((p: any) => isValidSellerName(p.full_name));
+        if (validProfiles.length > 0) {
+          setOperators(validProfiles);
         } else {
           setOperators(DEFAULT_OFFICIAL_USERS.map((u) => ({ id: u.id, full_name: u.full_name })));
         }
       }
     } catch (err) {
       console.warn('Erro ao carregar operadores do sistema:', err);
-      const { data } = await supabase.from('profiles').select('id, full_name');
-      if (data && data.length > 0) {
-        setOperators(data);
-      } else {
-        setOperators(DEFAULT_OFFICIAL_USERS.map((u) => ({ id: u.id, full_name: u.full_name })));
-      }
+      setOperators(DEFAULT_OFFICIAL_USERS.map((u) => ({ id: u.id, full_name: u.full_name })));
     }
     setSelectedOperator(sale.created_by || '');
     setOperatorDialogOpen(true);

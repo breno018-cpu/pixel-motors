@@ -21,6 +21,7 @@ import { SellerPerformanceDialog } from '@/components/admin/SellerPerformanceDia
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { fetchConsolidatedUsers } from '@/lib/userService';
 import { isMatchingStore } from '@/lib/storeResolution';
+import { isValidSellerName } from '@/lib/sellerSanitizer';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -87,6 +88,7 @@ export default function Sellers({ embedded = false }: { embedded?: boolean } = {
     queryFn: async () => {
       const allUsers = await fetchConsolidatedUsers(stores);
       return allUsers.filter((u) => {
+        if (!isValidSellerName(u.full_name)) return false;
         const r = (u.role || '').toLowerCase();
         return (
           r === 'vendedor' ||

@@ -4,6 +4,7 @@ import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesSco
 import { useContracts } from '@/hooks/useContracts';
 import { useEmployees } from '@/hooks/useEmployees';
 import { resolveSaleStore, isMontesClarosStore } from '@/lib/storeResolution';
+import { resolveSellerDisplayName } from '@/lib/sellerSanitizer';
 import { SheetRowV9, getLiveSheetRows } from '@/lib/dealershipSheetParser';
 
 export interface ConsolidatedSaleItem {
@@ -149,7 +150,7 @@ export function useConsolidatedSales() {
         store_name: resolvedStore.storeName,
         date: dateObj,
         dateStr: r.data,
-        vendedor: r.vendedor?.trim() || 'Vendedor',
+        vendedor: resolveSellerDisplayName(r.vendedor, employees) || 'Vendedor',
         chassi: r.chassi?.trim() || '',
         modelo: r.modelo?.trim() || 'Moto',
         cliente: r.cliente?.trim() || 'Cliente Balcão',
@@ -193,12 +194,14 @@ export function useConsolidatedSales() {
       const bankName = c.financing_bank || (finVal > 0 ? 'FINANCIAMENTO' : 'À VISTA');
 
       const ext = (c.external_data || {}) as any;
-      const opFullName =
+      const rawOp =
         c.operator?.full_name ||
         ext.seller_name ||
         ext.operator_name ||
         ext.vendedor ||
-        c.vendedor;
+        c.vendedor ||
+        c.created_by;
+      const opFullName = resolveSellerDisplayName(rawOp, employees) || null;
 
       const isMoc = isMontesClarosStore({
         store_id: c.store_id || c.store?.id,
@@ -216,8 +219,6 @@ export function useConsolidatedSales() {
           cityStr = c.buyer_address.trim();
         }
       }
-        (c as any).vendedor ||
-        (c as any).seller_name;
 
       const resolvedStore = resolveSaleStore(
         {

@@ -41,6 +41,7 @@ import {
   buildLowPolyHubMarkerHtml,
   buildLowPolyCityMarkerHtml,
 } from '@/lib/geoCoordinates';
+import { resolveSellerDisplayName, isValidSellerName, matchesSellerFilter } from '@/lib/sellerSanitizer';
 
 export interface GeographicSalesRadiusMapProps {
   sales: Array<{
@@ -81,11 +82,12 @@ export function GeographicSalesRadiusMap({
     }
   }, [referenceStoreCity]);
 
-  // Lista dinâmica de vendedores
+  // Lista dinâmica de vendedores (apenas vendedores humanos válidos)
   const availableSellers = useMemo(() => {
     const set = new Set<string>();
     sales.forEach((s) => {
-      if (s.vendedor && s.vendedor.trim()) set.add(s.vendedor.trim());
+      const resolved = resolveSellerDisplayName(s.vendedor);
+      if (resolved && isValidSellerName(resolved)) set.add(resolved);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [sales]);
@@ -174,8 +176,7 @@ export function GeographicSalesRadiusMap({
 
     const filtered = sales.filter((s) => {
       if (sellerFilter !== 'all') {
-        const v = (s.vendedor || '').toLowerCase();
-        if (v !== sellerFilter.toLowerCase() && !v.includes(sellerFilter.toLowerCase())) return false;
+        if (!matchesSellerFilter(s, sellerFilter)) return false;
       }
       if (modelFilter !== 'all') {
         const m = (s.modelo || '').toLowerCase();

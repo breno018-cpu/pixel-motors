@@ -40,6 +40,8 @@ import { useVehicles, markVehicleAsSold, isChassisAlreadySold } from '@/hooks/us
 import { useStores } from '@/hooks/useStores';
 import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID, STORE_MONTESCLAROS_MULTIMARCAS_UUID } from '@/lib/storeResolution';
 import { useEmployees } from '@/hooks/useEmployees';
+import { DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
+import { isValidSellerName } from '@/lib/sellerSanitizer';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -176,13 +178,27 @@ export function CreateSaleModal({
   }, [profile, user, isDirectMocUser]);
 
   const availableSellers = useMemo(() => {
-    const list = [...PRESET_SELLERS];
-    (employees || []).forEach((e) => {
-      if (e.full_name && !list.some((s) => s.toLowerCase() === e.full_name.toLowerCase())) {
-        list.push(e.full_name);
+    const list: string[] = [];
+    const seen = new Set<string>();
+
+    const addName = (name?: string | null) => {
+      if (!name) return;
+      const clean = name.trim();
+      if (!isValidSellerName(clean)) return;
+      const key = clean.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push(clean);
       }
+    };
+
+    (employees || []).forEach((e) => addName(e.full_name));
+    DEFAULT_OFFICIAL_USERS.forEach((u) => {
+      if (u.is_active !== false) addName(u.full_name);
     });
-    return list;
+    PRESET_SELLERS.forEach((s) => addName(s));
+
+    return list.sort((a, b) => a.localeCompare(b));
   }, [employees]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
