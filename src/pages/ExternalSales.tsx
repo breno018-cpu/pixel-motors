@@ -16,6 +16,8 @@ import {
   TrendingUp,
   Truck,
   Wallet,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,6 +40,7 @@ import { useExternalSellers, useMyExternalPanel } from '@/hooks/useExternalSelle
 import { leadSourceLabel } from '@/lib/leadSources';
 import { maskCPF } from '@/lib/masks';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -82,6 +85,19 @@ export default function ExternalSales() {
   const { data: sellers, isLoading: loadingSellers } = useExternalSellers(month, year);
   const { data: panel, isLoading: loadingPanel } = useMyExternalPanel(month, year);
   const { data: externalContracts, isLoading: loadingContracts } = useExternalContracts();
+  const { toast } = useToast();
+  const [copiedChassisId, setCopiedChassisId] = useState<string | null>(null);
+
+  const handleCopyChassis = (chassisText: string) => {
+    if (!chassisText) return;
+    navigator.clipboard.writeText(chassisText);
+    setCopiedChassisId(chassisText);
+    toast({
+      title: 'Chassi copiado!',
+      description: `Chassi ${chassisText} copiado para a área de transferência.`,
+    });
+    setTimeout(() => setCopiedChassisId(null), 2000);
+  };
 
   const years = useMemo(() => Array.from({ length: 4 }, (_, index) => now.getFullYear() - index), []);
   const visibleSales = useMemo(() => {
@@ -188,10 +204,36 @@ export default function ExternalSales() {
                         <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Phone className="h-3 w-3" />{sale.buyer_phone || 'Não informado'}</p>
                       </TableCell>
                       <TableCell className="min-w-[180px]">
-                        <div className="flex items-start gap-2"><VehicleIcon className="mt-0.5 h-4 w-4 text-muted-foreground" /><div>
-                          <p className="text-sm">{sale.vehicle ? `${sale.vehicle.brand} ${sale.vehicle.model}` : '—'}</p>
-                          <p className="text-xs text-muted-foreground">{sale.vehicle?.chassis || 'Chassi não informado'}</p>
-                        </div></div>
+                        <div className="flex items-start gap-2">
+                          <VehicleIcon className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="text-sm font-medium">{sale.vehicle ? `${sale.vehicle.brand} ${sale.vehicle.model}` : '—'}</p>
+                            {(() => {
+                              const cha = sale.vehicle?.chassis || (sale.external_data as any)?.chassi || (sale as any).chassi || '';
+                              if (!cha) {
+                                return <p className="text-xs text-amber-600 dark:text-amber-400 font-normal italic">Chassi não informado</p>;
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCopyChassis(cha);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/80 hover:bg-primary/10 border border-border/70 hover:border-primary/40 text-[10.5px] font-mono font-bold text-foreground transition-all group/chassis"
+                                  title={`Copiar chassi: ${cha}`}
+                                >
+                                  {copiedChassisId === cha ? (
+                                    <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
+                                  ) : (
+                                    <Copy className="w-2.5 h-2.5 text-muted-foreground group-hover/chassis:text-primary shrink-0" />
+                                  )}
+                                  <span className="tracking-tight">{cha}</span>
+                                </button>
+                              );
+                            })()}
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell className="max-w-[220px]">
                         <p className="truncate text-sm font-medium">{sale.campaign_name || String(external.ad_description || '') || leadSourceLabel(sale.lead_source, sale.lead_source_detail)}</p>

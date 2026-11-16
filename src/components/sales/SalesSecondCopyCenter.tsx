@@ -17,6 +17,8 @@ import {
   DollarSign,
   ImageDown,
   UserCheck,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -32,6 +34,7 @@ import {
 import { PanelCard } from '@/components/ui/stat-card';
 import { maskCPF } from '@/lib/masks';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import {
   downloadContractSecondCopyPDF,
   downloadPaymentReceiptSecondCopyPDF,
@@ -72,10 +75,23 @@ function formatCPFDisplay(cpf: string) {
 }
 
 export function SalesSecondCopyCenter({ sales }: SalesSecondCopyCenterProps) {
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [selectedSale, setSelectedSale] = useState<any | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
   const [manageTab, setManageTab] = useState<'cadastro' | 'veiculo' | 'finalizacao' | 'documentos'>('documentos');
+  const [copiedChassisId, setCopiedChassisId] = useState<string | null>(null);
+
+  const handleCopyChassis = (chassisText: string) => {
+    if (!chassisText) return;
+    navigator.clipboard.writeText(chassisText);
+    setCopiedChassisId(chassisText);
+    toast({
+      title: 'Chassi copiado!',
+      description: `Chassi ${chassisText} copiado para a área de transferência.`,
+    });
+    setTimeout(() => setCopiedChassisId(null), 2000);
+  };
 
   const { data: stores = [] } = useStores();
 
@@ -324,9 +340,30 @@ export function SalesSecondCopyCenter({ sales }: SalesSecondCopyCenterProps) {
                         <p className="text-xs font-semibold text-foreground">
                           {veh?.brand || 'SHINERAY'} {veh?.model || (sale.external_data as any)?.vehicle_model_custom || 'Moto'}
                         </p>
-                        <p className="text-[10px] font-mono text-muted-foreground">
-                          {veh?.chassis ? `#${String(veh.chassis).slice(-8)}` : (sale.external_data as any)?.chassi || '0 KM'}
-                        </p>
+                        {(() => {
+                          const cha = veh?.chassis || (sale.external_data as any)?.chassi || (sale as any).chassi || '';
+                          if (!cha) {
+                            return <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium italic">0 KM / A definir</p>;
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyChassis(cha);
+                              }}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 mt-0.5 rounded bg-muted/80 hover:bg-primary/10 border border-border/70 hover:border-primary/40 text-[10px] font-mono font-bold text-foreground transition-all group/chassis"
+                              title={`Copiar chassi: ${cha}`}
+                            >
+                              {copiedChassisId === cha ? (
+                                <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
+                              ) : (
+                                <Copy className="w-2.5 h-2.5 text-muted-foreground group-hover/chassis:text-primary shrink-0" />
+                              )}
+                              <span className="tracking-tight">{cha}</span>
+                            </button>
+                          );
+                        })()}
                       </TableCell>
 
                       <TableCell className="text-xs text-muted-foreground">

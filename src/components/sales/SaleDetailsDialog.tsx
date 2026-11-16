@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { 
   FileText, 
   User, 
   Car, 
+  Bike,
   Store, 
   Calendar, 
   CreditCard, 
@@ -9,8 +11,14 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Megaphone
-  ,MapPin, Truck, MessageCircle, Paperclip, ExternalLink
+  Megaphone,
+  MapPin, 
+  Truck, 
+  MessageCircle, 
+  Paperclip, 
+  ExternalLink,
+  Copy,
+  Check
 } from 'lucide-react';
 import {
   Dialog,
@@ -24,6 +32,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { getLeadSource } from '@/lib/leadSources';
 import { ReceiptAttachmentManager } from '@/components/sales/ReceiptAttachmentManager';
+import { useToast } from '@/hooks/use-toast';
 
 interface Sale {
   id: string;
@@ -57,6 +66,23 @@ interface Sale {
   sale_channel?: string | null;
   evidence_paths?: string[];
   external_data?: Record<string, unknown> | null;
+  vehicle?: {
+    id?: string;
+    brand?: string;
+    model?: string;
+    year?: number;
+    color?: string | null;
+    plate?: string | null;
+    chassis?: string | null;
+    vehicle_type?: string | null;
+    status?: string;
+  } | null;
+  chassi?: string;
+  vehicle_chassis?: string;
+  operator?: {
+    id?: string;
+    full_name?: string;
+  };
 }
 
 interface SaleDetailsDialogProps {
@@ -104,6 +130,9 @@ export function SaleDetailsDialog({
   open, 
   onOpenChange 
 }: SaleDetailsDialogProps) {
+  const { toast } = useToast();
+  const [copiedChassis, setCopiedChassis] = useState(false);
+
   if (!sale) return null;
 
   const salePayments: any[] = [];
@@ -115,6 +144,39 @@ export function SaleDetailsDialog({
   const external = (sale.external_data || {}) as Record<string, unknown>;
   const externalText = (key: string) => typeof external[key] === 'string' ? String(external[key]) : '';
   const evidenceCount = sale.evidence_paths?.length || 0;
+
+  const chassis = (
+    sale.vehicle?.chassis ||
+    (sale.external_data as any)?.chassis ||
+    (sale.external_data as any)?.chassi ||
+    (sale.external_data as any)?.vehicle_chassis_custom ||
+    (sale as any).chassi ||
+    (sale as any).vehicle_chassis ||
+    ''
+  ).trim();
+
+  const vehicleModel =
+    sale.vehicle?.model ||
+    (sale.external_data as any)?.vehicle_model_custom ||
+    (sale.external_data as any)?.modelo ||
+    vehicleName ||
+    'Não informado';
+
+  const vehicleBrand = sale.vehicle?.brand || (sale.external_data as any)?.brand || 'SHINERAY';
+  const vehicleYear = sale.vehicle?.year || (sale.external_data as any)?.year || (sale.external_data as any)?.ano || 2026;
+  const vehicleColor = sale.vehicle?.color || (sale.external_data as any)?.cor || '';
+  const vehiclePlate = sale.vehicle?.plate || (sale.external_data as any)?.placa || '';
+
+  const handleCopyChassis = () => {
+    if (!chassis) return;
+    navigator.clipboard.writeText(chassis);
+    setCopiedChassis(true);
+    toast({
+      title: 'Chassi copiado!',
+      description: `O chassi ${chassis} foi copiado para a área de transferência.`,
+    });
+    setTimeout(() => setCopiedChassis(false), 2000);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -223,19 +285,88 @@ export function SaleDetailsDialog({
             </div>
           </div>
 
-          {/* Vehicle & Store */}
+          {/* Veículo & Identificação do Chassi */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-foreground flex items-center gap-2">
+                <Bike className="w-4 h-4 text-primary" /> Moto & Chassi
+              </h4>
+              {chassis && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCopyChassis}
+                  className="h-7 px-2.5 text-xs font-bold gap-1.5 border-primary/30 text-primary hover:bg-primary/10 shadow-2xs"
+                  title="Copiar número do chassi completo"
+                >
+                  {copiedChassis ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedChassis ? 'Chassi Copiado!' : 'Copiar Chassi'}
+                </Button>
+              )}
+            </div>
+            
+            <div className="bg-muted/50 p-3.5 rounded-lg border border-border/60 space-y-3 text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-border/40">
+                <div>
+                  <p className="text-xs text-muted-foreground">Modelo / Fabricante</p>
+                  <p className="font-bold text-foreground text-sm uppercase">{vehicleBrand} {vehicleModel}</p>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>Ano: <strong className="text-foreground">{vehicleYear}</strong></span>
+                  {vehicleColor && <span>Cor: <strong className="text-foreground">{vehicleColor}</strong></span>}
+                  {vehiclePlate && <span>Placa: <strong className="text-foreground font-mono">{vehiclePlate}</strong></span>}
+                </div>
+              </div>
+
+              {/* Destaque do Chassi com Ação Direta */}
+              <div className="bg-background/90 rounded-md p-3 border border-border/80 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                      Chassi (Número de Identificação)
+                    </span>
+                    {chassis && (
+                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 font-mono">
+                        {chassis.length} caracteres
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="font-mono text-sm font-black tracking-wider text-foreground break-all select-all">
+                    {chassis || (
+                      <span className="text-amber-600 dark:text-amber-400 font-normal italic text-xs">
+                        Chassi a definir (Em faturamento / estoque)
+                      </span>
+                    )}
+                  </p>
+                </div>
+                {chassis && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleCopyChassis}
+                    className="h-8 px-3 shrink-0 font-bold text-xs gap-1.5 hover:bg-primary hover:text-primary-foreground transition-all shadow-2xs"
+                  >
+                    {copiedChassis ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedChassis ? 'Copiado' : 'Copiar'}</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Loja & Operador */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-muted/50 p-3 rounded-lg">
-              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                <Car className="w-3.5 h-3.5" /> Veículo
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <Store className="w-3.5 h-3.5" /> Concessionária
               </p>
-              <p className="font-medium text-sm">{vehicleName || 'Não informado'}</p>
+              <p className="font-semibold text-sm">{storeName || 'Não informada'}</p>
             </div>
             <div className="bg-muted/50 p-3 rounded-lg">
-              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                <Store className="w-3.5 h-3.5" /> Loja
+              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                <User className="w-3.5 h-3.5" /> Vendedor / Operador
               </p>
-              <p className="font-medium text-sm">{storeName || 'Não informada'}</p>
+              <p className="font-semibold text-sm truncate">{resellerName || (sale as any).operator?.full_name || (sale as any).external_data?.seller_name || 'Vendedor'}</p>
             </div>
           </div>
 

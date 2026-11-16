@@ -3,7 +3,7 @@ import {
   Search, ShoppingCart, Calendar, Store, User, Car, Bike, Plus,
   TrendingUp, DollarSign, Clock, CheckCircle, AlertCircle, FileText,
   ImageDown, CheckCircle2, ArrowRight, Paperclip, FileSpreadsheet,
-  Printer, Pencil,
+  Printer, Pencil, Copy, Check
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,19 @@ function formatCPFDisplay(cpf: string) {
   if (!cpf || cpf === '—') return '—';
   if (cpf.includes('.') || cpf.includes('-') || cpf.includes('/')) return cpf;
   return maskCPF(cpf);
+}
+
+export function getSaleChassis(sale: any): string {
+  if (!sale) return '';
+  return (
+    sale.vehicle?.chassis ||
+    (sale.external_data as any)?.chassis ||
+    (sale.external_data as any)?.chassi ||
+    (sale.external_data as any)?.vehicle_chassis_custom ||
+    (sale as any).chassi ||
+    (sale as any).vehicle_chassis ||
+    ''
+  ).trim();
 }
 
 function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
@@ -207,6 +220,18 @@ export default function Sales() {
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [selectedSaleForManage, setSelectedSaleForManage] = useState<any | null>(null);
   const [manageDefaultTab, setManageDefaultTab] = useState<'cadastro' | 'veiculo' | 'finalizacao' | 'documentos'>('cadastro');
+  const [copiedChassisId, setCopiedChassisId] = useState<string | null>(null);
+
+  const handleCopyChassis = (chassisText: string, contractNumber?: string) => {
+    if (!chassisText) return;
+    navigator.clipboard.writeText(chassisText);
+    setCopiedChassisId(chassisText);
+    toast({
+      title: 'Chassi copiado!',
+      description: `Chassi ${chassisText} copiado para a área de transferência.`,
+    });
+    setTimeout(() => setCopiedChassisId(null), 2000);
+  };
 
   const { data: contracts, isLoading: contractsLoading } = useContracts();
   const { data: stores } = useStores();
@@ -486,7 +511,8 @@ export default function Sales() {
       // 1. Filtro de Busca Geral (Cliente, CPF, Contrato, Modelo, Chassi, Vendedor, Observações)
       if (term) {
         const rawCpf = (sale.buyer_cpf || '').replace(/\D/g, '');
-        const rawChassis = (sale.vehicle?.chassis || (sale as any).external_data?.chassis || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const saleChassis = getSaleChassis(sale);
+        const rawChassis = saleChassis.toLowerCase().replace(/[^a-z0-9]/g, '');
         const termClean = term.replace(/[^a-z0-9]/g, '');
 
         const searchable = [
@@ -496,7 +522,7 @@ export default function Sales() {
           sale.contract_number,
           sale.vehicle?.brand,
           sale.vehicle?.model,
-          sale.vehicle?.chassis,
+          saleChassis,
           (sale as any).external_data?.vehicle_model_custom,
           (sale as any).external_data?.chassis,
           (sale as any).external_data?.regiao,
@@ -919,6 +945,7 @@ export default function Sales() {
               const vehicle = sale.vehicle;
               const VehicleIcon = vehicle?.vehicle_type === 'moto' ? Bike : Car;
               const isPreSale = sale.status === 'pre_venda';
+              const saleChassis = getSaleChassis(sale);
               const receiptsCount = Math.max(
                 getSaleReceipts(sale.id).length,
                 ((sale.external_data as any)?.receipts as any[])?.length || 0,
@@ -989,6 +1016,35 @@ export default function Sales() {
                         <span className="text-[10px] text-muted-foreground shrink-0">({vehicle.color})</span>
                       )}
                     </div>
+
+                    {/* Linha de Chassi no Mobile com Cópia Rápida */}
+                    <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-border/40">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground shrink-0">
+                        Chassi:
+                      </span>
+                      {saleChassis ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyChassis(saleChassis, sale.contract_number);
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/80 hover:bg-primary/10 border border-border/70 text-[11px] font-mono font-bold text-foreground transition-all group/chassis"
+                          title="Toque para copiar o chassi"
+                        >
+                          {copiedChassisId === saleChassis ? (
+                            <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                          ) : (
+                            <Copy className="w-3 h-3 text-muted-foreground group-hover/chassis:text-primary shrink-0" />
+                          )}
+                          <span className="truncate">{saleChassis}</span>
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium italic">
+                          A definir / Em faturamento
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Rodapé: Loja/Vendedor + Data + Preço */}
@@ -1032,7 +1088,7 @@ export default function Sales() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Contrato / Ref</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Cliente</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Veículo</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Veículo & Chassi</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden xl:table-cell">Loja</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden lg:table-cell">Operador</TableHead>
                   <TableHead className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Valor</TableHead>
@@ -1047,6 +1103,7 @@ export default function Sales() {
                   const vehicle = sale.vehicle;
                   const VehicleIcon = vehicle?.vehicle_type === 'moto' ? Bike : Car;
                   const isPreSale = sale.status === 'pre_venda';
+                  const saleChassis = getSaleChassis(sale);
                   const receiptsCount = Math.max(
                     getSaleReceipts(sale.id).length,
                     ((sale.external_data as any)?.receipts as any[])?.length || 0,
@@ -1072,21 +1129,37 @@ export default function Sales() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {vehicle ? (
-                          <div className="flex items-center gap-2">
-                            <VehicleIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                            <div>
-                              <p className="text-xs font-semibold text-foreground">{vehicle.brand} {vehicle.model}</p>
-                              <p className="text-[11px] text-muted-foreground font-mono">
-                                {vehicle.year} {vehicle?.chassis ? `— #${String(vehicle.chassis).slice(-6)}` : ''}
+                        <div className="flex items-start gap-2">
+                          <VehicleIcon className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="text-xs font-semibold text-foreground truncate">
+                              {vehicle ? `${vehicle.brand} ${vehicle.model}` : (sale as any).external_data?.vehicle_model_custom || 'Veículo'}
+                              {vehicle?.year ? ` (${vehicle.year})` : ''}
+                            </p>
+                            {saleChassis ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyChassis(saleChassis, sale.contract_number);
+                                }}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/80 hover:bg-primary/10 border border-border/70 hover:border-primary/40 text-[10.5px] font-mono font-bold text-foreground transition-all group/chassis shadow-2xs"
+                                title={`Clique para copiar o chassi: ${saleChassis}`}
+                              >
+                                {copiedChassisId === saleChassis ? (
+                                  <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                                ) : (
+                                  <Copy className="w-3 h-3 text-muted-foreground group-hover/chassis:text-primary shrink-0" />
+                                )}
+                                <span className="tracking-tight">{saleChassis}</span>
+                              </button>
+                            ) : (
+                              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium italic">
+                                Chassi a definir
                               </p>
-                            </div>
+                            )}
                           </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {(sale as any).external_data?.vehicle_model_custom || '—'}
-                          </span>
-                        )}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden text-xs xl:table-cell">{sale.store?.name || '-'}</TableCell>
                       <TableCell className="hidden lg:table-cell">

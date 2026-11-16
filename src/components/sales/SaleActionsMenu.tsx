@@ -18,6 +18,9 @@ import {
   Printer,
   Truck,
   ShieldCheck,
+  Copy,
+  Check,
+  Bike,
 } from 'lucide-react';
 import {
   Dialog,
@@ -133,6 +136,28 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
   const [manageDefaultTab, setManageDefaultTab] = useState<'cadastro' | 'veiculo' | 'finalizacao' | 'documentos'>('cadastro');
   const [freightOpen, setFreightOpen] = useState(false);
   const [popupOpen, setPopupOpen] = useState(false);
+  const [copiedChassis, setCopiedChassis] = useState(false);
+
+  const chassis = (
+    sale.vehicle?.chassis ||
+    (sale.external_data as any)?.chassis ||
+    (sale.external_data as any)?.chassi ||
+    (sale.external_data as any)?.vehicle_chassis_custom ||
+    (sale as any).chassi ||
+    (sale as any).vehicle_chassis ||
+    ''
+  ).trim();
+
+  const handleCopyChassis = () => {
+    if (!chassis) return;
+    navigator.clipboard.writeText(chassis);
+    setCopiedChassis(true);
+    toast({
+      title: 'Chassi copiado!',
+      description: `Chassi ${chassis} copiado para a área de transferência.`,
+    });
+    setTimeout(() => setCopiedChassis(false), 2000);
+  };
 
   const receiptsCount = useMemo(() => {
     const local = getSaleReceipts(sale.id);
@@ -722,6 +747,34 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
                 </p>
               </div>
             </div>
+
+            {/* Banner de Chassi com Cópia Rápida */}
+            <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between gap-2 bg-muted/40 p-2 rounded-md">
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Chassi Oficial / VIN
+                </span>
+                <span className="font-mono font-bold text-xs text-foreground truncate block">
+                  {chassis || (
+                    <span className="text-amber-600 dark:text-amber-400 font-normal italic">
+                      Não informado / Em faturamento
+                    </span>
+                  )}
+                </span>
+              </div>
+              {chassis && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleCopyChassis}
+                  className="h-7 px-2.5 text-xs gap-1.5 shrink-0 font-bold hover:bg-primary hover:text-primary-foreground shadow-2xs"
+                  title="Copiar número do chassi"
+                >
+                  {copiedChassis ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedChassis ? 'Copiado!' : 'Copiar'}</span>
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Lista de Ações em Seções */}
@@ -840,6 +893,20 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
                 >
                   <Pencil className="w-4 h-4 text-primary shrink-0" />
                   <span className="truncate">Editar Venda</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPopupOpen(false);
+                    setManageDefaultTab('veiculo');
+                    setManageOpen(true);
+                  }}
+                  className="justify-start h-10 px-3 text-xs gap-2 font-medium border-primary/30 text-primary hover:bg-primary/5"
+                >
+                  <Bike className="w-4 h-4 text-primary shrink-0" />
+                  <span className="truncate">Ver/Editar Chassi</span>
                 </Button>
 
                 <Button
