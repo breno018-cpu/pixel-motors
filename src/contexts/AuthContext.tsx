@@ -868,28 +868,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const uEmail = (u.email || '').toLowerCase().trim();
           const uName = (u.full_name || '').toLowerCase().trim();
           const uPrefix = uEmail.split('@')[0].toLowerCase().trim();
+          const uAliases = (u.aliases || []).map((a) => a.toLowerCase().trim());
+
+          if (uEmail === cleanEmail || uAliases.includes(cleanEmail)) return true;
+          if (uPrefix === emailPrefix || uAliases.includes(emailPrefix)) return true;
+          if (u.id.toLowerCase() === cleanEmail) return true;
+          if (uName === cleanEmail || uName.split(' ')[0].toLowerCase() === cleanEmail) return true;
 
           return (
-            uEmail === cleanEmail ||
-            uPrefix === cleanEmail ||
-            uPrefix === emailPrefix ||
-            cleanEmail.startsWith(uPrefix) ||
-            uName === cleanEmail ||
-            uName.includes(cleanEmail) ||
-            cleanEmail.includes(uName) ||
             (cleanEmail === 'admin' && (uEmail.includes('admbreno') || uEmail.includes('breno'))) ||
             (cleanEmail === 'dono' && (uEmail.includes('admbreno') || uEmail.includes('breno'))) ||
             (cleanEmail === 'breno' && uEmail.includes('breno')) ||
             (cleanEmail === 'joao' && uEmail.includes('joao')) ||
-            (cleanEmail === 'gestor' && uEmail.includes('joao')) ||
-            (cleanEmail === 'mariana' && uName.includes('mariana')) ||
-            (cleanEmail === 'natan' && uName.includes('natan')) ||
-            (cleanEmail === 'lilian' && uName.includes('lilian')) ||
-            (cleanEmail === 'geibriel' && uName.includes('geibriel')) ||
-            (cleanEmail === 'daniel' && uName.includes('daniel')) ||
-            (cleanEmail === 'sabrina' && uName.includes('sabrina')) ||
-            (cleanEmail === 'halana' && uName.includes('halana')) ||
-            (cleanEmail === 'elias' && uName.includes('elias'))
+            (cleanEmail === 'gestor' && (uEmail.includes('gestor') || uEmail.includes('joao'))) ||
+            (cleanEmail === 'mariana' && (uName.includes('mariana') || uEmail.includes('shineraymoc@'))) ||
+            (cleanEmail === 'natan' && (uName.includes('natan') || uEmail.includes('shineraymocn'))) ||
+            (cleanEmail === 'lilian' && (uName.includes('lilian') || uEmail.includes('shineraydivl'))) ||
+            (cleanEmail === 'geibriel' && (uName.includes('geibriel') || uEmail.includes('shineraydivg'))) ||
+            (cleanEmail === 'daniel' && (uName.includes('daniel') || uEmail.includes('shineraydivd'))) ||
+            (cleanEmail === 'sabrina' && (uName.includes('sabrina') || uEmail.includes('shineraymocs'))) ||
+            (cleanEmail === 'halana' && (uName.includes('halana') || uEmail.includes('shineraymoch'))) ||
+            (cleanEmail === 'elias' && (uName.includes('elias') || uEmail.includes('shineraydive')))
           );
         });
         if (found && !isUserDeleted(found.id, found.email)) {
