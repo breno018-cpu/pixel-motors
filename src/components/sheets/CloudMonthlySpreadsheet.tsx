@@ -46,6 +46,13 @@ import {
   Paperclip,
   ZoomIn,
   Building2,
+  MessageSquare,
+  Highlighter,
+  Bold,
+  Italic,
+  Underline,
+  Target,
+  Eraser,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -80,6 +87,8 @@ import { TabTransition } from '@/components/ui/TabTransition';
 import * as XLSX from 'xlsx';
 import {
   SheetRowV9,
+  SheetRowStyle,
+  SheetRowComment,
   parseBackupCsv,
   INITIAL_USER_BACKUP_CSV,
   parseCurrencyBRL,
@@ -211,6 +220,45 @@ export function CloudMonthlySpreadsheet({
     value: string;
   } | null>(null);
 
+  // Seleção de linha para formatação de estilo (Cor, Texto, Grifar, Comentar)
+  const [selectedRowForStyle, setSelectedRowForStyle] = useState<string | null>(null);
+
+  // Meta de Quantidade Mensal (Definida por mês)
+  const [targetModalOpen, setTargetModalOpen] = useState(false);
+  const [monthlyTarget, setMonthlyTarget] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(`dealflow_monthly_target_${selectedMonth}`);
+      return stored ? parseInt(stored, 10) : 30;
+    } catch {
+      return 30;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`dealflow_monthly_target_${selectedMonth}`);
+      setMonthlyTarget(stored ? parseInt(stored, 10) : 30);
+    } catch {
+      setMonthlyTarget(30);
+    }
+  }, [selectedMonth]);
+
+  const saveMonthlyTarget = (newTarget: number) => {
+    setMonthlyTarget(newTarget);
+    try {
+      localStorage.setItem(`dealflow_monthly_target_${selectedMonth}`, String(newTarget));
+    } catch {}
+    toast({
+      title: 'Meta de Quantidade Atualizada!',
+      description: `Meta para ${MONTHS_LABELS[selectedMonth.split('-')[1]] || selectedMonth} definida para ${newTarget} vendas.`,
+    });
+  };
+
+  // Modal de Comentários por Linha
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
+  const [commentRow, setCommentRow] = useState<SheetRowV9 | null>(null);
+  const [commentInput, setCommentInput] = useState('');
+
   // Consulta das Linhas na Nuvem + Cache Local v9.0
   const { data: sheetRows = [], isLoading } = useQuery<SheetRowV9[]>({
     queryKey: ['cloud-monthly-sheet-v9'],
@@ -247,6 +295,141 @@ export function CloudMonthlySpreadsheet({
       queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
     },
   });
+
+  // Linha atualmente selecionada para estilo
+  const selectedRowData = useMemo(() => {
+    return sheetRows.find((r) => r.id === selectedRowForStyle);
+  }, [sheetRows, selectedRowForStyle]);
+
+  // Funções de Estilo (Fundo, Texto, Grifar, Negrito, Itálico, Sublinhado)
+  const updateSelectedRowStyle = (updater: (prev: SheetRowStyle) => SheetRowStyle) => {
+    if (!selectedRowForStyle) return;
+    const updated = sheetRows.map((r) => {
+      if (r.id === selectedRowForStyle) {
+        const nextStyle = updater(r.custom_style || {});
+        return { ...r, custom_style: nextStyle };
+      }
+      return r;
+    });
+    saveRowsMutation.mutate(updated);
+  };
+
+  const applyRowBgColor = (color: string) => {
+    updateSelectedRowStyle((prev) => ({ ...prev, bg_color: color || undefined }));
+  };
+
+  const applyRowTextColor = (color: string) => {
+    updateSelectedRowStyle((prev) => ({ ...prev, text_color: color || undefined }));
+  };
+
+  const applyRowHighlight = (color: string) => {
+    updateSelectedRowStyle((prev) => ({ ...prev, highlight: color || undefined }));
+  };
+
+  const toggleRowBold = () => {
+    updateSelectedRowStyle((prev) => ({ ...prev, bold: !prev.bold }));
+  };
+
+  const toggleRowItalic = () => {
+    updateSelectedRowStyle((prev) => ({ ...prev, italic: !prev.italic }));
+  };
+
+  const toggleRowUnderline = () => {
+    updateSelectedRowStyle((prev) => ({ ...prev, underline: !prev.underline }));
+  };
+
+  const clearRowFormatting = () => {
+    if (!selectedRowForStyle) return;
+    const updated = sheetRows.map((r) => {
+      if (r.id === selectedRowForStyle) {
+        return { ...r, custom_style: undefined, cell_styles: undefined };
+      }
+      return r;
+    });
+    saveRowsMutation.mutate(updated);
+    toast({ title: 'Formatação limpa', description: 'Cores e estilos da linha foram removidos.' });
+  };
+
+  // Adicionar Comentário
+  const handleAddComment = () => {
+    if (!commentRow || !commentInput.trim()) return;
+    const newComment = {
+      id: `comm-${Date.now()}`,
+      author: profile?.full_name || 'Diretoria / Gestão',
+      text: commentInput.trim(),
+      created_at: new Date().toLocaleString('pt-BR'),
+    };
+    const updated = sheetRows.map((r) => {
+      if (r.id === commentRow.id) {
+        const existingComments = r.comments || [];
+        return { ...r, comments: [...existingComments, newComment] };
+      }
+      return r;
+    });
+    saveRowsMutation.mutate(updated);
+    setCommentRow((prev) => (prev ? { ...prev, comments: [...(prev.comments || []), newComment] } : null));
+    setCommentInput('');
+    toast({ title: 'Comentário adicionado!', description: 'Anotação salva na linha da planilha.' });
+  };
+
+  // Remover Comentário
+  const handleDeleteComment = (commentId: string) => {
+    if (!commentRow) return;
+    const updated = sheetRows.map((r) => {
+      if (r.id === commentRow.id) {
+        const nextComments = (r.comments || []).filter((c) => c.id !== commentId);
+        return { ...r, comments: nextComments };
+      }
+      return r;
+    });
+    saveRowsMutation.mutate(updated);
+    setCommentRow((prev) =>
+      prev ? { ...prev, comments: (prev.comments || []).filter((c) => c.id !== commentId) } : null
+    );
+  };
+
+  // Gerar Linhas Sequenciais em Branco para o Mês até a Meta
+  const handleGenerateEmptyRowsForMonth = (countToAdd: number) => {
+    const existingInMonth = sheetRows.filter((r) => r.month_key === selectedMonth);
+    const startSeq = existingInMonth.length + 1;
+    const newRows: SheetRowV9[] = [];
+
+    for (let i = 0; i < countToAdd; i++) {
+      const seq = String(startSeq + i).padStart(2, '0');
+      newRows.push({
+        id: `row-empty-${selectedMonth}-${Date.now()}-${i}`,
+        month_key: selectedMonth,
+        qt: seq,
+        lead_mapping: '',
+        data: new Date().toLocaleDateString('pt-BR'),
+        vendedor: 'Vendedor',
+        chassi: '',
+        modelo: '',
+        cliente: '',
+        regiao: selectedStoreFilter === 'MOC' ? 'MONTES CLAROS' : 'DIVINOPOLIS',
+        valor: 0,
+        financiamento: 0,
+        banco: '',
+        dinheiro: 0,
+        pix: 0,
+        carta_credito: 0,
+        cartao: 0,
+        comp: '',
+        boleto: 0,
+        custos: 0,
+        total: 0,
+        observacoes: '',
+        tipo_registro: 'pre_venda',
+        is_permitted: false,
+      });
+    }
+
+    saveRowsMutation.mutate([...sheetRows, ...newRows]);
+    toast({
+      title: 'Linhas Adicionadas!',
+      description: `${countToAdd} novas linhas sequenciais geradas para ${MONTHS_LABELS[selectedMonth.split('-')[1]] || selectedMonth}.`,
+    });
+  };
 
   // Confirmar edição inline de célula na grade (Excel Web)
   const commitInlineCellEdit = () => {
@@ -1138,17 +1321,228 @@ export function CloudMonthlySpreadsheet({
       {/* ======================================================== */}
       {viewMode === 'grid' && (
         <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
-          <div className="p-3 bg-muted/40 border-b flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
+          {/* CABEÇALHO DA GRADE COM ESCOPO MENSAL E META */}
+          <div className="p-3 bg-muted/40 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
-              <span className="font-bold text-foreground">
-                Grade Operacional ({sortedRows.length} {sortedRows.length === 1 ? 'lançamento' : 'lançamentos'})
+              <span className="font-bold text-foreground text-sm">
+                Grade Operacional • {MONTHS_LABELS[selectedMonth.split('-')[1]] || selectedMonth}
               </span>
-              <span className="text-muted-foreground">• Clique em qualquer célula para editar ao vivo (estilo Excel Web) ou arraste comprovantes para a linha</span>
+              <Badge variant="outline" className="font-mono text-xs font-bold bg-background">
+                {sortedRows.length} de {monthlyTarget} vendas ({((sortedRows.length / (monthlyTarget || 1)) * 100).toFixed(0)}% da meta)
+              </Badge>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] font-semibold gap-1 rounded-lg"
+                onClick={() => setTargetModalOpen(true)}
+              >
+                <Target className="w-3.5 h-3.5 text-primary" />
+                Definir Quantidade do Mês
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] font-semibold gap-1 rounded-lg"
+                onClick={() => handleGenerateEmptyRowsForMonth(1)}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                +1 Linha do Mês
+              </Button>
             </div>
-            <span className="text-[11px] text-muted-foreground">
-              Total Visível: <strong className="text-foreground">{formatCurrencyBRL(sortedRows.reduce((acc, r) => acc + (r.valor || 0), 0))}</strong>
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-muted-foreground">
+                Total do Mês: <strong className="text-foreground font-mono">{formatCurrencyBRL(sortedRows.reduce((acc, r) => acc + (r.valor || 0), 0))}</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* BARRA DE FERRAMENTAS DE FORMATAÇÃO (ESTILO EXCEL: CORES, TEXTO, GRIFAR, COMENTAR) */}
+          <div className="p-2 px-3 bg-background border-b flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedRowForStyle ? (
+                <Badge variant="secondary" className="text-[11px] font-semibold gap-1.5 bg-primary/10 text-primary border-primary/20">
+                  Linha #{selectedRowData?.qt}: {selectedRowData?.modelo || selectedRowData?.cliente || 'Selecionada'}
+                </Badge>
+              ) : (
+                <span className="text-[11px] text-muted-foreground italic flex items-center gap-1">
+                  <SlidersHorizontal className="w-3 h-3" /> Clique em uma linha da tabela para formatar cor, grifar ou comentar
+                </span>
+              )}
+
+              {/* Cor de Fundo */}
+              <div className="flex items-center gap-1 pl-2 border-l">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase mr-1">Fundo:</span>
+                <button
+                  type="button"
+                  title="Padrão / Sem cor"
+                  onClick={() => applyRowBgColor('')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-card hover:scale-110 transition-transform disabled:opacity-40"
+                />
+                <button
+                  type="button"
+                  title="Amarelo suave"
+                  onClick={() => applyRowBgColor('#fef08a')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-yellow-200 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+                <button
+                  type="button"
+                  title="Verde suave"
+                  onClick={() => applyRowBgColor('#bbf7d0')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-emerald-200 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+                <button
+                  type="button"
+                  title="Azul suave"
+                  onClick={() => applyRowBgColor('#bfdbfe')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-blue-200 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+                <button
+                  type="button"
+                  title="Rosa suave"
+                  onClick={() => applyRowBgColor('#fecdd3')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-rose-200 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+                <button
+                  type="button"
+                  title="Laranja suave"
+                  onClick={() => applyRowBgColor('#fed7aa')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-amber-200 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+                <button
+                  type="button"
+                  title="Cinza suave"
+                  onClick={() => applyRowBgColor('#f1f5f9')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-slate-200 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+              </div>
+
+              {/* Cor do Texto */}
+              <div className="flex items-center gap-1 pl-2 border-l">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase mr-1">Texto:</span>
+                <button
+                  type="button"
+                  title="Preto padrão"
+                  onClick={() => applyRowTextColor('')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-slate-900 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+                <button
+                  type="button"
+                  title="Azul"
+                  onClick={() => applyRowTextColor('#2563eb')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-blue-600 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+                <button
+                  type="button"
+                  title="Verde"
+                  onClick={() => applyRowTextColor('#16a34a')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-emerald-600 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+                <button
+                  type="button"
+                  title="Vermelho"
+                  onClick={() => applyRowTextColor('#dc2626')}
+                  disabled={!selectedRowForStyle}
+                  className="w-5 h-5 rounded border bg-rose-600 hover:scale-110 transition-transform disabled:opacity-40"
+                />
+              </div>
+
+              {/* Grifar / Marca-Texto */}
+              <div className="flex items-center gap-1 pl-2 border-l">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={!selectedRowForStyle}
+                  onClick={() => applyRowHighlight(selectedRowData?.custom_style?.highlight ? '' : '#fef08a')}
+                  className={`h-7 px-2 text-[11px] gap-1 font-semibold rounded-lg ${
+                    selectedRowData?.custom_style?.highlight ? 'bg-amber-300/40 text-amber-900 dark:text-amber-300 font-bold' : ''
+                  }`}
+                  title="Grifar linha selecionada (Marca-texto)"
+                >
+                  <Highlighter className="w-3.5 h-3.5 text-amber-500" />
+                  Grifar
+                </Button>
+              </div>
+
+              {/* Estilo B / I / U */}
+              <div className="flex items-center gap-0.5 pl-2 border-l">
+                <Button
+                  size="sm"
+                  variant={selectedRowData?.custom_style?.bold ? 'default' : 'ghost'}
+                  disabled={!selectedRowForStyle}
+                  onClick={toggleRowBold}
+                  className="h-7 w-7 p-0 font-black text-xs rounded-lg"
+                  title="Negrito"
+                >
+                  <Bold className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedRowData?.custom_style?.italic ? 'default' : 'ghost'}
+                  disabled={!selectedRowForStyle}
+                  onClick={toggleRowItalic}
+                  className="h-7 w-7 p-0 italic text-xs rounded-lg"
+                  title="Itálico"
+                >
+                  <Italic className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant={selectedRowData?.custom_style?.underline ? 'default' : 'ghost'}
+                  disabled={!selectedRowForStyle}
+                  onClick={toggleRowUnderline}
+                  className="h-7 w-7 p-0 underline text-xs rounded-lg"
+                  title="Sublinhado"
+                >
+                  <Underline className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+
+              {/* Comentários */}
+              <div className="pl-2 border-l">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={!selectedRowForStyle}
+                  onClick={() => {
+                    if (selectedRowData) {
+                      setCommentRow(selectedRowData);
+                      setCommentModalOpen(true);
+                    }
+                  }}
+                  className="h-7 px-2 text-[11px] gap-1 font-semibold text-primary hover:bg-primary/10 rounded-lg"
+                  title="Ver ou adicionar comentários"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Comentários ({selectedRowData?.comments?.length || 0})
+                </Button>
+              </div>
+
+              {/* Limpar Formatação */}
+              <div className="pl-2 border-l">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={!selectedRowForStyle}
+                  onClick={clearRowFormatting}
+                  className="h-7 px-2 text-[11px] gap-1 text-muted-foreground hover:text-destructive rounded-lg"
+                  title="Limpar todas as cores e estilos da linha selecionada"
+                >
+                  <Eraser className="w-3.5 h-3.5" />
+                  Limpar
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="overflow-x-auto max-h-[680px] relative">
@@ -1183,6 +1577,7 @@ export function CloudMonthlySpreadsheet({
                   <TableHead className="text-right py-2.5">Pix</TableHead>
                   <TableHead className="text-right py-2.5">Cartão</TableHead>
                   <TableHead className="text-center py-2.5">Comp (Fotos)</TableHead>
+                  <TableHead className="w-16 text-center py-2.5">Notas</TableHead>
                   <TableHead className="text-right py-2.5">Total</TableHead>
                   <TableHead className="py-2.5 min-w-[200px]">Mapeamento / Observações</TableHead>
                   <TableHead className="w-16 text-right pr-3 py-2.5">Ações</TableHead>
@@ -2066,6 +2461,135 @@ export function CloudMonthlySpreadsheet({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL: DEFINIR META DE QUANTIDADE DO MÊS */}
+      <Dialog open={targetModalOpen} onOpenChange={setTargetModalOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Target className="w-5 h-5 text-primary" />
+              Meta de Quantidade do Mês
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Defina a quantidade de vendas esperadas para {MONTHS_LABELS[selectedMonth.split('-')[1]] || selectedMonth}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div>
+              <Label className="text-xs font-semibold">Meta de Vendas do Mês (Quantidade de Motos)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={500}
+                className="h-9 mt-1 text-sm font-bold font-mono"
+                value={monthlyTarget}
+                onChange={(e) => saveMonthlyTarget(parseInt(e.target.value, 10) || 1)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Lançamentos cadastrados atualmente: <strong>{monthRows.length} motos</strong>.
+              </p>
+            </div>
+
+            <div className="bg-muted/40 p-3 rounded-xl border space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-foreground">Gerar Linhas em Branco até a Meta</span>
+                <Badge variant="outline" className="font-mono text-[10px]">
+                  Faltam {Math.max(0, monthlyTarget - monthRows.length)} linhas
+                </Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Gera as linhas sequenciais vazias para este mês (ex: 01 a {String(monthlyTarget).padStart(2, '0')}) prontas para preenchimento rápido.
+              </p>
+              {monthlyTarget > monthRows.length && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="w-full text-xs font-bold gap-1 mt-1"
+                  onClick={() => {
+                    handleGenerateEmptyRowsForMonth(monthlyTarget - monthRows.length);
+                    setTargetModalOpen(false);
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Gerar {monthlyTarget - monthRows.length} Linhas Sequenciais para o Mês
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button size="sm" onClick={() => setTargetModalOpen(false)}>
+              Concluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: COMENTÁRIOS E ANOTAÇÕES DA LINHA */}
+      <Dialog open={commentModalOpen} onOpenChange={setCommentModalOpen}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              Comentários da Linha #{commentRow?.qt}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {commentRow?.modelo} — {commentRow?.cliente || 'Cliente não informado'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-1 text-xs">
+            {/* Histórico de Comentários */}
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+              {!commentRow?.comments || commentRow.comments.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
+                  Nenhum comentário adicionado nesta venda ainda.
+                </div>
+              ) : (
+                commentRow.comments.map((comm) => (
+                  <div key={comm.id} className="p-3 bg-muted/40 rounded-xl border space-y-1 relative group">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[11px] text-primary">{comm.author}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">{comm.created_at}</span>
+                    </div>
+                    <p className="text-xs text-foreground whitespace-pre-wrap">{comm.text}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteComment(comm.id)}
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-[10px]"
+                      title="Excluir comentário"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Novo Comentário */}
+            <div className="space-y-1.5 pt-2 border-t">
+              <Label className="text-xs font-semibold">Novo Comentário / Observação</Label>
+              <Textarea
+                rows={3}
+                placeholder="Ex: Aguardando aprovação bancária, cliente virá no sábado..."
+                value={commentInput}
+                onChange={(e) => setCommentInput(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setCommentModalOpen(false)}>
+              Fechar
+            </Button>
+            <Button size="sm" onClick={handleAddComment} disabled={!commentInput.trim()}>
+              Adicionar Comentário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 
@@ -2128,11 +2652,20 @@ export function CloudMonthlySpreadsheet({
     const hasReceipts = receipts.length > 0 || (row.comp && row.comp.toLowerCase() === 'imagem');
     const isFileDropTarget = fileDropTargetRowId === row.id;
     const isDragOverReorder = dragOverRowId === row.id;
+    const isSelected = selectedRowForStyle === row.id;
+    const style = row.custom_style || {};
+    const commentsList = row.comments || [];
+    const hasComments = commentsList.length > 0;
 
     return (
       <TableRow
         key={row.id}
         draggable={!inlineCell}
+        onClick={() => setSelectedRowForStyle(row.id)}
+        style={{
+          backgroundColor: style.bg_color || undefined,
+          color: style.text_color || undefined,
+        }}
         onDragStart={(e) => {
           if (inlineCell) return;
           e.dataTransfer.setData('text/plain', row.id);
@@ -2158,13 +2691,19 @@ export function CloudMonthlySpreadsheet({
             handleRowDrop(row.id);
           }
         }}
-        className={`transition-all border-b font-medium select-none relative ${
+        className={`transition-all border-b font-medium select-none relative cursor-pointer ${
+          style.bold ? 'font-bold' : ''
+        } ${style.italic ? 'italic' : ''} ${style.underline ? 'underline underline-offset-2' : ''} ${
+          style.highlight ? 'ring-2 ring-amber-400 bg-amber-100/60 dark:bg-amber-950/40' : ''
+        } ${
+          isSelected ? 'ring-2 ring-primary ring-offset-1 z-10 shadow-md' : ''
+        } ${
           isFileDropTarget
             ? 'ring-2 ring-primary bg-primary/20 scale-[1.01] z-20 shadow-lg'
             : isDragOverReorder
             ? 'border-t-4 border-t-primary bg-primary/10'
             : isPermitted
-            ? 'opacity-100 bg-card hover:bg-muted/30 border-l-4 border-l-emerald-500'
+            ? 'opacity-100 hover:bg-muted/30 border-l-4 border-l-emerald-500'
             : 'opacity-55 hover:opacity-95 bg-amber-500/5 border-l-4 border-l-amber-500 border-dashed'
         }`}
       >
@@ -2282,6 +2821,28 @@ export function CloudMonthlySpreadsheet({
             ) : (
               <span>+ Anexar</span>
             )}
+          </Button>
+        </TableCell>
+
+        {/* Notas / Comentários */}
+        <TableCell className="text-center">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCommentRow(row);
+              setCommentModalOpen(true);
+            }}
+            className={`h-7 px-2 text-[10px] gap-1 font-bold rounded-lg transition-all ${
+              hasComments
+                ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold border border-amber-500/30 ring-1 ring-amber-500/20'
+                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+            }`}
+            title="Comentários e anotações desta linha"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+            {hasComments ? <span>{commentsList.length}</span> : <span>+ Nota</span>}
           </Button>
         </TableCell>
 

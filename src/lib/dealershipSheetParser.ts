@@ -1,5 +1,21 @@
 import officialContractsSeed from '@/data/officialContractsSeed.json';
 
+export interface SheetRowComment {
+  id: string;
+  author: string;
+  text: string;
+  created_at: string;
+}
+
+export interface SheetRowStyle {
+  bg_color?: string; // Cor de fundo da linha / célula
+  text_color?: string; // Cor do texto
+  bold?: boolean; // Negrito
+  italic?: boolean; // Itálico
+  underline?: boolean; // Sublinhado
+  highlight?: string; // Cor de marca-texto (grifar)
+}
+
 export interface SheetRowV9 {
   id: string;
   month_key: string; // Ex: '2026-10'
@@ -27,6 +43,9 @@ export interface SheetRowV9 {
   is_permitted: boolean; // Se false = opaca/mais clara (em análise); se true = faturada/normal
   permitted_by?: string | null;
   permitted_at?: string | null;
+  custom_style?: SheetRowStyle;
+  cell_styles?: Record<string, SheetRowStyle>;
+  comments?: SheetRowComment[];
 }
 
 export function parseCurrencyBRL(val: string | number | undefined): number {
