@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import {
   Crown,
   TrendingUp,
@@ -125,6 +125,11 @@ interface ModelStockGroup {
 export default function OwnerDashboard() {
   const navigate = useNavigate();
   const { isAdmin, isManager, hasElevatedAccess } = useAuth();
+
+  if (!hasElevatedAccess && !isAdmin && !isManager) {
+    return <Navigate to="/" replace />;
+  }
+
   const { sales, isRefreshing, refresh } = useConsolidatedSales();
   const { data: vehicles = [] } = useVehicles();
   const { data: stores = [] } = useStores();

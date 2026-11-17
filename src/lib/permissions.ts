@@ -18,6 +18,7 @@ export const PAGE_PERMISSIONS: Record<string, string> = {
   '/payroll': 'page.payroll',
   '/ads': 'page.ads',
   '/reports': 'page.reports',
+  '/owner-dashboard': 'page.reports',
   '/spreadsheets': 'page.spreadsheets',
   '/inspections': 'page.inspections',
   '/admin': 'page.admin',

@@ -38,6 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { exportToXLSX } from '@/lib/export';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { formatFiscalDate, getLocalTodayDateString } from '@/lib/fiscalDates';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface CombinedFiscalRecord {
   id: string;
@@ -96,6 +97,9 @@ export function cleanFakeFiscalInvoices(): void {
 }
 
 export function OwnerFiscalInvoicesPanel() {
+  const { isAdmin, isManager, hasElevatedAccess } = useAuth();
+  const canModifyNf = Boolean(isAdmin || isManager || hasElevatedAccess);
+
   const { data: invoices = [], isLoading } = useInvoices();
   const { data: stores = [] } = useStores();
   const { toast } = useToast();
@@ -139,6 +143,14 @@ export function OwnerFiscalInvoicesPanel() {
   const [editNotes, setEditNotes] = useState('');
 
   const handleOpenEdit = (r: CombinedFiscalRecord) => {
+    if (!canModifyNf) {
+      toast({
+        variant: 'destructive',
+        title: 'Acesso Restrito',
+        description: 'Apenas a Diretoria e Gerência têm permissão para editar dados de Notas Fiscais.',
+      });
+      return;
+    }
     setEditingRecord(r);
     setEditInvoiceNumber(r.invoice_number);
     setEditStoreId(r.store_id || 'store-montesclaros');
@@ -150,6 +162,14 @@ export function OwnerFiscalInvoicesPanel() {
   };
 
   const handleSaveEdit = async () => {
+    if (!canModifyNf) {
+      toast({
+        variant: 'destructive',
+        title: 'Acesso Restrito',
+        description: 'Apenas a Diretoria e Gerência têm permissão para salvar alterações de Notas Fiscais.',
+      });
+      return;
+    }
     if (!editingRecord) return;
     if (!editInvoiceNumber.trim()) {
       toast({ variant: 'destructive', title: 'Número da NF obrigatório' });
@@ -1060,17 +1080,19 @@ export function OwnerFiscalInvoicesPanel() {
                         {/* Ações */}
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenEdit(r)}
-                              className="h-6 text-[10px] px-2 rounded-lg text-primary border-primary/30 hover:bg-primary/10 gap-1 font-semibold"
-                              title="Editar dados desta NF"
-                            >
-                              <Pencil className="w-3 h-3" />
-                              Editar
-                            </Button>
-                            {canCancel && (
+                            {canModifyNf && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenEdit(r)}
+                                className="h-6 text-[10px] px-2 rounded-lg text-primary border-primary/30 hover:bg-primary/10 gap-1 font-semibold"
+                                title="Editar dados desta NF"
+                              >
+                                <Pencil className="w-3 h-3" />
+                                Editar
+                              </Button>
+                            )}
+                            {canModifyNf && canCancel && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1086,11 +1108,13 @@ export function OwnerFiscalInvoicesPanel() {
                                 Cancelar NF
                               </Button>
                             )}
-                            {isCancel && (
+                            {isCancel ? (
                               <Badge variant="outline" className="text-[9px] text-muted-foreground">
                                 Cancelada
                               </Badge>
-                            )}
+                            ) : !canModifyNf ? (
+                              <span className="text-muted-foreground text-[10px]">Conferido</span>
+                            ) : null}
                           </div>
                         </TableCell>
                       </TableRow>

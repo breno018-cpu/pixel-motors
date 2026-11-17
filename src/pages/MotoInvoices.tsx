@@ -68,6 +68,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getLocalTodayDateString, normalizeDateToYMD, formatFiscalDate } from '@/lib/fiscalDates';
 import { cloudAttachInvoiceToSale } from '@/lib/cloudSalesSync';
+import { useAuth } from '@/contexts/AuthContext';
 
 const TYPE_TAG = 'moto';
 
@@ -92,6 +93,9 @@ const OPERATION_NATURE_OPTIONS = [
 ];
 
 export default function MotoInvoices() {
+  const { isAdmin, isManager, hasElevatedAccess } = useAuth();
+  const canModifyNf = Boolean(isAdmin || isManager || hasElevatedAccess);
+
   const { data: stores = [] } = useStores();
   const { data: vehicles = [] } = useVehicles();
   const { data: allContracts = [] } = useContracts();
@@ -308,6 +312,15 @@ export default function MotoInvoices() {
 
   // Handler para abrir edição de uma NF já cadastrada
   const handleOpenEdit = (inv: Invoice) => {
+    if (!canModifyNf) {
+      toast({
+        variant: 'destructive',
+        title: 'Acesso Restrito',
+        description: 'Apenas a Diretoria e Gerência têm permissão para editar dados de Notas Fiscais.',
+      });
+      return;
+    }
+
     const firstItem = (inv.items || [])[0];
     const chassiMatch = (inv.notes || '').match(/Chassi:\s*([^\s|—]+)/i);
     const alienacaoMatch = (inv.notes || '').match(/Alienação:\s*([^|—]+)/i);
@@ -370,6 +383,15 @@ export default function MotoInvoices() {
 
   // Submissão do cadastro semi-manual de NF
   const submit = async () => {
+    if (!canModifyNf) {
+      toast({
+        variant: 'destructive',
+        title: 'Acesso Restrito',
+        description: 'Apenas a Diretoria e Gerência têm permissão para cadastrar ou modificar Notas Fiscais.',
+      });
+      return;
+    }
+
     if (!form.invoice_number?.trim()) {
       toast({
         variant: 'destructive',
@@ -585,19 +607,21 @@ export default function MotoInvoices() {
         title="Notas Fiscais (NF)"
         description="Gestão semi-manual de notas fiscais: selecione a loja, vincule à venda realizada, preencha os dados e anexe a NF oficial."
         actions={
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingInvoiceId(null);
-              setForm(initialForm);
-              setAttachedFile(null);
-              setSelectedSaleId('');
-              setOpen(true);
-            }}
-            className="gap-1.5 font-semibold shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Cadastrar Nova NF
-          </Button>
+          canModifyNf ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingInvoiceId(null);
+                setForm(initialForm);
+                setAttachedFile(null);
+                setSelectedSaleId('');
+                setOpen(true);
+              }}
+              className="gap-1.5 font-semibold shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Cadastrar Nova NF
+            </Button>
+          ) : undefined
         }
       />
 
@@ -638,19 +662,21 @@ export default function MotoInvoices() {
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         As notas fiscais são cadastradas de forma semi-manual. Mesmo com vendas registradas, as NFs só aparecem aqui quando você cadastrar, selecionar a loja, vincular a venda e anexar a NF.
                       </p>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setEditingInvoiceId(null);
-                          setForm(initialForm);
-                          setAttachedFile(null);
-                          setSelectedSaleId('');
-                          setOpen(true);
-                        }}
-                        className="gap-1.5 font-semibold mt-2"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Cadastrar Primeira NF
-                      </Button>
+                      {canModifyNf && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setEditingInvoiceId(null);
+                            setForm(initialForm);
+                            setAttachedFile(null);
+                            setSelectedSaleId('');
+                            setOpen(true);
+                          }}
+                          className="gap-1.5 font-semibold mt-2"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Cadastrar Primeira NF
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -664,20 +690,31 @@ export default function MotoInvoices() {
                   return (
                     <TableRow key={inv.id} className="hover:bg-muted/20">
                       <TableCell>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(inv)}
-                          className="text-left group cursor-pointer focus:outline-none"
-                          title="Clique para editar dados desta Nota Fiscal"
-                        >
-                          <div className="font-mono font-bold text-sm text-foreground group-hover:text-primary group-hover:underline flex items-center gap-1.5">
-                            <span>NF {inv.invoice_number}</span>
-                            <Pencil className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {canModifyNf ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(inv)}
+                            className="text-left group cursor-pointer focus:outline-none"
+                            title="Clique para editar dados desta Nota Fiscal"
+                          >
+                            <div className="font-mono font-bold text-sm text-foreground group-hover:text-primary group-hover:underline flex items-center gap-1.5">
+                              <span>NF {inv.invoice_number}</span>
+                              <Pencil className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            {inv.series && (
+                              <div className="text-[11px] text-muted-foreground">Série {inv.series}</div>
+                            )}
+                          </button>
+                        ) : (
+                          <div>
+                            <div className="font-mono font-bold text-sm text-foreground">
+                              NF {inv.invoice_number}
+                            </div>
+                            {inv.series && (
+                              <div className="text-[11px] text-muted-foreground">Série {inv.series}</div>
+                            )}
                           </div>
-                          {inv.series && (
-                            <div className="text-[11px] text-muted-foreground">Série {inv.series}</div>
-                          )}
-                        </button>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs font-medium">
                         {formatFiscalDate(inv.issue_date)}
@@ -777,16 +814,18 @@ export default function MotoInvoices() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-2.5 text-xs font-semibold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 shadow-xs"
-                            title="Editar dados desta Nota Fiscal"
-                            onClick={() => handleOpenEdit(inv)}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            <span>Editar</span>
-                          </Button>
+                          {canModifyNf && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-2.5 text-xs font-semibold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 shadow-xs"
+                              title="Editar dados desta Nota Fiscal"
+                              onClick={() => handleOpenEdit(inv)}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span>Editar</span>
+                            </Button>
+                          )}
                           {hasAttachment && (
                             <Button
                               size="icon"
@@ -816,7 +855,7 @@ export default function MotoInvoices() {
                           >
                             <ImageDown className="w-4 h-4" />
                           </Button>
-                          {inv.status !== 'cancelada' && (
+                          {canModifyNf && inv.status !== 'cancelada' && (
                             <Button
                               size="icon"
                               variant="ghost"
@@ -830,19 +869,21 @@ export default function MotoInvoices() {
                               <XCircle className="w-4 h-4" />
                             </Button>
                           )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            title="Excluir cadastro da NF"
-                            onClick={async () => {
-                              if (window.confirm(`Deseja realmente remover o registro da NF ${inv.invoice_number}?`)) {
-                                await del.mutateAsync(inv.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {canModifyNf && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              title="Excluir cadastro da NF"
+                              onClick={async () => {
+                                if (window.confirm(`Deseja realmente remover o registro da NF ${inv.invoice_number}?`)) {
+                                  await del.mutateAsync(inv.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

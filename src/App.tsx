@@ -182,7 +182,7 @@ const App = () => {
               <Route
                 path="/moto-invoices"
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'gerente', 'vendedor', 'vendedor_plus', 'vendedor_externo']}>
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.moto_invoices">
                     <MainLayout>
                       <MotoInvoices />
                     </MainLayout>
@@ -212,7 +212,7 @@ const App = () => {
               <Route
                 path="/owner-dashboard"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.reports">
                     <MainLayout>
                       <OwnerDashboard />
                     </MainLayout>
