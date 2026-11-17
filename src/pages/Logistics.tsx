@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Route,
   Navigation,
+  Calculator,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ import { getLiveSheetRows, formatCurrencyBRL } from '@/lib/dealershipSheetParser
 import { buildLogisticsDeliveries, DeliveryRecord, DeliveryStatus } from '@/lib/logisticsStorage';
 import { DeliveryManageModal } from '@/components/logistics/DeliveryManageModal';
 import { AuthorizedEntryDeliveryTermModal } from '@/components/logistics/AuthorizedEntryDeliveryTermModal';
+import { FreightCalculatorDialog } from '@/components/logistics/FreightCalculatorDialog';
 import { TRANSPORT_LOGISTICS_METHODS } from '@/lib/transportLogistics';
 import { exportToXLSX } from '@/lib/export';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -45,7 +47,9 @@ export default function Logistics() {
 
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [termModalOpen, setTermModalOpen] = useState(false);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryRecord | null>(null);
+  const [calcDelivery, setCalcDelivery] = useState<DeliveryRecord | null>(null);
 
   // Carrega vendas reais da planilha e constrói registros operacionais
   const sheetRows = useMemo(() => getLiveSheetRows(), []);
@@ -178,15 +182,28 @@ export default function Logistics() {
           </Badge>
         }
         actions={
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleExportXLSX}
-            className="gap-1.5 font-medium"
-          >
-            <Download className="w-3.5 h-3.5 text-primary" />
-            Exportar XLSX
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                setCalcDelivery(null);
+                setCalculatorOpen(true);
+              }}
+              className="gap-1.5 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs"
+            >
+              <Calculator className="w-3.5 h-3.5" />
+              Simular Frete
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportXLSX}
+              className="gap-1.5 font-medium"
+            >
+              <Download className="w-3.5 h-3.5 text-primary" />
+              Exportar XLSX
+            </Button>
+          </div>
         }
       />
 
@@ -401,6 +418,20 @@ export default function Logistics() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            onClick={() => {
+                              setCalcDelivery(item);
+                              setCalculatorOpen(true);
+                            }}
+                            className="h-8 text-xs font-bold gap-1 text-sky-600 hover:bg-sky-500/10 rounded-lg"
+                            title="Simular e comparar cálculo de frete para este destino"
+                          >
+                            <Calculator className="w-3.5 h-3.5" />
+                            <span className="hidden xl:inline">Frete</span>
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => handleEditDelivery(item)}
                             className="h-8 text-xs font-bold gap-1 text-primary hover:bg-primary/10 rounded-lg"
                             title="Gerenciar despacho e motorista"
@@ -430,7 +461,7 @@ export default function Logistics() {
         </CardContent>
       </Card>
 
-      {/* Modais de Gestão e Termo */}
+      {/* Modais de Gestão, Termo e Simulador de Frete */}
       <DeliveryManageModal
         open={manageModalOpen}
         onOpenChange={setManageModalOpen}
@@ -442,6 +473,16 @@ export default function Logistics() {
         open={termModalOpen}
         onOpenChange={setTermModalOpen}
         delivery={selectedDelivery}
+      />
+
+      <FreightCalculatorDialog
+        key={calcDelivery ? calcDelivery.saleId : 'generic-calc'}
+        open={calculatorOpen}
+        onOpenChange={setCalculatorOpen}
+        initialDestinationCity={calcDelivery ? `${calcDelivery.regiao} - ${calcDelivery.uf}` : undefined}
+        initialKm={calcDelivery?.distanciaKm}
+        customerName={calcDelivery?.cliente}
+        vehicleModel={calcDelivery?.modelo}
       />
     </div>
   );

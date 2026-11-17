@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -74,6 +74,18 @@ export function FreightCalculatorDialog({
   const [selectedMethodId, setSelectedMethodId] = useState<string>('cegonha_coletiva');
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    if (open) {
+      if (initialDestinationCity) {
+        setDestinationCity(initialDestinationCity);
+      }
+      if (typeof initialKm === 'number' && !isNaN(initialKm)) {
+        setRoadKm(initialKm);
+      }
+      setVehicleCount(1);
+    }
+  }, [open, initialDestinationCity, initialKm]);
+
   // Seleciona preset de cidade
   const handleSelectPreset = (preset: typeof PRESET_CITIES[0]) => {
     setDestinationCity(preset.city);
@@ -140,6 +152,20 @@ Qualquer dúvida estamos à disposição para agendar a expedição do seu veíc
               <DialogDescription className="text-xs text-muted-foreground">
                 Cotação instantânea de fretes rodoviários, prazos de entrega e seguro de carga para propostas comerciais.
               </DialogDescription>
+              {(customerName || (vehicleModel && vehicleModel !== 'Motocicleta 0km')) && (
+                <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-border/50">
+                  {customerName && (
+                    <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                      Cliente: <strong>{customerName}</strong>
+                    </span>
+                  )}
+                  {vehicleModel && (
+                    <span className="text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md">
+                      Modelo: <strong>{vehicleModel}</strong>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </DialogHeader>
