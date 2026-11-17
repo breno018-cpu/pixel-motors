@@ -648,6 +648,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'page.inspections',
         'page.sales',
         'page.settings',
+        'page.moto_invoices',
         'sales.create',
         'sales.edit',
         'sales.delete',

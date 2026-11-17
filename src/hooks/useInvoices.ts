@@ -8,6 +8,8 @@ import {
   cloudDeleteInvoice,
   RegisteredInvoice,
 } from '@/lib/cloudSalesSync';
+import { normalizeDateToYMD, getLocalTodayDateString } from '@/lib/fiscalDates';
+import { STORE_DIVINOPOLIS_UUID } from '@/hooks/useStores';
 
 export interface InvoiceItem {
   description: string;
@@ -212,15 +214,94 @@ export function useUpsertInvoice() {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
+    onMutate: async (input: any) => {
+      await qc.cancelQueries({ queryKey: ['invoices'] });
+      await qc.cancelQueries({ queryKey: ['store-fiscal-invoices'] });
+
+      const prevInvoices = qc.getQueryData<Invoice[]>(['invoices']) || [];
+      const cleanIssueDate = normalizeDateToYMD(input.issue_date);
+      const isMoc = (input.store_id || '').includes('montes') || (input.store_name || '').toLowerCase().includes('montes');
+
+      const optimisticInvoice: Invoice = {
+        id: input.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `inv-${Date.now()}`),
+        invoice_number: String(input.invoice_number || '').trim(),
+        series: input.series || '1',
+        access_key: input.access_key,
+        invoice_type: 'produto',
+        issue_date: cleanIssueDate,
+        store_id: input.store_id || STORE_DIVINOPOLIS_UUID,
+        sale_id: input.sale_id || null,
+        contract_number: input.contract_number || null,
+        customer_name: input.customer_name || 'Consumidor Final',
+        customer_document: input.customer_document || null,
+        customer_phone: input.customer_phone || null,
+        customer_email: input.customer_email || null,
+        customer_address: input.customer_address || null,
+        items: input.items || [
+          {
+            description: `${input.vehicle_brand || 'SHINERAY'} ${input.vehicle_model || 'Motocicleta'} (Chassi: ${input.vehicle_chassis || 'Não informado'})`,
+            quantity: 1,
+            unit_value: Number(input.total || input.total_value || 0),
+            chassis: input.vehicle_chassis,
+            contract_number: input.contract_number,
+            sale_id: input.sale_id,
+            attachment_name: input.attachment_name,
+            attachment_url: input.attachment_url,
+          },
+        ],
+        subtotal: Number(input.total || input.total_value || 0),
+        tax_rate: Number(input.tax_rate || 0),
+        tax_value: Number(input.tax_value || 0),
+        total: Number(input.total || input.total_value || 0),
+        status: input.status || 'emitida',
+        notes: input.notes,
+        attachment_name: input.attachment_name || null,
+        attachment_url: input.attachment_url || null,
+        attachment_size: input.attachment_size || null,
+        attachment_type: input.attachment_type || null,
+        created_at: input.created_at || new Date().toISOString(),
+        store: {
+          id: input.store_id || STORE_DIVINOPOLIS_UUID,
+          name: input.store_name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
+          city: isMoc ? 'Montes Claros' : 'Divinópolis',
+          state: 'MG',
+        },
+      };
+
+      qc.setQueryData<Invoice[]>(['invoices'], (old = []) => {
+        const idx = old.findIndex(
+          (x) => x.id === optimisticInvoice.id || (x.invoice_number === optimisticInvoice.invoice_number && x.store_id === optimisticInvoice.store_id)
+        );
+        if (idx >= 0) {
+          const updated = [...old];
+          updated[idx] = { ...updated[idx], ...optimisticInvoice };
+          return updated;
+        }
+        return [optimisticInvoice, ...old];
+      });
+
+      return { prevInvoices };
+    },
     mutationFn: async (input: any) => {
-      const id = input.id || `inv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const isUuid = (val: any) =>
+        typeof val === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      const id = isUuid(input.id)
+        ? input.id
+        : typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0');
+
+      const cleanIssueDate = normalizeDateToYMD(input.issue_date);
+
       const regInvoice: RegisteredInvoice = {
         id,
         invoice_number: String(input.invoice_number || '').trim(),
         series: input.series || '1',
         access_key: input.access_key || undefined,
-        issue_date: input.issue_date || new Date().toISOString().slice(0, 10),
-        store_id: input.store_id || 'store-divinopolis',
+        issue_date: cleanIssueDate,
+        store_id: input.store_id || STORE_DIVINOPOLIS_UUID,
         store_name: input.store_name,
         sale_id: input.sale_id || undefined,
         contract_number: input.contract_number || undefined,
@@ -258,11 +339,15 @@ export function useUpsertInvoice() {
       qc.invalidateQueries({ queryKey: ['contracts'] });
       toast({
         title: 'Nota Fiscal cadastrada com sucesso!',
-        description: `NF Nº ${data.invoice_number} vinculada e salva na nuvem.`,
+        description: `NF Nº ${data.invoice_number} vinculada e salva com sucesso.`,
       });
     },
-    onError: (e: any) =>
-      toast({ variant: 'destructive', title: 'Erro ao cadastrar NF', description: e?.message }),
+    onError: (e: any, _vars, context: any) => {
+      if (context?.prevInvoices) {
+        qc.setQueryData(['invoices'], context.prevInvoices);
+      }
+      toast({ variant: 'destructive', title: 'Erro ao cadastrar NF', description: e?.message });
+    },
   });
 }
 

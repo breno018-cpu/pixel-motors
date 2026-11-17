@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import type { Invoice } from '@/hooks/useInvoices';
+import { formatFiscalDate } from '@/lib/fiscalDates';
 
 function fmt(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
@@ -33,7 +34,7 @@ export function downloadInvoicePDF(inv: Invoice) {
   doc.text(inv.invoice_type === 'servico' ? 'PRESTAÇÃO DE SERVIÇOS' : 'VENDA DE PRODUTOS', m, 19);
   doc.text(`Nº ${inv.invoice_number}`, w - m, 14, { align: 'right' });
   doc.text(
-    `Emissão: ${new Date(inv.issue_date).toLocaleDateString('pt-BR')}`,
+    `Emissão: ${formatFiscalDate(inv.issue_date)}`,
     w - m,
     19,
     { align: 'right' },

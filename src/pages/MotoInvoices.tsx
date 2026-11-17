@@ -49,7 +49,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useStores } from '@/hooks/useStores';
+import { useStores, STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/hooks/useStores';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useContracts, Contract } from '@/hooks/useContracts';
 import {
@@ -65,6 +65,7 @@ import { maskCPFCNPJ, maskPhone, maskCurrency, parseCurrency } from '@/lib/masks
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { getLocalTodayDateString, normalizeDateToYMD, formatFiscalDate } from '@/lib/fiscalDates';
 
 const TYPE_TAG = 'moto';
 
@@ -113,7 +114,7 @@ export default function MotoInvoices() {
   } | null>(null);
 
   // Estados do Cancelamento
-  const [cancelDate, setCancelDate] = useState(new Date().toISOString().slice(0, 10));
+  const [cancelDate, setCancelDate] = useState(getLocalTodayDateString());
   const [cancelReason, setCancelReason] = useState('');
   const [cancelType, setCancelType] = useState<'estorno' | 'credito' | 'devolucao'>('estorno');
   const [cancelProtocol, setCancelProtocol] = useState('');
@@ -135,8 +136,8 @@ export default function MotoInvoices() {
     invoice_number: '',
     series: '1',
     access_key: '',
-    issue_date: new Date().toISOString().slice(0, 10),
-    store_id: 'store-divinopolis',
+    issue_date: getLocalTodayDateString(),
+    store_id: STORE_DIVINOPOLIS_UUID,
     sale_id: '',
     contract_number: '',
     customer_name: '',
@@ -227,10 +228,14 @@ export default function MotoInvoices() {
       ext.banco ||
       (sale.installments > 1 || ext.financiamento > 0 ? 'FINANCIAMENTO' : 'À VISTA');
 
+    const saleDateRaw = sale.contract_date || ext.data || ext.data_venda || sale.created_at;
+    const resolvedSaleDate = saleDateRaw ? normalizeDateToYMD(saleDateRaw) : undefined;
+
     setForm((prev: any) => ({
       ...prev,
       sale_id: sale.id,
       contract_number: sale.contract_number,
+      issue_date: resolvedSaleDate || prev.issue_date || getLocalTodayDateString(),
       customer_name: sale.buyer_name || prev.customer_name,
       customer_document: sale.buyer_cpf ? maskCPFCNPJ(sale.buyer_cpf) : prev.customer_document,
       customer_phone: sale.buyer_phone ? maskPhone(sale.buyer_phone) : prev.customer_phone,
@@ -321,12 +326,14 @@ export default function MotoInvoices() {
 
     const cleanNum = form.invoice_number.trim();
     const cleanChassis = (form.vehicle_chassis || '').trim().toUpperCase();
+    const normalizedDate = normalizeDateToYMD(form.issue_date);
 
     const payload = {
       ...form,
       invoice_number: cleanNum,
       series: form.series || '1',
       access_key: form.access_key?.replace(/\D/g, '') || undefined,
+      issue_date: normalizedDate,
       store_name: storeName,
       vehicle_chassis: cleanChassis,
       total_value: Number(form.total_value) || 0,
@@ -347,12 +354,14 @@ export default function MotoInvoices() {
       ],
     };
 
+    // Fecha o modal e reseta formulário imediatamente para feedback instantâneo (0ms)
+    setOpen(false);
+    setForm(initialForm);
+    setAttachedFile(null);
+    setSelectedSaleId('');
+
     try {
       await upsert.mutateAsync(payload);
-      setForm(initialForm);
-      setAttachedFile(null);
-      setSelectedSaleId('');
-      setOpen(false);
     } catch (e: any) {
       toast({
         variant: 'destructive',
@@ -527,8 +536,8 @@ export default function MotoInvoices() {
                           <div className="text-[11px] text-muted-foreground">Série {inv.series}</div>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        {inv.issue_date ? new Date(inv.issue_date + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
+                      <TableCell className="text-xs font-medium">
+                        {formatFiscalDate(inv.issue_date)}
                       </TableCell>
                       <TableCell className="text-xs font-medium">
                         {inv.store?.name || 'Concessionária'}
@@ -1037,7 +1046,7 @@ export default function MotoInvoices() {
                 </div>
                 <div className="text-muted-foreground">Cliente: {selectedInvoiceToCancel.customer_name}</div>
                 <div className="text-[11px] text-muted-foreground">
-                  Emissão: {new Date(selectedInvoiceToCancel.issue_date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                  Emissão: {formatFiscalDate(selectedInvoiceToCancel.issue_date)}
                 </div>
               </div>
 

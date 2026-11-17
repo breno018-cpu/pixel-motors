@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { formatFiscalDate, getLocalTodayDateString } from '@/lib/fiscalDates';
 import { 
   Dialog, 
   DialogContent, 
@@ -134,8 +135,8 @@ export function StoreFiscalControlPanel() {
     series: '1',
     access_key: '',
     store_id: '',
-    issue_date: new Date().toISOString().slice(0, 10),
-    entry_date: new Date().toISOString().slice(0, 10),
+    issue_date: getLocalTodayDateString(),
+    entry_date: getLocalTodayDateString(),
     party_name: 'SHINERAY DO BRASIL S.A.',
     party_document: '04.912.449/0001-44',
     total_value: '',
@@ -305,8 +306,8 @@ export function StoreFiscalControlPanel() {
         series: '1',
         access_key: '',
         store_id: '',
-        issue_date: new Date().toISOString().slice(0, 10),
-        entry_date: new Date().toISOString().slice(0, 10),
+        issue_date: getLocalTodayDateString(),
+        entry_date: getLocalTodayDateString(),
         party_name: 'SHINERAY DO BRASIL S.A.',
         party_document: '04.912.449/0001-44',
         total_value: '',
@@ -983,7 +984,7 @@ export function StoreFiscalControlPanel() {
                           </TableCell>
 
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                            {rec.entry_or_cancel_date}
+                            {formatFiscalDate(rec.entry_or_cancel_date)}
                           </TableCell>
 
                           <TableCell className="text-right font-display font-black text-xs text-foreground whitespace-nowrap">

@@ -36,6 +36,7 @@ import { useStores } from '@/hooks/useStores';
 import { useToast } from '@/hooks/use-toast';
 import { exportToXLSX } from '@/lib/export';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
+import { formatFiscalDate, getLocalTodayDateString } from '@/lib/fiscalDates';
 
 export interface CombinedFiscalRecord {
   id: string;
@@ -520,8 +521,8 @@ export function OwnerFiscalInvoicesPanel() {
           : new Date(r.event_date).getDate() <= 28
           ? 'Semana 4'
           : 'Semana 5',
-      Data_Evento_Semana: r.event_date ? new Date(r.event_date).toLocaleDateString('pt-BR') : '—',
-      Data_Emissao_Original: r.issue_date ? new Date(r.issue_date).toLocaleDateString('pt-BR') : '—',
+      Data_Evento_Semana: formatFiscalDate(r.event_date),
+      Data_Emissao_Original: formatFiscalDate(r.issue_date),
       Concessionaria: r.store_name,
       Cliente_Fornecedor: r.party_name,
       Valor_Total: r.total_value,
@@ -899,13 +900,13 @@ export function OwnerFiscalInvoicesPanel() {
                         {/* Data da Operação nesta Semana */}
                         <TableCell className="text-xs">
                           <span className="font-semibold text-foreground">
-                            {r.event_date ? new Date(r.event_date).toLocaleDateString('pt-BR') : '—'}
+                            {formatFiscalDate(r.event_date)}
                           </span>
                         </TableCell>
 
                         {/* Emissão Original */}
                         <TableCell className="text-xs text-muted-foreground">
-                          {r.issue_date ? new Date(r.issue_date).toLocaleDateString('pt-BR') : '—'}
+                          {formatFiscalDate(r.issue_date)}
                         </TableCell>
 
                         {/* Concessionária */}
@@ -963,7 +964,7 @@ export function OwnerFiscalInvoicesPanel() {
                               size="sm"
                               onClick={() => {
                                 setInvoiceToCancel(r);
-                                setCancellationDate(new Date().toISOString().slice(0, 10));
+                                setCancellationDate(getLocalTodayDateString());
                                 setCancellationType('estorno');
                                 setCancellationReason('');
                               }}
@@ -1131,7 +1132,7 @@ export function OwnerFiscalInvoicesPanel() {
               Cancelar Nota Fiscal #{invoiceToCancel?.invoice_number}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              O cancelamento não apaga a NF original emitida em {invoiceToCancel ? new Date(invoiceToCancel.issue_date).toLocaleDateString('pt-BR') : ''}. Ele registra a operação de cancelamento na semana indicada para controle de estorno ou crédito fiscal do dono.
+              O cancelamento não apaga a NF original emitida em {invoiceToCancel ? formatFiscalDate(invoiceToCancel.issue_date) : ''}. Ele registra a operação de cancelamento na semana indicada para controle de estorno ou crédito fiscal do dono.
             </DialogDescription>
           </DialogHeader>
 
@@ -1147,7 +1148,7 @@ export function OwnerFiscalInvoicesPanel() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Data da Emissão Original:</span>
-                <span className="font-mono">{invoiceToCancel ? new Date(invoiceToCancel.issue_date).toLocaleDateString('pt-BR') : ''}</span>
+                <span className="font-mono">{invoiceToCancel ? formatFiscalDate(invoiceToCancel.issue_date) : ''}</span>
               </div>
             </div>
 

@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatFiscalDate, getLocalTodayDateString } from '@/lib/fiscalDates';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -2281,9 +2282,7 @@ function InvoicesTab() {
                     <TableCell className="text-sm capitalize">{inv.invoice_type}</TableCell>
                     <TableCell className="text-sm">{inv.customer_name}</TableCell>
                     <TableCell className="text-sm">
-                      {inv.issue_date && !isNaN(new Date(inv.issue_date).getTime())
-                        ? new Date(inv.issue_date).toLocaleDateString('pt-BR')
-                        : '—'}
+                      {formatFiscalDate(inv.issue_date)}
                     </TableCell>
                     <TableCell className="text-sm font-medium text-primary">
                       {fmt(inv.total)}
@@ -2379,7 +2378,7 @@ function InvoiceDialog({
 
   const [form, setForm] = useState({
     invoice_type: 'servico' as 'servico' | 'produto',
-    issue_date: new Date().toISOString().slice(0, 10),
+    issue_date: getLocalTodayDateString(),
     store_id: '',
     customer_name: '',
     customer_document: '',
@@ -2411,7 +2410,7 @@ function InvoiceDialog({
     } else if (open) {
       setForm({
         invoice_type: 'servico',
-        issue_date: new Date().toISOString().slice(0, 10),
+        issue_date: getLocalTodayDateString(),
         store_id: '',
         customer_name: '',
         customer_document: '',
