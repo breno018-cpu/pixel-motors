@@ -615,7 +615,7 @@ export default function MotoInvoices() {
                 <TableHead className="text-right font-semibold">Valor da NF</TableHead>
                 <TableHead className="text-center font-semibold">Arquivo Anexo</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
-                <TableHead className="text-right font-semibold w-36">Ações</TableHead>
+                <TableHead className="text-right font-semibold min-w-[210px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -664,12 +664,20 @@ export default function MotoInvoices() {
                   return (
                     <TableRow key={inv.id} className="hover:bg-muted/20">
                       <TableCell>
-                        <div className="font-mono font-bold text-sm text-foreground">
-                          NF {inv.invoice_number}
-                        </div>
-                        {inv.series && (
-                          <div className="text-[11px] text-muted-foreground">Série {inv.series}</div>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(inv)}
+                          className="text-left group cursor-pointer focus:outline-none"
+                          title="Clique para editar dados desta Nota Fiscal"
+                        >
+                          <div className="font-mono font-bold text-sm text-foreground group-hover:text-primary group-hover:underline flex items-center gap-1.5">
+                            <span>NF {inv.invoice_number}</span>
+                            <Pencil className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          {inv.series && (
+                            <div className="text-[11px] text-muted-foreground">Série {inv.series}</div>
+                          )}
+                        </button>
                       </TableCell>
                       <TableCell className="text-xs font-medium">
                         {formatFiscalDate(inv.issue_date)}
@@ -770,13 +778,14 @@ export default function MotoInvoices() {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2.5 text-xs font-semibold gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 shadow-xs"
                             title="Editar dados desta Nota Fiscal"
                             onClick={() => handleOpenEdit(inv)}
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Editar</span>
                           </Button>
                           {hasAttachment && (
                             <Button
