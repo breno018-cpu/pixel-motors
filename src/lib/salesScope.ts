@@ -32,13 +32,21 @@ export interface UserAuthScopeContext {
 
 /**
  * Retorna true se o usuário atual tem escopo restrito de vendedor.
- * Por padrão, vendedores de concessionária têm visibilidade de vendas para acompanhamento
- * do estoque, pré-vendas e faturamento da equipe, evitando que vendas "sumam" da tela.
- * O escopo estrito 'own' é aplicado apenas se explicitamente configurado no perfil.
+ * Administradores, Gerentes e Usuários Master possuem acesso universal (não restrito).
+ * Vendedores têm acesso estritamente às suas próprias vendas ('own').
  */
 export function isUserSellerRestricted(auth: UserAuthScopeContext): boolean {
-  // Acesso universal a vendas: nenhuma venda é ocultada da equipe para evitar divergências e telas vazias
-  return false;
+  if (isMasterUser(auth.fullName, auth.email, auth.userId || auth.profileId)) {
+    return false;
+  }
+  if (auth.isAdmin || auth.isManager || auth.hasElevatedAccess) {
+    return false;
+  }
+  const roles = auth.roles || [];
+  if (roles.includes('admin') || roles.includes('gerente')) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -125,6 +133,61 @@ export function resolveUserSellerStore(
   };
 }
 
+export const GENERIC_SELLER_WORDS = new Set([
+  'vendedor',
+  'vendedora',
+  'shineray',
+  'shineraymoc',
+  'shineraymocn',
+  'shineraymocs',
+  'shineraymoch',
+  'shineraydiv',
+  'shineraydivl',
+  'shineraydivg',
+  'shineraydivd',
+  'shineraydive',
+  'motos',
+  'moto',
+  'concessionaria',
+  'divinopolis',
+  'montes',
+  'claros',
+  'admin',
+  'administrador',
+  'user',
+  'usuario',
+  'gerente',
+  'loja',
+]);
+
+/**
+ * Validação rigorosa de correspondência entre nomes de vendedor.
+ * Impede falsos positivos entre vendedores com prefixos similares (ex: Mariana vs Natan).
+ */
+export function isSellerNameMatch(sellerOnSale: string, targetSeller: string): boolean {
+  const sNorm = normalizeName(sellerOnSale);
+  const tNorm = normalizeName(targetSeller);
+  if (!sNorm || !tNorm) return false;
+  if (GENERIC_SELLER_WORDS.has(sNorm) || GENERIC_SELLER_WORDS.has(tNorm)) return false;
+
+  // Igualdade exata
+  if (sNorm === tNorm) return true;
+
+  const sWords = sNorm.split(' ').filter((w) => w.length >= 3 && !GENERIC_SELLER_WORDS.has(w));
+  const tWords = tNorm.split(' ').filter((w) => w.length >= 3 && !GENERIC_SELLER_WORDS.has(w));
+
+  if (sWords.length === 0 || tWords.length === 0) return false;
+
+  // Primeiro nome coincide exatamente (ex: "Mariana" === "Mariana")
+  if (sWords[0] === tWords[0]) return true;
+
+  // Se um for nome composto e contiver o outro termo inteiro (ex: "Mariana Sabino" contém "Sabino" ou "Mariana")
+  if (sWords.length > 1 && tWords.length === 1 && sWords.includes(tWords[0])) return true;
+  if (tWords.length > 1 && sWords.length === 1 && tWords.includes(sWords[0])) return true;
+
+  return false;
+}
+
 /**
  * Obtém a identidade completa do usuário para comparação com registros de venda
  */
@@ -137,28 +200,28 @@ export function getUserSalesIdentity(
 
   if (auth.userId) userIds.add(auth.userId.toLowerCase().trim());
   if (auth.profileId) userIds.add(auth.profileId.toLowerCase().trim());
+  if (auth.email) {
+    const cleanMail = auth.email.toLowerCase().trim();
+    userIds.add(cleanMail);
+    const emailPrefix = cleanMail.split('@')[0];
+    if (emailPrefix) userIds.add(emailPrefix);
+  }
 
   let displayName = auth.fullName || 'Vendedor';
 
-  if (auth.fullName) {
-    const norm = normalizeName(auth.fullName);
-    if (norm) {
-      userNames.add(norm);
-      norm.split(' ').forEach((part) => {
-        if (part.length >= 3) userNames.add(part);
-      });
-    }
-  }
+  const addNameTokens = (fullName?: string | null) => {
+    if (!fullName) return;
+    const norm = normalizeName(fullName);
+    if (!norm || GENERIC_SELLER_WORDS.has(norm)) return;
+    userNames.add(norm);
+    norm.split(' ').forEach((part) => {
+      if (part.length >= 3 && !GENERIC_SELLER_WORDS.has(part)) {
+        userNames.add(part);
+      }
+    });
+  };
 
-  if (auth.email) {
-    const emailPrefix = auth.email.split('@')[0].toLowerCase().trim();
-    if (emailPrefix) {
-      userNames.add(normalizeName(emailPrefix));
-      emailPrefix.split('.').forEach((part) => {
-        if (part.length >= 3) userNames.add(normalizeName(part));
-      });
-    }
-  }
+  addNameTokens(auth.fullName);
 
   // Tenta achar o colaborador associado na tabela employees
   const userEmailNorm = (auth.email || '').toLowerCase().trim();
@@ -179,15 +242,10 @@ export function getUserSalesIdentity(
 
   if (linkedEmp) {
     if (linkedEmp.id) userIds.add(linkedEmp.id.toLowerCase().trim());
+    if (linkedEmp.email) userIds.add(linkedEmp.email.toLowerCase().trim());
     if (linkedEmp.full_name) {
       displayName = linkedEmp.full_name;
-      const empNorm = normalizeName(linkedEmp.full_name);
-      if (empNorm) {
-        userNames.add(empNorm);
-        empNorm.split(' ').forEach((part) => {
-          if (part.length >= 3) userNames.add(part);
-        });
-      }
+      addNameTokens(linkedEmp.full_name);
     }
   }
 
@@ -203,26 +261,16 @@ export function getUserSalesIdentity(
 
   if (matchedOfficial) {
     if (matchedOfficial.id) userIds.add(matchedOfficial.id.toLowerCase());
-    if (matchedOfficial.email) {
-      userIds.add(matchedOfficial.email.toLowerCase());
-      const pfx = matchedOfficial.email.split('@')[0].toLowerCase();
-      userNames.add(normalizeName(pfx));
-    }
+    if (matchedOfficial.email) userIds.add(matchedOfficial.email.toLowerCase());
     if (matchedOfficial.full_name) {
       if (!linkedEmp) displayName = matchedOfficial.full_name;
-      const offNorm = normalizeName(matchedOfficial.full_name);
-      userNames.add(offNorm);
-      offNorm.split(' ').forEach((part) => {
-        if (part.length >= 3) userNames.add(part);
-      });
+      addNameTokens(matchedOfficial.full_name);
     }
     matchedOfficial.aliases?.forEach((alias) => {
       const aliasClean = alias.toLowerCase().trim();
       userIds.add(aliasClean);
-      userNames.add(normalizeName(aliasClean));
-      if (aliasClean.includes('@')) {
-        const pfx = aliasClean.split('@')[0];
-        userNames.add(normalizeName(pfx));
+      if (!aliasClean.includes('@') && !GENERIC_SELLER_WORDS.has(aliasClean)) {
+        addNameTokens(aliasClean);
       }
     });
   }
@@ -248,7 +296,7 @@ export function isSaleOwnedByCurrentUser(
 
   const { userIds, userNames } = getUserSalesIdentity(auth, employees);
 
-  // 1. Verificação por IDs (UUID / Chave de criação / Reseller / Operador / Employee)
+  // 1. Verificação exata por IDs / Emails (UUID / Chave de criação / Reseller / Operador / Employee)
   const saleCreatedBy = (sale.created_by || '').trim().toLowerCase();
   const saleResellerId = (sale.reseller_id || '').trim().toLowerCase();
   const saleOperatorId = (sale.operator?.id || '').trim().toLowerCase();
@@ -267,35 +315,22 @@ export function isSaleOwnedByCurrentUser(
   if (saleExtCreatedBy && userIds.has(saleExtCreatedBy)) return true;
   if (saleExtUserId && userIds.has(saleExtUserId)) return true;
 
-  // 2. Verificação por Nomes (Vendedor, Operador, Planilha)
+  // 2. Verificação precisa por Nomes (Vendedor, Operador, Planilha)
   const saleSellerNames = [
     sale.operator?.full_name,
     sale.seller_name,
     sale.vendedor,
-    sale.created_by,
-    sale.external_data?.seller_name,
-    sale.external_data?.vendedor,
-    sale.external_data?.operator?.full_name,
+    (sale as any).external_data?.seller_name,
+    (sale as any).external_data?.vendedor,
+    (sale as any).external_data?.operator?.full_name,
   ]
     .filter(Boolean)
-    .map((s) => normalizeName(String(s)));
+    .map((s) => String(s).trim());
 
   for (const sName of saleSellerNames) {
     if (!sName) continue;
-
     for (const uName of userNames) {
-      if (sName === uName) return true;
-      if (sName.includes(uName) || uName.includes(sName)) return true;
-
-      const sParts = sName.split(' ');
-      const uParts = uName.split(' ');
-      for (const sp of sParts) {
-        for (const up of uParts) {
-          if (sp.length >= 3 && up.length >= 3 && sp === up) {
-            return true;
-          }
-        }
-      }
+      if (isSellerNameMatch(sName, uName)) return true;
     }
   }
 

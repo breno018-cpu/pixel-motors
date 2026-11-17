@@ -137,7 +137,7 @@ function readAuthCache(): CachedUserData | null {
       if (!parsed.roles || parsed.roles.length === 0) {
         parsed.roles = ['vendedor'];
       }
-      parsed.dataScope = 'all';
+      parsed.dataScope = 'own';
       parsed.permissions = [
         'page.dashboard',
         'page.vehicles',
@@ -683,7 +683,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userEmail = data.user.email || cleanEmail;
             const isMasterSupabase = isMasterUser(fullName, userEmail, data.user.id);
             const initialRoles: AppRole[] = isMasterSupabase ? ['admin', 'gerente'] : ['vendedor'];
-            const initialScope: DataScope = 'all';
+            const initialScope: DataScope = isMasterSupabase ? 'all' : 'own';
             const initialPerms = isMasterSupabase ? ['*'] : SELLER_DEFAULT_PERMS;
 
             setRoles(initialRoles);
@@ -960,7 +960,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isMasterUserFlag = isMasterUser(matchedUser.full_name, matchedUser.email, matchedUser.id);
       const roleName: AppRole = (matchedUser.role as AppRole) || (isMasterUserFlag ? 'admin' : 'vendedor');
       const isElevated = isMasterUserFlag || roleName === 'admin' || roleName === 'gerente';
-      const currentScope: DataScope = 'all';
+      const currentScope: DataScope = isElevated ? 'all' : 'own';
       const currentPerms = isElevated ? ['*'] : SELLER_DEFAULT_PERMS;
 
       const sId = (matchedUser.store_id || '').toLowerCase().trim();

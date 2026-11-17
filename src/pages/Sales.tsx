@@ -434,6 +434,27 @@ export default function Sales() {
       .filter((c) => !isDeleted(c))
       .map(applyStatusOverrides);
 
+    if (isRestrictedSeller) {
+      return filterSalesBySellerScope(
+        rawConsolidated,
+        {
+          userId: user?.id,
+          profileId: profile?.id,
+          fullName: profile?.full_name,
+          email: user?.email,
+          roles,
+          isAdmin,
+          isManager,
+          hasElevatedAccess,
+          isSeller,
+          isSellerPlus,
+          isExternalSeller,
+          dataScope,
+        },
+        employees
+      );
+    }
+
     return rawConsolidated;
   }, [
     contracts,
@@ -547,7 +568,7 @@ export default function Sales() {
       if (resellerFilter === 'mine') {
         matchesReseller = matchesSellerFilter(sale, profile?.full_name || user?.email || '', employees);
       } else if (resellerFilter !== 'all') {
-        matchesReseller = isRestrictedSeller || matchesSellerFilter(sale, resellerFilter, employees);
+        matchesReseller = matchesSellerFilter(sale, resellerFilter, employees);
       }
       if (!matchesReseller) return false;
 

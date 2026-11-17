@@ -1,6 +1,6 @@
 import { DEFAULT_OFFICIAL_USERS, STORE_UUIDS } from '@/lib/userService';
 import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID, STORE_MONTESCLAROS_MULTIMARCAS_UUID, isMatchingStore, SELLER_TO_STORE_MAP } from '@/lib/storeResolution';
-import { normalizeName } from '@/lib/salesScope';
+import { normalizeName, isSellerNameMatch } from '@/lib/salesScope';
 
 /**
  * Verifica se uma string corresponde a um UUID (v4 ou padrão de 36 caracteres com hífens).
@@ -280,18 +280,18 @@ export function matchesSellerFilter(
 ): boolean {
   if (!selectedSeller || selectedSeller === 'all') return true;
 
-  const target = normalizeName(selectedSeller);
+  const target = selectedSeller.trim();
   if (!target) return true;
 
   // 1. Compara nomes textuais na venda
   const ext = (sale.external_data || {}) as any;
-  const operatorName = normalizeName(sale.operator?.full_name);
-  const vendedor = normalizeName(sale.vendedor);
-  const sellerName = normalizeName(sale.seller_name || ext.seller_name || ext.operator_name || ext.vendedor);
+  const operatorName = sale.operator?.full_name;
+  const vendedor = sale.vendedor;
+  const sellerName = sale.seller_name || ext.seller_name || ext.operator_name || ext.vendedor;
 
-  if (operatorName && (operatorName === target || operatorName.includes(target) || target.includes(operatorName))) return true;
-  if (vendedor && (vendedor === target || vendedor.includes(target) || target.includes(vendedor))) return true;
-  if (sellerName && (sellerName === target || sellerName.includes(target) || target.includes(sellerName))) return true;
+  if (operatorName && isSellerNameMatch(operatorName, target)) return true;
+  if (vendedor && isSellerNameMatch(vendedor, target)) return true;
+  if (sellerName && isSellerNameMatch(sellerName, target)) return true;
 
   // 2. Compara via ID de colaborador / created_by
   const createdBy = (sale.created_by || sale.operator?.id || '').toLowerCase().trim();
@@ -299,12 +299,12 @@ export function matchesSellerFilter(
     const emp = (employees || []).find(
       (e) => (e.id && e.id.toLowerCase() === createdBy) || (e.profile_id && e.profile_id.toLowerCase() === createdBy)
     );
-    if (emp?.full_name && normalizeName(emp.full_name).includes(target)) return true;
+    if (emp?.full_name && isSellerNameMatch(emp.full_name, target)) return true;
 
     const off = DEFAULT_OFFICIAL_USERS.find(
       (u) => u.id.toLowerCase() === createdBy || u.aliases?.some((a) => a.toLowerCase() === createdBy)
     );
-    if (off?.full_name && normalizeName(off.full_name).includes(target)) return true;
+    if (off?.full_name && isSellerNameMatch(off.full_name, target)) return true;
   }
 
   return false;
