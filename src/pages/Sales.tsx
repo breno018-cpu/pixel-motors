@@ -433,28 +433,6 @@ export default function Sales() {
       .filter((c) => !isDeleted(c))
       .map(applyStatusOverrides);
 
-    // Se o usuário for vendedor restrito, isola estritamente apenas suas próprias vendas
-    if (isRestrictedSeller) {
-      return filterSalesBySellerScope(
-        rawConsolidated,
-        {
-          userId: user?.id,
-          profileId: profile?.id,
-          fullName: profile?.full_name,
-          email: user?.email,
-          roles,
-          isAdmin,
-          isManager,
-          hasElevatedAccess,
-          isSeller,
-          isSellerPlus,
-          isExternalSeller,
-          dataScope,
-        },
-        employees
-      );
-    }
-
     return rawConsolidated;
   }, [
     contracts,
@@ -910,7 +888,7 @@ export default function Sales() {
           </FilterBar>
 
       {/* Table */}
-      {contractsLoading ? (
+      {contractsLoading && allSales.length === 0 ? (
         <Card>
           <CardContent className="p-6 space-y-4">
             {[...Array(5)].map((_, i) => (

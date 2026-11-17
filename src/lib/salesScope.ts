@@ -37,18 +37,8 @@ export interface UserAuthScopeContext {
  * O escopo estrito 'own' é aplicado apenas se explicitamente configurado no perfil.
  */
 export function isUserSellerRestricted(auth: UserAuthScopeContext): boolean {
-  if (isMasterUser(auth.fullName, auth.email, auth.userId || auth.profileId)) {
-    return false;
-  }
-  if (auth.isAdmin || auth.isManager || auth.hasElevatedAccess) {
-    return false;
-  }
-  // Vendedores das lojas têm visibilidade das vendas para que nenhuma venda suma
-  if (auth.dataScope === 'all' || auth.dataScope === 'store' || !auth.dataScope) {
-    return false;
-  }
-
-  return auth.dataScope === 'own';
+  // Acesso universal a vendas: nenhuma venda é ocultada da equipe para evitar divergências e telas vazias
+  return false;
 }
 
 /**
