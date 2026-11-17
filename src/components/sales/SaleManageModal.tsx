@@ -422,12 +422,16 @@ export function SaleManageModal({
         const raw = localStorage.getItem(sheetKey);
         if (raw) {
           const list: SheetRowV9[] = JSON.parse(raw);
+          const cleanQt = (sale.contract_number || '').replace(/^[A-Z]+-/, '').trim();
+          const cleanChassis = (vehicleChassis || '').trim().toUpperCase();
+
           const updated = list.map((r) => {
-            if (
+            const isMatch =
               r.id === sale.id ||
-              (vehicleChassis && r.chassi === vehicleChassis) ||
-              (Boolean(r.cliente && buyerName) && String(r.cliente).toUpperCase().includes(String(buyerName).toUpperCase().slice(0, 4)))
-            ) {
+              (cleanQt && String(r.qt).padStart(2, '0') === cleanQt.padStart(2, '0')) ||
+              (cleanChassis.length >= 7 && r.chassi && r.chassi.trim().toUpperCase() === cleanChassis);
+
+            if (isMatch) {
               return {
                 ...r,
                 cliente: buyerName.trim().toUpperCase(),

@@ -285,15 +285,53 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
     ? cloudSync.sheet_rows
     : getMonthlySheetRows();
 
-  const seenIds = new Set(hydratedDb.map((c) => c.id));
+  // Deduplicação estrita de múltiplas chaves: o Banco de Dados Real (Supabase) tem precedência absoluta
+  const seenIds = new Set<string>();
+  const seenContractNumbers = new Set<string>();
+  const seenChassis = new Set<string>();
+
+  hydratedDb.forEach((c) => {
+    seenIds.add(c.id);
+    if (c.contract_number) {
+      seenContractNumbers.add(c.contract_number.trim().toUpperCase());
+    }
+    const ext = (c.external_data || {}) as any;
+    const ch = (ext.chassis || c.vehicle?.chassis || '').trim().toUpperCase();
+    if (ch && ch.length >= 7 && !ch.includes('DEFINIR')) {
+      seenChassis.add(ch);
+    }
+  });
 
   const fromSheet = sheetRows
     .map(sheetRowToContract)
-    .filter((sc) => !seenIds.has(sc.id));
-  fromSheet.forEach((sc) => seenIds.add(sc.id));
+    .filter((sc) => {
+      if (seenIds.has(sc.id)) return false;
+      const num = (sc.contract_number || '').trim().toUpperCase();
+      if (num && seenContractNumbers.has(num)) return false;
+      const ext = (sc.external_data || {}) as any;
+      const ch = (ext.chassis || sc.vehicle?.chassis || '').trim().toUpperCase();
+      if (ch && ch.length >= 7 && !ch.includes('DEFINIR') && seenChassis.has(ch)) return false;
+      return true;
+    });
+
+  fromSheet.forEach((sc) => {
+    seenIds.add(sc.id);
+    if (sc.contract_number) seenContractNumbers.add(sc.contract_number.trim().toUpperCase());
+    const ext = (sc.external_data || {}) as any;
+    const ch = (ext.chassis || sc.vehicle?.chassis || '').trim().toUpperCase();
+    if (ch && ch.length >= 7 && !ch.includes('DEFINIR')) seenChassis.add(ch);
+  });
 
   const typedSeed = (officialContractsSeed as unknown as Contract[]) || [];
-  const fromSeed = typedSeed.filter((sc) => !seenIds.has(sc.id));
+  const fromSeed = typedSeed.filter((sc) => {
+    if (seenIds.has(sc.id)) return false;
+    const num = (sc.contract_number || '').trim().toUpperCase();
+    if (num && seenContractNumbers.has(num)) return false;
+    const ext = (sc.external_data || {}) as any;
+    const ch = (ext.chassis || sc.vehicle?.chassis || '').trim().toUpperCase();
+    if (ch && ch.length >= 7 && !ch.includes('DEFINIR') && seenChassis.has(ch)) return false;
+    return true;
+  });
 
   // Aplica filtro de exclusões e cancelamentos sincronizados em nuvem + local
   const deletedIds = new Set<string>(cloudSync.deleted_ids || []);
@@ -315,8 +353,6 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
   const isDeleted = (c: Contract) => {
     if (deletedIds.has(c.id)) return true;
     if (c.contract_number && deletedIds.has(c.contract_number)) return true;
-    const cleanQt = (c.contract_number || '').replace(/^[A-Z]+-/, '').trim();
-    if (cleanQt && (deletedIds.has(cleanQt) || deletedIds.has(cleanQt.padStart(2, '0')))) return true;
     return false;
   };
 

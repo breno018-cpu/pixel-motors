@@ -198,14 +198,16 @@ export function CompleteSaleModal({
 
   // Atualiza ao abrir com preSaleId ou pré-venda inicial
   useEffect(() => {
+    if (!open) return;
     const targetId = initialPreSaleId || initialPreSale?.id;
     if (targetId) {
       setSelectedPreSaleId(targetId);
     }
-  }, [initialPreSaleId, initialPreSale]);
+  }, [open, initialPreSaleId, initialPreSale]);
 
   // Carrega os dados da pré-venda selecionada
   useEffect(() => {
+    if (!open) return;
     if (selectedPreSaleId) {
       const ps =
         initialPreSale?.id === selectedPreSaleId
@@ -785,11 +787,15 @@ export function CompleteSaleModal({
         const raw = localStorage.getItem(sheetKey);
         if (raw) {
           const list: SheetRowV9[] = JSON.parse(raw);
+          const cleanTargetChassis = (vehicleChassis || '').trim().toUpperCase();
+          const targetPreSaleIdVal = selectedPreSaleId || initialPreSaleId;
+
           const updated = list.map((r) => {
-            if (
-              (vehicleChassis && r.chassi === vehicleChassis) ||
-              (Boolean(r.cliente && buyerName) && String(r.cliente).toUpperCase().includes(String(buyerName).toUpperCase().slice(0, 5)))
-            ) {
+            const isMatch =
+              (targetPreSaleIdVal && r.id === targetPreSaleIdVal) ||
+              (cleanTargetChassis.length >= 7 && r.chassi && r.chassi.trim().toUpperCase() === cleanTargetChassis);
+
+            if (isMatch) {
               return {
                 ...r,
                 is_permitted: true, // Faturada oficial!

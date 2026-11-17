@@ -21,7 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
 import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
-import { resolveSaleStore, isMatchingStore } from '@/lib/storeResolution';
+import { resolveSaleStore, isMatchingStore, STORE_MONTESCLAROS_UUID } from '@/lib/storeResolution';
 import { getCleanSellerOptions, resolveSellerDisplayName, isValidSellerName, matchesSellerFilter } from '@/lib/sellerSanitizer';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
@@ -191,7 +191,7 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
     },
     operator: (r as any).operator || {
       id: (r as any).user_id || (r as any).created_by || null,
-      full_name: resolveSellerDisplayName(r.vendedor, employees) || 'Vendedor',
+      full_name: resolveSellerDisplayName(r.vendedor, employeesList) || 'Vendedor',
     },
   };
 }
@@ -370,8 +370,35 @@ export default function Sales() {
       };
     });
     const contractIds = new Set(fromContracts.map((c) => c.id));
+    const seenContractNumbers = new Set(
+      fromContracts.map((c) => (c.contract_number || '').trim().toUpperCase()).filter(Boolean)
+    );
+    const seenChassis = new Set(
+      fromContracts
+        .map((c) => (getSaleChassis(c) || '').trim().toUpperCase())
+        .filter((ch) => ch.length >= 7 && !ch.includes('DEFINIR'))
+    );
+
     const fromSheet = monthlySheetRows
-      .filter((r) => !contractIds.has(r.id))
+      .filter((r) => {
+        if (contractIds.has(r.id)) return false;
+        const resolved = resolveSaleStore({
+          store_id: (r as any).store_id,
+          vendedor: r.vendedor,
+          observacoes: r.observacoes,
+          cliente: r.cliente,
+          regiao: r.regiao,
+        });
+        const isMoc =
+          resolved.storeId === 'store-montesclaros' ||
+          resolved.storeId === STORE_MONTESCLAROS_UUID ||
+          (resolved.storeName || '').toLowerCase().includes('montes');
+        const expectedNum = `${isMoc ? 'MOC' : 'DIV'}-${r.qt || '00'}`.trim().toUpperCase();
+        if (seenContractNumbers.has(expectedNum)) return false;
+        const ch = (r.chassi || '').trim().toUpperCase();
+        if (ch && ch.length >= 7 && !ch.includes('DEFINIR') && seenChassis.has(ch)) return false;
+        return true;
+      })
       .map((r) => sheetRowToContract(r, employees));
 
     const deletedIds = new Set<string>();
@@ -392,8 +419,6 @@ export default function Sales() {
     const isDeleted = (c: any) => {
       if (deletedIds.has(c.id)) return true;
       if (c.contract_number && deletedIds.has(c.contract_number)) return true;
-      const cleanQt = (c.contract_number || '').replace(/^[A-Z]+-/, '').trim();
-      if (cleanQt && (deletedIds.has(cleanQt) || deletedIds.has(cleanQt.padStart(2, '0')))) return true;
       return false;
     };
 

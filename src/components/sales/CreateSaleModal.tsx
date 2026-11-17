@@ -54,7 +54,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, resolveUserSellerStore } from '@/lib/salesScope';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { useDateFilter } from '@/contexts/DateFilterContext';
-import { getMonthlySheetRows } from '@/hooks/useContracts';
+import { getMonthlySheetRows, useContracts } from '@/hooks/useContracts';
 import { cloudSaveSheetRows } from '@/lib/cloudSalesSync';
 import { cn } from '@/lib/utils';
 import { AddressFormFields } from './AddressFormFields';
@@ -118,6 +118,7 @@ export function CreateSaleModal({
   const { data: vehicles = [] } = useVehicles();
   const { data: stores = [] } = useStores();
   const { data: employees = [] } = useEmployees();
+  const { data: contracts = [] } = useContracts();
 
   const auth = useAuth();
   const { profile, user, roles, isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, dataScope } = auth;
@@ -522,7 +523,6 @@ export function CreateSaleModal({
         currentRows = getMonthlySheetRows();
       }
 
-      const nextQtNumber = String(currentRows.length + 1).padStart(2, '0');
       const effectiveStoreId = isRestrictedSeller ? initialStoreUuid : (storeId || initialStoreUuid);
       const effectiveSaleDate = isRestrictedSeller ? new Date().toISOString().split('T')[0] : (saleDate || new Date().toISOString().split('T')[0]);
       const effectiveSeller = isRestrictedSeller ? (resolvedDefaultSeller || currentSellerName || 'Vendedor') : (activeSeller || resolvedDefaultSeller || currentSellerName || 'Vendedor');
@@ -545,6 +545,36 @@ export function CreateSaleModal({
         cleanSeller.includes('moc') ||
         (buyerCity || '').toUpperCase().includes('MONTES CLAROS');
 
+      const prefix = isMoc ? 'MOC' : 'DIV';
+      let maxNum = 0;
+
+      // 1. Varre contratos do banco de dados (Supabase)
+      (contracts || []).forEach((c) => {
+        if (c.contract_number && c.contract_number.toUpperCase().startsWith(`${prefix}-`)) {
+          const raw = c.contract_number.toUpperCase().replace(`${prefix}-`, '').trim();
+          const parsed = parseInt(raw, 10);
+          if (!isNaN(parsed) && parsed > maxNum) maxNum = parsed;
+        }
+      });
+
+      // 2. Varre linhas da planilha local / nuvem
+      currentRows.forEach((r) => {
+        const isRowMoc =
+          r.store_id === STORE_MONTESCLAROS_UUID ||
+          (r.store_name || '').toLowerCase().includes('montes') ||
+          (r.regiao || '').toUpperCase().includes('MONTES') ||
+          (r.vendedor && ['mariana', 'natan', 'sabrina', 'halana'].some((v) => r.vendedor.toLowerCase().includes(v)));
+        if (isMoc === isRowMoc) {
+          const raw = String(r.qt || '').replace(/^[A-Z]+-/, '').trim();
+          const parsed = parseInt(raw, 10);
+          if (!isNaN(parsed) && parsed > maxNum) maxNum = parsed;
+        }
+      });
+
+      const nextNum = maxNum > 0 ? maxNum + 1 : currentRows.length + 1;
+      const nextQtNumber = String(nextNum).padStart(2, '0');
+      const contractNumber = `${prefix}-${nextQtNumber}`;
+
       const targetStoreUuid = isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID;
       const currentStore = stores.find((s) => s.id === targetStoreUuid) || stores.find((s) => s.id === storeId);
       const storeName = currentStore?.name || (isMoc
@@ -561,7 +591,6 @@ export function CreateSaleModal({
       const saleMonthKey = `${saleYear}-${saleMonth}`;
 
       const newRowId = `venda-${Date.now()}`;
-      const contractNumber = `${isMoc ? 'MOC' : 'DIV'}-${nextQtNumber}`;
 
       const installmentSummary = [
         (notes || '').trim(),
