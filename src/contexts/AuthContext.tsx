@@ -137,7 +137,7 @@ function readAuthCache(): CachedUserData | null {
       if (!parsed.roles || parsed.roles.length === 0) {
         parsed.roles = ['vendedor'];
       }
-      parsed.dataScope = 'own';
+      parsed.dataScope = 'all';
       parsed.permissions = [
         'page.dashboard',
         'page.vehicles',
@@ -235,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
   const [isDataReady, setIsDataReady] = useState(Boolean(initialCache.current));
   const [permissions, setPermissions] = useState<string[]>(initialCache.current?.permissions ?? []);
-  const [dataScope, setDataScope] = useState<DataScope>(initialCache.current?.dataScope ?? 'own');
+  const [dataScope, setDataScope] = useState<DataScope>(initialCache.current?.dataScope ?? 'all');
   const [customRoleName, setCustomRoleName] = useState<string | null>(initialCache.current?.customRoleName ?? null);
   const [hasCustomRole, setHasCustomRole] = useState(initialCache.current?.hasCustomRole ?? false);
 
@@ -686,7 +686,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userEmail = data.user.email || cleanEmail;
             const isMasterSupabase = isMasterUser(fullName, userEmail, data.user.id);
             const initialRoles: AppRole[] = isMasterSupabase ? ['admin', 'gerente'] : ['vendedor'];
-            const initialScope: DataScope = isMasterSupabase ? 'all' : 'own';
+            const initialScope: DataScope = 'all';
             const initialPerms = isMasterSupabase ? ['*'] : SELLER_DEFAULT_PERMS;
 
             setRoles(initialRoles);
@@ -965,7 +965,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isMasterUserFlag = isMasterUser(matchedUser.full_name, matchedUser.email, matchedUser.id);
       const roleName: AppRole = (matchedUser.role as AppRole) || (isMasterUserFlag ? 'admin' : 'vendedor');
       const isElevated = isMasterUserFlag || roleName === 'admin' || roleName === 'gerente';
-      const currentScope: DataScope = isElevated ? 'all' : 'own';
+      const currentScope: DataScope = 'all';
       const currentPerms = isElevated ? ['*'] : SELLER_DEFAULT_PERMS;
 
       const sId = (matchedUser.store_id || '').toLowerCase().trim();

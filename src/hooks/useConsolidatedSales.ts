@@ -323,7 +323,7 @@ export function useConsolidatedSales() {
           isExternalSeller,
           dataScope,
         },
-        (s) => s.vendedor
+        employees || []
       );
     }
 

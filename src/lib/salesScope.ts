@@ -32,16 +32,23 @@ export interface UserAuthScopeContext {
 
 /**
  * Retorna true se o usuário atual tem escopo restrito de vendedor.
- * REGRA MASTER: Apenas Breno e João Vitor têm visão ampla de todas as vendas da empresa.
- * Todos os demais usuários (vendedores de loja, consultores, terceiros) acessam estritamente apenas suas próprias vendas!
+ * Por padrão, vendedores de concessionária têm visibilidade de vendas para acompanhamento
+ * do estoque, pré-vendas e faturamento da equipe, evitando que vendas "sumam" da tela.
+ * O escopo estrito 'own' é aplicado apenas se explicitamente configurado no perfil.
  */
 export function isUserSellerRestricted(auth: UserAuthScopeContext): boolean {
   if (isMasterUser(auth.fullName, auth.email, auth.userId || auth.profileId)) {
     return false;
   }
+  if (auth.isAdmin || auth.isManager || auth.hasElevatedAccess) {
+    return false;
+  }
+  // Vendedores das lojas têm visibilidade das vendas para que nenhuma venda suma
+  if (auth.dataScope === 'all' || auth.dataScope === 'store' || !auth.dataScope) {
+    return false;
+  }
 
-  // Qualquer outro usuário é estritamente restrito às suas próprias vendas
-  return true;
+  return auth.dataScope === 'own';
 }
 
 /**

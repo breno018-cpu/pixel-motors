@@ -564,10 +564,12 @@ export default function Sales() {
       if (!matchesStore) return false;
 
       // 3. Filtro de Vendedor / Operador
-      const matchesReseller =
-        isRestrictedSeller ||
-        resellerFilter === 'all' ||
-        matchesSellerFilter(sale, resellerFilter, employees);
+      let matchesReseller = true;
+      if (resellerFilter === 'mine') {
+        matchesReseller = matchesSellerFilter(sale, profile?.full_name || user?.email || '', employees);
+      } else if (resellerFilter !== 'all') {
+        matchesReseller = isRestrictedSeller || matchesSellerFilter(sale, resellerFilter, employees);
+      }
       if (!matchesReseller) return false;
 
       // 4. Filtro de Período
@@ -770,6 +772,30 @@ export default function Sales() {
             </div>
 
             <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2 w-full sm:w-auto">
+              {/* Quick Toggle: Toda Equipe vs Minhas Vendas */}
+              <div className="col-span-2 sm:col-span-1 flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={resellerFilter === 'all' ? 'default' : 'outline'}
+                  onClick={() => setResellerFilter('all')}
+                  className="h-9 sm:h-10 text-xs font-semibold px-2.5 rounded-lg flex-1 sm:flex-initial"
+                >
+                  Toda Equipe
+                </Button>
+                {profile?.full_name && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={resellerFilter === 'mine' ? 'default' : 'outline'}
+                    onClick={() => setResellerFilter(resellerFilter === 'mine' ? 'all' : 'mine')}
+                    className="h-9 sm:h-10 text-xs font-semibold px-2.5 rounded-lg flex-1 sm:flex-initial"
+                  >
+                    Minhas Vendas
+                  </Button>
+                )}
+              </div>
+
               {/* Concessionária Filter */}
               <Select
                 value={storeFilter}
@@ -797,29 +823,27 @@ export default function Sales() {
               </Select>
 
               {/* Vendedor Filter */}
-              {isRestrictedSeller ? (
-                <div className="flex items-center gap-1.5 px-2.5 h-9 sm:h-10 rounded-xl border border-primary/30 bg-primary/10 text-xs font-semibold text-primary truncate w-full sm:w-auto">
-                  <User className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{profile?.full_name?.split(' ')[0] || 'Vendedor'}</span>
-                </div>
-              ) : (
-                <Select value={resellerFilter} onValueChange={setResellerFilter}>
-                  <SelectTrigger className="w-full sm:w-[155px] h-9 sm:h-10 text-xs">
-                    <User className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
-                    <SelectValue placeholder="Vendedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">
-                      {storeFilter === 'all' ? 'Toda Equipe' : 'Equipe da Loja'}
+              <Select value={resellerFilter} onValueChange={setResellerFilter}>
+                <SelectTrigger className="w-full sm:w-[165px] h-9 sm:h-10 text-xs">
+                  <User className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+                  <SelectValue placeholder="Vendedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {storeFilter === 'all' ? 'Toda Equipe' : 'Equipe da Loja'}
+                  </SelectItem>
+                  {profile?.full_name && (
+                    <SelectItem value="mine">
+                      👤 Minhas Vendas ({profile.full_name.split(' ')[0]})
                     </SelectItem>
-                    {sellerOptions.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+                  )}
+                  {sellerOptions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               {/* Status Filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>

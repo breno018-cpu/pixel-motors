@@ -257,9 +257,24 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
         .select('id, full_name')
         .in('id', createdByIds);
       if (profiles) {
-        operatorMap = Object.fromEntries(profiles.map((p: any) => [p.id, p.full_name]));
+        profiles.forEach((p: any) => {
+          if (p.id) operatorMap[p.id] = p.full_name;
+        });
+      }
+      const { data: emps } = await supabase
+        .from('employees')
+        .select('id, full_name, profile_id');
+      if (emps) {
+        emps.forEach((e: any) => {
+          if (e.id) operatorMap[e.id] = e.full_name;
+          if (e.profile_id) operatorMap[e.profile_id] = e.full_name;
+        });
       }
     } catch {}
+    DEFAULT_OFFICIAL_USERS.forEach((u) => {
+      if (u.id) operatorMap[u.id] = u.full_name;
+      u.aliases?.forEach((a) => { operatorMap[a] = u.full_name; });
+    });
   }
 
   const hydratedDb = dbContracts.map((c) => {
