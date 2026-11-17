@@ -98,6 +98,9 @@ export function useSidebarConfig() {
 
   // Items the current user is allowed to see (role filter)
   const allowedItems: SidebarMenuItem[] = ALL_MENU_ITEMS.filter((item) => {
+    if (item.path === '/owner-dashboard') {
+      return true;
+    }
     // Se o item exige cargos específicos e o usuário não for admin/gerente, bloqueia
     if (item.roles && item.roles.length > 0) {
       if (!isMaster && !item.roles.some((r) => roles.includes(r as any))) {
