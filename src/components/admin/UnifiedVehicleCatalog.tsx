@@ -127,7 +127,7 @@ const brl = (v: number | null | undefined) =>
     : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
 const toMask = (v: number | null | undefined) =>
-  v != null && v > 0 ? maskCurrency(String(Math.round(v * 100))) : '';
+  v != null && v > 0 ? maskCurrency(v) : '';
 
 const numOrNull = (v: string) => (v.trim() === '' ? null : Number(v));
 

@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 const brl = (v: number | null) =>
   v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-const toMask = (v: number | null) => (v != null ? maskCurrency(String(Math.round(v * 100))) : '');
+const toMask = (v: number | null) => (v != null ? maskCurrency(v) : '');
 
 interface PriceForm {
   default_sale_price: string;

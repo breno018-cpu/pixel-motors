@@ -37,7 +37,7 @@ const emptyForm: PatternForm = {
 };
 
 const toMasked = (value: number | null | undefined) =>
-  value != null ? maskCurrency(String(Math.round(value * 100))) : '';
+  value != null ? maskCurrency(value) : '';
 
 export function ChassisPatternManager({ embedded = false }: { embedded?: boolean } = {}) {
   const { toast } = useToast();

@@ -97,7 +97,7 @@ export function CreateConsignmentDialog({
   const form = useForm<ConsignmentFormData>({
     resolver: zodResolver(consignmentSchema),
     defaultValues: {
-      vehicle_cost: vehicle?.sale_price ? maskCurrency(Math.round(vehicle.sale_price * 0.85 * 100)) : 'R$ 13.500,00',
+      vehicle_cost: vehicle?.sale_price ? maskCurrency(Math.round(vehicle.sale_price * 0.85)) : 'R$ 13.500,00',
       payment_type: 'percentage',
       upfront_percentage: 30,
       remaining_percentage: 70,
@@ -115,7 +115,7 @@ export function CreateConsignmentDialog({
     if (v && !selectedVehicleId) setSelectedVehicleId(v.id);
     if (r && !selectedResellerId) setSelectedResellerId(r.id);
     if (v) {
-      form.setValue('vehicle_cost', maskCurrency(String(Math.round((v.sale_price || 15000) * 0.85 * 100))));
+      form.setValue('vehicle_cost', maskCurrency(Math.round((v.sale_price || 15000) * 0.85)));
       if (r) {
         form.setValue(
           'terms',

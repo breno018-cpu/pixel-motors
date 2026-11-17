@@ -814,7 +814,7 @@ export default function MotoInvoices() {
                   <Input
                     className="h-9 mt-1 font-bold text-primary font-mono"
                     placeholder="R$ 0,00"
-                    value={maskCurrency(String(Math.round((form.total_value || 0) * 100)))}
+                    value={form.total_value ? maskCurrency(form.total_value) : ''}
                     onChange={(e) => setForm({ ...form, total_value: parseCurrency(e.target.value) })}
                   />
                 </div>

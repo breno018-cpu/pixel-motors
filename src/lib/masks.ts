@@ -50,7 +50,7 @@ export function maskPhone(value: string | number | null | undefined): string {
 }
 
 export function maskCurrency(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return '';
+  if (value === null || value === undefined || value === '') return '';
   if (typeof value === 'number') {
     if (isNaN(value)) return '';
     return new Intl.NumberFormat('pt-BR', {
@@ -60,26 +60,6 @@ export function maskCurrency(value: string | number | null | undefined): string 
   }
   const str = String(value).trim();
   if (!str) return '';
-
-  // Se já possui formatação de moeda com vírgula ou símbolo R$
-  if (str.includes(',') || str.includes('R$')) {
-    const clean = str.replace(/\D/g, '');
-    if (!clean) return '';
-    const numericValue = parseInt(clean, 10) / 100;
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(numericValue).replace(/\u00a0/g, ' ');
-  }
-
-  // Se for número puro digitado ou colado sem vírgula (ex: "15000", "18990", "9490")
-  const parsed = parseFloat(str);
-  if (!isNaN(parsed)) {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(parsed).replace(/\u00a0/g, ' ');
-  }
 
   const clean = str.replace(/\D/g, '');
   if (!clean) return '';
@@ -91,17 +71,14 @@ export function maskCurrency(value: string | number | null | undefined): string 
 }
 
 export function parseCurrency(value: string | number | null | undefined): number {
-  if (value === null || value === undefined) return 0;
+  if (value === null || value === undefined || value === '') return 0;
   if (typeof value === 'number') return isNaN(value) ? 0 : value;
   const str = String(value).trim();
   if (!str) return 0;
-  if (str.includes(',') || str.includes('R$')) {
-    const numbers = str.replace(/\D/g, '');
-    if (!numbers) return 0;
-    return parseInt(numbers, 10) / 100;
-  }
-  const parsed = parseFloat(str);
-  return isNaN(parsed) ? 0 : parsed;
+
+  const numbers = str.replace(/\D/g, '');
+  if (!numbers) return 0;
+  return parseInt(numbers, 10) / 100;
 }
 
 export function unmaskValue(value: string): string {

@@ -181,10 +181,10 @@ export default function Financing() {
                       <div className="text-xs text-muted-foreground font-mono">{s.customer_document}</div>
                     </TableCell>
                     <TableCell className="font-medium text-xs">{BANK_LABEL[s.bank_code] || s.bank_code.toUpperCase()}</TableCell>
-                    <TableCell className="text-right text-xs">{maskCurrency(String(Math.round((s.vehicle_value || 0) * 100)))}</TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">{maskCurrency(String(Math.round((s.down_payment || 0) * 100)))}</TableCell>
+                    <TableCell className="text-right text-xs">{maskCurrency(Number(s.vehicle_value || 0))}</TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">{maskCurrency(Number(s.down_payment || 0))}</TableCell>
                     <TableCell className="text-right font-bold text-primary">
-                      {s.installment_value ? maskCurrency(String(Math.round(s.installment_value * 100))) : '—'}
+                      {s.installment_value ? maskCurrency(Number(s.installment_value)) : '—'}
                     </TableCell>
                     <TableCell className="font-mono text-xs">{s.installments}x</TableCell>
                     <TableCell>{statusBadge(s.status)}</TableCell>
@@ -218,7 +218,7 @@ export default function Financing() {
                 <SelectContent>
                   {availableVehicles.map((v) => (
                     <SelectItem key={v.id} value={v.id} className="text-xs">
-                      {v.brand} {v.model} — {maskCurrency(String(Math.round((v.sale_price || 0) * 100)))}
+                      {v.brand} {v.model} — {maskCurrency(Number(v.sale_price || 0))}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -270,7 +270,7 @@ export default function Financing() {
                 <Label className="text-xs">Valor da Motocicleta</Label>
                 <Input
                   className="h-9 mt-1"
-                  value={maskCurrency(String(Math.round((Number(simForm.vehicle_value) || 0) * 100)))}
+                  value={simForm.vehicle_value ? maskCurrency(Number(simForm.vehicle_value)) : ''}
                   onChange={(e) => setSimForm({ ...simForm, vehicle_value: parseCurrency(e.target.value) })}
                 />
               </div>
@@ -278,7 +278,7 @@ export default function Financing() {
                 <Label className="text-xs">Valor de Entrada</Label>
                 <Input
                   className="h-9 mt-1"
-                  value={maskCurrency(String(Math.round((Number(simForm.down_payment) || 0) * 100)))}
+                  value={simForm.down_payment ? maskCurrency(Number(simForm.down_payment)) : ''}
                   onChange={(e) => setSimForm({ ...simForm, down_payment: parseCurrency(e.target.value) })}
                 />
               </div>
@@ -298,7 +298,7 @@ export default function Financing() {
               <div>
                 <span className="text-[11px] text-muted-foreground block">Valor Financiado</span>
                 <span className="text-sm font-bold text-foreground">
-                  {maskCurrency(String(Math.round(livePreview.financed * 100)))}
+                  {maskCurrency(livePreview.financed)}
                 </span>
               </div>
               <div>
@@ -310,7 +310,7 @@ export default function Financing() {
               <div>
                 <span className="text-[11px] text-muted-foreground block">Parcela ({simForm.installments}x)</span>
                 <span className="text-sm font-black text-primary">
-                  {maskCurrency(String(Math.round(livePreview.pmt * 100)))}
+                  {maskCurrency(livePreview.pmt)}
                 </span>
               </div>
             </div>

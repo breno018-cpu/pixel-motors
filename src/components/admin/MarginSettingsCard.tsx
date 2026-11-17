@@ -176,7 +176,7 @@ export function MarginSettingsCard() {
               Teto de Desconto (R$)
             </Label>
             <Input
-              value={maskCurrency(String(Math.round(form.maxDiscountAmount * 100)))}
+              value={form.maxDiscountAmount ? maskCurrency(form.maxDiscountAmount) : ''}
               onChange={(e) => setForm({ ...form, maxDiscountAmount: parseCurrency(e.target.value) })}
               className="h-9 text-xs"
             />

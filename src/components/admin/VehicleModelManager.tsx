@@ -57,8 +57,8 @@ function toForm(m: VehicleModel): FormState {
     warranty_months: m.warranty_months?.toString() || '',
     revision_period_months: m.revision_period_months?.toString() || '',
     revision_period_km: m.revision_period_km?.toString() || '',
-    default_purchase_price: m.default_purchase_price != null ? maskCurrency(String(Math.round(m.default_purchase_price * 100))) : '',
-    default_sale_price: m.default_sale_price != null ? maskCurrency(String(Math.round(m.default_sale_price * 100))) : '',
+    default_purchase_price: m.default_purchase_price != null ? maskCurrency(m.default_purchase_price) : '',
+    default_sale_price: m.default_sale_price != null ? maskCurrency(m.default_sale_price) : '',
     is_active: m.is_active,
   };
 }
@@ -162,7 +162,7 @@ export function VehicleModelManager({ embedded = false }: { embedded?: boolean }
                       m.fuel_type,
                       m.fuel_type?.toLowerCase().includes('elet') ? null : m.transmission,
                       m.warranty_months ? `Garantia ${m.warranty_months}m` : null,
-                      m.default_sale_price ? `Venda ${maskCurrency(String(Math.round(m.default_sale_price * 100)))}` : null,
+                      m.default_sale_price ? `Venda ${maskCurrency(m.default_sale_price)}` : null,
                     ].filter(Boolean).join(' · ') || 'Sem padrões definidos'}
                   </p>
                 </div>

@@ -95,7 +95,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
     setModel(selectedModel);
     const found = SHINERAY_OFFICIAL_LINEUP.find((m) => m.model === selectedModel);
     if (found?.suggested_price) {
-      setSalePrice(maskCurrency(String(found.suggested_price * 100)));
+      setSalePrice(maskCurrency(found.suggested_price));
     }
   };
 
