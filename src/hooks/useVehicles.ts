@@ -391,12 +391,23 @@ export function useVehicles() {
 
         if (!error && Array.isArray(data)) {
           const filteredRemote = (data as Vehicle[]).filter((v) => !deletedIds.has(v.id));
-          // O banco de dados Supabase é a autoridade absoluta do estoque
-          // Sobrescreve o cache local para purgar imediatamente qualquer fantasma ou duplicata
+          const remoteIdSet = new Set(filteredRemote.map((v) => v.id));
+          const remoteChassisSet = new Set(
+            filteredRemote.map((v) => (v.chassis || '').toUpperCase()).filter(Boolean)
+          );
+
+          // Preserva motos registradas localmente (ex: de lojas externas sem app)
+          const localOnly = currentList.filter(
+            (v) =>
+              !remoteIdSet.has(v.id) &&
+              (!v.chassis || !remoteChassisSet.has(v.chassis.toUpperCase()))
+          );
+
+          const combined = [...localOnly, ...filteredRemote];
           try {
-            localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(filteredRemote));
+            localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(combined));
           } catch {}
-          return filteredRemote;
+          return combined;
         }
       } catch (err) {
         console.warn('Consulta remota de veículos falhou, usando estoque local:', err);

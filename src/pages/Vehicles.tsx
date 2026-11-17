@@ -1667,6 +1667,11 @@ export default function Vehicles() {
                                       {reseller ? ` · ${reseller.full_name}` : ''}
                                     </span>
                                   )}
+                                  {Boolean(vehicle.notes && vehicle.notes.includes('[ORIGEM_LOJA_EXTERNA_SEM_APP]')) && (
+                                    <Badge variant="outline" className="text-[10px] font-bold text-purple-700 dark:text-purple-400 bg-purple-500/10 border-purple-500/30" title={vehicle.notes || undefined}>
+                                      🏪 Loja Externa (Sem App)
+                                    </Badge>
+                                  )}
                                 </div>
 
                                 <div className="flex items-center justify-between sm:justify-end gap-2.5">
@@ -1871,6 +1876,11 @@ function UnitList({
                     </span>
                   )}
                   {reseller ? ` · ${reseller.full_name}` : ''}
+                  {Boolean(vehicle.notes && vehicle.notes.includes('[ORIGEM_LOJA_EXTERNA_SEM_APP]')) && (
+                    <span className="ml-1.5 inline-block text-[10px] font-bold text-purple-700 dark:text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/30" title={vehicle.notes || undefined}>
+                      🏪 Loja Externa (Sem App)
+                    </span>
+                  )}
                 </p>
               </div>
 

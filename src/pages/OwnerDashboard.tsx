@@ -34,6 +34,7 @@ import {
   Trophy,
   Eye,
   Boxes,
+  ArrowLeftRight,
 } from 'lucide-react';
 import {
   Dialog,
@@ -54,6 +55,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { OwnerFiscalInvoicesPanel } from '@/components/dashboard/OwnerFiscalInvoicesPanel';
 import { ExecutiveSalesReceiptsAuditor } from '@/components/dashboard/ExecutiveSalesReceiptsAuditor';
 import { CloudMonthlySpreadsheet } from '@/components/sheets/CloudMonthlySpreadsheet';
+import { ExecutiveStockExchangePanel } from '@/components/dashboard/ExecutiveStockExchangePanel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,8 +130,8 @@ export default function OwnerDashboard() {
   const { data: stores = [] } = useStores();
   const { data: employees = [] } = useEmployees();
 
-  // Abas Executivas: caixa | nfs | patio | vendedores | comprovantes | planilha
-  const [activeTab, setActiveTab] = useState<'caixa' | 'nfs' | 'patio' | 'vendedores' | 'comprovantes' | 'planilha'>('caixa');
+  // Abas Executivas: caixa | nfs | patio | troca-estoque | vendedores | comprovantes | planilha
+  const [activeTab, setActiveTab] = useState<'caixa' | 'nfs' | 'patio' | 'troca-estoque' | 'vendedores' | 'comprovantes' | 'planilha'>('caixa');
 
   // Filtros Globais
   const [storeFilter, setStoreFilter] = useState<string>('all');
@@ -571,7 +573,7 @@ export default function OwnerDashboard() {
 
       {/* 2. NAVEGAÇÃO ENTRE AS ABAS ESTRATÉGICAS */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-6">
-        <TabsList className="bg-muted/40 p-1 rounded-xl border border-border/80 w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 max-w-5xl mx-auto shadow-xs">
+        <TabsList className="bg-muted/40 p-1 rounded-xl border border-border/80 w-full grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 max-w-6xl mx-auto shadow-xs">
           <TabsTrigger
             value="caixa"
             className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
@@ -594,6 +596,14 @@ export default function OwnerDashboard() {
           >
             <Bike className="w-3.5 h-3.5 text-primary shrink-0" />
             <span>Pátio em R$</span>
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="troca-estoque"
+            className="rounded-lg text-xs font-bold gap-1.5 py-2 text-emerald-600 dark:text-emerald-400 data-[state=active]:bg-background data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-xs data-[state=active]:border-emerald-500/30 border border-transparent transition-all"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Troca de Estoque</span>
           </TabsTrigger>
 
           <TabsTrigger
@@ -1161,6 +1171,13 @@ export default function OwnerDashboard() {
               </div>
             </DialogContent>
           </Dialog>
+        </TabsContent>
+
+        {/* =================================================================== */}
+        {/* ABA: CONTROLE DE TROCA DE ESTOQUE & TRANSFERÊNCIAS INTERLOJAS       */}
+        {/* =================================================================== */}
+        <TabsContent value="troca-estoque" className="space-y-6 mt-0">
+          <ExecutiveStockExchangePanel />
         </TabsContent>
 
         {/* =================================================================== */}
