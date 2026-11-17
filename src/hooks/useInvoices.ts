@@ -7,6 +7,7 @@ import {
   cloudCancelInvoice,
   cloudDeleteInvoice,
   RegisteredInvoice,
+  LOCAL_INVOICES_KEY,
 } from '@/lib/cloudSalesSync';
 import { normalizeDateToYMD, getLocalTodayDateString } from '@/lib/fiscalDates';
 import { STORE_DIVINOPOLIS_UUID } from '@/hooks/useStores';
@@ -57,9 +58,78 @@ export interface Invoice {
   store?: { id: string; name: string; cnpj?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
 }
 
+/**
+ * Lê do cache local as notas fiscais para retorno imediato (0ms de latência / sem loading skeleton).
+ */
+export function getLocalCachedInvoices(): Invoice[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_INVOICES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((r: RegisteredInvoice): Invoice => {
+          const isMoc = (r.store_id || '').includes('montes') || (r.store_name || '').toLowerCase().includes('montes');
+          return {
+            id: r.id,
+            invoice_number: r.invoice_number,
+            series: r.series || '1',
+            access_key: r.access_key || undefined,
+            invoice_type: 'produto',
+            issue_date: r.issue_date,
+            store_id: r.store_id,
+            sale_id: r.sale_id || null,
+            contract_number: r.contract_number || null,
+            customer_name: r.customer_name,
+            customer_document: r.customer_document,
+            customer_address: r.customer_address || null,
+            customer_email: r.customer_email || null,
+            customer_phone: r.customer_phone || null,
+            items: [
+              {
+                description: `${r.vehicle_brand || 'SHINERAY'} ${r.vehicle_model} (Chassi: ${r.vehicle_chassis})`,
+                quantity: 1,
+                unit_value: r.total_value,
+                chassis: r.vehicle_chassis,
+                contract_number: r.contract_number,
+                sale_id: r.sale_id,
+                attachment_name: r.attachment_name,
+                attachment_url: r.attachment_url,
+              },
+            ],
+            subtotal: r.total_value,
+            tax_rate: r.tax_rate || 0,
+            tax_value: r.tax_value || 0,
+            total: r.total_value,
+            status: r.status,
+            notes: r.notes || `[moto] ${r.vehicle_model} - Chassi: ${r.vehicle_chassis}${r.alienacao ? ` | Alienação: ${r.alienacao}` : ''}`,
+            attachment_name: r.attachment_name || null,
+            attachment_url: r.attachment_url || null,
+            attachment_size: r.attachment_size || null,
+            attachment_type: r.attachment_type || null,
+            created_at: r.created_at,
+            cancellation_date: r.cancellation_date || null,
+            cancellation_reason: r.cancellation_reason || null,
+            cancellation_type: r.cancellation_type || null,
+            sefaz_protocol: r.sefaz_protocol || null,
+            store: {
+              id: r.store_id,
+              name: r.store_name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
+              city: isMoc ? 'Montes Claros' : 'Divinópolis',
+              state: 'MG',
+            },
+          };
+        });
+      }
+    }
+  } catch {}
+  return [];
+}
+
 export function useInvoices() {
   return useQuery({
     queryKey: ['invoices'],
+    initialData: getLocalCachedInvoices,
+    staleTime: 1000 * 30, // 30 segundos
     queryFn: async (): Promise<Invoice[]> => {
       // 1. Busca notas fiscais cadastradas de forma semi-manual na nuvem
       const cloudList = await fetchCloudInvoices();
@@ -69,7 +139,7 @@ export function useInvoices() {
       try {
         const { data, error } = await (supabase as any)
           .from('invoices')
-          .select('*, store:stores(id, name, cnpj, address, city, state)')
+          .select('*')
           .order('issue_date', { ascending: false });
 
         if (!error && Array.isArray(data)) {
@@ -334,12 +404,13 @@ export function useUpsertInvoice() {
       return regInvoice;
     },
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['invoices'] });
-      qc.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
-      qc.invalidateQueries({ queryKey: ['contracts'] });
+      // Invalida em segundo plano sem apagar ou travar a UI instantânea
+      qc.invalidateQueries({ queryKey: ['invoices'], refetchType: 'none' });
+      qc.invalidateQueries({ queryKey: ['store-fiscal-invoices'], refetchType: 'none' });
+      qc.invalidateQueries({ queryKey: ['contracts'], refetchType: 'none' });
       toast({
-        title: 'Nota Fiscal cadastrada com sucesso!',
-        description: `NF Nº ${data.invoice_number} vinculada e salva com sucesso.`,
+        title: 'Nota Fiscal salva com sucesso!',
+        description: `NF Nº ${data.invoice_number} vinculada e salva em tempo real.`,
       });
     },
     onError: (e: any, _vars, context: any) => {

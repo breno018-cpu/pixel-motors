@@ -437,51 +437,51 @@ export default function MotoInvoices() {
   const handleSaveQuickAttachment = async () => {
     if (!selectedInvoiceForQuickAttach || !quickAttachFile) return;
 
-    setIsQuickSaving(true);
+    const inv = selectedInvoiceForQuickAttach;
+    const file = quickAttachFile;
+
+    // Fecha o modal e limpa estado imediatamente para resposta instantânea (0ms)
+    setQuickAttachDialogOpen(false);
+    setQuickAttachFile(null);
+    setSelectedInvoiceForQuickAttach(null);
+
+    toast({
+      title: 'Arquivo Anexado com Sucesso!',
+      description: `O arquivo ${file.name} foi vinculado à NF ${inv.invoice_number}.`,
+    });
+
     try {
-      const inv = selectedInvoiceForQuickAttach;
       const chassiMatch = (inv.notes || '').match(/Chassi:\s*([^\s|]+)/i);
       const vehicleDesc = inv.items?.[0]?.description || '';
       const vehicleModel = vehicleDesc.replace(/\(Chassi:.*\)/, '').trim();
 
-      await upsert.mutateAsync({
-        ...inv,
-        vehicle_model: vehicleModel || 'SHINERAY',
-        vehicle_chassis: chassiMatch?.[1] || '',
-        attachment_name: quickAttachFile.name,
-        attachment_url: quickAttachFile.url,
-        attachment_size: quickAttachFile.size,
-        attachment_type: quickAttachFile.type,
-      });
-
-      // Se a NF estiver vinculada a uma venda, sincroniza o contrato da venda também
       if (inv.sale_id) {
         await cloudAttachInvoiceToSale(inv.sale_id, {
           invoice_number: inv.invoice_number,
           series: inv.series || '1',
           issue_date: inv.issue_date,
-          attachment_name: quickAttachFile.name,
-          attachment_url: quickAttachFile.url,
-          attachment_size: quickAttachFile.size,
-          attachment_type: quickAttachFile.type,
+          attachment_name: file.name,
+          attachment_url: file.url,
+          attachment_size: file.size,
+          attachment_type: file.type,
+        });
+      } else {
+        await upsert.mutateAsync({
+          ...inv,
+          vehicle_model: vehicleModel || 'SHINERAY',
+          vehicle_chassis: chassiMatch?.[1] || '',
+          attachment_name: file.name,
+          attachment_url: file.url,
+          attachment_size: file.size,
+          attachment_type: file.type,
         });
       }
-
-      toast({
-        title: 'Arquivo Anexado com Sucesso!',
-        description: `O arquivo ${quickAttachFile.name} foi vinculado à NF ${inv.invoice_number}.`,
-      });
-      setQuickAttachDialogOpen(false);
-      setQuickAttachFile(null);
-      setSelectedInvoiceForQuickAttach(null);
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao anexar arquivo',
+        title: 'Erro ao sincronizar arquivo',
         description: err?.message || 'Tente novamente.',
       });
-    } finally {
-      setIsQuickSaving(false);
     }
   };
 

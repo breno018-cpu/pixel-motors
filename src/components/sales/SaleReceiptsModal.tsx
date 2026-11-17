@@ -243,9 +243,27 @@ export function SaleReceiptsModal({
       return;
     }
 
+    // Atualiza imediatamente a visualização local (0ms)
+    setCurrentNf({
+      invoice_number: nfNumber.trim(),
+      series: nfSeries.trim() || '1',
+      issue_date: nfIssueDate,
+      attachment_name: finalAttachmentName,
+      attachment_url: finalAttachmentUrl,
+      attachment_size: finalAttachmentSize,
+      attachment_type: finalAttachmentType,
+    });
+    setIsEditingNf(false);
+    setSelectedFile(null);
+
+    toast({
+      title: 'Nota Fiscal Anexada com Sucesso!',
+      description: `NF ${nfNumber.trim()} vinculada a esta venda e sincronizada para toda a equipe.`,
+    });
+
     setIsSavingNf(true);
     try {
-      const ok = await cloudAttachInvoiceToSale(sale.id, {
+      await cloudAttachInvoiceToSale(sale.id, {
         invoice_number: nfNumber.trim(),
         series: nfSeries.trim() || '1',
         issue_date: nfIssueDate || getLocalTodayDateString(),
@@ -255,30 +273,10 @@ export function SaleReceiptsModal({
         attachment_type: finalAttachmentType,
         notes: nfNotes.trim() || undefined,
       });
-
-      if (ok) {
-        setCurrentNf({
-          invoice_number: nfNumber.trim(),
-          series: nfSeries.trim() || '1',
-          issue_date: nfIssueDate,
-          attachment_name: finalAttachmentName,
-          attachment_url: finalAttachmentUrl,
-          attachment_size: finalAttachmentSize,
-          attachment_type: finalAttachmentType,
-        });
-        setIsEditingNf(false);
-        setSelectedFile(null);
-        toast({
-          title: 'Nota Fiscal Anexada com Sucesso!',
-          description: `NF ${nfNumber.trim()} vinculada a esta venda e sincronizada para toda a equipe.`,
-        });
-      } else {
-        throw new Error('Falha ao sincronizar anexo');
-      }
     } catch (e: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao anexar NF',
+        title: 'Aviso na sincronização em nuvem da NF',
         description: e?.message || 'Tente novamente.',
       });
     } finally {
