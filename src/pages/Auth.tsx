@@ -26,7 +26,7 @@ import bridgeDither from '@/assets/bridge-dither.png';
 
 const loginSchema = z.object({
   email: z.string().trim().min(3, { message: 'Informe seu e-mail ou usuário corporativo' }).max(255),
-  password: z.string().max(100).optional().or(z.literal('')),
+  password: z.string().min(1, { message: 'A senha é obrigatória' }).max(100),
 });
 
 const REMEMBER_EMAIL_KEY = 'pixel_motors_remember_email';
@@ -249,20 +249,6 @@ export default function Auth() {
               </div>
             )}
 
-            {authMode === 'email' && (
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-50/80 dark:bg-amber-950/20 p-3 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5 shadow-xs">
-                <Clock className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                <div className="space-y-0.5">
-                  <p className="font-bold text-[11px] text-amber-950 dark:text-amber-100 uppercase tracking-wider flex items-center gap-1.5">
-                    Prazo de Criação de Novas Senhas: Hoje (14/11/2026)
-                  </p>
-                  <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-snug">
-                    O prazo para criação e atualização da sua nova senha expira hoje. Digite seu e-mail cadastrado para entrar e definir sua senha pessoal.
-                  </p>
-                </div>
-              </div>
-            )}
-
             {authMode === 'email' ? (
               <>
                 {/* Campo de E-mail */}
@@ -271,7 +257,7 @@ export default function Auth() {
                     htmlFor="email"
                     className="ml-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-600"
                   >
-                    E-mail cadastrado
+                    E-mail cadastrado *
                   </Label>
                   <Input
                     id="email"
@@ -283,6 +269,7 @@ export default function Auth() {
                     className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 text-xs font-semibold text-neutral-900 placeholder:text-neutral-400 focus-visible:border-[#5B42F3] focus-visible:ring-[#5B42F3]/20 aria-[invalid=true]:border-destructive"
                     disabled={isSubmitting}
                     autoComplete="email"
+                    required
                   />
                   {errors.email && (
                     <p className="mt-1 text-xs font-medium text-destructive">{errors.email}</p>
@@ -296,7 +283,7 @@ export default function Auth() {
                       htmlFor="password"
                       className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-600"
                     >
-                      Senha <span className="font-normal lowercase text-neutral-400">(opcional no 1º acesso)</span>
+                      Senha *
                     </Label>
                     <button
                       type="button"
@@ -310,7 +297,7 @@ export default function Auth() {
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="•••••••• (deixe vazio se 1º acesso)"
+                      placeholder="Digite sua senha cadastrada"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       onKeyDown={handleKeyActivity}
@@ -319,6 +306,7 @@ export default function Auth() {
                       className="h-11 rounded-xl border-neutral-200 bg-white px-3.5 pr-10 text-xs font-semibold text-neutral-900 placeholder:text-neutral-400 focus-visible:border-[#5B42F3] focus-visible:ring-[#5B42F3]/20 aria-[invalid=true]:border-destructive"
                       disabled={isSubmitting}
                       autoComplete="current-password"
+                      required
                     />
                     <Button
                       type="button"

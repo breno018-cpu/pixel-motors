@@ -642,6 +642,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
+      // 0.1 SENHA É ESTRITAMENTE OBRIGATÓRIA (Validação Total)
+      if (!cleanPass) {
+        return {
+          error: new Error('A senha é obrigatória. Digite sua senha corporativa para entrar.'),
+        };
+      }
+
       const SELLER_DEFAULT_PERMS = [
         'page.dashboard',
         'page.vehicles',
@@ -657,9 +664,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'logistics.calculate_freight',
       ];
 
-      // Verifica status de senha definida
       const userAlreadyHasDefinedPassword = hasUserDefinedPassword(cleanEmail);
-      const definedPassword = getUserDefinedPassword(cleanEmail);
       const isMaster = isMasterUser(cleanEmail, cleanEmail, null);
       const isMasterPasswordValid =
         cleanPass === 'PixelMotors@2026' ||
@@ -667,15 +672,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cleanPass === 'L1ma@wLdL!' ||
         cleanPass === 'PIXEL-2026' ||
         cleanPass === 'Pixel@2026';
-
-      // Se o usuário JÁ definiu uma senha anteriormente (não é 1º acesso), valida a senha
-      if (userAlreadyHasDefinedPassword && cleanPass) {
-        if (cleanPass !== definedPassword && !isMasterPasswordValid) {
-          return {
-            error: new Error('Senha incorreta. Por favor, digite a senha pessoal cadastrada ou a senha mestre.'),
-          };
-        }
-      }
 
       // 1. Tenta autenticação oficial no Supabase Auth (se senha foi informada)
       if (cleanPass) {
@@ -926,40 +922,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      // 4.4 PRIMEIRO ACESSO HOJE: Se o usuário não existir ainda no dispositivo atual (ex: aparelho novo do vendedor)
-      // Cria a identidade do colaborador automaticamente a partir do e-mail corporativo
-      if (!matchedUser && (cleanEmail.includes('@') || cleanEmail.length >= 3)) {
-        const emailPrefix = cleanEmail.split('@')[0];
-        const rawName = emailPrefix.replace(/[._-]/g, ' ');
-        const formattedName = rawName
-          .split(' ')
-          .filter(Boolean)
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-          .join(' ') || 'Colaborador';
-        const isMoc = cleanEmail.includes('moc') || cleanEmail.includes('montesclaros');
-        const isMasterDynamic = isMasterUser(formattedName, cleanEmail, null);
-
-        matchedUser = {
-          id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          email: cleanEmail.includes('@') ? cleanEmail : `${cleanEmail}@l1mamotors.com.br`,
-          full_name: formattedName,
-          role: isMasterDynamic ? 'admin' : 'vendedor',
-          store_id: isMoc ? 'store-montesclaros' : 'store-divinopolis',
-          is_active: true,
-          user_status: 'ATIVO',
-          created_at: new Date().toISOString(),
-        };
-        saveCustomUser(matchedUser);
-      }
-
-      // Se mesmo assim não encontrou e não conseguiu criar
+      // Se o usuário não foi localizado em nenhuma base autorizada
       if (!matchedUser) {
-        return { error: new Error('Não foi possível identificar o usuário. Verifique seu e-mail corporativo.') };
+        return { error: new Error('Usuário ou e-mail não encontrado no sistema. Verifique os dados digitados.') };
       }
 
       // Validação de Exclusão Permanente
       if (isUserDeleted(matchedUser.id, matchedUser.email)) {
         return { error: new Error('Esta conta de usuário foi desativada ou excluída da plataforma.') };
+      }
+
+      // 4.4 Conferência Rigorosa de Senha (Validação Total)
+      const userPersonalPass =
+        getUserDefinedPassword(matchedUser.email) ||
+        getUserDefinedPassword(cleanEmail) ||
+        getUserDefinedPassword(matchedUser.id);
+      const userAssignedPass = matchedUser.temp_password || '';
+      const isMasterPass =
+        cleanPass === 'PixelMotors@2026' ||
+        cleanPass === 'L1ma@2026' ||
+        cleanPass === 'L1ma@wLdL!' ||
+        cleanPass === 'PIXEL-2026' ||
+        cleanPass === 'Pixel@2026';
+
+      const isPasswordValid =
+        (userPersonalPass && cleanPass === userPersonalPass) ||
+        (userAssignedPass && cleanPass === userAssignedPass) ||
+        isMasterPass;
+
+      if (!isPasswordValid) {
+        return {
+          error: new Error('Senha incorreta. Verifique a senha digitada e tente novamente.'),
+        };
       }
 
       // 5. Autentica e inicia a sessão
