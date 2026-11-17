@@ -14,6 +14,7 @@ import {
   Building2,
   AlertTriangle,
   DollarSign,
+  Pencil,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -126,6 +127,106 @@ export function OwnerFiscalInvoicesPanel() {
   const [cancellationType, setCancellationType] = useState<'estorno' | 'credito'>('estorno');
   const [cancellationReason, setCancellationReason] = useState('');
   const [cancellationProtocol, setCancellationProtocol] = useState('');
+
+  // Formulário de Edição de NF da Diretoria
+  const [editingRecord, setEditingRecord] = useState<CombinedFiscalRecord | null>(null);
+  const [editInvoiceNumber, setEditInvoiceNumber] = useState('');
+  const [editStoreId, setEditStoreId] = useState('store-montesclaros');
+  const [editEventDate, setEditEventDate] = useState(getLocalTodayDateString());
+  const [editPartyName, setEditPartyName] = useState('');
+  const [editTotalValue, setEditTotalValue] = useState('');
+  const [editSefazProtocol, setEditSefazProtocol] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+
+  const handleOpenEdit = (r: CombinedFiscalRecord) => {
+    setEditingRecord(r);
+    setEditInvoiceNumber(r.invoice_number);
+    setEditStoreId(r.store_id || 'store-montesclaros');
+    setEditEventDate(r.event_date || r.issue_date || getLocalTodayDateString());
+    setEditPartyName(r.party_name || '');
+    setEditTotalValue(r.total_value ? String(r.total_value) : '');
+    setEditSefazProtocol(r.sefaz_protocol || '');
+    setEditNotes(r.notes || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRecord) return;
+    if (!editInvoiceNumber.trim()) {
+      toast({ variant: 'destructive', title: 'Número da NF obrigatório' });
+      return;
+    }
+    const val = Number(editTotalValue.replace(/\D/g, '')) / 100 || Number(editTotalValue) || 0;
+    if (val <= 0) {
+      toast({ variant: 'destructive', title: 'Valor inválido', description: 'Informe o valor total da NF.' });
+      return;
+    }
+
+    try {
+      const storageKey = 'dealflow_store_fiscal_invoices_v1';
+      const raw = localStorage.getItem(storageKey);
+      let list = raw ? JSON.parse(raw) : [];
+
+      list = list.map((item: any) => {
+        if (
+          item.id === editingRecord.id ||
+          item.invoice_number === editingRecord.invoice_number
+        ) {
+          return {
+            ...item,
+            invoice_number: editInvoiceNumber.trim(),
+            store_id: editStoreId,
+            issue_date: editEventDate,
+            entry_or_cancel_date: editEventDate,
+            party_name: editPartyName.trim(),
+            total_value: val,
+            sefaz_protocol: editSefazProtocol.trim(),
+            notes: editNotes.trim(),
+          };
+        }
+        return item;
+      });
+      localStorage.setItem(storageKey, JSON.stringify(list));
+
+      if (editingRecord.rawInvoiceId && !editingRecord.rawInvoiceId.startsWith('loc-')) {
+        const rawInv = invoices.find((x) => x.id === editingRecord.rawInvoiceId);
+        const storeObj = stores.find((s) => s.id === editStoreId);
+        const storeName = storeObj?.name || (editStoreId.includes('montes') ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
+
+        await upsertInvoiceMutation.mutateAsync({
+          id: editingRecord.rawInvoiceId,
+          invoice_number: editInvoiceNumber.trim(),
+          issue_date: editEventDate,
+          store_id: editStoreId,
+          store_name: storeName,
+          customer_name: editPartyName.trim(),
+          total_value: val,
+          total: val,
+          subtotal: val,
+          sefaz_protocol: editSefazProtocol.trim(),
+          notes: editNotes.trim(),
+          status: rawInv?.status || (editingRecord.fiscal_type === 'cancelamento' ? 'cancelada' : 'emitida'),
+          created_at: rawInv?.created_at,
+          sale_id: rawInv?.sale_id,
+          contract_number: rawInv?.contract_number,
+          attachment_name: rawInv?.attachment_name,
+          attachment_url: rawInv?.attachment_url,
+          attachment_size: rawInv?.attachment_size,
+          attachment_type: rawInv?.attachment_type,
+        });
+      }
+
+      toast({
+        title: 'NF Atualizada com Sucesso!',
+        description: `Dados da NF ${editInvoiceNumber} atualizados no painel da diretoria.`,
+      });
+
+      setEditingRecord(null);
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Erro ao salvar alterações da NF', description: err?.message });
+    }
+  };
 
   // Sincronização e união de registros
   const allFiscalRecords = useMemo(() => {
@@ -958,28 +1059,39 @@ export function OwnerFiscalInvoicesPanel() {
 
                         {/* Ações */}
                         <TableCell className="text-center">
-                          {canCancel ? (
+                          <div className="flex items-center justify-center gap-1.5">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setInvoiceToCancel(r);
-                                setCancellationDate(getLocalTodayDateString());
-                                setCancellationType('estorno');
-                                setCancellationReason('');
-                              }}
-                              className="h-6 text-[10px] px-2 rounded-lg text-destructive border-destructive/30 hover:bg-destructive/10"
+                              onClick={() => handleOpenEdit(r)}
+                              className="h-6 text-[10px] px-2 rounded-lg text-primary border-primary/30 hover:bg-primary/10 gap-1 font-semibold"
+                              title="Editar dados desta NF"
                             >
-                              <XCircle className="w-3 h-3 mr-1" />
-                              Cancelar NF
+                              <Pencil className="w-3 h-3" />
+                              Editar
                             </Button>
-                          ) : isCancel ? (
-                            <Badge variant="outline" className="text-[9px] text-muted-foreground">
-                              Cancelada
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-[10px]">Conferido</span>
-                          )}
+                            {canCancel && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setInvoiceToCancel(r);
+                                  setCancellationDate(getLocalTodayDateString());
+                                  setCancellationType('estorno');
+                                  setCancellationReason('');
+                                }}
+                                className="h-6 text-[10px] px-2 rounded-lg text-destructive border-destructive/30 hover:bg-destructive/10"
+                              >
+                                <XCircle className="w-3 h-3 mr-1" />
+                                Cancelar NF
+                              </Button>
+                            )}
+                            {isCancel && (
+                              <Badge variant="outline" className="text-[9px] text-muted-foreground">
+                                Cancelada
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -1206,6 +1318,113 @@ export function OwnerFiscalInvoicesPanel() {
             </Button>
             <Button variant="destructive" size="sm" onClick={handleConfirmCancellation} className="font-bold rounded-xl">
               Confirmar Cancelamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =================================================================== */}
+      {/* MODAL 3: EDIÇÃO DE NF NO PAINEL DIRETOR                             */}
+      {/* =================================================================== */}
+      <Dialog open={Boolean(editingRecord)} onOpenChange={(v) => { if (!v) setEditingRecord(null); }}>
+        <DialogContent className="max-w-lg rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-primary" />
+              Editar Dados da Nota Fiscal Nº {editInvoiceNumber}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Atualize as informações contábeis, loja, data, cliente e valores desta NF diretamente pelo Painel Diretor.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-semibold">Número da NF *</Label>
+                <Input
+                  className="h-9 text-xs font-mono font-bold rounded-xl mt-1"
+                  placeholder="Ex: 10450"
+                  value={editInvoiceNumber}
+                  onChange={(e) => setEditInvoiceNumber(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Data da Operação / Emissão *</Label>
+                <Input
+                  type="date"
+                  className="h-9 text-xs rounded-xl mt-1"
+                  value={editEventDate}
+                  onChange={(e) => setEditEventDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs font-semibold">Concessionária *</Label>
+                <Select value={editStoreId} onValueChange={(val) => setEditStoreId(val)}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="store-montesclaros">Concessionária Montes Claros (MOC)</SelectItem>
+                    <SelectItem value="store-divinopolis">Concessionária Divinópolis (DIV)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Valor Total (R$) *</Label>
+                <Input
+                  className="h-9 text-xs font-mono font-bold rounded-xl mt-1"
+                  placeholder="R$ 0,00"
+                  value={editTotalValue}
+                  onChange={(e) => setEditTotalValue(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold">Cliente / Fornecedor / Destinatário *</Label>
+              <Input
+                className="h-9 text-xs rounded-xl mt-1"
+                placeholder="Ex: Nome do cliente ou Shineray do Brasil"
+                value={editPartyName}
+                onChange={(e) => setEditPartyName(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold">Protocolo SEFAZ (Opcional)</Label>
+              <Input
+                className="h-9 text-xs font-mono rounded-xl mt-1"
+                placeholder="Ex: 312611000000001"
+                value={editSefazProtocol}
+                onChange={(e) => setEditSefazProtocol(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-semibold">Observações Fiscais</Label>
+              <Textarea
+                className="text-xs rounded-xl mt-1 resize-none"
+                rows={2}
+                placeholder="Observações complementares ou dados do veículo..."
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setEditingRecord(null)} className="rounded-xl">
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleSaveEdit} className="font-bold rounded-xl gap-1.5">
+              <CheckCircle2 className="w-4 h-4" />
+              Salvar Alterações da NF
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -40,7 +40,7 @@ export type SidebarMenuItem = {
 };
 
 export const ALL_MENU_ITEMS: SidebarMenuItem[] = [
-  { icon: Crown, label: 'Cockpit da Diretoria', path: '/owner-dashboard', roles: ['admin', 'gerente'], group: 'operacao' },
+  { icon: Crown, label: 'Cockpit da Diretoria', path: '/owner-dashboard', group: 'operacao' },
   { icon: LayoutDashboard, label: 'Dashboard', path: '/', group: 'operacao' },
   { icon: Car, label: 'Estoque', path: '/vehicles', group: 'operacao' },
   { icon: Store, label: 'Catálogo de Motos', path: '/catalog-control', roles: ['admin', 'gerente'], group: 'operacao' },

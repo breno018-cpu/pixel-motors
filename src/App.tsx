@@ -212,7 +212,7 @@ const App = () => {
               <Route
                 path="/owner-dashboard"
                 element={
-                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.reports">
+                  <ProtectedRoute>
                     <MainLayout>
                       <OwnerDashboard />
                     </MainLayout>
