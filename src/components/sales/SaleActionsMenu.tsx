@@ -130,6 +130,7 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
   const [reviewEditOpen, setReviewEditOpen] = useState(false);
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [receiptsModalOpen, setReceiptsModalOpen] = useState(false);
+  const [receiptsDefaultTab, setReceiptsDefaultTab] = useState<'nf' | 'receipts'>('receipts');
   const [manageOpen, setManageOpen] = useState(false);
   const [manageDefaultTab, setManageDefaultTab] = useState<'cadastro' | 'veiculo' | 'finalizacao' | 'documentos'>('cadastro');
   const [freightOpen, setFreightOpen] = useState(false);
@@ -669,7 +670,43 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
             Solicitação NF (PNG)
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => setReceiptsModalOpen(true)} className="cursor-pointer flex items-center justify-between">
+          {/* Anexação Direta da Nota Fiscal Oficial */}
+          {(() => {
+            const ext = (sale.external_data || {}) as Record<string, any>;
+            const nfNum = ext.invoice_number;
+            const hasNfFile = Boolean(ext.invoice_url);
+            const hasAnyNf = Boolean(nfNum || hasNfFile);
+
+            return (
+              <DropdownMenuItem
+                onClick={() => {
+                  setReceiptsDefaultTab('nf');
+                  setReceiptsModalOpen(true);
+                }}
+                className="cursor-pointer flex items-center justify-between text-emerald-700 dark:text-emerald-400 font-semibold focus:text-emerald-700"
+              >
+                <span className="flex items-center">
+                  <FileCheck className="w-3.5 h-3.5 mr-2 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  Anexar / Ver NF
+                </span>
+                {hasAnyNf ? (
+                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-mono font-bold text-emerald-600 border-emerald-500/40">
+                    {nfNum ? `NF ${nfNum}` : 'Anexa'}
+                  </Badge>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground font-normal">Pendente</span>
+                )}
+              </DropdownMenuItem>
+            );
+          })()}
+
+          <DropdownMenuItem
+            onClick={() => {
+              setReceiptsDefaultTab('receipts');
+              setReceiptsModalOpen(true);
+            }}
+            className="cursor-pointer flex items-center justify-between"
+          >
             <span className="flex items-center">
               <Paperclip className="w-3.5 h-3.5 mr-2 text-muted-foreground shrink-0" />
               Comprovantes
@@ -983,9 +1020,13 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
 
       <SaleReceiptsModal
         open={receiptsModalOpen}
-        onOpenChange={setReceiptsModalOpen}
+        onOpenChange={(open) => {
+          setReceiptsModalOpen(open);
+          if (!open) setReceiptsDefaultTab('receipts');
+        }}
         sale={sale}
         vehicleName={vehicleName}
+        defaultTab={receiptsDefaultTab}
       />
 
       <SaleManageModal

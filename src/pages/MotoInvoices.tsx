@@ -66,6 +66,7 @@ import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { getLocalTodayDateString, normalizeDateToYMD, formatFiscalDate } from '@/lib/fiscalDates';
+import { cloudAttachInvoiceToSale } from '@/lib/cloudSalesSync';
 
 const TYPE_TAG = 'moto';
 
@@ -123,13 +124,25 @@ export default function MotoInvoices() {
   const [selectedSaleId, setSelectedSaleId] = useState<string>('');
   const [saleSearchQuery, setSaleSearchQuery] = useState('');
 
-  // Estado do Arquivo Anexado
+  // Estado do Arquivo Anexado (Cadastro Principal)
   const [attachedFile, setAttachedFile] = useState<{
     name: string;
     url: string;
     size: number;
     type: string;
   } | null>(null);
+
+  // Estado da Anexação Rápida Direta na Tabela
+  const [selectedInvoiceForQuickAttach, setSelectedInvoiceForQuickAttach] = useState<Invoice | null>(null);
+  const [quickAttachFile, setQuickAttachFile] = useState<{
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+  } | null>(null);
+  const [quickAttachDialogOpen, setQuickAttachDialogOpen] = useState(false);
+  const [isQuickSaving, setIsQuickSaving] = useState(false);
+  const quickFileInputRef = useRef<HTMLInputElement>(null);
 
   // Formulário de Cadastro Semi-Manual de NF
   const initialForm = {
@@ -420,6 +433,58 @@ export default function MotoInvoices() {
     document.body.removeChild(a);
   };
 
+  // Salva anexo rápido direto da tabela
+  const handleSaveQuickAttachment = async () => {
+    if (!selectedInvoiceForQuickAttach || !quickAttachFile) return;
+
+    setIsQuickSaving(true);
+    try {
+      const inv = selectedInvoiceForQuickAttach;
+      const chassiMatch = (inv.notes || '').match(/Chassi:\s*([^\s|]+)/i);
+      const vehicleDesc = inv.items?.[0]?.description || '';
+      const vehicleModel = vehicleDesc.replace(/\(Chassi:.*\)/, '').trim();
+
+      await upsert.mutateAsync({
+        ...inv,
+        vehicle_model: vehicleModel || 'SHINERAY',
+        vehicle_chassis: chassiMatch?.[1] || '',
+        attachment_name: quickAttachFile.name,
+        attachment_url: quickAttachFile.url,
+        attachment_size: quickAttachFile.size,
+        attachment_type: quickAttachFile.type,
+      });
+
+      // Se a NF estiver vinculada a uma venda, sincroniza o contrato da venda também
+      if (inv.sale_id) {
+        await cloudAttachInvoiceToSale(inv.sale_id, {
+          invoice_number: inv.invoice_number,
+          series: inv.series || '1',
+          issue_date: inv.issue_date,
+          attachment_name: quickAttachFile.name,
+          attachment_url: quickAttachFile.url,
+          attachment_size: quickAttachFile.size,
+          attachment_type: quickAttachFile.type,
+        });
+      }
+
+      toast({
+        title: 'Arquivo Anexado com Sucesso!',
+        description: `O arquivo ${quickAttachFile.name} foi vinculado à NF ${inv.invoice_number}.`,
+      });
+      setQuickAttachDialogOpen(false);
+      setQuickAttachFile(null);
+      setSelectedInvoiceForQuickAttach(null);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao anexar arquivo',
+        description: err?.message || 'Tente novamente.',
+      });
+    } finally {
+      setIsQuickSaving(false);
+    }
+  };
+
   // Emissão de PNG de solicitação de faturamento
   const emitPng = async (inv: Invoice) => {
     try {
@@ -585,9 +650,35 @@ export default function MotoInvoices() {
                               <Paperclip className="w-3.5 h-3.5" />
                               <span className="max-w-[80px] truncate">{inv.attachment_name || 'Ver NF'}</span>
                             </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => {
+                                setSelectedInvoiceForQuickAttach(inv);
+                                setQuickAttachFile(null);
+                                setQuickAttachDialogOpen(true);
+                              }}
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              title="Substituir arquivo desta NF"
+                            >
+                              <Upload className="w-3 h-3" />
+                            </Button>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-muted-foreground italic">Sem anexo</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedInvoiceForQuickAttach(inv);
+                              setQuickAttachFile(null);
+                              setQuickAttachDialogOpen(true);
+                            }}
+                            className="h-7 text-[11px] font-semibold gap-1 px-2 border-dashed border-primary/40 text-primary hover:bg-primary/10"
+                            title="Anexar arquivo oficial desta Nota Fiscal"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Anexar NF</span>
+                          </Button>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1115,6 +1206,119 @@ export default function MotoInvoices() {
               className="gap-1.5 font-semibold"
             >
               Confirmar Cancelamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO: ANEXAÇÃO RÁPIDA DE ARQUIVO DE NF */}
+      <Dialog open={quickAttachDialogOpen} onOpenChange={setQuickAttachDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <FileCheck className="w-5 h-5 text-primary" />
+              Anexar Arquivo à NF {selectedInvoiceForQuickAttach?.invoice_number}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Vincule o arquivo oficial (PDF ou DANFE) a esta Nota Fiscal e ao contrato do cliente.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedInvoiceForQuickAttach && (
+            <div className="space-y-3.5 py-2">
+              <div className="bg-muted/40 p-3 rounded-xl border text-xs space-y-1">
+                <p>
+                  <span className="text-muted-foreground">Cliente: </span>
+                  <strong className="text-foreground">{selectedInvoiceForQuickAttach.customer_name}</strong>
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Emissão: </span>
+                  <strong className="text-foreground">{formatFiscalDate(selectedInvoiceForQuickAttach.issue_date)}</strong>
+                  {selectedInvoiceForQuickAttach.contract_number && (
+                    <span className="ml-2 text-muted-foreground font-mono">
+                      (Venda: {selectedInvoiceForQuickAttach.contract_number})
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {/* Upload Zone */}
+              <div
+                onClick={() => quickFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
+                  quickAttachFile
+                    ? 'border-emerald-500 bg-emerald-500/5'
+                    : 'border-border/80 hover:border-primary/50 hover:bg-muted/30'
+                }`}
+              >
+                <input
+                  ref={quickFileInputRef}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.xml"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    if (f.size > 20 * 1024 * 1024) {
+                      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 20MB)' });
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      setQuickAttachFile({
+                        name: f.name,
+                        url: reader.result as string,
+                        size: f.size,
+                        type: f.type || 'application/pdf',
+                      });
+                    };
+                    reader.readAsDataURL(f);
+                  }}
+                  className="hidden"
+                />
+
+                {quickAttachFile ? (
+                  <div className="flex flex-col items-center gap-1.5">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                    <p className="text-xs font-bold text-foreground truncate max-w-xs">{quickAttachFile.name}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {(quickAttachFile.size / 1024).toFixed(1)} KB • Clique para trocar de arquivo
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Upload className="w-8 h-8 text-primary" />
+                    <p className="text-xs font-bold text-foreground">Clique para escolher o arquivo da NF</p>
+                    <p className="text-[11px] text-muted-foreground">Formatos: PDF, XML ou imagens (máx 20MB)</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex sm:justify-between items-center gap-2 pt-2 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setQuickAttachDialogOpen(false);
+                setQuickAttachFile(null);
+                setSelectedInvoiceForQuickAttach(null);
+              }}
+              className="text-xs"
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              disabled={!quickAttachFile || isQuickSaving}
+              onClick={handleSaveQuickAttachment}
+              className="text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+            >
+              <FileCheck className="w-3.5 h-3.5" />
+              {isQuickSaving ? 'Salvando...' : 'Salvar Anexo da NF'}
             </Button>
           </DialogFooter>
         </DialogContent>

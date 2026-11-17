@@ -3,7 +3,7 @@ import {
   Search, ShoppingCart, Calendar, Store, User, Car, Bike, Plus,
   TrendingUp, DollarSign, Clock, CheckCircle, AlertCircle, FileText,
   ImageDown, CheckCircle2, ArrowRight, Paperclip, FileSpreadsheet,
-  Printer, Pencil, Copy, Check
+  Printer, Pencil, Copy, Check, FileCheck2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -218,6 +218,7 @@ export default function Sales() {
   const [targetPreSaleForComplete, setTargetPreSaleForComplete] = useState<any | null>(null);
   const [receiptsModalOpen, setReceiptsModalOpen] = useState(false);
   const [selectedSaleForReceipts, setSelectedSaleForReceipts] = useState<any | null>(null);
+  const [receiptsDefaultTab, setReceiptsDefaultTab] = useState<'nf' | 'receipts'>('receipts');
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [selectedSaleForManage, setSelectedSaleForManage] = useState<any | null>(null);
   const [manageDefaultTab, setManageDefaultTab] = useState<'cadastro' | 'veiculo' | 'finalizacao' | 'documentos'>('cadastro');
@@ -1200,6 +1201,58 @@ export default function Sales() {
                               Concluir Cadastro
                             </Button>
                           )}
+
+                          {/* INDICADOR & ATALHO DE NOTA FISCAL (NF) */}
+                          {(() => {
+                            const ext = (sale.external_data || {}) as Record<string, any>;
+                            const nfNum = ext.invoice_number;
+                            const hasNfFile = Boolean(ext.invoice_url);
+
+                            if (nfNum || hasNfFile) {
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSaleForReceipts(sale);
+                                    setReceiptsDefaultTab('nf');
+                                    setReceiptsModalOpen(true);
+                                  }}
+                                  className={cn(
+                                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors shadow-2xs',
+                                    hasNfFile
+                                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                                      : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
+                                  )}
+                                  title={`Nota Fiscal ${nfNum ? `nº ${nfNum}` : ''} ${hasNfFile ? '(Arquivo Anexado)' : '(Pendente de Arquivo)'}. Clique para visualizar ou anexar.`}
+                                >
+                                  <FileCheck2 className="w-3 h-3 shrink-0" />
+                                  <span>NF {nfNum || 'Anexa'}</span>
+                                </button>
+                              );
+                            }
+
+                            if (!isPreSale) {
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSaleForReceipts(sale);
+                                    setReceiptsDefaultTab('nf');
+                                    setReceiptsModalOpen(true);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/50 text-muted-foreground border border-dashed border-border hover:border-primary/40 hover:text-primary transition-colors"
+                                  title="Clique para anexar a Nota Fiscal oficial desta venda"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                  <span>+ Anexar NF</span>
+                                </button>
+                              );
+                            }
+
+                            return null;
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(sale.created_at)}</TableCell>
@@ -1225,6 +1278,7 @@ export default function Sales() {
                             variant="ghost"
                             onClick={() => {
                               setSelectedSaleForReceipts(sale);
+                              setReceiptsDefaultTab('receipts');
                               setReceiptsModalOpen(true);
                             }}
                             className={cn(
@@ -1280,15 +1334,19 @@ export default function Sales() {
         initialPreSaleId={targetPreSaleForComplete?.id}
       />
 
-      {/* Modal Dedicado para Anexar e Gerenciar Comprovantes Após a Venda */}
+      {/* Modal Dedicado para Anexar e Gerenciar Comprovantes & NF Após a Venda */}
       {selectedSaleForReceipts && (
         <SaleReceiptsModal
           open={receiptsModalOpen}
           onOpenChange={(open) => {
             setReceiptsModalOpen(open);
-            if (!open) setSelectedSaleForReceipts(null);
+            if (!open) {
+              setSelectedSaleForReceipts(null);
+              setReceiptsDefaultTab('receipts');
+            }
           }}
           sale={selectedSaleForReceipts}
+          defaultTab={receiptsDefaultTab}
           vehicleName={
             selectedSaleForReceipts.vehicle
               ? `${selectedSaleForReceipts.vehicle.brand} ${selectedSaleForReceipts.vehicle.model} ${selectedSaleForReceipts.vehicle.year}`

@@ -723,7 +723,12 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
             external_data: {
               ...ext,
               invoice_number: readyInvoice.invoice_number,
+              invoice_series: readyInvoice.series || '1',
+              invoice_date: readyInvoice.issue_date,
               invoice_url: readyInvoice.attachment_url || null,
+              invoice_name: readyInvoice.attachment_name || null,
+              invoice_size: readyInvoice.attachment_size || null,
+              invoice_type: readyInvoice.attachment_type || null,
               invoice_registered_at: readyInvoice.created_at,
             },
           })
@@ -936,6 +941,153 @@ export async function cloudDeleteInvoice(id: string): Promise<boolean> {
     return true;
   } catch (err) {
     console.error('[cloudSalesSync] Erro ao excluir NF:', err);
+    return false;
+  }
+}
+
+/**
+ * Anexa ou atualiza a Nota Fiscal oficial de uma venda,
+ * sincronizando tanto no contrato (external_data) quanto na lista global de NFs (registered_invoices e tabela invoices).
+ */
+export async function cloudAttachInvoiceToSale(
+  saleId: string,
+  data: {
+    invoice_number: string;
+    series?: string;
+    issue_date?: string;
+    attachment_name: string;
+    attachment_url: string;
+    attachment_size?: number;
+    attachment_type?: string;
+    notes?: string;
+  }
+): Promise<boolean> {
+  try {
+    // 1. Obter dados atuais do contrato
+    const { data: saleContract } = await supabase
+      .from('contracts')
+      .select('*, vehicle:vehicles(*)')
+      .eq('id', saleId)
+      .maybeSingle();
+
+    const ext = (saleContract?.external_data || {}) as Record<string, any>;
+    const issueDate = data.issue_date || getLocalTodayDateString();
+    const series = data.series || '1';
+
+    // 2. Atualizar external_data do contrato
+    const updatedExt = {
+      ...ext,
+      invoice_number: data.invoice_number,
+      invoice_series: series,
+      invoice_date: issueDate,
+      invoice_url: data.attachment_url,
+      invoice_name: data.attachment_name,
+      invoice_size: data.attachment_size || 0,
+      invoice_type: data.attachment_type || 'application/pdf',
+      invoice_registered_at: new Date().toISOString(),
+    };
+
+    await supabase
+      .from('contracts')
+      .update({ external_data: updatedExt })
+      .eq('id', saleId);
+
+    // 3. Montar / Atualizar RegisteredInvoice para a central de NFs (/moto-invoices)
+    const existingInvoices = await fetchCloudInvoices();
+    const existingInv = existingInvoices.find(
+      (inv) => inv.sale_id === saleId || (saleContract?.contract_number && inv.contract_number === saleContract.contract_number)
+    );
+
+    const vehicle = saleContract?.vehicle as any;
+    const vehicleModel = vehicle
+      ? `${vehicle.brand || ''} ${vehicle.model || ''}`.trim()
+      : ext.vehicle_model_custom || ext.modelo || 'Moto Shineray';
+    const vehicleChassis = vehicle?.chassis || ext.chassi || ext.vehicle_chassis || '';
+    const vehicleBrand = vehicle?.brand || ext.marca || 'SHINERAY';
+
+    const invoicePayload: RegisteredInvoice = {
+      id: existingInv?.id || crypto.randomUUID(),
+      invoice_number: data.invoice_number,
+      series: series,
+      issue_date: issueDate,
+      store_id: isUuid(saleContract?.store_id) ? saleContract.store_id : STORE_DIVINOPOLIS_UUID,
+      sale_id: saleId,
+      contract_number: saleContract?.contract_number || ext.contract_number || '',
+      customer_name: saleContract?.buyer_name || ext.buyer_name || 'Comprador',
+      customer_document: saleContract?.buyer_cpf || ext.buyer_cpf || '',
+      customer_phone: saleContract?.buyer_phone || ext.buyer_phone || '',
+      customer_email: saleContract?.buyer_email || ext.buyer_email || '',
+      customer_address: saleContract?.buyer_address || ext.buyer_address || '',
+      vehicle_model: vehicleModel,
+      vehicle_chassis: vehicleChassis,
+      vehicle_brand: vehicleBrand,
+      vehicle_color: vehicle?.color || ext.cor || 'Padrão',
+      vehicle_year: Number(vehicle?.year || ext.ano || 2026),
+      alienacao: ext.alienacao || (saleContract?.payment_method === 'financiamento' ? (saleContract as any)?.financing_bank || 'Alienada' : 'À VISTA'),
+      operation_nature: 'Venda de Moto Zero KM',
+      total_value: Number(saleContract?.sale_price) || Number(ext.valor_total) || 0,
+      tax_rate: 0,
+      tax_value: 0,
+      status: 'emitida',
+      notes: data.notes || `[Anexada via Venda ${saleContract?.contract_number || saleId}] ${data.attachment_name}`,
+      created_at: existingInv?.created_at || new Date().toISOString(),
+      attachment_name: data.attachment_name,
+      attachment_url: data.attachment_url,
+      attachment_size: data.attachment_size,
+      attachment_type: data.attachment_type,
+    };
+
+    await cloudSaveInvoice(invoicePayload);
+    return true;
+  } catch (err) {
+    console.error('[cloudAttachInvoiceToSale] Erro ao anexar NF à venda:', err);
+    return false;
+  }
+}
+
+/**
+ * Remove o anexo da Nota Fiscal de uma venda.
+ */
+export async function cloudDetachInvoiceFromSale(saleId: string): Promise<boolean> {
+  try {
+    const { data: saleContract } = await supabase
+      .from('contracts')
+      .select('external_data')
+      .eq('id', saleId)
+      .maybeSingle();
+
+    const ext = (saleContract?.external_data || {}) as Record<string, any>;
+    const updatedExt = { ...ext };
+    delete updatedExt.invoice_url;
+    delete updatedExt.invoice_name;
+    delete updatedExt.invoice_size;
+    delete updatedExt.invoice_type;
+
+    await supabase
+      .from('contracts')
+      .update({ external_data: updatedExt })
+      .eq('id', saleId);
+
+    // Também limpa o anexo na lista de NFs se existir
+    const existingInvoices = await fetchCloudInvoices();
+    const existingInv = existingInvoices.find((inv) => inv.sale_id === saleId);
+    if (existingInv) {
+      await cloudSaveInvoice({
+        ...existingInv,
+        attachment_url: undefined,
+        attachment_name: undefined,
+        attachment_size: undefined,
+        attachment_type: undefined,
+      });
+    }
+
+    window.dispatchEvent(new CustomEvent('dealflow:sales-updated'));
+    window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+    queryClient.invalidateQueries({ queryKey: ['contracts'] });
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    return true;
+  } catch (err) {
+    console.error('[cloudDetachInvoiceFromSale] Erro:', err);
     return false;
   }
 }

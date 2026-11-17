@@ -66,8 +66,11 @@ import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { getStoreFromDatabase } from '@/lib/storeResolution';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { ReceiptAttachmentManager } from '@/components/sales/ReceiptAttachmentManager';
+import { SaleReceiptsModal } from '@/components/sales/SaleReceiptsModal';
+import { formatFiscalDate } from '@/lib/fiscalDates';
 import { SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { cloudDeleteSale, cloudCancelSale, cloudSaveSheetRows } from '@/lib/cloudSalesSync';
+import { cn } from '@/lib/utils';
 
 interface SaleManageModalProps {
   sale: any | null;
@@ -92,6 +95,7 @@ export function SaleManageModal({
 
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
   const [isSaving, setIsSaving] = useState(false);
+  const [nfModalOpen, setNfModalOpen] = useState(false);
 
   // ABA 1: DADOS CADASTRAIS DO CLIENTE E LOJA
   const [buyerName, setBuyerName] = useState('');
@@ -590,6 +594,10 @@ export function SaleManageModal({
 
   if (!sale) return null;
 
+  const saleExt = ((sale?.external_data || {}) as Record<string, any>);
+  const effectiveInvoiceNumber = saleExt.invoice_number || invoiceNumber;
+  const hasInvoiceFile = Boolean(saleExt.invoice_url);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden rounded-2xl">
@@ -1052,8 +1060,8 @@ export function SaleManageModal({
                 </Badge>
               </div>
 
-              {/* Grid de Documentos de 2ª Via */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Grid de Documentos de 2ª Via & Fiscal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* 1. 2ª Via do Contrato */}
                 <div className="rounded-xl border bg-card p-4 flex flex-col justify-between hover:shadow-md transition-shadow">
                   <div className="space-y-2">
@@ -1082,7 +1090,7 @@ export function SaleManageModal({
                       className="mt-4 w-full text-xs font-bold gap-2 bg-red-600 hover:bg-red-700 text-white shadow-xs"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      Baixar Contrato Oficial (PDF)
+                      Baixar Contrato (PDF)
                     </Button>
                 </div>
 
@@ -1112,9 +1120,9 @@ export function SaleManageModal({
                     <div className="h-9 w-9 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
                       <ShieldCheck className="w-5 h-5" />
                     </div>
-                    <h5 className="text-sm font-bold text-foreground">Termo Pessoas Autorizadas (Gov.br)</h5>
+                    <h5 className="text-sm font-bold text-foreground">Termo Pessoas Autorizadas</h5>
                     <p className="text-xs text-muted-foreground">
-                      Autorização formal de entrada e retirada nas dependências da loja com assinatura digital oficial Gov.br do comprador (Lei nº 14.063/2020).
+                      Autorização formal de entrada e retirada com assinatura digital oficial Gov.br do comprador (Lei nº 14.063/2020).
                     </p>
                   </div>
                   <Button
@@ -1124,6 +1132,69 @@ export function SaleManageModal({
                     <Download className="w-3.5 h-3.5" />
                     Baixar Termo Gov.br (PDF)
                   </Button>
+                </div>
+
+                {/* 4. Nota Fiscal Oficial (DANFE / NF-e) */}
+                <div className="rounded-xl border bg-card p-4 flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="h-9 w-9 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-bold">
+                        <FileCheck className="w-5 h-5" />
+                      </div>
+                      {hasInvoiceFile ? (
+                        <Badge variant="default" className="bg-emerald-600 text-[10px] font-bold">
+                          Anexada
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/40">
+                          Pendente
+                        </Badge>
+                      )}
+                    </div>
+                    <h5 className="text-sm font-bold text-foreground">Nota Fiscal Oficial (NF)</h5>
+                    <p className="text-xs text-muted-foreground">
+                      {effectiveInvoiceNumber ? (
+                        <>
+                          NF nº <strong>{effectiveInvoiceNumber}</strong>
+                          {saleExt.invoice_date ? ` emitida em ${formatFiscalDate(saleExt.invoice_date)}` : ''}.
+                          {hasInvoiceFile ? ' Arquivo oficial vinculado.' : ' Aguardando upload do arquivo.'}
+                        </>
+                      ) : (
+                        'Anexe o arquivo oficial da Nota Fiscal (PDF ou DANFE) vinculada a esta venda.'
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 mt-4">
+                    {hasInvoiceFile && (
+                      <Button
+                        onClick={() => {
+                          const a = document.createElement('a');
+                          a.href = saleExt.invoice_url;
+                          a.download = saleExt.invoice_name || `NF_${effectiveInvoiceNumber || 'venda'}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        }}
+                        className="w-full text-xs font-bold gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Baixar NF Anexada
+                      </Button>
+                    )}
+
+                    <Button
+                      variant={hasInvoiceFile ? 'outline' : 'default'}
+                      onClick={() => setNfModalOpen(true)}
+                      className={cn(
+                        'w-full text-xs font-bold gap-2',
+                        !hasInvoiceFile && 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                      )}
+                    >
+                      <Paperclip className="w-3.5 h-3.5" />
+                      {hasInvoiceFile ? 'Substituir / Gerenciar NF' : 'Anexar Nota Fiscal Agora'}
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -1208,6 +1279,17 @@ export function SaleManageModal({
           </div>
         </DialogFooter>
       </DialogContent>
+
+      {/* Modal Dedicado para Anexação da Nota Fiscal */}
+      {sale && (
+        <SaleReceiptsModal
+          open={nfModalOpen}
+          onOpenChange={setNfModalOpen}
+          sale={sale}
+          defaultTab="nf"
+          vehicleName={`${vehicleBrand} ${vehicleModel} ${vehicleYear}`.trim()}
+        />
+      )}
     </Dialog>
   );
 }
