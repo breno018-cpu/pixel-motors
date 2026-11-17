@@ -37,6 +37,7 @@ import { StoreEditDialog } from '@/components/dialogs/StoreEditDialog';
 import { StoreFormDialog } from '@/components/forms/StoreFormDialog';
 import { StoreActionsMenu } from '@/components/actions/StoreActionsMenu';
 import { maskCPFCNPJ } from '@/lib/masks';
+import { isMatchingStore } from '@/lib/storeResolution';
 
 interface DealershipsSettingsManagerProps {
   embedded?: boolean;
@@ -161,23 +162,31 @@ export function DealershipsSettingsManager({ embedded = false }: DealershipsSett
           </div>
         ) : (
           filteredStores.map((store) => {
+            const isMultimarcas =
+              store.id === '6b3afc94-86b2-41b0-9427-6f58ae8dbf21' ||
+              store.name?.toLowerCase().includes('multimarcas');
             const isDivinopolis =
-              store.id === 'store-divinopolis' || store.city?.toLowerCase().includes('divin');
+              !isMultimarcas && (store.id === 'store-divinopolis' || store.city?.toLowerCase().includes('divin'));
             const isMontesClaros =
-              store.id === 'store-montesclaros' || store.city?.toLowerCase().includes('montes');
+              !isMultimarcas && (store.id === 'store-montesclaros' || store.city?.toLowerCase().includes('montes'));
 
-            // Estatísticas reais de estoque, equipe e contratos
+            // Estatísticas reais de estoque, equipe e contratos isolados por loja
             const storeVehicles = vehicles.filter(
-              (v) => v.store_id === store.id && v.status !== 'vendido'
+              (v) => isMatchingStore(v.store_id, store.id) && v.status !== 'vendido'
             );
-            const storeEmployees = employees.filter((e) => e.store_id === store.id);
-            const storeContracts = contracts.filter((c) => c.store_id === store.id);
+            const storeEmployees = employees.filter((e) => isMatchingStore(e.store_id, store.id));
+            const storeContracts = contracts.filter((c) => isMatchingStore(c.store_id, store.id));
 
             const inscricaoEstadual = isMontesClaros
               ? '003.891.240.00-22'
+              : isMultimarcas
+              ? '003.891.240.00-22'
               : '003.891.240.00-14';
 
-            const bancoPix = isMontesClaros ? 'Banco Bradesco S.A.' : 'Banco Itaú Unibanco';
+            const bancoPix = isMontesClaros || isMultimarcas ? 'Banco Bradesco S.A.' : 'Banco Itaú Unibanco';
+
+            const defaultCnpj = isMontesClaros || isMultimarcas ? '18.456.789/0002-82' : '18.456.789/0001-01';
+            const displayCnpj = store.cnpj ? maskCPFCNPJ(store.cnpj) : defaultCnpj;
 
             return (
               <Card
@@ -258,11 +267,11 @@ export function DealershipsSettingsManager({ embedded = false }: DealershipsSett
                     </div>
 
                     <div className="font-mono font-black text-sm text-foreground flex items-center justify-between">
-                      <span>{store.cnpj ? maskCPFCNPJ(store.cnpj) : '18.456.789/0001-01'}</span>
+                      <span>{displayCnpj}</span>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleCopy(store.cnpj || '18.456.789/0001-01', 'CNPJ')}
+                        onClick={() => handleCopy(displayCnpj, 'CNPJ')}
                         className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                         title="Copiar CNPJ"
                       >
@@ -288,7 +297,7 @@ export function DealershipsSettingsManager({ embedded = false }: DealershipsSett
                         Chave PIX Recebimentos:
                       </span>
                       <span className="font-mono font-bold text-xs text-foreground block">
-                        {store.cnpj ? maskCPFCNPJ(store.cnpj) : 'CNPJ da Loja'}
+                        {displayCnpj}
                       </span>
                       <span className="text-[10px] text-muted-foreground block">{bancoPix}</span>
                     </div>
@@ -296,7 +305,7 @@ export function DealershipsSettingsManager({ embedded = false }: DealershipsSett
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleCopy(store.cnpj || '18.456.789/0001-01', 'Chave PIX')}
+                      onClick={() => handleCopy(displayCnpj, 'Chave PIX')}
                       className="h-7 text-[11px] font-bold gap-1 rounded-xl border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
                     >
                       {copiedKey === 'Chave PIX' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}

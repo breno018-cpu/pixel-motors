@@ -600,7 +600,7 @@ export function CreateSaleModal({
         ? 'L1MA MOTORS MULTIMARCAS'
         : isMoc
         ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS'
-        : 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS');
+        : 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS');
 
       const dateParts = effectiveSaleDate.split('-');
       const formattedDateBR = dateParts.length === 3

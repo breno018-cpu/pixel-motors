@@ -173,7 +173,7 @@ export interface ResolvedStore {
 export const OFFICIAL_STORES: Record<string, ResolvedStore> = {
   'store-divinopolis': {
     storeId: STORE_DIVINOPOLIS_UUID,
-    storeName: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS',
+    storeName: 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS',
     city: 'Divinópolis',
     state: 'MG',
     cnpj: '18.456.789/0001-01',
@@ -203,7 +203,7 @@ export const OFFICIAL_STORES: Record<string, ResolvedStore> = {
   },
   [STORE_DIVINOPOLIS_UUID]: {
     storeId: STORE_DIVINOPOLIS_UUID,
-    storeName: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS',
+    storeName: 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS',
     city: 'Divinópolis',
     state: 'MG',
     cnpj: '18.456.789/0001-01',
@@ -300,7 +300,7 @@ export function getStoreFromDatabase(
           (found.id || '').toLowerCase() === 'store-montesclaros');
       return {
         storeId: isMulti ? STORE_MONTESCLAROS_MULTIMARCAS_UUID : isMontes ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
-        storeName: found.name || (isMulti ? 'L1MA MOTORS MULTIMARCAS' : isMontes ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS' : 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS'),
+        storeName: found.name || (isMulti ? 'L1MA MOTORS MULTIMARCAS' : isMontes ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS' : 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS'),
         city: found.city || (isMontes || isMulti ? 'Montes Claros' : 'Divinópolis'),
         state: found.state || 'MG',
         cnpj: found.cnpj || (isMontes || isMulti ? '18.456.789/0002-82' : '18.456.789/0001-01'),

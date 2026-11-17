@@ -27,6 +27,7 @@ import {
 import { ResellerFormDialog } from '@/components/forms/ResellerFormDialog';
 import { ResellerActionsMenu } from '@/components/actions/ResellerActionsMenu';
 import { useAuth } from '@/contexts/AuthContext';
+import { isMatchingStore } from '@/lib/storeResolution';
 
 export default function Resellers({ embedded = false }: { embedded?: boolean } = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -54,7 +55,7 @@ export default function Resellers({ embedded = false }: { embedded?: boolean } =
       reseller.email?.toLowerCase().includes(search.toLowerCase()) ||
       reseller.cpf?.includes(search);
     
-    const matchesStore = storeFilter === 'all' || reseller.store_id === storeFilter;
+    const matchesStore = storeFilter === 'all' || isMatchingStore(reseller.store_id, storeFilter);
     
     return matchesSearch && matchesStore;
   });

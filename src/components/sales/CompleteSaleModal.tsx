@@ -695,7 +695,7 @@ export function CompleteSaleModal({
             ? 'L1MA MOTORS MULTIMARCAS'
             : isMoc
             ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS'
-            : 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS',
+            : 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS',
           store_id: effectiveStoreId,
           chassi: vehicleChassis.trim().toUpperCase(),
           cor: vehicleColor,
