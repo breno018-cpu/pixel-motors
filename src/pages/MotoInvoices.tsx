@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   FileCheck,
   RotateCcw,
+  Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -123,6 +124,7 @@ export default function MotoInvoices() {
   // Estado da Venda Selecionada para preenchimento semi-manual
   const [selectedSaleId, setSelectedSaleId] = useState<string>('');
   const [saleSearchQuery, setSaleSearchQuery] = useState('');
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
 
   // Estado do Arquivo Anexado (Cadastro Principal)
   const [attachedFile, setAttachedFile] = useState<{
@@ -304,6 +306,68 @@ export default function MotoInvoices() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // Handler para abrir edição de uma NF já cadastrada
+  const handleOpenEdit = (inv: Invoice) => {
+    const firstItem = (inv.items || [])[0];
+    const chassiMatch = (inv.notes || '').match(/Chassi:\s*([^\s|—]+)/i);
+    const alienacaoMatch = (inv.notes || '').match(/Alienação:\s*([^|—]+)/i);
+    const modelMatch = (inv.notes || '').match(/\[moto\]\s*([^-]+)/i);
+
+    let rawNotes = inv.notes || '';
+    if (rawNotes.includes('—')) {
+      rawNotes = rawNotes.split('—').slice(1).join('—').trim();
+    } else if (rawNotes.startsWith('[moto]')) {
+      rawNotes = '';
+    }
+
+    const effectiveChassis = chassiMatch ? chassiMatch[1].trim() : firstItem?.chassis || '';
+    const effectiveModel = modelMatch
+      ? modelMatch[1].trim()
+      : firstItem?.description?.replace(/\(Chassi:.*\)/, '').replace(/^SHINERAY\s*/i, '').trim() || 'MOTO SHINERAY';
+    const effectiveAlienacao = alienacaoMatch ? alienacaoMatch[1].trim() : 'À VISTA';
+
+    setForm({
+      invoice_number: inv.invoice_number || '',
+      series: inv.series || '1',
+      access_key: inv.access_key || '',
+      issue_date: inv.issue_date ? normalizeDateToYMD(inv.issue_date) : getLocalTodayDateString(),
+      store_id: inv.store_id || STORE_DIVINOPOLIS_UUID,
+      sale_id: inv.sale_id || '',
+      contract_number: (inv as any).contract_number || firstItem?.contract_number || '',
+      customer_name: inv.customer_name || '',
+      customer_document: inv.customer_document || '',
+      customer_phone: inv.customer_phone || '',
+      customer_email: inv.customer_email || '',
+      customer_address: inv.customer_address || '',
+      vehicle_model: effectiveModel,
+      vehicle_chassis: effectiveChassis,
+      vehicle_brand: 'SHINERAY',
+      vehicle_color: 'Padrão',
+      vehicle_year: 2026,
+      alienacao: effectiveAlienacao,
+      operation_nature: inv.operation_nature || 'Venda de Moto Zero KM',
+      total_value: Number(inv.total) || 0,
+      tax_rate: Number(inv.tax_rate) || 0,
+      notes: rawNotes,
+      created_at: inv.created_at,
+    });
+
+    if (inv.attachment_url) {
+      setAttachedFile({
+        name: inv.attachment_name || 'anexo_nf.pdf',
+        url: inv.attachment_url,
+        size: inv.attachment_size || 0,
+        type: inv.attachment_type || 'application/pdf',
+      });
+    } else {
+      setAttachedFile(null);
+    }
+
+    setSelectedSaleId(inv.sale_id || '');
+    setEditingInvoiceId(inv.id);
+    setOpen(true);
+  };
+
   // Submissão do cadastro semi-manual de NF
   const submit = async () => {
     if (!form.invoice_number?.trim()) {
@@ -340,9 +404,12 @@ export default function MotoInvoices() {
     const cleanNum = form.invoice_number.trim();
     const cleanChassis = (form.vehicle_chassis || '').trim().toUpperCase();
     const normalizedDate = normalizeDateToYMD(form.issue_date);
+    const isEditing = Boolean(editingInvoiceId);
 
     const payload = {
       ...form,
+      id: editingInvoiceId || undefined,
+      created_at: form.created_at || new Date().toISOString(),
       invoice_number: cleanNum,
       series: form.series || '1',
       access_key: form.access_key?.replace(/\D/g, '') || undefined,
@@ -369,6 +436,7 @@ export default function MotoInvoices() {
 
     // Fecha o modal e reseta formulário imediatamente para feedback instantâneo (0ms)
     setOpen(false);
+    setEditingInvoiceId(null);
     setForm(initialForm);
     setAttachedFile(null);
     setSelectedSaleId('');
@@ -378,7 +446,7 @@ export default function MotoInvoices() {
     } catch (e: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao cadastrar NF',
+        title: isEditing ? 'Erro ao atualizar NF' : 'Erro ao cadastrar NF',
         description: e?.message || 'Falha ao salvar a Nota Fiscal na nuvem.',
       });
     }
@@ -520,6 +588,7 @@ export default function MotoInvoices() {
           <Button
             size="sm"
             onClick={() => {
+              setEditingInvoiceId(null);
               setForm(initialForm);
               setAttachedFile(null);
               setSelectedSaleId('');
@@ -572,6 +641,7 @@ export default function MotoInvoices() {
                       <Button
                         size="sm"
                         onClick={() => {
+                          setEditingInvoiceId(null);
                           setForm(initialForm);
                           setAttachedFile(null);
                           setSelectedSaleId('');
@@ -699,6 +769,15 @@ export default function MotoInvoices() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
+                            title="Editar dados desta Nota Fiscal"
+                            onClick={() => handleOpenEdit(inv)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
                           {hasAttachment && (
                             <Button
                               size="icon"
@@ -766,15 +845,31 @@ export default function MotoInvoices() {
         </CardContent>
       </Card>
 
-      {/* DIÁLOGO: CADASTRO SEMI-MANUAL DE NOTA FISCAL */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      {/* DIÁLOGO: CADASTRO E EDIÇÃO DE NOTA FISCAL */}
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (!v) setEditingInvoiceId(null);
+        }}
+      >
         <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
-              <FileCheck className="w-5 h-5 text-primary" /> Cadastrar Nova Nota Fiscal (Semi-Manual)
+              {editingInvoiceId ? (
+                <>
+                  <Pencil className="w-5 h-5 text-primary" /> Editar Dados da Nota Fiscal Nº {form.invoice_number || ''}
+                </>
+              ) : (
+                <>
+                  <FileCheck className="w-5 h-5 text-primary" /> Cadastrar Nova Nota Fiscal (Semi-Manual)
+                </>
+              )}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Selecione a loja e a venda realizada para preencher os dados cadastrais da moto e do comprador automaticamente, e anexe o arquivo oficial da NF.
+              {editingInvoiceId
+                ? 'Edite qualquer dado fiscal, comprador, veículo, valores, observações ou anexo oficial desta Nota Fiscal.'
+                : 'Selecione a loja e a venda realizada para preencher os dados cadastrais da moto e do comprador automaticamente, e anexe o arquivo oficial da NF.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1106,7 +1201,7 @@ export default function MotoInvoices() {
               Cancelar
             </Button>
             <Button onClick={submit} disabled={upsert.isPending} className="gap-1.5 font-semibold">
-              <CheckCircle2 className="w-4 h-4" /> Cadastrar e Salvar NF
+              <CheckCircle2 className="w-4 h-4" /> {editingInvoiceId ? 'Salvar Alterações da NF' : 'Cadastrar e Salvar NF'}
             </Button>
           </DialogFooter>
         </DialogContent>
