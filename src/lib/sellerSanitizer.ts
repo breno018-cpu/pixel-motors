@@ -1,5 +1,5 @@
 import { DEFAULT_OFFICIAL_USERS, STORE_UUIDS } from '@/lib/userService';
-import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID, isMatchingStore, SELLER_TO_STORE_MAP } from '@/lib/storeResolution';
+import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID, STORE_MONTESCLAROS_MULTIMARCAS_UUID, isMatchingStore, SELLER_TO_STORE_MAP } from '@/lib/storeResolution';
 import { normalizeName } from '@/lib/salesScope';
 
 /**
@@ -197,6 +197,13 @@ export function getCleanSellerOptions(params: {
     const sId = (storeIdOrSlug || '').toLowerCase().trim();
 
     if (
+      sId === 'store-multimarcas' ||
+      sId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+      sId.includes('multimarcas') ||
+      sId.includes('seminovos')
+    ) {
+      resolvedStoreId = STORE_MONTESCLAROS_MULTIMARCAS_UUID;
+    } else if (
       sId === 'store-montesclaros' ||
       sId === STORE_MONTESCLAROS_UUID ||
       sId.includes('montes') ||
@@ -218,7 +225,12 @@ export function getCleanSellerOptions(params: {
       return;
     }
 
-    const storeLabel = resolvedStoreId === STORE_MONTESCLAROS_UUID ? 'Montes Claros' : 'Divinópolis';
+    const storeLabel =
+      resolvedStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID
+        ? 'Multimarcas'
+        : resolvedStoreId === STORE_MONTESCLAROS_UUID
+        ? 'Montes Claros'
+        : 'Divinópolis';
     const key = cleanName.toLowerCase();
 
     if (!map.has(key)) {

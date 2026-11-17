@@ -349,7 +349,7 @@ export default function Sales() {
       const opFullName = resolveSellerDisplayName(rawOp, employees) || null;
       const resolved = resolveSaleStore(
         {
-          store_id: c.store_id,
+          store_id: c.store_id || c.vehicle?.store_id,
           store: c.store,
           vendedor: opFullName,
           operator: opFullName ? { full_name: opFullName } : null,

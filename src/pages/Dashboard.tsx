@@ -547,9 +547,7 @@ export default function Dashboard() {
 
       // 2. Filtro rigoroso de loja
       if (storeFilter !== 'all') {
-        const matchesVirtualId = s.store_id === storeFilter;
-        const matchesRawId = s.raw_store_id === storeFilter;
-        if (!matchesVirtualId && !matchesRawId) return false;
+        if (!isMatchingStore(s.store_id || s.raw_store_id, storeFilter)) return false;
       }
 
       // 3. Filtro de vendedor
@@ -796,7 +794,7 @@ export default function Dashboard() {
 
     const totalReservasEstoque = vehicles.filter((v) => {
       if (v.status === 'vendido') return false;
-      if (storeFilter !== 'all' && v.store_id !== storeFilter) return false;
+      if (storeFilter !== 'all' && !isMatchingStore(v.store_id, storeFilter)) return false;
       return (v.status as string) === 'reservado' || (v.status as string) === 'pre_venda';
     }).length;
 
@@ -891,7 +889,7 @@ export default function Dashboard() {
   const stockAnalytics = useMemo(() => {
     const activeVehicles = (vehicles || []).filter((v) => {
       if (v.status === 'vendido') return false;
-      if (storeFilter !== 'all' && v.store_id !== storeFilter) return false;
+      if (storeFilter !== 'all' && !isMatchingStore(v.store_id, storeFilter)) return false;
       if (vehicleTypeFilter !== 'all' && v.vehicle_type !== vehicleTypeFilter) return false;
       return true;
     });

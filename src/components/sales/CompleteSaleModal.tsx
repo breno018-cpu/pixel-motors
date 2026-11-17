@@ -629,19 +629,25 @@ export function CompleteSaleModal({
         psTarget?.operator?.full_name ||
         (profile?.full_name && !profile.full_name.toLowerCase().startsWith('shineray') ? profile.full_name : 'Vendedor');
 
+      const isMultimarcas =
+        storeId === 'store-multimarcas' ||
+        storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+        (storeId || '').toLowerCase().includes('multimarcas') ||
+        selectedStoreData?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+        (selectedStoreData?.storeName || '').toLowerCase().includes('multimarcas') ||
+        sellerStore?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID;
+
       const isMoc =
+        isMultimarcas ||
         storeId === 'store-montesclaros' ||
         storeId === STORE_MONTESCLAROS_UUID ||
-        storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
         (storeId || '').toLowerCase().includes('montes') ||
         (storeId || '').toLowerCase().includes('moc') ||
         (selectedStoreData?.storeId || '').toLowerCase().includes('montes') ||
         selectedStoreData?.storeId === STORE_MONTESCLAROS_UUID ||
-        selectedStoreData?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
         (selectedStoreData?.storeName || '').toLowerCase().includes('montes') ||
         (sellerStore?.storeId || '').toLowerCase().includes('montes') ||
         sellerStore?.storeId === STORE_MONTESCLAROS_UUID ||
-        sellerStore?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
         (buyerCity || '').toLowerCase().includes('montes') ||
         resolvedSeller.toLowerCase().includes('mariana') ||
         resolvedSeller.toLowerCase().includes('sabrina') ||
@@ -652,7 +658,11 @@ export function CompleteSaleModal({
         ? targetStoreId
         : (isUuid(selectedStoreData?.storeId) ? selectedStoreData.storeId : null);
       if (!effectiveStoreId || isMoc) {
-        effectiveStoreId = isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID;
+        effectiveStoreId = isMultimarcas
+          ? STORE_MONTESCLAROS_MULTIMARCAS_UUID
+          : isMoc
+          ? STORE_MONTESCLAROS_UUID
+          : STORE_DIVINOPOLIS_UUID;
       }
 
       const payload: any = {
@@ -681,7 +691,11 @@ export function CompleteSaleModal({
           seller_name: resolvedSeller,
           operator_name: resolvedSeller,
           vendedor: resolvedSeller,
-          store_name: isMoc ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS' : 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS',
+          store_name: isMultimarcas
+            ? 'L1MA MOTORS MULTIMARCAS'
+            : isMoc
+            ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS'
+            : 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS',
           store_id: effectiveStoreId,
           chassi: vehicleChassis.trim().toUpperCase(),
           cor: vehicleColor,

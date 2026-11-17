@@ -369,11 +369,19 @@ export function CreateSaleModal({
         else if (paymentMethodCategory === 'financiamento_100') setFinVal(pStr);
       }
       if (found.store_id && !isRestrictedSeller) {
-        const isMoc =
-          found.store_id === 'store-montesclaros' ||
-          found.store_id === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-          found.store_id.toLowerCase().includes('montes');
-        setStoreId(isMoc ? 'store-montesclaros' : 'store-divinopolis');
+        if (
+          found.store_id === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+          found.store_id === 'store-multimarcas' ||
+          found.store_id.toLowerCase().includes('multimarcas')
+        ) {
+          setStoreId(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
+        } else {
+          const isMoc =
+            found.store_id === 'store-montesclaros' ||
+            found.store_id === STORE_MONTESCLAROS_UUID ||
+            found.store_id.toLowerCase().includes('montes');
+          setStoreId(isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID);
+        }
       }
     }
   };
@@ -528,16 +536,23 @@ export function CreateSaleModal({
       const effectiveSeller = isRestrictedSeller ? (resolvedDefaultSeller || currentSellerName || 'Vendedor') : (activeSeller || resolvedDefaultSeller || currentSellerName || 'Vendedor');
 
       const cleanSeller = effectiveSeller.toLowerCase().trim();
+      const isMultimarcas =
+        effectiveStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+        effectiveStoreId === 'store-multimarcas' ||
+        (effectiveStoreId || '').toLowerCase().includes('multimarcas') ||
+        storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+        storeId === 'store-multimarcas' ||
+        (storeId || '').toLowerCase().includes('multimarcas') ||
+        sellerStore?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID;
+
       const isMoc =
+        isMultimarcas ||
         (effectiveStoreId || '').includes('montesclaros') ||
         effectiveStoreId === STORE_MONTESCLAROS_UUID ||
-        effectiveStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
         (storeId || '').toLowerCase().includes('montes') ||
         storeId === STORE_MONTESCLAROS_UUID ||
-        storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
         (sellerStore?.storeId || '').includes('montesclaros') ||
         sellerStore?.storeId === STORE_MONTESCLAROS_UUID ||
-        sellerStore?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
         cleanSeller.includes('mariana') ||
         cleanSeller.includes('sabrina') ||
         cleanSeller.includes('halana') ||
@@ -575,9 +590,15 @@ export function CreateSaleModal({
       const nextQtNumber = String(nextNum).padStart(2, '0');
       const contractNumber = `${prefix}-${nextQtNumber}`;
 
-      const targetStoreUuid = isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID;
+      const targetStoreUuid = isMultimarcas
+        ? STORE_MONTESCLAROS_MULTIMARCAS_UUID
+        : isMoc
+        ? STORE_MONTESCLAROS_UUID
+        : STORE_DIVINOPOLIS_UUID;
       const currentStore = stores.find((s) => s.id === targetStoreUuid) || stores.find((s) => s.id === storeId);
-      const storeName = currentStore?.name || (isMoc
+      const storeName = currentStore?.name || (isMultimarcas
+        ? 'L1MA MOTORS MULTIMARCAS'
+        : isMoc
         ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS'
         : 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS');
 
@@ -668,14 +689,19 @@ export function CreateSaleModal({
           const matchedDbStore = stores.find((s: any) =>
             isUuid(s.id) && (
               s.id === effectiveStoreId ||
-              (isMoc && (s.name?.toLowerCase().includes('montes') || s.city?.toLowerCase().includes('montes'))) ||
+              (isMultimarcas && (s.name?.toLowerCase().includes('multimarcas') || s.id === STORE_MONTESCLAROS_MULTIMARCAS_UUID)) ||
+              (isMoc && !isMultimarcas && (s.name?.toLowerCase().includes('montes') || s.city?.toLowerCase().includes('montes'))) ||
               (!isMoc && (s.name?.toLowerCase().includes('divin') || s.city?.toLowerCase().includes('divin')))
             )
           );
           if (matchedDbStore && isUuid(matchedDbStore.id)) {
             targetStoreUuid = matchedDbStore.id;
           } else {
-            targetStoreUuid = isMoc ? 'e8254a81-d669-464b-9806-457ba25ce7f0' : 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
+            targetStoreUuid = isMultimarcas
+              ? STORE_MONTESCLAROS_MULTIMARCAS_UUID
+              : isMoc
+              ? STORE_MONTESCLAROS_UUID
+              : STORE_DIVINOPOLIS_UUID;
           }
         }
 
@@ -1241,11 +1267,19 @@ export function CreateSaleModal({
                             setVehicleSource('inventory');
                           }
                           if (veh.store_id && !isRestrictedSeller) {
-                            const isMoc =
-                              veh.store_id === 'store-montesclaros' ||
-                              veh.store_id === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-                              veh.store_id.toLowerCase().includes('montes');
-                            setStoreId(isMoc ? 'store-montesclaros' : 'store-divinopolis');
+                            if (
+                              veh.store_id === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+                              veh.store_id === 'store-multimarcas' ||
+                              veh.store_id.toLowerCase().includes('multimarcas')
+                            ) {
+                              setStoreId(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
+                            } else {
+                              const isMoc =
+                                veh.store_id === 'store-montesclaros' ||
+                                veh.store_id === STORE_MONTESCLAROS_UUID ||
+                                veh.store_id.toLowerCase().includes('montes');
+                              setStoreId(isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID);
+                            }
                           }
                         }}
                         filterStoreId={storeId}

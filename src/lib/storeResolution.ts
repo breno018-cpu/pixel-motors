@@ -12,7 +12,8 @@ export const STORE_MONTESCLAROS_MULTIMARCAS_UUID = '6b3afc94-86b2-41b0-9427-6f58
 
 /**
  * Normaliza e compara identificadores de loja aceitando tanto UUIDs quanto slugs locais
- * ('store-divinopolis', 'store-montesclaros'), além de lidar com estoque sem loja vinculada (null/unassigned).
+ * ('store-divinopolis', 'store-montesclaros', 'store-multimarcas'), além de lidar com estoque sem loja vinculada (null/unassigned).
+ * Garante separação total entre SHINERAY MONTES CLAROS e L1MA MOTORS MULTIMARCAS.
  */
 export function isMatchingStore(vehicleStoreId: string | null | undefined, filterStoreId: string): boolean {
   if (!filterStoreId || filterStoreId === 'all') return true;
@@ -21,45 +22,57 @@ export function isMatchingStore(vehicleStoreId: string | null | undefined, filte
   const cleanFilter = filterStoreId.toLowerCase().trim();
   const cleanVehicleStore = (vehicleStoreId || '').toLowerCase().trim();
 
-  // Matriz / Divinópolis
-  const isDivinopolisFilter =
-    cleanFilter === 'store-divinopolis' ||
-    cleanFilter === STORE_DIVINOPOLIS_UUID ||
-    cleanFilter.includes('divinopolis') ||
-    cleanFilter.includes('matriz');
+  const isMultimarcas = (idOrName: string) =>
+    idOrName === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+    idOrName === 'store-multimarcas' ||
+    idOrName.includes('multimarcas') ||
+    idOrName.includes('multi marcas') ||
+    idOrName.includes('seminovos');
 
-  if (isDivinopolisFilter) {
-    if (!vehicleStoreId) return true;
-    if (
-      cleanVehicleStore === 'store-divinopolis' ||
-      cleanVehicleStore === STORE_DIVINOPOLIS_UUID ||
-      cleanVehicleStore.includes('divinopolis') ||
-      cleanVehicleStore.includes('matriz')
-    ) {
-      return true;
-    }
+  const isFilterMultimarcas = isMultimarcas(cleanFilter);
+  const isVehicleMultimarcas = isMultimarcas(cleanVehicleStore);
+
+  // 1. Multimarcas é estritamente isolada:
+  // Se o filtro for Multimarcas, DEVE casar estritamente com Multimarcas
+  if (isFilterMultimarcas) {
+    return isVehicleMultimarcas;
   }
 
-  // Montes Claros (todas as unidades do polo Norte)
-  const isMontesFilter =
-    cleanFilter === 'store-montesclaros' ||
-    cleanFilter === STORE_MONTESCLAROS_UUID ||
-    cleanFilter === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
-    cleanFilter.includes('montes') ||
-    cleanFilter.includes('moc') ||
-    cleanFilter.includes('polo norte');
+  // Se o item for Multimarcas, JAMAIS casa com Shineray Montes Claros ou Divinópolis
+  if (isVehicleMultimarcas) {
+    return false;
+  }
 
-  if (isMontesFilter) {
-    if (
-      cleanVehicleStore === 'store-montesclaros' ||
-      cleanVehicleStore === STORE_MONTESCLAROS_UUID ||
-      cleanVehicleStore === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
-      cleanVehicleStore.includes('montes') ||
-      cleanVehicleStore.includes('moc') ||
-      cleanVehicleStore.includes('polo norte')
-    ) {
-      return true;
-    }
+  // 2. Matriz / Divinópolis
+  const isDivinopolis = (idOrName: string) =>
+    idOrName === 'store-divinopolis' ||
+    idOrName === STORE_DIVINOPOLIS_UUID ||
+    idOrName.includes('divinopolis') ||
+    idOrName.includes('divinópolis') ||
+    idOrName.includes('matriz');
+
+  const isFilterDivinopolis = isDivinopolis(cleanFilter);
+  const isVehicleDivinopolis = isDivinopolis(cleanVehicleStore);
+
+  if (isFilterDivinopolis) {
+    if (!vehicleStoreId) return true;
+    return isVehicleDivinopolis;
+  }
+
+  // 3. Concessionária Shineray Montes Claros (excluindo Multimarcas)
+  const isMontesClaros = (idOrName: string) =>
+    (idOrName === 'store-montesclaros' ||
+      idOrName === STORE_MONTESCLAROS_UUID ||
+      idOrName.includes('montes') ||
+      idOrName.includes('moc') ||
+      idOrName.includes('polo norte')) &&
+    !isMultimarcas(idOrName);
+
+  const isFilterMontes = isMontesClaros(cleanFilter);
+  const isVehicleMontes = isMontesClaros(cleanVehicleStore);
+
+  if (isFilterMontes) {
+    return isVehicleMontes;
   }
 
   return cleanFilter === cleanVehicleStore;
@@ -159,54 +172,64 @@ export interface ResolvedStore {
 
 export const OFFICIAL_STORES: Record<string, ResolvedStore> = {
   'store-divinopolis': {
-    storeId: 'store-divinopolis',
-    storeName: 'Concessionária Divinópolis',
+    storeId: STORE_DIVINOPOLIS_UUID,
+    storeName: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS',
     city: 'Divinópolis',
     state: 'MG',
     cnpj: '18.456.789/0001-01',
-    address: 'Av. Autorama, 1200 - Judeia, Divinópolis/MG',
-    phone: '(37) 3222-1000',
-    email: 'divinopolis@pixelmotors.com.br',
+    address: 'RUA ESPIRITO SANTOS 307, VIA BELO HORIZONTE, Divinópolis/MG',
+    phone: '(37) 99843-9319',
+    email: 'shineraydivinopolisoficial@gmail.com',
   },
   'store-montesclaros': {
-    storeId: 'store-montesclaros',
-    storeName: 'Concessionária Montes Claros',
+    storeId: STORE_MONTESCLAROS_UUID,
+    storeName: 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS',
     city: 'Montes Claros',
     state: 'MG',
     cnpj: '18.456.789/0002-82',
-    address: 'Av. Deputado Esteves Rodrigues, 850 - Centro, Montes Claros/MG',
-    phone: '(38) 3221-2000',
-    email: 'montesclaros@pixelmotors.com.br',
+    address: 'AV. JOAO XXIII, Nº 990, Montes Claros/MG',
+    phone: '(38) 99938-1522',
+    email: 'ADMBRENO@INDEX.COM',
   },
-  'ccf8e097-09d7-4305-8077-5c16fc8b5634': {
-    storeId: 'store-divinopolis',
-    storeName: 'Concessionária Divinópolis',
+  'store-multimarcas': {
+    storeId: STORE_MONTESCLAROS_MULTIMARCAS_UUID,
+    storeName: 'L1MA MOTORS MULTIMARCAS',
+    city: 'Montes Claros',
+    state: 'MG',
+    cnpj: '18.456.789/0002-82',
+    address: 'AV. JOÃO XXIII N°990 B. EDGAR PEREIRA, Montes Claros/MG',
+    phone: '(38) 99938-1522',
+    email: 'multimarcas@pixelmotors.com.br',
+  },
+  [STORE_DIVINOPOLIS_UUID]: {
+    storeId: STORE_DIVINOPOLIS_UUID,
+    storeName: 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS',
     city: 'Divinópolis',
     state: 'MG',
     cnpj: '18.456.789/0001-01',
-    address: 'Av. Autorama, 1200 - Judeia, Divinópolis/MG',
-    phone: '(37) 3222-1000',
-    email: 'divinopolis@pixelmotors.com.br',
+    address: 'RUA ESPIRITO SANTOS 307, VIA BELO HORIZONTE, Divinópolis/MG',
+    phone: '(37) 99843-9319',
+    email: 'shineraydivinopolisoficial@gmail.com',
   },
-  'e8254a81-d669-464b-9806-457ba25ce7f0': {
-    storeId: 'store-montesclaros',
-    storeName: 'Concessionária Montes Claros',
+  [STORE_MONTESCLAROS_UUID]: {
+    storeId: STORE_MONTESCLAROS_UUID,
+    storeName: 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS',
     city: 'Montes Claros',
     state: 'MG',
     cnpj: '18.456.789/0002-82',
-    address: 'Av. Deputado Esteves Rodrigues, 850 - Centro, Montes Claros/MG',
-    phone: '(38) 3221-2000',
-    email: 'montesclaros@pixelmotors.com.br',
+    address: 'AV. JOAO XXIII, Nº 990, Montes Claros/MG',
+    phone: '(38) 99938-1522',
+    email: 'ADMBRENO@INDEX.COM',
   },
-  '6b3afc94-86b2-41b0-9427-6f58ae8dbf21': {
-    storeId: 'store-montesclaros',
-    storeName: 'Concessionária Montes Claros',
+  [STORE_MONTESCLAROS_MULTIMARCAS_UUID]: {
+    storeId: STORE_MONTESCLAROS_MULTIMARCAS_UUID,
+    storeName: 'L1MA MOTORS MULTIMARCAS',
     city: 'Montes Claros',
     state: 'MG',
     cnpj: '18.456.789/0002-82',
-    address: 'Av. Deputado Esteves Rodrigues, 850 - Centro, Montes Claros/MG',
-    phone: '(38) 3221-2000',
-    email: 'montesclaros@pixelmotors.com.br',
+    address: 'AV. JOÃO XXIII N°990 B. EDGAR PEREIRA, Montes Claros/MG',
+    phone: '(38) 99938-1522',
+    email: 'multimarcas@pixelmotors.com.br',
   },
 };
 
@@ -220,10 +243,21 @@ export function getStoreFromDatabase(
 ): ResolvedStore {
   const cleanRef = (storeIdOrRef || '').toLowerCase().trim();
 
+  // 1. Multimarcas PRIMEIRO para evitar colisão com Montes Claros
+  if (
+    cleanRef === 'store-multimarcas' ||
+    cleanRef === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+    cleanRef.includes('multimarcas') ||
+    cleanRef.includes('multi marcas') ||
+    cleanRef.includes('seminovos')
+  ) {
+    return OFFICIAL_STORES['store-multimarcas'];
+  }
+
+  // 2. Concessionária Shineray Montes Claros
   if (
     cleanRef === 'store-montesclaros' ||
     cleanRef === STORE_MONTESCLAROS_UUID ||
-    cleanRef === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
     cleanRef.includes('montes') ||
     cleanRef.includes('polo norte') ||
     cleanRef.includes('moc')
@@ -231,6 +265,7 @@ export function getStoreFromDatabase(
     return OFFICIAL_STORES['store-montesclaros'];
   }
 
+  // 3. Matriz / Divinópolis
   if (
     cleanRef === 'store-divinopolis' ||
     cleanRef === STORE_DIVINOPOLIS_UUID ||
@@ -254,21 +289,24 @@ export function getStoreFromDatabase(
     });
 
     if (found) {
-      const isMontes =
-        (found.name || found.city || '').toLowerCase().includes('montes') ||
-        (found.city || '').toLowerCase().includes('moc') ||
-        (found.id || '').toLowerCase() === STORE_MONTESCLAROS_UUID ||
+      const isMulti =
         (found.id || '').toLowerCase() === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
-        (found.id || '').toLowerCase() === 'store-montesclaros';
+        (found.name || '').toLowerCase().includes('multimarcas');
+      const isMontes =
+        !isMulti &&
+        ((found.name || found.city || '').toLowerCase().includes('montes') ||
+          (found.city || '').toLowerCase().includes('moc') ||
+          (found.id || '').toLowerCase() === STORE_MONTESCLAROS_UUID ||
+          (found.id || '').toLowerCase() === 'store-montesclaros');
       return {
-        storeId: isMontes ? 'store-montesclaros' : 'store-divinopolis',
-        storeName: isMontes ? 'Concessionária Montes Claros' : (found.name || 'Concessionária Divinópolis'),
-        city: isMontes ? 'Montes Claros' : (found.city || 'Divinópolis'),
+        storeId: isMulti ? STORE_MONTESCLAROS_MULTIMARCAS_UUID : isMontes ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
+        storeName: found.name || (isMulti ? 'L1MA MOTORS MULTIMARCAS' : isMontes ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS' : 'SHINERAY GRUPO L1MA MOTORS DIVNINOPOLIS'),
+        city: found.city || (isMontes || isMulti ? 'Montes Claros' : 'Divinópolis'),
         state: found.state || 'MG',
-        cnpj: found.cnpj || (isMontes ? '18.456.789/0002-82' : '18.456.789/0001-01'),
-        address: found.address || (isMontes ? 'Av. Deputado Esteves Rodrigues, 850 - Centro, Montes Claros/MG' : 'Av. Autorama, 1200 - Judeia, Divinópolis/MG'),
-        phone: found.phone || (isMontes ? '(38) 3221-2000' : '(37) 3222-1000'),
-        email: found.email || (isMontes ? 'montesclaros@pixelmotors.com.br' : 'divinopolis@pixelmotors.com.br'),
+        cnpj: found.cnpj || (isMontes || isMulti ? '18.456.789/0002-82' : '18.456.789/0001-01'),
+        address: found.address || (isMulti ? 'AV. JOÃO XXIII N°990 B. EDGAR PEREIRA, Montes Claros/MG' : isMontes ? 'AV. JOAO XXIII, Nº 990, Montes Claros/MG' : 'RUA ESPIRITO SANTOS 307, VIA BELO HORIZONTE, Divinópolis/MG'),
+        phone: found.phone || (isMontes || isMulti ? '(38) 99938-1522' : '(37) 99843-9319'),
+        email: found.email || (isMulti ? 'multimarcas@pixelmotors.com.br' : isMontes ? 'ADMBRENO@INDEX.COM' : 'shineraydivinopolisoficial@gmail.com'),
       };
     }
   }
@@ -344,10 +382,21 @@ export function resolveSaleStore(
     ''
   ).toLowerCase().trim();
 
+  // Verifica MULTIMARCAS PRIMEIRO para nunca fundir com concessionária Shineray Montes Claros
+  if (
+    explicitStoreId === 'store-multimarcas' ||
+    explicitStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+    explicitStoreName.includes('multimarcas') ||
+    explicitStoreName.includes('multi marcas') ||
+    explicitStoreName.includes('seminovos')
+  ) {
+    return OFFICIAL_STORES['store-multimarcas'];
+  }
+
+  // Concessionária Shineray Montes Claros
   if (
     explicitStoreId === 'store-montesclaros' ||
     explicitStoreId === STORE_MONTESCLAROS_UUID ||
-    explicitStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
     explicitStoreName.includes('montes') ||
     explicitStoreName.includes('polo norte') ||
     explicitStoreName.includes('moc') ||
@@ -356,6 +405,7 @@ export function resolveSaleStore(
     return OFFICIAL_STORES['store-montesclaros'];
   }
 
+  // Concessionária Shineray Divinópolis
   if (
     explicitStoreId === 'store-divinopolis' ||
     explicitStoreId === STORE_DIVINOPOLIS_UUID ||
@@ -395,10 +445,16 @@ export function resolveSaleStore(
 
       if (emp?.store_id) {
         const empStoreId = String(emp.store_id).toLowerCase().trim();
+        if (
+          empStoreId === 'store-multimarcas' ||
+          empStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+          empStoreId.includes('multimarcas')
+        ) {
+          return OFFICIAL_STORES['store-multimarcas'];
+        }
         const isMoc =
           empStoreId === 'store-montesclaros' ||
           empStoreId === STORE_MONTESCLAROS_UUID ||
-          empStoreId === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
           empStoreId.includes('montes') ||
           empStoreId.includes('moc');
 
@@ -416,6 +472,9 @@ export function resolveSaleStore(
 
   // 3. Prioridade 3: Menção explícita de loja / polo nas observações operacionais da venda
   const obs = String(saleOrContract.observacoes || ext.observacoes || '').toLowerCase();
+  if (obs.includes('multimarcas') || obs.includes('seminovos')) {
+    return OFFICIAL_STORES['store-multimarcas'];
+  }
   if (obs.includes('montes claros') || obs.includes('polo norte') || obs.includes('moc')) {
     return OFFICIAL_STORES['store-montesclaros'];
   }
