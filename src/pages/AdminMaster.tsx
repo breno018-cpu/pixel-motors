@@ -25,7 +25,8 @@ import {
   UserX,
   UserCheck,
   DollarSign,
-  ReceiptText
+  ReceiptText,
+  Truck
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -73,6 +74,7 @@ import { ApiKeysManager } from '@/components/settings/ApiKeysManager';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { FinancialDREPanel } from '@/components/finance/FinancialDREPanel';
 import { StoreFiscalControlPanel } from '@/components/admin/StoreFiscalControlPanel';
+import { FleetManager } from '@/components/admin/FleetManager';
 
 interface UserWithRole {
   id: string;
@@ -410,6 +412,10 @@ export default function AdminMaster() {
               <Activity className="w-3.5 h-3.5" />
               Histórico de Ações
             </TabsTrigger>
+            <TabsTrigger value="frota" className="gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <Truck className="w-3.5 h-3.5" />
+              Frota &amp; Frete Próprio
+            </TabsTrigger>
             <TabsTrigger value="seguranca" className="gap-2 text-xs font-medium">
               <Database className="w-3.5 h-3.5" />
               Backup &amp; Dados
@@ -690,6 +696,11 @@ export default function AdminMaster() {
         {/* ABA: CONTROLE FISCAL DE ENTRADA E CANCELAMENTO DE NFS NAS LOJAS */}
         <TabsContent value="nfs-lojas" className="space-y-4">
           <StoreFiscalControlPanel />
+        </TabsContent>
+
+        {/* ABA: FROTA DA LOJA & FRETE PRÓPRIO */}
+        <TabsContent value="frota" className="space-y-4">
+          <FleetManager />
         </TabsContent>
 
         {/* ABA 6: TRILHA DE AUDITORIA */}
