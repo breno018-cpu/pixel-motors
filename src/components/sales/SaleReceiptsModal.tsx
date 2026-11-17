@@ -32,6 +32,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { validateSellerSalesAccess } from '@/lib/salesScope';
 import {
   ReceiptAttachmentManager,
   getSaleReceipts,
@@ -80,6 +82,23 @@ export function SaleReceiptsModal({
 }: SaleReceiptsModalProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isAdmin, isManager, hasElevatedAccess, user, profile, roles, dataScope } = useAuth();
+  const isPowerUser = isAdmin || isManager || hasElevatedAccess;
+
+  const accessDecision = React.useMemo(() => {
+    if (!sale || isPowerUser) return { allowed: true };
+    return validateSellerSalesAccess(sale, {
+      userId: user?.id,
+      profileId: profile?.id,
+      fullName: profile?.full_name,
+      email: user?.email,
+      roles,
+      isAdmin,
+      isManager,
+      hasElevatedAccess,
+      dataScope,
+    });
+  }, [sale, isPowerUser, user, profile, roles, isAdmin, isManager, hasElevatedAccess, dataScope]);
 
   const [activeTab, setActiveTab] = useState<'nf' | 'receipts'>(defaultTab);
   const [receiptCount, setReceiptCount] = useState(0);
@@ -329,6 +348,29 @@ export function SaleReceiptsModal({
   };
 
   const hasAttachedNf = Boolean(currentNf.attachment_url);
+
+  if (open && !isPowerUser && !accessDecision.allowed) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md p-6 text-center">
+          <div className="flex flex-col items-center justify-center p-4 space-y-4">
+            <div className="h-14 w-14 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive">
+              <ShieldCheck className="h-7 w-7" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-neutral-900">Acesso Restrito</h3>
+              <p className="text-xs text-neutral-500 mt-1.5 leading-relaxed">
+                Esta venda pertence a outro vendedor. O sistema possui validação estrita de fatores e não permite o acesso a dados de outros colaboradores.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

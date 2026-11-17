@@ -278,25 +278,51 @@ export function getUserSalesIdentity(
   return { userIds, userNames, displayName };
 }
 
+export interface SalesAccessDecision {
+  allowed: boolean;
+  factor: 'F1_ELEVATED' | 'F2_DISQUALIFIED_OTHER_SELLER' | 'F3A_ID_MATCH' | 'F3B_NAME_MATCH' | 'F4_ZERO_TRUST_BLOCK' | 'F0_UNAUTHENTICATED';
+  reason: string;
+}
+
 /**
- * Verifica se uma venda pertence ao usuário/vendedor atual
+ * MOTOR DE VALIDAÇÃO DE FATORES DE ACESSO A VENDAS (DEFESA EM PROFUNDIDADE)
+ *
+ * Garante com certeza absoluta que um vendedor NUNCA visualizará vendas de outro vendedor:
+ *
+ * Fator 1: Verificação de Autoridade e Papel Elevado (Master, Admin, Gerente).
+ * Fator 2: Desqualificação Negativa Incondicional se a venda contiver ID, e-mail ou nome de OUTRO vendedor conhecido.
+ * Fator 3: Prova Positiva Rigorosa de Titularidade (UUID/ID comprovado ou Nome Canônico comprovado).
+ * Fator 4: Bloqueio Seguro de Registros Órfãos / Genéricos (Zero-Trust Fallback).
  */
-export function isSaleOwnedByCurrentUser(
+export function validateSellerSalesAccess(
   sale: any,
   auth: UserAuthScopeContext,
   employees: Employee[] = []
-): boolean {
+): SalesAccessDecision {
+  if (!sale) {
+    return { allowed: false, factor: 'F4_ZERO_TRUST_BLOCK', reason: 'Venda inexistente ou nula' };
+  }
+
+  // FATOR 1: Autoridade de Gestão (Breno, João Vitor, Admins e Gerentes têm acesso total de supervisão)
   if (isMasterUser(auth.fullName, auth.email, auth.userId || auth.profileId)) {
-    return true;
+    return { allowed: true, factor: 'F1_ELEVATED', reason: 'Acesso master da diretoria aprovado' };
+  }
+  if (auth.isAdmin || auth.isManager || auth.hasElevatedAccess) {
+    return { allowed: true, factor: 'F1_ELEVATED', reason: 'Privilégio administrativo / gerencial aprovado' };
+  }
+  const roles = auth.roles || [];
+  if (roles.includes('admin') || roles.includes('gerente')) {
+    return { allowed: true, factor: 'F1_ELEVATED', reason: 'Cargo corporativo elevado aprovado' };
   }
 
+  // Se o usuário não possui credenciais mínimas para autenticação de titularidade
   if (!auth.userId && !auth.profileId && !auth.fullName && !auth.email) {
-    return false;
+    return { allowed: false, factor: 'F0_UNAUTHENTICATED', reason: 'Sessão sem identificadores de titularidade' };
   }
 
-  const { userIds, userNames } = getUserSalesIdentity(auth, employees);
+  const { userIds: myIds, userNames: myNames } = getUserSalesIdentity(auth, employees);
 
-  // 1. Verificação exata por IDs / Emails (UUID / Chave de criação / Reseller / Operador / Employee)
+  // Extrai todos os campos de identificação presentes na venda
   const saleCreatedBy = (sale.created_by || '').trim().toLowerCase();
   const saleResellerId = (sale.reseller_id || '').trim().toLowerCase();
   const saleOperatorId = (sale.operator?.id || '').trim().toLowerCase();
@@ -306,16 +332,17 @@ export function isSaleOwnedByCurrentUser(
   const saleExtCreatedBy = ((sale as any).external_data?.created_by || '').trim().toLowerCase();
   const saleExtUserId = ((sale as any).external_data?.user_id || '').trim().toLowerCase();
 
-  if (saleCreatedBy && userIds.has(saleCreatedBy)) return true;
-  if (saleResellerId && userIds.has(saleResellerId)) return true;
-  if (saleOperatorId && userIds.has(saleOperatorId)) return true;
-  if (saleUserId && userIds.has(saleUserId)) return true;
-  if (saleEmployeeId && userIds.has(saleEmployeeId)) return true;
-  if (saleSellerId && userIds.has(saleSellerId)) return true;
-  if (saleExtCreatedBy && userIds.has(saleExtCreatedBy)) return true;
-  if (saleExtUserId && userIds.has(saleExtUserId)) return true;
+  const saleIds = [
+    saleCreatedBy,
+    saleResellerId,
+    saleOperatorId,
+    saleUserId,
+    saleEmployeeId,
+    saleSellerId,
+    saleExtCreatedBy,
+    saleExtUserId,
+  ].filter(Boolean);
 
-  // 2. Verificação precisa por Nomes (Vendedor, Operador, Planilha)
   const saleSellerNames = [
     sale.operator?.full_name,
     sale.seller_name,
@@ -327,14 +354,108 @@ export function isSaleOwnedByCurrentUser(
     .filter(Boolean)
     .map((s) => String(s).trim());
 
-  for (const sName of saleSellerNames) {
-    if (!sName) continue;
-    for (const uName of userNames) {
-      if (isSellerNameMatch(sName, uName)) return true;
+  // FATOR 2: Desqualificação Negativa Incondicional
+  // Constrói a lista de TODOS os outros colaboradores do sistema (DEFAULT_OFFICIAL_USERS + employees)
+  const otherUsers = DEFAULT_OFFICIAL_USERS.filter((u) => {
+    const uEmail = (u.email || '').toLowerCase().trim();
+    const uId = u.id.toLowerCase().trim();
+    return !myIds.has(uEmail) && !myIds.has(uId);
+  });
+
+  const otherKnownIds = new Set<string>();
+  const otherKnownNames = new Set<string>();
+
+  otherUsers.forEach((u) => {
+    if (u.id) otherKnownIds.add(u.id.toLowerCase().trim());
+    if (u.email) otherKnownIds.add(u.email.toLowerCase().trim());
+    if (u.full_name) otherKnownNames.add(u.full_name.trim());
+    u.aliases?.forEach((a) => {
+      const aClean = a.toLowerCase().trim();
+      otherKnownIds.add(aClean);
+      if (!aClean.includes('@') && !GENERIC_SELLER_WORDS.has(aClean)) {
+        otherKnownNames.add(a.trim());
+      }
+    });
+  });
+
+  (employees || []).forEach((emp) => {
+    const eEmail = (emp.email || '').toLowerCase().trim();
+    const eId = (emp.id || '').toLowerCase().trim();
+    const eProfId = (emp.profile_id || '').toLowerCase().trim();
+    if (!myIds.has(eEmail) && !myIds.has(eId) && (!eProfId || !myIds.has(eProfId))) {
+      if (emp.id) otherKnownIds.add(emp.id.toLowerCase().trim());
+      if (emp.email) otherKnownIds.add(emp.email.toLowerCase().trim());
+      if (emp.profile_id) otherKnownIds.add(emp.profile_id.toLowerCase().trim());
+      if (emp.full_name) otherKnownNames.add(emp.full_name.trim());
+    }
+  });
+
+  // 2A: Se algum ID da venda pertencer a outro vendedor -> BLOQUEADO IMEDIATAMENTE
+  for (const sId of saleIds) {
+    if (otherKnownIds.has(sId) && !myIds.has(sId)) {
+      return {
+        allowed: false,
+        factor: 'F2_DISQUALIFIED_OTHER_SELLER',
+        reason: `Venda associada ao identificador de outro colaborador (${sId})`,
+      };
     }
   }
 
-  return false;
+  // 2B: Se algum nome da venda pertencer a outro vendedor -> BLOQUEADO IMEDIATAMENTE
+  for (const sName of saleSellerNames) {
+    for (const oName of otherKnownNames) {
+      if (isSellerNameMatch(sName, oName) && !isSellerNameMatch(sName, auth.fullName || '')) {
+        return {
+          allowed: false,
+          factor: 'F2_DISQUALIFIED_OTHER_SELLER',
+          reason: `Venda associada ao nome de outro vendedor (${sName} -> ${oName})`,
+        };
+      }
+    }
+  }
+
+  // FATOR 3: Prova Positiva Rigorosa de Titularidade
+  // 3A: Prova por ID / UUID exato do vendedor atual
+  for (const sId of saleIds) {
+    if (myIds.has(sId)) {
+      return {
+        allowed: true,
+        factor: 'F3A_ID_MATCH',
+        reason: `Titularidade comprovada por identificador do vendedor (${sId})`,
+      };
+    }
+  }
+
+  // 3B: Prova por Nome Canônico Autorizado do vendedor atual
+  for (const sName of saleSellerNames) {
+    for (const uName of myNames) {
+      if (isSellerNameMatch(sName, uName)) {
+        return {
+          allowed: true,
+          factor: 'F3B_NAME_MATCH',
+          reason: `Titularidade comprovada por nome do vendedor (${sName})`,
+        };
+      }
+    }
+  }
+
+  // FATOR 4: Zero-Trust Fallback (Sem comprovação positiva inequívoca = Bloqueado)
+  return {
+    allowed: false,
+    factor: 'F4_ZERO_TRUST_BLOCK',
+    reason: 'Venda sem comprovação positiva de titularidade para este vendedor',
+  };
+}
+
+/**
+ * Verifica se uma venda pertence ao usuário/vendedor atual utilizando o Motor de Validação de Fatores
+ */
+export function isSaleOwnedByCurrentUser(
+  sale: any,
+  auth: UserAuthScopeContext,
+  employees: Employee[] = []
+): boolean {
+  return validateSellerSalesAccess(sale, auth, employees).allowed;
 }
 
 /**
@@ -348,5 +469,5 @@ export function filterSalesBySellerScope<T extends any>(
   if (!isUserSellerRestricted(auth)) {
     return sales;
   }
-  return sales.filter((sale) => isSaleOwnedByCurrentUser(sale, auth, employees));
+  return sales.filter((sale) => validateSellerSalesAccess(sale, auth, employees).allowed);
 }
