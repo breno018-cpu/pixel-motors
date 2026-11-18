@@ -448,13 +448,39 @@ export function useDeleteInvoice() {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (idOrParams: string | { id: string; invoice_number?: string }) => {
+      const id = typeof idOrParams === 'string' ? idOrParams : idOrParams.id;
+      const invoiceNumber = typeof idOrParams === 'object' ? idOrParams.invoice_number : undefined;
+
+      // 1. Remove do localStorage de NFs da Diretoria (dealflow_store_fiscal_invoices_v1)
+      try {
+        const key = 'dealflow_store_fiscal_invoices_v1';
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            const updated = list.filter((item: any) => {
+              if (item.id === id) return false;
+              if (item.rawInvoiceId === id) return false;
+              if (invoiceNumber && String(item.invoice_number || '').trim() === String(invoiceNumber).trim()) return false;
+              return true;
+            });
+            localStorage.setItem(key, JSON.stringify(updated));
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao remover do storage local de NFs:', e);
+      }
+
+      // 2. Remove do Cloud Sync e Supabase
       await cloudDeleteInvoice(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['invoices'] });
       qc.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
-      toast({ title: 'Nota fiscal removida com sucesso' });
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+      toast({ title: 'Nota fiscal excluída com sucesso!' });
     },
     onError: (e: any) =>
       toast({ variant: 'destructive', title: 'Erro ao remover NF', description: e?.message }),

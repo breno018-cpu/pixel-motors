@@ -123,6 +123,8 @@ export default function MotoInvoices() {
   const [open, setOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedInvoiceToCancel, setSelectedInvoiceToCancel] = useState<Invoice | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedInvoiceToDelete, setSelectedInvoiceToDelete] = useState<Invoice | null>(null);
   const [viewingAttachment, setViewingAttachment] = useState<{
     name: string;
     url: string;
@@ -653,6 +655,25 @@ export default function MotoInvoices() {
     }
   };
 
+  // Confirmação de exclusão permanente da NF
+  const handleConfirmDelete = async () => {
+    if (!selectedInvoiceToDelete) return;
+    try {
+      await del.mutateAsync({
+        id: selectedInvoiceToDelete.id,
+        invoice_number: selectedInvoiceToDelete.invoice_number,
+      });
+      setDeleteDialogOpen(false);
+      setSelectedInvoiceToDelete(null);
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao excluir NF',
+        description: err?.message,
+      });
+    }
+  };
+
   // Visualização de anexo da NF com suporte a IndexedDB
   const openAttachmentViewer = async (inv: Invoice) => {
     let url = inv.attachment_url;
@@ -1074,6 +1095,20 @@ export default function MotoInvoices() {
                               <Pencil className="w-3.5 h-3.5" />
                             </Button>
                           )}
+                          {canModifyNf && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                              title="Excluir Nota Fiscal permanentemente"
+                              onClick={() => {
+                                setSelectedInvoiceToDelete(inv);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -1106,6 +1141,21 @@ export default function MotoInvoices() {
                                   >
                                     <XCircle className="w-3.5 h-3.5" />
                                     <span>Cancelar Nota Fiscal</span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {canModifyNf && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedInvoiceToDelete(inv);
+                                      setDeleteDialogOpen(true);
+                                    }}
+                                    className="gap-2 text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30 cursor-pointer font-semibold"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Excluir Nota Fiscal</span>
                                   </DropdownMenuItem>
                                 </>
                               )}
@@ -1888,6 +1938,73 @@ export default function MotoInvoices() {
               className="gap-1.5 font-bold text-xs"
             >
               <Download className="w-3.5 h-3.5" /> Baixar Arquivo da NF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO: CONFIRMAÇÃO DE EXCLUSÃO DE NOTA FISCAL */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600 font-bold">
+              <Trash2 className="w-5 h-5 text-rose-600" />
+              Excluir Nota Fiscal Nº {selectedInvoiceToDelete?.invoice_number}?
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Esta ação excluirá permanentemente esta NF do sistema e da nuvem. O registro contábil e o anexo serão removidos de forma definitiva.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedInvoiceToDelete && (
+            <div className="p-3 rounded-xl bg-muted/40 border text-xs space-y-1.5 my-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Valor:</span>
+                <strong className="font-mono text-foreground">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedInvoiceToDelete.total || 0)}
+                </strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Cliente:</span>
+                <span className="font-semibold text-foreground truncate max-w-[200px]">{selectedInvoiceToDelete.customer_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Concessionária:</span>
+                <span className="text-foreground">{selectedInvoiceToDelete.store?.name || 'Não informada'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Data da Emissão:</span>
+                <span className="font-mono">{formatFiscalDate(selectedInvoiceToDelete.issue_date)}</span>
+              </div>
+              {selectedInvoiceToDelete.sefaz_protocol && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Protocolo SEFAZ:</span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{selectedInvoiceToDelete.sefaz_protocol}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setSelectedInvoiceToDelete(null);
+              }}
+              className="rounded-xl"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmDelete}
+              className="font-bold rounded-xl gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              <Trash2 className="w-4 h-4" />
+              Sim, Excluir Definitivamente
             </Button>
           </DialogFooter>
         </DialogContent>

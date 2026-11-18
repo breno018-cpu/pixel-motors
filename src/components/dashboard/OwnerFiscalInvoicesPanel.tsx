@@ -41,7 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useInvoices, useCancelInvoice, useUpsertInvoice, Invoice } from '@/hooks/useInvoices';
+import { useInvoices, useCancelInvoice, useUpsertInvoice, useDeleteInvoice, Invoice } from '@/hooks/useInvoices';
 import { useStores } from '@/hooks/useStores';
 import { useToast } from '@/hooks/use-toast';
 import { exportToXLSX } from '@/lib/export';
@@ -123,6 +123,7 @@ export function OwnerFiscalInvoicesPanel() {
   const { toast } = useToast();
   const cancelInvoiceMutation = useCancelInvoice();
   const upsertInvoiceMutation = useUpsertInvoice();
+  const deleteInvoiceMutation = useDeleteInvoice();
 
   // Foco estritamente semanal: por padrão a Semana 3 (atual de 16/11/2026)
   const [weekFilter, setWeekFilter] = useState<string>('sem_3');
@@ -133,6 +134,7 @@ export function OwnerFiscalInvoicesPanel() {
   // Modais de Controle
   const [isNewInvoiceModalOpen, setIsNewInvoiceModalOpen] = useState(false);
   const [invoiceToCancel, setInvoiceToCancel] = useState<CombinedFiscalRecord | null>(null);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<CombinedFiscalRecord | null>(null);
 
   // Formulário de Nova NF
   const [newType, setNewType] = useState<'entrada' | 'emissao'>('entrada');
@@ -1099,6 +1101,48 @@ export function OwnerFiscalInvoicesPanel() {
     }
   };
 
+  // Ação: Excluir NF permanentemente (Remove do Banco, Supabase e LocalStorage)
+  const handleConfirmDelete = async () => {
+    if (!invoiceToDelete) return;
+    try {
+      const storageKey = 'dealflow_store_fiscal_invoices_v1';
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          const updated = list.filter((item: any) => {
+            if (item.id === invoiceToDelete.id) return false;
+            if (item.rawInvoiceId === invoiceToDelete.id) return false;
+            if (item.invoice_number === invoiceToDelete.invoice_number) return false;
+            return true;
+          });
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+        }
+      }
+
+      const targetId = invoiceToDelete.rawInvoiceId || invoiceToDelete.id;
+      await deleteInvoiceMutation.mutateAsync({
+        id: targetId,
+        invoice_number: invoiceToDelete.invoice_number,
+      });
+
+      toast({
+        title: 'NF Excluída com Sucesso!',
+        description: `A Nota Fiscal Nº ${invoiceToDelete.invoice_number} foi permanentemente removida.`,
+      });
+
+      setInvoiceToDelete(null);
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao excluir NF',
+        description: err?.message,
+      });
+    }
+  };
+
   // Exportar relatório em XLSX
   const handleExportXLSX = () => {
     const exportData = filteredRecords.map((r) => ({
@@ -1449,7 +1493,7 @@ export function OwnerFiscalInvoicesPanel() {
                   <TableHead className="min-w-[140px] text-xs">Fornecedor / Cliente</TableHead>
                   <TableHead className="w-[110px] text-xs text-right">Valor Total</TableHead>
                   <TableHead className="w-[105px] text-xs text-center">Anexo NF</TableHead>
-                  <TableHead className="w-[110px] text-xs text-center">Ações</TableHead>
+                  <TableHead className="w-[160px] text-xs text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1613,11 +1657,23 @@ export function OwnerFiscalInvoicesPanel() {
                                   setCancellationReason('');
                                   setCancellationProtocol(r.sefaz_protocol || '');
                                 }}
-                                className="h-6 text-[10px] px-2 rounded-lg text-destructive border-destructive/30 hover:bg-destructive/10"
+                                className="h-6 text-[10px] px-2 rounded-lg text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
                                 title="Cancelar Nota Fiscal"
                               >
                                 <XCircle className="w-3 h-3 mr-0.5" />
                                 Cancelar
+                              </Button>
+                            )}
+                            {canModifyNf && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setInvoiceToDelete(r)}
+                                className="h-6 text-[10px] px-2 rounded-lg text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10 gap-0.5 font-semibold"
+                                title="Excluir Nota Fiscal permanentemente"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                Excluir
                               </Button>
                             )}
                             {isCancel ? (
@@ -2003,6 +2059,70 @@ export function OwnerFiscalInvoicesPanel() {
             </Button>
             <Button variant="destructive" size="sm" onClick={handleConfirmCancellation} className="font-bold rounded-xl">
               Confirmar Cancelamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =================================================================== */}
+      {/* MODAL: CONFIRMAÇÃO DE EXCLUSÃO DEFINITIVA DA NF                    */}
+      {/* =================================================================== */}
+      <Dialog open={Boolean(invoiceToDelete)} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+        <DialogContent className="max-w-md rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-rose-600">
+              <Trash2 className="w-5 h-5 text-rose-600" />
+              Excluir Nota Fiscal Nº {invoiceToDelete?.invoice_number}?
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Esta ação excluirá permanentemente esta NF do sistema, da apuração semanal da diretoria e da nuvem. O registro e o anexo serão removidos de forma definitiva.
+            </DialogDescription>
+          </DialogHeader>
+
+          {invoiceToDelete && (
+            <div className="p-3 rounded-xl bg-muted/40 border text-xs space-y-1.5 my-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Valor Total:</span>
+                <strong className="font-mono text-foreground">{formatCurrencyBRL(invoiceToDelete.total_value)}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Cliente / Fornecedor:</span>
+                <span className="font-semibold text-foreground truncate max-w-[200px]">{invoiceToDelete.party_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Concessionária:</span>
+                <span className="text-foreground">{invoiceToDelete.store_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Data da Operação:</span>
+                <span className="font-mono">{formatFiscalDate(invoiceToDelete.event_date)}</span>
+              </div>
+              {invoiceToDelete.sefaz_protocol && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Protocolo SEFAZ:</span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{invoiceToDelete.sefaz_protocol}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setInvoiceToDelete(null)}
+              className="rounded-xl"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmDelete}
+              className="font-bold rounded-xl gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              <Trash2 className="w-4 h-4" />
+              Sim, Excluir Definitivamente
             </Button>
           </DialogFooter>
         </DialogContent>
