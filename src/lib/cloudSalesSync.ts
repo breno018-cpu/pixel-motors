@@ -41,6 +41,10 @@ export interface RegisteredInvoice {
   tax_value?: number;
   status: 'emitida' | 'cancelada';
   notes?: string;
+  // Campos de Escrituração Fiscal da Diretoria
+  fiscal_type?: 'entrada' | 'emissao' | 'cancelamento';
+  party_name?: string;
+  entry_or_cancel_date?: string;
   // Anexo oficial da NF
   attachment_name?: string;
   attachment_url?: string; // Data URL Base64 ou Link público do arquivo
@@ -899,13 +903,14 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
     }
 
     // Objeto estritamente compatível com o schema da tabela public.invoices no Supabase
+    const fiscalType = readyInvoice.fiscal_type || 'emissao';
     const invPayload: any = {
       id: readyInvoice.id,
       invoice_number: readyInvoice.invoice_number,
-      invoice_type: 'produto',
+      invoice_type: fiscalType === 'entrada' ? 'entrada' : fiscalType === 'cancelamento' ? 'cancelamento' : 'produto',
       issue_date: readyInvoice.issue_date,
       store_id: isUuid(readyInvoice.store_id) ? readyInvoice.store_id : null,
-      customer_name: readyInvoice.customer_name,
+      customer_name: readyInvoice.customer_name || readyInvoice.party_name || 'Consumidor Final',
       customer_document: readyInvoice.customer_document || null,
       customer_phone: readyInvoice.customer_phone || null,
       customer_email: readyInvoice.customer_email || null,
@@ -915,10 +920,12 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
       tax_rate: readyInvoice.tax_rate || 0,
       tax_value: readyInvoice.tax_value || 0,
       status: readyInvoice.status || 'emitida',
-      notes: `[moto] ${readyInvoice.vehicle_model} - Chassi: ${readyInvoice.vehicle_chassis}${readyInvoice.alienacao ? ` | Alienação: ${readyInvoice.alienacao}` : ''}${readyInvoice.sefaz_protocol ? ` | Protocolo SEFAZ: ${readyInvoice.sefaz_protocol}` : ''} | Venda: ${readyInvoice.contract_number || readyInvoice.sale_id || '—'}`,
+      notes: readyInvoice.notes || `${fiscalType === 'entrada' ? '[remessa]' : '[moto]'} ${readyInvoice.vehicle_model || 'Operação Fiscal'}${readyInvoice.sefaz_protocol ? ` | Protocolo SEFAZ: ${readyInvoice.sefaz_protocol}` : ''}`,
       items: [
         {
-          description: `${readyInvoice.vehicle_brand || 'SHINERAY'} ${readyInvoice.vehicle_model} (Chassi: ${readyInvoice.vehicle_chassis})`,
+          description: fiscalType === 'entrada'
+            ? 'Entrada de Veículos / Peças (Remessa Montadora)'
+            : `${readyInvoice.vehicle_brand || 'SHINERAY'} ${readyInvoice.vehicle_model || 'Motocicleta'} (Chassi: ${readyInvoice.vehicle_chassis || '—'})`,
           quantity: 1,
           unit_value: readyInvoice.total_value,
           chassis: readyInvoice.vehicle_chassis,

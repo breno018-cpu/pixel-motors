@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { formatFiscalDate, getLocalTodayDateString } from '@/lib/fiscalDates';
+import { safeSaveToLocalStorage } from '@/lib/invoiceAttachmentStorage';
 import { 
   Dialog, 
   DialogContent, 
@@ -106,7 +107,7 @@ function getStoredFiscalInvoices(): FiscalInvoiceRecord[] {
 
 function saveStoredFiscalInvoices(records: FiscalInvoiceRecord[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    safeSaveToLocalStorage(STORAGE_KEY, records);
   } catch {}
 }
 

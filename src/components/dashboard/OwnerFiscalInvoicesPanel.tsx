@@ -42,7 +42,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useInvoices, useCancelInvoice, useUpsertInvoice, useDeleteInvoice, Invoice } from '@/hooks/useInvoices';
-import { useStores } from '@/hooks/useStores';
+import { useStores, STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/hooks/useStores';
 import { useToast } from '@/hooks/use-toast';
 import { exportToXLSX } from '@/lib/export';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
@@ -83,6 +83,15 @@ export const WEEKS_CONFIG = [
   { key: 'sem_4', label: 'Semana 4', range: '22 a 28 Nov', days: [22, 28] },
   { key: 'sem_5', label: 'Semana 5', range: '29 a 30 Nov', days: [29, 31] },
 ];
+
+export function normalizeStoreId(storeId?: string | null): string {
+  if (!storeId) return STORE_DIVINOPOLIS_UUID;
+  const s = String(storeId).toLowerCase();
+  if (s.includes('montes') || s === STORE_MONTESCLAROS_UUID) {
+    return STORE_MONTESCLAROS_UUID;
+  }
+  return STORE_DIVINOPOLIS_UUID;
+}
 
 export function cleanFakeFiscalInvoices(): void {
   try {
@@ -140,7 +149,7 @@ export function OwnerFiscalInvoicesPanel() {
   // Formulário de Nova NF
   const [newType, setNewType] = useState<'entrada' | 'emissao'>('entrada');
   const [newInvoiceNumber, setNewInvoiceNumber] = useState('');
-  const [newStoreId, setNewStoreId] = useState('store-montesclaros');
+  const [newStoreId, setNewStoreId] = useState(STORE_MONTESCLAROS_UUID);
   const [newEventDate, setNewEventDate] = useState('2026-11-16');
   const [newPartyName, setNewPartyName] = useState('Shineray do Brasil S.A.');
   const [newTotalValue, setNewTotalValue] = useState('');
@@ -174,7 +183,7 @@ export function OwnerFiscalInvoicesPanel() {
   // Formulário de Edição de NF da Diretoria
   const [editingRecord, setEditingRecord] = useState<CombinedFiscalRecord | null>(null);
   const [editInvoiceNumber, setEditInvoiceNumber] = useState('');
-  const [editStoreId, setEditStoreId] = useState('store-montesclaros');
+  const [editStoreId, setEditStoreId] = useState(STORE_MONTESCLAROS_UUID);
   const [editEventDate, setEditEventDate] = useState(getLocalTodayDateString());
   const [editPartyName, setEditPartyName] = useState('');
   const [editTotalValue, setEditTotalValue] = useState('');
@@ -256,7 +265,7 @@ export function OwnerFiscalInvoicesPanel() {
       if (parsed.invoice_number) setNewInvoiceNumber(parsed.invoice_number);
       if (parsed.sefaz_protocol) setNewSefazProtocol(parsed.sefaz_protocol);
       if (parsed.customer_name) setNewPartyName(parsed.customer_name);
-      if (parsed.store_id) setNewStoreId(parsed.store_id);
+      if (parsed.store_id) setNewStoreId(normalizeStoreId(parsed.store_id));
       if (parsed.issue_date) setNewEventDate(parsed.issue_date);
       if (parsed.total_value !== undefined && parsed.total_value > 0) {
         setNewTotalValue(formatBrlNumber(parsed.total_value));
@@ -337,7 +346,7 @@ export function OwnerFiscalInvoicesPanel() {
       if (parsed.invoice_number) setEditInvoiceNumber(parsed.invoice_number);
       if (parsed.sefaz_protocol) setEditSefazProtocol(parsed.sefaz_protocol);
       if (parsed.customer_name) setEditPartyName(parsed.customer_name);
-      if (parsed.store_id) setEditStoreId(parsed.store_id);
+      if (parsed.store_id) setEditStoreId(normalizeStoreId(parsed.store_id));
       if (parsed.issue_date) setEditEventDate(parsed.issue_date);
       if (parsed.total_value !== undefined && parsed.total_value > 0) {
         setEditTotalValue(formatBrlNumber(parsed.total_value));
@@ -358,9 +367,9 @@ export function OwnerFiscalInvoicesPanel() {
     let url = record.attachment_url;
     if (!url) return;
     if (url.startsWith('idb:')) {
-      const idbFile = await getAttachmentFromIdb(url);
-      if (idbFile?.dataUrl) {
-        url = idbFile.dataUrl;
+      const idbFile = await getAttachmentFromIdb(url, record.rawInvoiceId || record.id);
+      if (idbFile?.url) {
+        url = idbFile.url;
       }
     }
     setViewingAttachment({
@@ -376,9 +385,9 @@ export function OwnerFiscalInvoicesPanel() {
     let url = record.attachment_url;
     if (!url) return;
     if (url.startsWith('idb:')) {
-      const idbFile = await getAttachmentFromIdb(url);
-      if (idbFile?.dataUrl) {
-        url = idbFile.dataUrl;
+      const idbFile = await getAttachmentFromIdb(url, record.rawInvoiceId || record.id);
+      if (idbFile?.url) {
+        url = idbFile.url;
       }
     }
     const a = document.createElement('a');
@@ -508,7 +517,7 @@ export function OwnerFiscalInvoicesPanel() {
     }
     setEditingRecord(r);
     setEditInvoiceNumber(r.invoice_number);
-    setEditStoreId(r.store_id || 'store-montesclaros');
+    setEditStoreId(normalizeStoreId(r.store_id));
     setEditEventDate(r.event_date || r.issue_date || getLocalTodayDateString());
     setEditPartyName(r.party_name || '');
     setEditTotalValue(r.total_value ? formatBrlNumber(r.total_value) : '');
@@ -576,7 +585,7 @@ export function OwnerFiscalInvoicesPanel() {
           return {
             ...item,
             invoice_number: editInvoiceNumber.trim(),
-            store_id: editStoreId,
+            store_id: normalizeStoreId(editStoreId),
             issue_date: editEventDate,
             entry_or_cancel_date: editEventDate,
             party_name: editPartyName.trim(),
@@ -595,17 +604,21 @@ export function OwnerFiscalInvoicesPanel() {
       });
       safeSaveToLocalStorage(storageKey, list);
 
+      const resolvedStoreId = normalizeStoreId(editStoreId);
       const rawInv = invoices.find((x) => x.id === editingRecord.rawInvoiceId || x.invoice_number === editingRecord.invoice_number);
-      const storeObj = stores.find((s) => s.id === editStoreId);
-      const storeName = storeObj?.name || (editStoreId.includes('montes') ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
+      const storeObj = stores.find((s) => s.id === resolvedStoreId);
+      const storeName = storeObj?.name || (resolvedStoreId === STORE_MONTESCLAROS_UUID ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
 
       const editPayload = {
         id: editingRecord.rawInvoiceId && !editingRecord.rawInvoiceId.startsWith('loc-') ? editingRecord.rawInvoiceId : rawInv?.id,
         invoice_number: editInvoiceNumber.trim(),
+        fiscal_type: editingRecord.fiscal_type,
         issue_date: editEventDate,
-        store_id: editStoreId,
+        entry_or_cancel_date: editEventDate,
+        store_id: resolvedStoreId,
         store_name: storeName,
         customer_name: editPartyName.trim(),
+        party_name: editPartyName.trim(),
         total_value: val,
         total: val,
         subtotal: val,
@@ -750,11 +763,32 @@ export function OwnerFiscalInvoicesPanel() {
       const issueDate = loc.issue_date || loc.entry_or_cancel_date || loc.created_at?.slice(0, 10) || '';
       const eventDate = loc.entry_or_cancel_date || loc.issue_date || loc.created_at?.slice(0, 10) || '';
 
-      const alreadyHas = recordsList.some(
-        (r) => r.invoice_number === loc.invoice_number && r.fiscal_type === (isEntrada ? 'entrada' : isCancel ? 'cancelamento' : 'emissao')
+      const existingIdx = recordsList.findIndex(
+        (r) =>
+          r.invoice_number === loc.invoice_number &&
+          (r.fiscal_type === (isEntrada ? 'entrada' : isCancel ? 'cancelamento' : 'emissao') ||
+           (!isEntrada && !isCancel && r.fiscal_type === 'emissao'))
       );
 
-      if (!alreadyHas) {
+      if (existingIdx >= 0) {
+        const existing = recordsList[existingIdx];
+        recordsList[existingIdx] = {
+          ...existing,
+          ...loc,
+          id: existing.id || loc.id,
+          rawInvoiceId: existing.rawInvoiceId || loc.rawInvoiceId || loc.id,
+          fiscal_type: isEntrada ? 'entrada' : isCancel ? 'cancelamento' : existing.fiscal_type,
+          store_id: loc.store_id || existing.store_id,
+          store_name: storeName || existing.store_name,
+          party_name: loc.party_name || existing.party_name,
+          sefaz_protocol: loc.sefaz_protocol || existing.sefaz_protocol,
+          attachment_url: loc.attachment_url || existing.attachment_url,
+          attachment_name: loc.attachment_name || existing.attachment_name,
+          attachment_type: loc.attachment_type || existing.attachment_type,
+          attachment_size: loc.attachment_size || existing.attachment_size,
+          notes: loc.notes || existing.notes,
+        };
+      } else {
         recordsList.push({
           id: loc.id || `loc-${loc.invoice_number}-${Math.random()}`,
           invoice_number: loc.invoice_number,
@@ -825,10 +859,12 @@ export function OwnerFiscalInvoicesPanel() {
     return allFiscalRecords.filter((rec) => {
       // 1. Filtro de Loja
       if (storeFilter !== 'all') {
+        const normFilter = normalizeStoreId(storeFilter);
+        const normRec = normalizeStoreId(rec.store_id);
         const matchesStore =
-          rec.store_id === storeFilter ||
-          (storeFilter === 'store-montesclaros' && rec.store_name.toLowerCase().includes('montes')) ||
-          (storeFilter === 'store-divinopolis' && rec.store_name.toLowerCase().includes('divin'));
+          normRec === normFilter ||
+          (normFilter === STORE_MONTESCLAROS_UUID && rec.store_name.toLowerCase().includes('montes')) ||
+          (normFilter === STORE_DIVINOPOLIS_UUID && rec.store_name.toLowerCase().includes('divin'));
         if (!matchesStore) return false;
       }
 
@@ -930,8 +966,9 @@ export function OwnerFiscalInvoicesPanel() {
     const cleanNum = newInvoiceNumber.trim();
     const cleanProtocol = newSefazProtocol.trim();
     const cleanParty = newPartyName.trim() || (newType === 'entrada' ? 'Shineray do Brasil S.A.' : 'Consumidor Final');
-    const storeObj = stores.find((s) => s.id === newStoreId);
-    const isMoc = newStoreId.includes('montes');
+    const resolvedStoreId = normalizeStoreId(newStoreId);
+    const storeObj = stores.find((s) => s.id === resolvedStoreId);
+    const isMoc = resolvedStoreId === STORE_MONTESCLAROS_UUID;
     const storeName = storeObj?.name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
 
     let finalAttachmentUrl = attachedFile?.url;
@@ -949,17 +986,20 @@ export function OwnerFiscalInvoicesPanel() {
       }
     }
 
-    const newRecordId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `fisc-man-${Date.now()}`;
+    const newRecordId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0');
 
     const newRecord = {
       id: newRecordId,
       invoice_number: cleanNum,
       fiscal_type: newType,
-      store_id: newStoreId,
+      store_id: resolvedStoreId,
       store_name: storeName,
       issue_date: newEventDate,
       entry_or_cancel_date: newEventDate,
       party_name: cleanParty,
+      customer_name: cleanParty,
       total_value: val,
       total: val,
       subtotal: val,
@@ -1014,10 +1054,13 @@ export function OwnerFiscalInvoicesPanel() {
         id: newRecord.id,
         invoice_number: newRecord.invoice_number,
         invoice_type: newRecord.fiscal_type,
+        fiscal_type: newRecord.fiscal_type,
         issue_date: newRecord.issue_date,
-        store_id: newRecord.store_id,
+        entry_or_cancel_date: newRecord.entry_or_cancel_date,
+        store_id: resolvedStoreId,
         store_name: storeName,
         customer_name: newRecord.party_name,
+        party_name: newRecord.party_name,
         total_value: val,
         total: val,
         subtotal: val,
@@ -1366,8 +1409,8 @@ export function OwnerFiscalInvoicesPanel() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Concessionárias</SelectItem>
-                <SelectItem value="store-montesclaros">Montes Claros (Matriz)</SelectItem>
-                <SelectItem value="store-divinopolis">Divinópolis (Filial)</SelectItem>
+                <SelectItem value={STORE_MONTESCLAROS_UUID}>Montes Claros (Matriz)</SelectItem>
+                <SelectItem value={STORE_DIVINOPOLIS_UUID}>Divinópolis (Filial)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1902,13 +1945,13 @@ export function OwnerFiscalInvoicesPanel() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold">Concessionária</Label>
-                <Select value={newStoreId} onValueChange={setNewStoreId}>
+                <Select value={normalizeStoreId(newStoreId)} onValueChange={setNewStoreId}>
                   <SelectTrigger className="h-9 text-xs rounded-xl mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="store-montesclaros">Concessionária Montes Claros (Matriz)</SelectItem>
-                    <SelectItem value="store-divinopolis">Concessionária Divinópolis (Filial)</SelectItem>
+                    <SelectItem value={STORE_MONTESCLAROS_UUID}>Concessionária Montes Claros (Matriz)</SelectItem>
+                    <SelectItem value={STORE_DIVINOPOLIS_UUID}>Concessionária Divinópolis (Filial)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2286,13 +2329,13 @@ export function OwnerFiscalInvoicesPanel() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold">Concessionária *</Label>
-                <Select value={editStoreId} onValueChange={(val) => setEditStoreId(val)}>
+                <Select value={normalizeStoreId(editStoreId)} onValueChange={(val) => setEditStoreId(val)}>
                   <SelectTrigger className="h-9 text-xs rounded-xl mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="store-montesclaros">Concessionária Montes Claros (MOC)</SelectItem>
-                    <SelectItem value="store-divinopolis">Concessionária Divinópolis (DIV)</SelectItem>
+                    <SelectItem value={STORE_MONTESCLAROS_UUID}>Concessionária Montes Claros (MOC)</SelectItem>
+                    <SelectItem value={STORE_DIVINOPOLIS_UUID}>Concessionária Divinópolis (DIV)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -690,7 +690,7 @@ export default function MotoInvoices() {
   const openAttachmentViewer = async (inv: Invoice) => {
     let url = inv.attachment_url;
     if (url && url.startsWith('idb://')) {
-      const stored = await getAttachmentFromIdb(inv.id);
+      const stored = await getAttachmentFromIdb(url, inv.id);
       if (stored?.url) url = stored.url;
     }
     if (!url) {
@@ -714,7 +714,7 @@ export default function MotoInvoices() {
   const handleDownloadAttachment = async (inv: Invoice) => {
     let url = inv.attachment_url;
     if (url && url.startsWith('idb://')) {
-      const stored = await getAttachmentFromIdb(inv.id);
+      const stored = await getAttachmentFromIdb(url, inv.id);
       if (stored?.url) url = stored.url;
     }
     if (!url) {

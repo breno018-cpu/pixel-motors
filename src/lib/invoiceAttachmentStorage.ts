@@ -28,6 +28,7 @@ export interface StoredAttachment {
   id: string; // ID da Nota Fiscal ou chave única
   name: string;
   url: string; // Base64 DataURL ou link
+  dataUrl?: string; // Alias compatível com componentes que acessam .dataUrl
   size: number;
   type: string;
   updated_at: string;
@@ -47,14 +48,21 @@ export async function saveAttachmentToIdb(
   let attachment: StoredAttachment;
 
   if (typeof attachmentOrId === 'object' && attachmentOrId !== null) {
-    attachment = attachmentOrId;
+    const rawUrl = attachmentOrId.url || attachmentOrId.dataUrl || '';
+    attachment = {
+      ...attachmentOrId,
+      url: rawUrl,
+      dataUrl: rawUrl,
+    };
   } else {
     const id = String(attachmentOrId || `att_${Date.now()}`);
+    const rawUrl = url || '';
     attachment = {
       id,
       name: name || `NF_${id}.pdf`,
-      url: url || '',
-      size: size || (url ? url.length : 0),
+      url: rawUrl,
+      dataUrl: rawUrl,
+      size: size || (rawUrl ? rawUrl.length : 0),
       type: type || 'application/pdf',
       updated_at: new Date().toISOString(),
     };
@@ -86,19 +94,52 @@ export async function saveAttachmentToIdb(
 
 /**
  * Recupera um anexo armazenado no IndexedDB a partir de um ID ou URL no formato idb://{id}.
+ * Suporta busca com fallback por ID secundário (ex: rawInvoiceId ou invoice_number).
  */
-export async function getAttachmentFromIdb(idOrUrl: string): Promise<StoredAttachment | null> {
-  if (!idOrUrl) return null;
-  const id = idOrUrl.startsWith('idb://') ? idOrUrl.slice(6) : idOrUrl;
+export async function getAttachmentFromIdb(
+  idOrUrl: string,
+  secondaryId?: string
+): Promise<StoredAttachment | null> {
+  if (!idOrUrl && !secondaryId) return null;
+  const id = idOrUrl?.startsWith('idb://') ? idOrUrl.slice(6) : idOrUrl;
 
   try {
     const db = await openDb();
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
-      const req = store.get(id);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => resolve(null);
+
+      const tryResolve = (res: any) => {
+        if (!res) return null;
+        const resolvedUrl = res.url || res.dataUrl || '';
+        return {
+          ...res,
+          url: resolvedUrl,
+          dataUrl: resolvedUrl,
+        };
+      };
+
+      if (id) {
+        const req = store.get(id);
+        req.onsuccess = () => {
+          if (req.result) {
+            resolve(tryResolve(req.result));
+          } else if (secondaryId) {
+            const secReq = store.get(secondaryId);
+            secReq.onsuccess = () => resolve(tryResolve(secReq.result));
+            secReq.onerror = () => resolve(null);
+          } else {
+            resolve(null);
+          }
+        };
+        req.onerror = () => resolve(null);
+      } else if (secondaryId) {
+        const secReq = store.get(secondaryId);
+        secReq.onsuccess = () => resolve(tryResolve(secReq.result));
+        secReq.onerror = () => resolve(null);
+      } else {
+        resolve(null);
+      }
     });
   } catch (e) {
     console.warn('[IndexedDB] Erro ao recuperar anexo:', e);
@@ -133,15 +174,26 @@ export function sanitizeAttachmentsForLocalStorage<T>(list: T[]): T[] {
   if (!Array.isArray(list)) return list;
   return list.map((item: any) => {
     if (!item) return item;
+    let sanitizedItem = { ...item };
     const url = item.attachment_url;
-    if (typeof url === 'string' && url.length > 500 && url.startsWith('data:')) {
+    if (typeof url === 'string' && (url.length > 300 || url.startsWith('data:'))) {
       const safeId = item.id || `inv_${item.invoice_number || Date.now()}`;
-      return {
-        ...item,
-        attachment_url: `idb://${safeId}`,
-      };
+      sanitizedItem.attachment_url = `idb://${safeId}`;
     }
-    return item;
+    // Also sanitize nested items[].attachment_url
+    if (Array.isArray(sanitizedItem.items)) {
+      sanitizedItem.items = sanitizedItem.items.map((sub: any) => {
+        if (sub && typeof sub.attachment_url === 'string' && (sub.attachment_url.length > 300 || sub.attachment_url.startsWith('data:'))) {
+          const safeId = sanitizedItem.id || `inv_${sanitizedItem.invoice_number || Date.now()}`;
+          return {
+            ...sub,
+            attachment_url: `idb://${safeId}`,
+          };
+        }
+        return sub;
+      });
+    }
+    return sanitizedItem;
   });
 }
 
@@ -157,7 +209,7 @@ export function safeSaveToLocalStorage(key: string, data: any): boolean {
   } catch (err: any) {
     console.warn(`[safeSaveToLocalStorage] Cota excedida ao gravar chave "${key}". Executando limpeza emergencial...`, err);
     try {
-      // 1. Limpa todas as chaves fiscais conhecidas que possam ter sido infladas
+      // 1. Limpa todas as chaves que possam ter sido infladas
       cleanLocalStorageBloat();
 
       // 2. Tenta novamente após a purga
@@ -166,14 +218,14 @@ export function safeSaveToLocalStorage(key: string, data: any): boolean {
       return true;
     } catch (err2: any) {
       console.error(`[safeSaveToLocalStorage] Falha crítica de cota no localStorage para "${key}":`, err2);
-      // Como última tentativa: grava os itens desprovidos completamente do campo attachment_url
+      // Como última tentativa: grava os itens desprovidos de attachments e trunca lista se necessário
       try {
         if (Array.isArray(data)) {
           const minimal = data.map((item: any) => {
             const { attachment_url, ...rest } = item || {};
             return { ...rest, attachment_url: item?.id ? `idb://${item.id}` : undefined };
           });
-          localStorage.setItem(key, JSON.stringify(minimal));
+          localStorage.setItem(key, JSON.stringify(minimal.slice(0, 100)));
           return true;
         }
       } catch {}
@@ -201,8 +253,8 @@ export function cleanLocalStorageBloat(): void {
       const raw = localStorage.getItem(key);
       if (!raw) return;
 
-      // Se a string da chave tiver mais de 200KB, com certeza tem DataURLs de PDFs/imagens embutidos
-      if (raw.length > 200 * 1024 || raw.includes('data:application/pdf') || raw.includes('data:image/')) {
+      // Se a string da chave tiver mais de 100KB, ou contiver DataURL de PDF/imagem
+      if (raw.length > 100 * 1024 || raw.includes('data:application/pdf') || raw.includes('data:image/')) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           const cleaned = sanitizeAttachmentsForLocalStorage(parsed);
@@ -213,6 +265,24 @@ export function cleanLocalStorageBloat(): void {
       console.warn(`[cleanLocalStorageBloat] Erro ao limpar chave ${key}:`, e);
     }
   });
+
+  // Varredura de emergência em qualquer chave do localStorage com DataURLs pesados
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      const val = localStorage.getItem(k);
+      if (val && val.length > 300_000 && (val.includes('data:application/pdf') || val.includes('data:image/'))) {
+        try {
+          const p = JSON.parse(val);
+          if (Array.isArray(p)) {
+            const cl = sanitizeAttachmentsForLocalStorage(p);
+            localStorage.setItem(k, JSON.stringify(cl));
+          }
+        } catch {}
+      }
+    }
+  } catch {}
 }
 
 // Executa limpeza proativa na importação deste módulo para liberar a cota caso o usuário já esteja com o storage cheio
