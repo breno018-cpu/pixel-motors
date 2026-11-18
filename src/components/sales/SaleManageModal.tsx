@@ -303,6 +303,100 @@ export function SaleManageModal({
     notes,
   ]);
 
+  const currentModalSale = useMemo(() => {
+    const ext = (sale?.external_data || {}) as any;
+    const finInstNum = paymentMethod === 'financiamento' ? parseInt(financingInstallments || '48', 10) : 1;
+    const finInstValNum = paymentMethod === 'financiamento' ? parseCurrency(financingInstallmentValue) : 0;
+    const cardInstNum = parseInt(downPayCardInstallments || '1', 10);
+    const resolvedMethod = paymentMethod === 'financiamento'
+      ? `Financiamento (${financingBank || 'Banco'})`
+      : (cardInstNum > 1
+          ? `Cartão de Crédito (${cardInstNum}x)`
+          : 'À Vista');
+
+    return {
+      ...sale,
+      id: sale?.id,
+      contract_number: contractNumber || sale?.contract_number || 'CTR-000000',
+      buyer_name: buyerName || sale?.buyer_name,
+      buyer_cpf: buyerCpf || sale?.buyer_cpf,
+      buyer_phone: buyerPhone || sale?.buyer_phone,
+      buyer_email: buyerEmail || sale?.buyer_email,
+      buyer_address: buyerAddress || sale?.buyer_address,
+      sale_price: parseCurrency(salePrice),
+      down_payment:
+        parseCurrency(downPayPix) +
+        parseCurrency(downPayCash) +
+        parseCurrency(downPayCard),
+      down_payment_pix: parseCurrency(downPayPix),
+      down_payment_cash: parseCurrency(downPayCash),
+      down_payment_card: parseCurrency(downPayCard),
+      down_payment_card_installments: cardInstNum,
+      financed_amount: parseCurrency(financedAmount),
+      financing_bank: financingBank,
+      financing_installments: finInstNum,
+      financing_installment_value: finInstValNum,
+      installments: paymentMethod === 'financiamento' ? finInstNum : (cardInstNum > 1 ? cardInstNum : 1),
+      installment_value: paymentMethod === 'financiamento' ? finInstValNum : (cardInstNum > 1 && parseCurrency(downPayCard) > 0 ? parseCurrency(downPayCard) / cardInstNum : null),
+      payment_method: resolvedMethod,
+      template_id: templateId || sale?.template_id,
+      store_id: storeId || sale?.store_id,
+      notes,
+      vehicle: {
+        ...(sale?.vehicle || {}),
+        brand: vehicleBrand,
+        model: vehicleModel,
+        year: parseInt(vehicleYear || '2026', 10),
+        color: vehicleColor,
+        chassis: vehicleChassis,
+        plate: vehiclePlate,
+      },
+      external_data: {
+        ...ext,
+        buyer_city: buyerCity || ext.buyer_city,
+        buyer_address: buyerAddress,
+        vehicle_model_custom: vehicleModel,
+        chassi: vehicleChassis,
+        placa: vehiclePlate,
+        cor: vehicleColor,
+        ano: vehicleYear,
+        banco: financingBank,
+        financiamento: parseCurrency(financedAmount),
+        pix: parseCurrency(downPayPix),
+        dinheiro: parseCurrency(downPayCash),
+        cartao: parseCurrency(downPayCard),
+      },
+    };
+  }, [
+    sale,
+    contractNumber,
+    buyerName,
+    buyerCpf,
+    buyerPhone,
+    buyerEmail,
+    buyerAddress,
+    buyerCity,
+    salePrice,
+    downPayPix,
+    downPayCash,
+    downPayCard,
+    downPayCardInstallments,
+    financedAmount,
+    financingBank,
+    financingInstallments,
+    financingInstallmentValue,
+    paymentMethod,
+    templateId,
+    storeId,
+    notes,
+    vehicleBrand,
+    vehicleModel,
+    vehicleYear,
+    vehicleColor,
+    vehicleChassis,
+    vehiclePlate,
+  ]);
+
   // SALVAR ALTERAÇÕES (CADASTRAIS + FINALIZAÇÃO)
   const handleSaveChanges = async () => {
     if (!sale) return;
@@ -416,7 +510,7 @@ export function SaleManageModal({
         },
       };
 
-      // Tenta persistir no Supabase (se o ID for de contrato do banco)
+      // Tenta persistir no Supabase (se o ID for de contrato do banco ou sincronizado de planilha)
       if (sale.id && !String(sale.id).startsWith('sheet-')) {
         const { error } = await supabase.from('contracts').update(payload).eq('id', sale.id);
         if (error) console.warn('Aviso Supabase update:', error);
@@ -434,6 +528,17 @@ export function SaleManageModal({
               year: parseInt(vehicleYear || '2026', 10),
             })
             .eq('id', sale.vehicle_id);
+        }
+      } else {
+        const targetContractNum = contractNumber.trim().toUpperCase() || sale.contract_number;
+        const { error: upsertErr } = await supabase
+          .from('contracts')
+          .upsert({
+            ...payload,
+            contract_number: targetContractNum,
+          }, { onConflict: 'contract_number' });
+        if (upsertErr) {
+          console.warn('Aviso ao sincronizar contrato de planilha no Supabase:', upsertErr);
         }
       }
 
@@ -952,7 +1057,18 @@ export function SaleManageModal({
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
-                  <Label className="text-xs font-bold">Modelo de Contrato Vinculado</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold">Modelo de Contrato Vinculado</Label>
+                    <a
+                      href="/contracts"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] text-primary hover:underline font-semibold"
+                      title="Abrir página de gerenciamento e edição de templates"
+                    >
+                      Personalizar Modelos ↗
+                    </a>
+                  </div>
                   <Select value={templateId} onValueChange={setTemplateId}>
                     <SelectTrigger className="h-10 text-xs">
                       <SelectValue placeholder="Modelo Padrão da Concessionária" />
@@ -1116,12 +1232,12 @@ export function SaleManageModal({
                     <Button
                       onClick={async () => {
                         try {
-                          await downloadOriginalContract(sale);
-                          toast({ title: 'Contrato baixado', description: 'O PDF do contrato original foi baixado com sucesso.' });
+                          await downloadOriginalContract(currentModalSale);
+                          toast({ title: 'Contrato baixado', description: 'O PDF do contrato atualizado foi baixado com sucesso.' });
                         } catch (e: any) {
                           try {
                             downloadContractSecondCopyPDF(secondCopyData);
-                            toast({ title: 'Contrato baixado', description: 'O PDF do contrato original foi baixado com sucesso.' });
+                            toast({ title: 'Contrato baixado', description: 'O PDF do contrato atualizado foi baixado com sucesso.' });
                           } catch (e2: any) {
                             toast({ variant: 'destructive', title: 'Erro ao gerar contrato', description: e2?.message || e?.message || 'Falha ao processar.' });
                           }

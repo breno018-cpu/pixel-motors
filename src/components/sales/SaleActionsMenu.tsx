@@ -718,19 +718,15 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
             )}
           </DropdownMenuItem>
 
-          {sale.status !== 'pre_venda' && (
-            <>
-              <DropdownMenuItem onClick={handleExportSale} className="cursor-pointer">
-                <Download className="w-3.5 h-3.5 mr-2 text-muted-foreground shrink-0" />
-                Baixar Contrato (PDF)
-              </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleExportSale} className="cursor-pointer font-bold text-foreground">
+            <Download className="w-3.5 h-3.5 mr-2 text-primary shrink-0" />
+            Baixar Contrato (PDF)
+          </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={handleDownloadPickupTerm} className="cursor-pointer text-blue-600 dark:text-blue-400">
-                <ShieldCheck className="w-3.5 h-3.5 mr-2 shrink-0" />
-                Termo de Retirada
-              </DropdownMenuItem>
-            </>
-          )}
+          <DropdownMenuItem onClick={handleDownloadPickupTerm} className="cursor-pointer text-blue-600 dark:text-blue-400">
+            <ShieldCheck className="w-3.5 h-3.5 mr-2 shrink-0" />
+            Termo de Retirada
+          </DropdownMenuItem>
 
           <DropdownMenuItem onClick={() => setFreightOpen(true)} className="cursor-pointer text-emerald-600 dark:text-emerald-400">
             <Truck className="w-3.5 h-3.5 mr-2 shrink-0" />

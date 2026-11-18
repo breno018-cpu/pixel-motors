@@ -506,39 +506,12 @@ export function CompleteSaleModal({
     }
 
     try {
-      // REGRA: Se NÃO tiver solicitado NF previamente, emite a imagem oficial de NF
-      if (!nfAlreadyRequested) {
-        try {
-          await downloadInvoiceRequestPng(
-            {
-              nomeCompleto: buyerName.trim().toUpperCase(),
-              cpf: unmaskedCpf,
-              cep: buyerCep || (buyerAddress.match(/\d{5}-?\d{3}/)?.[0] || ''),
-              endereco: buyerAddress,
-              chassi: vehicleChassis.trim().toUpperCase(),
-              modeloMoto: vehicleModel.trim().toUpperCase(),
-              valorNF: salePrice || 'R$ 0,00',
-              alienacao: financingBank ? `ALIENADO - ${financingBank.toUpperCase()}` : 'AVISTA',
-            },
-            `solicitacao-nf-${(vehicleChassis || 'moto').slice(-8)}.png`,
-          );
-        } catch (err) {
-          console.warn('Erro ao emitir imagem da NF:', err);
-        }
-      }
-
       // REGRA: Identifica a concessionária correta do veículo a partir do cadastro em Organização
       const selectedVehicle = vehicles.find((v) => v.id === vehicleId);
       const targetStoreId = storeId || selectedVehicle?.store_id || (user as any)?.user_metadata?.store_id || stores[0]?.id;
       const selectedStoreData = getStoreFromDatabase(targetStoreId, stores);
 
-      // REGRA: Ao finalizar a venda, GERA O CONTRATO PDF DEFINITIVO!
-      const isShineray =
-        vehicleModel.toUpperCase().includes('SHINERAY') ||
-        (selectedVehicle?.brand || '').toUpperCase().includes('SHINERAY') ||
-        !selectedVehicle?.brand;
       const selectedTemplate = templates.find((t) => t.id === templateId) || templates[0];
-      let pdfGenerated = false;
 
       const fallbackEmitContract = () => {
         downloadContractPDF({
@@ -565,72 +538,91 @@ export function CompleteSaleModal({
           installments: resolvedInstallments,
           installmentValue: resolvedInstallmentVal,
         });
-        pdfGenerated = true;
       };
 
-      if (isShineray) {
-        fallbackEmitContract();
-      } else if (selectedTemplate) {
-        try {
-          const assets = await loadTemplateAssets(selectedTemplate as any);
-          const contractPayloadForPdf: any = {
-            template: {
-              header_content: selectedTemplate.header_content,
-              body_content: selectedTemplate.body_content,
-              clauses_content: selectedTemplate.clauses_content,
-              signature_content: selectedTemplate.signature_content,
-              fixed_clauses: selectedTemplate.fixed_clauses || [],
-              optional_clauses: selectedTemplate.optional_clauses || [],
-              ...assets,
-            },
-            client: {
-              name: buyerName.trim().toUpperCase(),
-              cpf: unmaskedCpf,
-              phone: buyerPhone,
-              address: buyerAddress,
-            },
-            vehicle: {
-              brand: vehicleModel.split(' ')[0] || 'SHINERAY',
-              model: vehicleModel,
-              year: parseInt(vehicleYear, 10) || 2026,
-              color: vehicleColor,
-              chassis: vehicleChassis.trim().toUpperCase(),
-            },
-            store: {
-              name: selectedStoreData.storeName,
-              cnpj: selectedStoreData.cnpj || '',
-              city: selectedStoreData.city ? `${selectedStoreData.city}/${selectedStoreData.state || 'MG'}` : '',
-              address: selectedStoreData.address || '',
-              phone: selectedStoreData.phone || '',
-              email: selectedStoreData.email || '',
-            },
-            payment: {
-              total: priceNum,
-              downPayment: totalDownPayment,
-              method: resolvedPaymentMethod,
-              installments: resolvedInstallments,
-              installmentValue: resolvedInstallmentVal,
-            },
-            contractNumber: `CTR-${Date.now().toString().slice(-6)}`,
-            contractDate: new Date().toLocaleDateString('pt-BR', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric',
-            }),
-          };
+      const emitPdfContract = async () => {
+        if (selectedTemplate && selectedTemplate.body_content && templateId) {
+          try {
+            const assets = await loadTemplateAssets(selectedTemplate as any);
+            const contractPayloadForPdf: any = {
+              template: {
+                header_content: selectedTemplate.header_content,
+                body_content: selectedTemplate.body_content,
+                clauses_content: selectedTemplate.clauses_content,
+                signature_content: selectedTemplate.signature_content,
+                fixed_clauses: selectedTemplate.fixed_clauses || [],
+                optional_clauses: selectedTemplate.optional_clauses || [],
+                ...assets,
+              },
+              client: {
+                name: buyerName.trim().toUpperCase(),
+                cpf: unmaskedCpf,
+                phone: buyerPhone,
+                address: buyerAddress,
+              },
+              vehicle: {
+                brand: vehicleModel.split(' ')[0] || 'SHINERAY',
+                model: vehicleModel,
+                year: parseInt(vehicleYear, 10) || 2026,
+                color: vehicleColor,
+                chassis: vehicleChassis.trim().toUpperCase(),
+              },
+              store: {
+                name: selectedStoreData.storeName,
+                cnpj: selectedStoreData.cnpj || '',
+                city: selectedStoreData.city ? `${selectedStoreData.city}/${selectedStoreData.state || 'MG'}` : '',
+                address: selectedStoreData.address || '',
+                phone: selectedStoreData.phone || '',
+                email: selectedStoreData.email || '',
+              },
+              payment: {
+                total: priceNum,
+                downPayment: totalDownPayment,
+                method: resolvedPaymentMethod,
+                installments: resolvedInstallments,
+                installmentValue: resolvedInstallmentVal,
+              },
+              contractNumber: `CTR-${Date.now().toString().slice(-6)}`,
+              contractDate: new Date().toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+              }),
+            };
 
-          downloadContractFromTemplate(contractPayloadForPdf);
-          pdfGenerated = true;
-        } catch (pdfErr) {
-          console.warn('Falha ao gerar PDF por template personalizado, usando layout oficial:', pdfErr);
-          fallbackEmitContract();
+            downloadContractFromTemplate(contractPayloadForPdf);
+            return;
+          } catch (pdfErr) {
+            console.warn('Falha ao gerar PDF por template personalizado, usando layout oficial:', pdfErr);
+          }
         }
-      } else {
         fallbackEmitContract();
-      }
+      };
 
-      if (!pdfGenerated) {
-        fallbackEmitContract();
+      // REGRA: Se NÃO tiver solicitado NF previamente, emite a imagem oficial de NF e o Contrato em seguida sem bloqueio do navegador
+      if (!nfAlreadyRequested) {
+        try {
+          await downloadInvoiceRequestPng(
+            {
+              nomeCompleto: buyerName.trim().toUpperCase(),
+              cpf: unmaskedCpf,
+              cep: buyerCep || (buyerAddress.match(/\d{5}-?\d{3}/)?.[0] || ''),
+              endereco: buyerAddress,
+              chassi: vehicleChassis.trim().toUpperCase(),
+              modeloMoto: vehicleModel.trim().toUpperCase(),
+              valorNF: salePrice || 'R$ 0,00',
+              alienacao: financingBank ? `ALIENADO - ${financingBank.toUpperCase()}` : 'AVISTA',
+            },
+            `solicitacao-nf-${(vehicleChassis || 'moto').slice(-8)}.png`,
+          );
+        } catch (err) {
+          console.warn('Erro ao emitir imagem da NF:', err);
+        }
+        setTimeout(() => {
+          emitPdfContract();
+        }, 700);
+      } else {
+        await emitPdfContract();
       }
 
       // Atualiza ou insere o contrato no Supabase com status 'concluido'

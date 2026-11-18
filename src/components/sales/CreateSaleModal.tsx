@@ -53,6 +53,8 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, resolveUserSellerStore } from '@/lib/salesScope';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
+import { useActiveTemplates } from '@/hooks/useContractTemplates';
+import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { getMonthlySheetRows, useContracts } from '@/hooks/useContracts';
 import { cloudSaveSheetRows } from '@/lib/cloudSalesSync';
@@ -205,6 +207,8 @@ export function CreateSaleModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { setPeriodFilter } = useDateFilter();
+  const { data: templates = [] } = useActiveTemplates();
+  const [templateId, setTemplateId] = useState<string>('');
 
   // Status da Venda
   const [saleType, setSaleType] = useState<'concluido' | 'pre_venda'>('concluido');
@@ -307,6 +311,7 @@ export function CreateSaleModal({
     setTradeInValue('');
     setLeadSource('Balcão');
     setNotes('');
+    setTemplateId('');
   }, [initialStoreUuid, resolvedDefaultSeller, initialVehicleId]);
 
   useEffect(() => {
@@ -769,6 +774,7 @@ export function CreateSaleModal({
           installments: effectiveInstallments,
           installment_value: effectiveInstallmentValue,
           status: saleType,
+          template_id: templateId || null,
           payment_method: PAYMENT_METHOD_OPTIONS.find(p => p.value === paymentMethodCategory)?.label || (finValNum > 0 ? `Financiamento (${selectedBank || 'Banco'})` : (cardInstallments > 1 ? `Cartão de Crédito (${cardInstallments}x)` : 'À Vista')),
           financing_bank: finValNum > 0 ? selectedBank : null,
           financing_installments: finValNum > 0 ? finInstallments : null,
@@ -921,7 +927,31 @@ export function CreateSaleModal({
         console.warn('Registro em Supabase contratos salvo localmente:', err);
       }
 
-      // REGRA DE OURO: Se for Pré-Venda (Pré-NF), emite AUTOMATICAMENTE o papel de solicitação de NF (PNG) e NUNCA o contrato de venda!
+      // Emissão do Contrato Oficial de Venda
+      const emitSaleContract = async () => {
+        try {
+          const fullContractData = {
+            ...contractPayload,
+            id: saleUuid,
+            contract_number: contractNumber,
+            vehicleBrand: 'SHINERAY',
+            vehicleModel: vehicleModel,
+            vehicleYear: new Date().getFullYear(),
+            vehicleColor: vehicleColor,
+            vehicleChassis: vehicleChassis,
+            salePrice: totalValNum,
+            downPayment: contractPayload.down_payment,
+            paymentMethod: contractPayload.payment_method,
+            installments: contractPayload.installments,
+            installmentValue: contractPayload.installment_value,
+            template_id: templateId || null,
+          };
+          await downloadOriginalContract(fullContractData);
+        } catch (pdfErr) {
+          console.warn('[CreateSaleModal] Falha ao baixar contrato:', pdfErr);
+        }
+      };
+
       if (saleType === 'pre_venda') {
         try {
           await downloadInvoiceRequestPng(
@@ -941,14 +971,19 @@ export function CreateSaleModal({
           console.warn('Erro ao gerar PNG de solicitação de NF:', pngErr);
         }
 
+        setTimeout(() => {
+          emitSaleContract();
+        }, 700);
+
         toast({
           title: 'Pré-Venda Cadastrada com Sucesso!',
-          description: `Papel Oficial de Solicitação de NF gerado para ${buyerName.toUpperCase()}. (O contrato de venda NÃO foi emitido, conforme regra de Pré-NF).`,
+          description: `Papel de Solicitação de NF e Contrato gerados para ${buyerName.toUpperCase()}.`,
         });
       } else {
+        await emitSaleContract();
         toast({
           title: 'Venda Faturada com Sucesso!',
-          description: `Venda ${contractNumber} concluída para ${buyerName.toUpperCase()}. O contrato oficial de venda foi liberado para emissão.`,
+          description: `Venda ${contractNumber} concluída para ${buyerName.toUpperCase()}. O contrato oficial de venda foi emitido e baixado com sucesso.`,
         });
       }
 
@@ -1438,7 +1473,7 @@ export function CreateSaleModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs font-semibold text-muted-foreground">Outras formas ou personalização</Label>
                 <Select value={paymentMethodCategory} onValueChange={handlePaymentMethodChange}>
@@ -1466,6 +1501,22 @@ export function CreateSaleModal({
                   className="h-10 text-xs mt-1 font-black text-foreground bg-primary/5 border-primary/30"
                   required
                 />
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-foreground">Modelo de Contrato PDF</Label>
+                <Select value={templateId} onValueChange={setTemplateId}>
+                  <SelectTrigger className="h-10 text-xs mt-1 font-semibold">
+                    <SelectValue placeholder="Modelo Padrão da Loja" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} ({t.template_type})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
