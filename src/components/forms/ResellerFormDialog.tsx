@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,10 +26,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useStores } from '@/hooks/useStores';
+import { useStores, STORE_DIVINOPOLIS_UUID } from '@/hooks/useStores';
 import { useCreateReseller } from '@/hooks/useMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import { maskCPFCNPJ, maskPhone } from '@/lib/masks';
+import { toValidStoreUuid } from '@/lib/storeResolution';
 
 const resellerSchema = z.object({
   full_name: z.string().min(1, 'Nome é obrigatório').max(200),
@@ -58,18 +60,32 @@ export function ResellerFormDialog({ open, onOpenChange }: ResellerFormDialogPro
       cpf: '',
       phone: '',
       email: '',
-      store_id: 'store-divinopolis',
+      store_id: STORE_DIVINOPOLIS_UUID,
       commission_rate: 5,
     },
   });
 
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        full_name: '',
+        cpf: '',
+        phone: '',
+        email: '',
+        store_id: stores?.[0]?.id ? toValidStoreUuid(stores[0].id) : STORE_DIVINOPOLIS_UUID,
+        commission_rate: 5,
+      });
+    }
+  }, [open, form, stores]);
+
   const onSubmit = async (data: ResellerFormData) => {
+    const validStoreId = toValidStoreUuid(data.store_id || STORE_DIVINOPOLIS_UUID);
     await createReseller.mutateAsync({
       full_name: data.full_name,
       cpf: data.cpf || undefined,
       phone: data.phone,
       email: data.email || `${data.full_name.toLowerCase().replace(/\s+/g, '.')}@parceiro.com.br`,
-      store_id: data.store_id || 'store-divinopolis',
+      store_id: validStoreId,
       commission_rate: data.commission_rate,
     });
     form.reset({
@@ -77,14 +93,29 @@ export function ResellerFormDialog({ open, onOpenChange }: ResellerFormDialogPro
       cpf: '',
       phone: '',
       email: '',
-      store_id: 'store-divinopolis',
+      store_id: STORE_DIVINOPOLIS_UUID,
       commission_rate: 5,
     });
     onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        if (!val) {
+          form.reset({
+            full_name: '',
+            cpf: '',
+            phone: '',
+            email: '',
+            store_id: STORE_DIVINOPOLIS_UUID,
+            commission_rate: 5,
+          });
+        }
+        onOpenChange(val);
+      }}
+    >
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-display">

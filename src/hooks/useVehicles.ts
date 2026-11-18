@@ -399,9 +399,10 @@ export function useVehicles() {
             filteredRemote.map((v) => `${v.brand}::${v.model}::${v.color}::${v.year}::${v.store_id}`.toUpperCase())
           );
 
-          // Preserva motos registradas localmente (ex: de contingência offline) que ainda não constam na nuvem
+          // Preserva apenas veículos registrados em contingência offline pendentes que ainda não constam na nuvem
           const localOnly = currentList.filter((v) => {
             if (remoteIdSet.has(v.id)) return false;
+            if (!(v as any).is_offline_pending) return false;
             const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
             if (vCh.length >= 6 && remoteChassisSet.has(vCh)) return false;
             // Se o veículo não tem chassi ou está com chassi provisório, verifica modelo/cor/ano/loja para evitar duplicata

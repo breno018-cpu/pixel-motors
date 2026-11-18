@@ -18,8 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useStores } from '@/hooks/useStores';
+import { useStores, STORE_DIVINOPOLIS_UUID } from '@/hooks/useStores';
 import { maskCurrency, parseCurrency } from '@/lib/masks';
+import { toValidStoreUuid } from '@/lib/storeResolution';
 import {
   AD_PLATFORM_LABEL,
   AD_STATUS_LABEL,
@@ -45,7 +46,7 @@ export function AdFormDialog({ storeId, ad, open, onOpenChange }: AdFormDialogPr
   const { data: stores = [] } = useStores();
   const create = useCreateStoreAd();
   const update = useUpdateStoreAd();
-  const [selectedStoreId, setSelectedStoreId] = useState(storeId || 'store-divinopolis');
+  const [selectedStoreId, setSelectedStoreId] = useState(() => toValidStoreUuid(storeId || STORE_DIVINOPOLIS_UUID));
   const { data: existingAds } = useStoreAds(selectedStoreId);
   const campaigns = Array.from(new Set((existingAds || []).map((a) => a.campaign_name))).sort();
 
@@ -67,7 +68,7 @@ export function AdFormDialog({ storeId, ad, open, onOpenChange }: AdFormDialogPr
 
   useEffect(() => {
     if (!open) return;
-    setSelectedStoreId(ad?.store_id || storeId || 'store-divinopolis');
+    setSelectedStoreId(toValidStoreUuid(ad?.store_id || storeId || STORE_DIVINOPOLIS_UUID));
     setCampaign(ad?.campaign_name || '');
     setTitle(ad?.title || '');
     setPlatform(ad?.platform || 'instagram');
@@ -107,7 +108,7 @@ export function AdFormDialog({ storeId, ad, open, onOpenChange }: AdFormDialogPr
       let image_url = ad?.image_url ?? null;
       if (file) image_url = await uploadAdImage(selectedStoreId, file);
       const payload = {
-        store_id: selectedStoreId,
+        store_id: toValidStoreUuid(selectedStoreId),
         campaign_name: campaign.trim().toUpperCase(),
         title: title.trim(),
         platform,

@@ -319,6 +319,18 @@ export function getStoreFromDatabase(
 }
 
 /**
+ * Garante que qualquer referência de loja (slug, nome, UUID) seja convertida
+ * no UUID PostgreSQL real correspondente, nunca falhando constraints do banco.
+ */
+export function toValidStoreUuid(storeIdOrRef: string | null | undefined): string {
+  if (!storeIdOrRef) return STORE_DIVINOPOLIS_UUID;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeIdOrRef);
+  if (isUuid) return storeIdOrRef;
+  const resolved = getStoreFromDatabase(storeIdOrRef);
+  return resolved.storeId || STORE_DIVINOPOLIS_UUID;
+}
+
+/**
  * Mapeamento canônico dos consultores de vendas para suas respectivas lojas de lotação
  */
 export const SELLER_TO_STORE_MAP: Record<string, string> = {

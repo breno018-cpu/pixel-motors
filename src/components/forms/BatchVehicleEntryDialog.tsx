@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Boxes, 
   Plus, 
@@ -45,6 +45,7 @@ import {
   SHINERAY_FACTORY_COLORS 
 } from '@/lib/dealershipCatalog';
 import { maskCurrency, parseCurrency } from '@/lib/masks';
+import { toValidStoreUuid } from '@/lib/storeResolution';
 
 interface BatchVehicleEntryDialogProps {
   open: boolean;
@@ -69,6 +70,13 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
   const [chassisListRaw, setChassisListRaw] = useState('');
   const [electricQtyWithoutChassis, setElectricQtyWithoutChassis] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setChassisListRaw('');
+      setElectricQtyWithoutChassis(0);
+    }
+  }, [open]);
 
   // Detecta se o modelo selecionado é elétrico
   const isElectricModel =
@@ -147,7 +155,7 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
     setIsSubmitting(true);
     const cost = parseCurrency(costPrice);
     const sale = parseCurrency(salePrice);
-    const finalStoreId = storeId || userStore?.id;
+    const finalStoreId = toValidStoreUuid(storeId || userStore?.id);
 
     try {
       const inserts = effectiveChassisList.map((chassis) => {

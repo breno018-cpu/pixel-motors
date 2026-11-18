@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/audit';
 import { saveVehicleToCache, type Vehicle } from '@/hooks/useVehicles';
 import { saveStoreToCache, type Store } from '@/hooks/useStores';
+import { toValidStoreUuid } from '@/lib/storeResolution';
 
 // Vehicle mutations
 export interface CreateVehicleData {
@@ -48,8 +49,9 @@ export function useCreateVehicle() {
 
       try {
         await ensureSupabaseSession();
+        const validStoreId = toValidStoreUuid(data.store_id);
         const insertPayload = {
-          store_id: data.store_id || 'store-divinopolis',
+          store_id: validStoreId,
           vehicle_type: data.vehicle_type || 'moto',
           brand: data.brand.trim().toUpperCase(),
           model: data.model.trim().toUpperCase(),
@@ -120,7 +122,8 @@ export function useCreateVehicle() {
           revision_period_km: data.revision_period_km || 1000,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        };
+          is_offline_pending: true,
+        } as any;
         saveVehicleToCache(fallbackVehicle);
         return fallbackVehicle;
       }
@@ -211,9 +214,13 @@ export function useCreateReseller() {
 
   return useMutation({
     mutationFn: async (data: CreateResellerData) => {
+      const validStoreId = toValidStoreUuid(data.store_id);
       const { data: reseller, error } = await supabase
         .from('resellers')
-        .insert(data)
+        .insert({
+          ...data,
+          store_id: validStoreId,
+        })
         .select()
         .single();
       
@@ -262,10 +269,11 @@ export function useCreateContract() {
     mutationFn: async (data: CreateContractData) => {
       // Generate contract number
       const contractNumber = `CTR-${Date.now().toString(36).toUpperCase()}`;
+      const validStoreId = toValidStoreUuid(data.store_id);
       
       const { data: contract, error } = await supabase
         .from('contracts')
-        .insert({ ...data, contract_number: contractNumber })
+        .insert({ ...data, store_id: validStoreId, contract_number: contractNumber })
         .select()
         .single();
       

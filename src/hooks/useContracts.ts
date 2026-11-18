@@ -325,6 +325,7 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
   const seenIds = new Set<string>();
   const seenContractKeys = new Set<string>();
   const seenChassis = new Set<string>();
+  const seenBuyers = new Set<string>();
 
   hydratedDb.forEach((c) => {
     if (c.id) seenIds.add(c.id);
@@ -333,8 +334,12 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
     const ext = (c.external_data || {}) as any;
     const ch = normalizeChassisKey(ext.chassis || c.vehicle?.chassis);
     if (ch) seenChassis.add(ch);
+    const bKey = (c.buyer_name || '').toUpperCase().trim();
+    if (bKey) seenBuyers.add(bKey);
   });
 
+  // Se o Supabase já retornou contratos reais, a planilha em nuvem só contribui com linhas
+  // inéditas que ainda não foram persistidas no Supabase (zero duplicações)
   const fromSheet = sheetRows
     .map(sheetRowToContract)
     .filter((sc) => {
@@ -344,6 +349,8 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
       const ext = (sc.external_data || {}) as any;
       const ch = normalizeChassisKey(ext.chassis || sc.vehicle?.chassis);
       if (ch && seenChassis.has(ch)) return false;
+      const bKey = (sc.buyer_name || '').toUpperCase().trim();
+      if (bKey && seenBuyers.has(bKey)) return false;
       return true;
     });
 
@@ -354,18 +361,14 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
     const ext = (sc.external_data || {}) as any;
     const ch = normalizeChassisKey(ext.chassis || sc.vehicle?.chassis);
     if (ch) seenChassis.add(ch);
+    const bKey = (sc.buyer_name || '').toUpperCase().trim();
+    if (bKey) seenBuyers.add(bKey);
   });
 
-  const typedSeed = (officialContractsSeed as unknown as Contract[]) || [];
-  const fromSeed = typedSeed.filter((sc) => {
-    if (sc.id && seenIds.has(sc.id)) return false;
-    const scKey = normalizeContractKey(sc.contract_number);
-    if (scKey && seenContractKeys.has(scKey)) return false;
-    const ext = (sc.external_data || {}) as any;
-    const ch = normalizeChassisKey(ext.chassis || sc.vehicle?.chassis);
-    if (ch && seenChassis.has(ch)) return false;
-    return true;
-  });
+  // officialContractsSeed só é utilizado se a base de dados estiver completamente vazia (0 contratos)
+  const fromSeed = (hydratedDb.length === 0 && fromSheet.length === 0)
+    ? (officialContractsSeed as unknown as Contract[]) || []
+    : [];
 
   // Aplica filtro de exclusões e cancelamentos sincronizados em nuvem + local
   const deletedIds = new Set<string>(cloudSync.deleted_ids || []);

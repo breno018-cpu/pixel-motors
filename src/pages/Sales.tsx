@@ -431,7 +431,8 @@ export default function Sales() {
       return c;
     };
 
-    const rawConsolidated = [...fromContracts, ...fromSheet]
+    const baseList = fromContracts.length > 0 ? fromContracts : fromSheet;
+    const rawConsolidated = baseList
       .filter((c) => !isDeleted(c))
       .map(applyStatusOverrides);
 

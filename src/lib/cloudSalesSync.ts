@@ -136,24 +136,27 @@ export async function fetchCloudSyncState(): Promise<CloudSyncState> {
         }
         localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(mergedInvoices));
 
-        // 3. Sheet rows: deduplicação por ID e QT/Número
+        // 3. Sheet rows: O Supabase é a autoridade máxima; nunca reintroduz linhas apagadas do cache local
         const rawSheet = localStorage.getItem(SHEET_STORAGE_KEY_V9);
         const localSheet: SheetRowV9[] = rawSheet ? JSON.parse(rawSheet) : [];
-        if (localSheet.length > 0 && (!sheet_rows || sheet_rows.length === 0)) {
-          mergedSheetRows = localSheet;
-        } else if (localSheet.length > 0 && sheet_rows && sheet_rows.length > 0) {
+        if (sheet_rows && sheet_rows.length > 0) {
           const rowMap = new Map<string, SheetRowV9>();
           sheet_rows.forEach((r) => {
             if (r.id) rowMap.set(r.id, r);
             if (r.qt) rowMap.set(`qt::${String(r.qt).replace(/^[A-Z]+-/, '')}`, r);
           });
+
+          // Apenas adiciona registros se forem explicitamente marcados como pendentes offline
           localSheet.forEach((lr) => {
-            const qtKey = lr.qt ? `qt::${String(lr.qt).replace(/^[A-Z]+-/, '')}` : '';
-            const existing = (lr.id ? rowMap.get(lr.id) : undefined) || (qtKey ? rowMap.get(qtKey) : undefined);
-            if (!existing) {
-              rowMap.set(lr.id || `local-${Math.random()}`, lr);
+            if ((lr as any).is_offline_pending) {
+              const qtKey = lr.qt ? `qt::${String(lr.qt).replace(/^[A-Z]+-/, '')}` : '';
+              const existing = (lr.id ? rowMap.get(lr.id) : undefined) || (qtKey ? rowMap.get(qtKey) : undefined);
+              if (!existing) {
+                rowMap.set(lr.id || `local-${Math.random()}`, lr);
+              }
             }
           });
+
           const seenRowIds = new Set<string>();
           mergedSheetRows = Array.from(rowMap.values()).filter((r) => {
             const uniqueKey = r.id || `qt-${r.qt}`;
@@ -161,6 +164,8 @@ export async function fetchCloudSyncState(): Promise<CloudSyncState> {
             seenRowIds.add(uniqueKey);
             return true;
           });
+        } else if (localSheet.length > 0) {
+          mergedSheetRows = localSheet;
         }
         if (mergedSheetRows && mergedSheetRows.length > 0) {
           localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(mergedSheetRows));
@@ -300,10 +305,7 @@ export async function cloudSaveSheetRows(rows: SheetRowV9[]): Promise<boolean> {
     const masterExt = (currentMaster?.external_data || {}) as any;
     const remoteInvoices: RegisteredInvoice[] = Array.isArray(masterExt.registered_invoices) ? masterExt.registered_invoices : [];
 
-    const invMap = new Map<string, RegisteredInvoice>();
-    remoteInvoices.forEach((inv) => { if (inv.id) invMap.set(inv.id, inv); });
-    localInvoices.forEach((inv) => { if (inv.id) invMap.set(inv.id, { ...(invMap.get(inv.id) || {}), ...inv }); });
-    const mergedInvoices = Array.from(invMap.values());
+    const mergedInvoices = remoteInvoices.length > 0 ? remoteInvoices : localInvoices;
 
     // 3. Salva na nuvem (Supabase) preservando registered_invoices
     const { error } = await supabase

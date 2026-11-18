@@ -218,18 +218,6 @@ export function CreateSaleModal({
     return today.toISOString().split('T')[0];
   });
 
-  useEffect(() => {
-    if (open) {
-      if (!storeId || storeId === 'store-divinopolis' || storeId === 'store-montesclaros') {
-        setStoreId(initialStoreUuid);
-      }
-      if (!sellerName) {
-        setSellerName(resolvedDefaultSeller);
-      }
-      setSaleDate(new Date().toISOString().split('T')[0]);
-    }
-  }, [open, initialStoreUuid, resolvedDefaultSeller]);
-
   // Veículo
   const [vehicleSource, setVehicleSource] = useState<'inventory' | 'manual'>('inventory');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(initialVehicleId || '');
@@ -279,6 +267,53 @@ export function CreateSaleModal({
   // Origem & Observações
   const [leadSource, setLeadSource] = useState('Balcão');
   const [notes, setNotes] = useState('');
+
+  // Reset COMPLETO do formulário para evitar que a penúltima venda seja duplicada/exibida
+  const resetForm = useCallback(() => {
+    setSaleType('concluido');
+    setStoreId(initialStoreUuid);
+    setSellerName(resolvedDefaultSeller);
+    setCustomSeller('');
+    setSaleDate(new Date().toISOString().split('T')[0]);
+    setVehicleSource('inventory');
+    setSelectedVehicleId(initialVehicleId || '');
+    setVehicleModel('');
+    setVehicleChassis('');
+    setVehicleColor('');
+    setVehicleYear('');
+    setBuyerName('');
+    setBuyerDoc('');
+    setBuyerPhone('');
+    setBuyerCity('');
+    setBuyerAddressData(INITIAL_ADDRESS);
+    setBuyerAddress('');
+    setPaymentMethodCategory('a_vista_pix');
+    setSaleValue('');
+    setFinVal('');
+    setSelectedBank('');
+    setFinInstallments(48);
+    setFinInstallmentValue('');
+    const d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    setFirstDueDate(d.toISOString().split('T')[0]);
+    setCashVal('');
+    setPixVal('');
+    setConsortiumVal('');
+    setCardVal('');
+    setCardInstallments(1);
+    setCardInstallmentValue('');
+    setHasTradeIn(false);
+    setTradeInModel('');
+    setTradeInPlate('');
+    setTradeInValue('');
+    setLeadSource('Balcão');
+    setNotes('');
+  }, [initialStoreUuid, resolvedDefaultSeller, initialVehicleId]);
+
+  useEffect(() => {
+    if (open) {
+      resetForm();
+    }
+  }, [open, resetForm]);
 
   // Ajuste automático de valores conforme a forma de pagamento selecionada
   const handlePaymentMethodChange = (category: string) => {
@@ -858,9 +893,9 @@ export function CreateSaleModal({
           vehicleChassis && !vehicleChassis.toUpperCase().includes('DEFINIR') ? vehicleChassis.trim().toUpperCase() : undefined
         );
 
-        contractPayload.vehicle_id = finalVehicleId;
+        contractPayload.vehicle_id = finalVehicleId || null;
 
-        if (contractPayload.store_id && contractPayload.vehicle_id) {
+        if (contractPayload.store_id) {
           const { error: insErr } = await (supabase as any).from('contracts').insert([contractPayload]);
           if (insErr) {
             console.warn('[CreateSaleModal] Erro ao inserir contrato no Supabase:', insErr);
@@ -940,31 +975,7 @@ export function CreateSaleModal({
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
 
       onOpenChange(false);
-      // Reset completo dos campos
-      setBuyerName('');
-      setBuyerDoc('');
-      setBuyerPhone('');
-      setBuyerCity('');
-      setBuyerAddressData(INITIAL_ADDRESS);
-      setBuyerAddress('');
-      setVehicleModel('');
-      setVehicleChassis('');
-      setVehicleYear('');
-      setSelectedVehicleId('');
-      setSaleValue('');
-      setFinVal('');
-      setSelectedBank('');
-      setFinInstallmentValue('');
-      setPixVal('');
-      setCashVal('');
-      setCardVal('');
-      setCardInstallmentValue('');
-      setConsortiumVal('');
-      setHasTradeIn(false);
-      setTradeInModel('');
-      setTradeInPlate('');
-      setTradeInValue('');
-      setNotes('');
+      resetForm();
     } catch (error: any) {
       toast({
         title: 'Erro ao cadastrar venda',
@@ -977,7 +988,13 @@ export function CreateSaleModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        if (!val) resetForm();
+        onOpenChange(val);
+      }}
+    >
       <DialogContent className="max-w-3xl sm:max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl sm:rounded-3xl border bg-card shadow-2xl">
         {/* Cabeçalho */}
         <div className="p-6 border-b bg-muted/20">
