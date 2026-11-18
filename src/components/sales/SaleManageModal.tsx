@@ -353,7 +353,7 @@ export function SaleManageModal({
       },
       external_data: {
         ...ext,
-        buyer_city: buyerCity || ext.buyer_city,
+        buyer_city: ext.buyer_city || (sale as any)?.regiao || '',
         buyer_address: buyerAddress,
         vehicle_model_custom: vehicleModel,
         chassi: vehicleChassis,
@@ -375,7 +375,6 @@ export function SaleManageModal({
     buyerPhone,
     buyerEmail,
     buyerAddress,
-    buyerCity,
     salePrice,
     downPayPix,
     downPayCash,
