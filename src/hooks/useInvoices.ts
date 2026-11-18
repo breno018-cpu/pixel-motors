@@ -11,6 +11,7 @@ import {
 } from '@/lib/cloudSalesSync';
 import { normalizeDateToYMD, getLocalTodayDateString } from '@/lib/fiscalDates';
 import { STORE_DIVINOPOLIS_UUID } from '@/hooks/useStores';
+import { safeSaveToLocalStorage } from '@/lib/invoiceAttachmentStorage';
 
 export interface InvoiceItem {
   description: string;
@@ -465,7 +466,7 @@ export function useDeleteInvoice() {
               if (invoiceNumber && String(item.invoice_number || '').trim() === String(invoiceNumber).trim()) return false;
               return true;
             });
-            localStorage.setItem(key, JSON.stringify(updated));
+            safeSaveToLocalStorage(key, updated);
           }
         }
       } catch (e) {

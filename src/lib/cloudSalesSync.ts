@@ -3,7 +3,7 @@ import { queryClient } from '@/lib/queryClient';
 import { SheetRowV9, convertContractsSeedToSheetRows, SHEET_STORAGE_KEY_V9 } from '@/lib/dealershipSheetParser';
 import { getLocalTodayDateString, normalizeDateToYMD, formatFiscalDate } from '@/lib/fiscalDates';
 import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/hooks/useStores';
-import { saveAttachmentToIdb } from '@/lib/invoiceAttachmentStorage';
+import { saveAttachmentToIdb, safeSaveToLocalStorage, cleanLocalStorageBloat } from '@/lib/invoiceAttachmentStorage';
 
 export const GLOBAL_SYNC_CONTRACT_NUMBER = 'DEALFLOW_GLOBAL_SYNC';
 export const LOCAL_DELETED_KEY = 'dealflow_deleted_contract_ids';
@@ -135,7 +135,7 @@ export async function fetchCloudSyncState(): Promise<CloudSyncState> {
             return true;
           });
         }
-        localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(mergedInvoices));
+        safeSaveToLocalStorage(LOCAL_INVOICES_KEY, mergedInvoices);
 
         // 3. Sheet rows: O Supabase é a autoridade máxima; nunca reintroduz linhas apagadas do cache local
         const rawSheet = localStorage.getItem(SHEET_STORAGE_KEY_V9);
@@ -633,7 +633,7 @@ export function initCloudSalesRealtime() {
               localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(ext.sheet_rows));
             }
             if (Array.isArray(ext.registered_invoices)) {
-              localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(ext.registered_invoices));
+              safeSaveToLocalStorage(LOCAL_INVOICES_KEY, ext.registered_invoices);
               window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
               queryClient.invalidateQueries({ queryKey: ['invoices'] });
               queryClient.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
@@ -762,24 +762,7 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
       }).catch((idbErr) => console.warn('[cloudSaveInvoice] Aviso IDB:', idbErr));
     }
 
-    const safeSaveLocal = (list: RegisteredInvoice[]) => {
-      try {
-        localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(list));
-      } catch (storageErr) {
-        // Se exceder a cota de 5MB por causa de DataURL de PDF ou imagem, preserva o restante com ponteiro
-        try {
-          const stripped = list.map((item) => {
-            if (item.attachment_url && item.attachment_url.length > 500) {
-              return { ...item, attachment_url: `idb://${item.id}` };
-            }
-            return item;
-          });
-          localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(stripped));
-        } catch {}
-      }
-    };
-
-    safeSaveLocal(updatedList);
+    safeSaveToLocalStorage(LOCAL_INVOICES_KEY, updatedList);
 
     // Atualiza imediatamente o cache em memória do React Query (0ms)
     queryClient.setQueryData<any[]>(['invoices'], (old = []) => {
@@ -869,6 +852,21 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
         : Promise.resolve({ data: null }),
     ]);
 
+    if (readyInvoice.attachment_url && readyInvoice.attachment_url.startsWith('data:')) {
+      try {
+        const idbPointer = await saveAttachmentToIdb(
+          readyInvoice.id,
+          readyInvoice.attachment_name,
+          readyInvoice.attachment_url,
+          readyInvoice.attachment_type,
+          readyInvoice.attachment_size
+        );
+        readyInvoice.attachment_url = idbPointer;
+      } catch (e) {
+        console.warn('Falha ao salvar anexo no IDB:', e);
+      }
+    }
+
     const currentInvoices = currentState.registered_invoices || [];
     const existingIdx = currentInvoices.findIndex(
       (item) => item.id === readyInvoice.id || (item.invoice_number === readyInvoice.invoice_number && item.store_id === readyInvoice.store_id)
@@ -882,19 +880,7 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
       updatedList = [readyInvoice, ...currentInvoices];
     }
 
-    try {
-      localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(updatedList));
-    } catch {
-      try {
-        const stripped = updatedList.map((item) => {
-          if (item.attachment_url && item.attachment_url.length > 500) {
-            return { ...item, attachment_url: `idb://${item.id}` };
-          }
-          return item;
-        });
-        localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(stripped));
-      } catch {}
-    }
+    safeSaveToLocalStorage(LOCAL_INVOICES_KEY, updatedList);
 
     // Atualiza linha da planilha se existir
     let preservedSheetRows = currentState.sheet_rows || [];
@@ -1044,7 +1030,7 @@ export async function cloudCancelInvoice(
       return item;
     });
 
-    localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(updated));
+    safeSaveToLocalStorage(LOCAL_INVOICES_KEY, updated);
 
     const { data: existingMaster } = await supabase
       .from('contracts')
@@ -1096,7 +1082,7 @@ export async function cloudDeleteInvoice(id: string): Promise<boolean> {
     const list = await fetchCloudInvoices();
     const updated = list.filter((item) => item.id !== id);
 
-    localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(updated));
+    safeSaveToLocalStorage(LOCAL_INVOICES_KEY, updated);
 
     const { data: existingMaster } = await supabase
       .from('contracts')

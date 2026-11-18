@@ -50,7 +50,7 @@ import { formatFiscalDate, getLocalTodayDateString } from '@/lib/fiscalDates';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseInvoiceFile } from '@/lib/invoiceFileParser';
 import { parseFlexibleCurrency, formatBrlNumber } from '@/lib/masks';
-import { saveAttachmentToIdb, getAttachmentFromIdb } from '@/lib/invoiceAttachmentStorage';
+import { saveAttachmentToIdb, getAttachmentFromIdb, safeSaveToLocalStorage, cleanLocalStorageBloat } from '@/lib/invoiceAttachmentStorage';
 import { cloudSaveInvoice } from '@/lib/cloudSalesSync';
 import { cn } from '@/lib/utils';
 
@@ -86,6 +86,7 @@ export const WEEKS_CONFIG = [
 
 export function cleanFakeFiscalInvoices(): void {
   try {
+    cleanLocalStorageBloat();
     const storageKey = 'dealflow_store_fiscal_invoices_v1';
     const raw = localStorage.getItem(storageKey);
     if (raw) {
@@ -108,7 +109,7 @@ export function cleanFakeFiscalInvoices(): void {
           }
           return true;
         });
-        localStorage.setItem(storageKey, JSON.stringify(cleaned));
+        safeSaveToLocalStorage(storageKey, cleaned);
       }
     }
   } catch {}
@@ -438,7 +439,7 @@ export function OwnerFiscalInvoicesPanel() {
           attachment_type: quickAttachFile.type,
         });
       }
-      localStorage.setItem(storageKey, JSON.stringify(list));
+      safeSaveToLocalStorage(storageKey, list);
 
       const rawInv = invoices.find((x) => x.id === quickAttachRecord.rawInvoiceId || x.invoice_number === quickAttachRecord.invoice_number);
       const invId = rawInv?.id || (quickAttachRecord.rawInvoiceId && !quickAttachRecord.rawInvoiceId.startsWith('loc-') ? quickAttachRecord.rawInvoiceId : undefined);
@@ -583,7 +584,7 @@ export function OwnerFiscalInvoicesPanel() {
         }
         return item;
       });
-      localStorage.setItem(storageKey, JSON.stringify(list));
+      safeSaveToLocalStorage(storageKey, list);
 
       const rawInv = invoices.find((x) => x.id === editingRecord.rawInvoiceId || x.invoice_number === editingRecord.invoice_number);
       const storeObj = stores.find((s) => s.id === editStoreId);
@@ -980,7 +981,7 @@ export function OwnerFiscalInvoicesPanel() {
       const raw = localStorage.getItem(storageKey);
       const list = raw ? JSON.parse(raw) : [];
       list.unshift(newRecord);
-      localStorage.setItem(storageKey, JSON.stringify(list));
+      safeSaveToLocalStorage(storageKey, list);
 
       try {
         await cloudSaveInvoice(newRecord as any);
@@ -1074,7 +1075,7 @@ export function OwnerFiscalInvoicesPanel() {
       };
 
       list.unshift(cancelRecord);
-      localStorage.setItem(storageKey, JSON.stringify(list));
+      safeSaveToLocalStorage(storageKey, list);
 
       // Se tiver vínculo com o Supabase, chama a mutation também
       if (invoiceToCancel.rawInvoiceId && !invoiceToCancel.rawInvoiceId.startsWith('loc-')) {
@@ -1116,7 +1117,7 @@ export function OwnerFiscalInvoicesPanel() {
             if (item.invoice_number === invoiceToDelete.invoice_number) return false;
             return true;
           });
-          localStorage.setItem(storageKey, JSON.stringify(updated));
+          safeSaveToLocalStorage(storageKey, updated);
         }
       }
 
