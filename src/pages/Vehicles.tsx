@@ -355,15 +355,19 @@ export default function Vehicles() {
       if (!search.trim()) return true;
       const searchLower = search.toLowerCase().trim();
       const searchDigits = search.replace(/\D/g, '');
+      const searchClean = searchLower.replace(/[^a-z0-9]/g, '');
+      const vChassisClean = (vehicle.chassis || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
       return (
-        vehicle.brand.toLowerCase().includes(searchLower) ||
-        vehicle.model.toLowerCase().includes(searchLower) ||
-        `${vehicle.brand} ${vehicle.model}`.toLowerCase().includes(searchLower) ||
-        vehicle.plate?.toLowerCase().includes(searchLower) ||
-        vehicle.chassis?.toLowerCase().includes(searchLower) ||
+        (vehicle.brand || '').toLowerCase().includes(searchLower) ||
+        (vehicle.model || '').toLowerCase().includes(searchLower) ||
+        `${vehicle.brand || ''} ${vehicle.model || ''}`.toLowerCase().includes(searchLower) ||
+        (vehicle.plate || '').toLowerCase().includes(searchLower) ||
+        (vehicle.chassis || '').toLowerCase().includes(searchLower) ||
+        Boolean(searchClean.length >= 4 && vChassisClean.includes(searchClean)) ||
         Boolean(searchDigits && vehicle.renavam?.includes(searchDigits)) ||
-        vehicle.color?.toLowerCase().includes(searchLower) ||
-        String(vehicle.year).includes(searchLower)
+        (vehicle.color || '').toLowerCase().includes(searchLower) ||
+        String(vehicle.year || '').includes(searchLower)
       );
     });
 
@@ -1998,22 +2002,25 @@ function EmptyState({
 }) {
   const searchTerm = (search || '').trim().toLowerCase();
   const searchDigits = searchTerm.replace(/\D/g, '');
+  const searchClean = searchTerm.replace(/[^a-z0-9]/g, '');
 
   const matchingInOtherScopes = useMemo(() => {
     if (!searchTerm || allVehicles.length === 0) return [];
     return allVehicles.filter((v) => {
-      const brandModel = `${v.brand} ${v.model}`.toLowerCase();
+      const brandModel = `${v.brand || ''} ${v.model || ''}`.toLowerCase();
       const ch = (v.chassis || '').toLowerCase();
+      const chClean = ch.replace(/[^a-z0-9]/g, '');
       const pl = (v.plate || '').toLowerCase();
       const ren = (v.renavam || '');
       return (
         brandModel.includes(searchTerm) ||
         (ch && ch.includes(searchTerm)) ||
+        (searchClean.length >= 4 && chClean.includes(searchClean)) ||
         (pl && pl.includes(searchTerm)) ||
         (searchDigits.length >= 4 && ren.includes(searchDigits))
       );
     });
-  }, [searchTerm, searchDigits, allVehicles]);
+  }, [searchTerm, searchDigits, searchClean, allVehicles]);
 
   const soldMatch = matchingInOtherScopes.find((v) => v.status === 'vendido');
   const otherStoreMatch = matchingInOtherScopes.find((v) => v.status !== 'vendido');
