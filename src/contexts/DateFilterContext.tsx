@@ -138,17 +138,16 @@ export function DateFilterProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   // Estado do filtro ativo (persistido no localStorage)
+  // O padrão do cockpit é SEMPRE o mês atual corrente (ex: '2026-11').
+  // Se o usuário já tiver fechado a página com 'all' ou vazio, NUNCA restauramos 'all',
+  // para que o cockpit abra estritamente focado no mês ativo!
   const [periodFilter, setPeriodFilterState] = useState<string>(() => {
     const now = new Date();
     const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        // Se for 'all' ou o mês corrente, respeita o salvo
-        if (saved === 'all' || saved === currentKey) return saved;
-        // Se for um mês do passado (ex: '2026-10' enquanto estamos em '2026-11'),
-        // o padrão é inicializar no mês corrente para não ocultar novas vendas do dia!
-        return currentKey;
+      if (saved && saved !== 'all') {
+        return saved;
       }
     } catch {
       // ignore
@@ -156,11 +155,18 @@ export function DateFilterProvider({ children }: { children: React.ReactNode }) 
     return currentKey;
   });
 
-  // Se o filtro estava com mês vazio ou inválido, alinha com o defaultMonthKey
+  // Se o filtro estava com 'all' gravado de sessões antigas ou inválido, redefine para o mês atual
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved && defaultMonthKey && defaultMonthKey !== periodFilter) {
-      setPeriodFilterState(defaultMonthKey);
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === 'all') {
+        localStorage.setItem(STORAGE_KEY, defaultMonthKey);
+        setPeriodFilterState(defaultMonthKey);
+      } else if (!saved && defaultMonthKey && defaultMonthKey !== periodFilter) {
+        setPeriodFilterState(defaultMonthKey);
+      }
+    } catch {
+      // ignore
     }
   }, [defaultMonthKey, periodFilter]);
 

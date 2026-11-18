@@ -143,8 +143,16 @@ export default function Dashboard() {
     periodFilter,
     setPeriodFilter,
     isDateInPeriod,
+    defaultMonthKey,
     availablePeriods: globalAvailablePeriods,
   } = useDateFilter();
+
+  // Garante que o Dashboard inicialize SEMPRE exibindo o mês corrente por padrão
+  useEffect(() => {
+    if (periodFilter === 'all') {
+      setPeriodFilter(defaultMonthKey);
+    }
+  }, [defaultMonthKey, periodFilter, setPeriodFilter]);
   const [sellerFilter, setSellerFilter] = useState<string>('all');
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<'all' | 'moto' | 'carro'>('all');
@@ -564,7 +572,7 @@ export default function Dashboard() {
     });
   }, [consolidatedSales, isDateInPeriod, storeFilter, sellerFilter, vehicleTypeFilter, employees]);
 
-  // Contratos Filtrados pelo Contexto de Loja e Vendedor
+  // Contratos Filtrados pelo Contexto de Período, Loja e Vendedor
   const filteredContracts = useMemo(() => {
     const raw = (contracts || []).filter((c) => {
       const ext = (c.external_data || {}) as any;
@@ -576,6 +584,11 @@ export default function Dashboard() {
         (c as any).vendedor ||
         (c as any).seller_name;
 
+      // 1. Filtro rigoroso de Período e Competência Contábil (Unificado)
+      const contractDate = c.signed_at || c.created_at || ext.sale_date || ext.data;
+      if (!isDateInPeriod(contractDate)) return false;
+
+      // 2. Filtro de Loja
       if (storeFilter !== 'all') {
         const resolved = resolveSaleStore(
           {
@@ -622,6 +635,7 @@ export default function Dashboard() {
     return raw;
   }, [
     contracts,
+    isDateInPeriod,
     storeFilter,
     sellerFilter,
     employees,
@@ -1054,25 +1068,42 @@ export default function Dashboard() {
           </Select>
 
           {/* Período / Competência */}
-          <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-full sm:w-[185px] h-9 text-xs btn-glass font-semibold rounded-xl border truncate">
-              <Calendar className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
-              <SelectValue placeholder="Competência" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todo Histórico ({consolidatedSales.length} vendas)</SelectItem>
-              {availablePeriods.map((p) => (
-                <SelectItem key={p.key} value={p.key}>
-                  {p.label} ({p.count} {p.count === 1 ? 'venda' : 'vendas'})
-                </SelectItem>
-              ))}
-              <SelectItem value="month">Este Mês (Atual)</SelectItem>
-              <SelectItem value="year-2026">Ano de 2026 Completo</SelectItem>
-              <SelectItem value="30d">Últimos 30 dias</SelectItem>
-              <SelectItem value="7d">Últimos 7 dias</SelectItem>
-              <SelectItem value="90d">Último Trimestre</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <Select value={periodFilter} onValueChange={setPeriodFilter}>
+              <SelectTrigger className="w-full sm:w-[195px] h-9 text-xs btn-glass font-semibold rounded-xl border truncate">
+                <Calendar className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+                <SelectValue placeholder="Competência" />
+              </SelectTrigger>
+              <SelectContent>
+                {/* 1. Competências Reais (Mês Atual no topo) */}
+                {availablePeriods.map((p) => (
+                  <SelectItem key={p.key} value={p.key}>
+                    {p.key === defaultMonthKey ? `🌟 ${p.label} (Mês Atual)` : p.label} ({p.count} {p.count === 1 ? 'venda' : 'vendas'})
+                  </SelectItem>
+                ))}
+                {/* 2. Filtros Dinâmicos */}
+                <SelectItem value="30d">Últimos 30 dias</SelectItem>
+                <SelectItem value="7d">Últimos 7 dias</SelectItem>
+                <SelectItem value="year-2026">Ano de 2026 Completo</SelectItem>
+                {/* 3. Arquivo Completo */}
+                <SelectItem value="all">Todo Histórico ({consolidatedSales.length} vendas)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Botão rápido para retornar ao mês atual se estiver visualizando outro período */}
+            {periodFilter !== defaultMonthKey && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPeriodFilter(defaultMonthKey)}
+                className="h-9 px-2 text-[11px] font-bold rounded-xl border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 gap-1 shrink-0"
+                title="Retornar para o Mês Atual"
+              >
+                <Calendar className="w-3 h-3 text-primary" />
+                <span className="hidden sm:inline">Mês Atual</span>
+              </Button>
+            )}
+          </div>
 
           {/* Vendedor (Organizado e Filtrado pela Concessionária) */}
           <Select value={sellerFilter} onValueChange={setSellerFilter}>

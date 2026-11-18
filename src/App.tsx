@@ -59,6 +59,7 @@ const App = () => {
               >
                 <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/dashboard" element={<Navigate to="/" replace />} />
               <Route
                 path="/"
                 element={
