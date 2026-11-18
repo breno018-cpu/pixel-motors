@@ -108,6 +108,7 @@ export default function MotoInvoices() {
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const headerFileInputRef = useRef<HTMLInputElement>(null);
 
   // Estados dos Diálogos
   const [open, setOpen] = useState(false);
@@ -694,35 +695,62 @@ export default function MotoInvoices() {
         description="Gestão semi-manual de notas fiscais: selecione a loja, vincule à venda realizada, preencha os dados e anexe a NF oficial."
         actions={
           canModifyNf ? (
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditingInvoiceId(null);
-                setForm(initialForm);
-                setAttachedFile(null);
-                setSelectedSaleId('');
-                setOpen(true);
-              }}
-              className="gap-1.5 font-semibold shadow-sm"
-            >
-              <Plus className="w-4 h-4" /> Cadastrar Nova NF
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={headerFileInputRef}
+                type="file"
+                accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,.xml"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setEditingInvoiceId(null);
+                  setForm(initialForm);
+                  setSelectedSaleId('');
+                  setOpen(true);
+                  // Dispara a leitura do arquivo no handler unificado
+                  await handleFileUpload(e);
+                  if (headerFileInputRef.current) headerFileInputRef.current.value = '';
+                }}
+                className="hidden"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => headerFileInputRef.current?.click()}
+                className="gap-1.5 font-semibold border-primary/40 text-primary hover:bg-primary/10 shadow-xs"
+              >
+                <Upload className="w-4 h-4" /> Importar NF (XML ou PDF)
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditingInvoiceId(null);
+                  setForm(initialForm);
+                  setAttachedFile(null);
+                  setSelectedSaleId('');
+                  setOpen(true);
+                }}
+                className="gap-1.5 font-semibold shadow-xs"
+              >
+                <Plus className="w-4 h-4" /> Cadastrar Nova NF
+              </Button>
+            </div>
           ) : undefined
         }
       />
 
       <Card className="border shadow-sm overflow-hidden">
-        <CardContent className="p-0">
-          <Table className="w-full">
+        <CardContent className="p-0 overflow-x-hidden">
+          <Table className="w-full table-fixed">
             <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableHead className="font-semibold text-xs py-3">Nota Fiscal</TableHead>
-                <TableHead className="font-semibold text-xs py-3">Loja / Venda</TableHead>
-                <TableHead className="font-semibold text-xs py-3">Comprador</TableHead>
-                <TableHead className="font-semibold text-xs py-3">Motocicleta / Chassi</TableHead>
-                <TableHead className="font-semibold text-xs py-3">Valor & Status</TableHead>
-                <TableHead className="font-semibold text-xs py-3 text-center">Arquivo da NF</TableHead>
-                <TableHead className="font-semibold text-xs py-3 text-right">Ações</TableHead>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="font-semibold text-xs py-2.5 w-[16%]">Nota Fiscal</TableHead>
+                <TableHead className="font-semibold text-xs py-2.5 w-[14%]">Loja / Venda</TableHead>
+                <TableHead className="font-semibold text-xs py-2.5 w-[20%]">Comprador</TableHead>
+                <TableHead className="font-semibold text-xs py-2.5 w-[21%]">Motocicleta / Chassi</TableHead>
+                <TableHead className="font-semibold text-xs py-2.5 w-[12%]">Valor & Status</TableHead>
+                <TableHead className="font-semibold text-xs py-2.5 text-center w-[10%]">Arquivo da NF</TableHead>
+                <TableHead className="font-semibold text-xs py-2.5 text-right w-[7%]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -747,19 +775,29 @@ export default function MotoInvoices() {
                         As notas fiscais são cadastradas de forma semi-manual. Você pode cadastrar uma nova NF ou anexar o arquivo (XML ou PDF) para que o sistema preencha tudo automaticamente.
                       </p>
                       {canModifyNf && (
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setEditingInvoiceId(null);
-                            setForm(initialForm);
-                            setAttachedFile(null);
-                            setSelectedSaleId('');
-                            setOpen(true);
-                          }}
-                          className="gap-1.5 font-semibold mt-2"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Cadastrar Primeira NF
-                        </Button>
+                        <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => headerFileInputRef.current?.click()}
+                            className="gap-1.5 font-semibold border-primary/40 text-primary"
+                          >
+                            <Upload className="w-3.5 h-3.5" /> Importar NF (XML / PDF)
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setEditingInvoiceId(null);
+                              setForm(initialForm);
+                              setAttachedFile(null);
+                              setSelectedSaleId('');
+                              setOpen(true);
+                            }}
+                            className="gap-1.5 font-semibold"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Cadastrar Primeira NF
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </TableCell>
@@ -774,28 +812,28 @@ export default function MotoInvoices() {
                   return (
                     <TableRow key={inv.id} className="hover:bg-muted/20">
                       {/* 1. NOTA FISCAL (Número, Série, Emissão) */}
-                      <TableCell className="py-3">
+                      <TableCell className="py-2.5 truncate">
                         {canModifyNf ? (
                           <button
                             type="button"
                             onClick={() => handleOpenEdit(inv)}
-                            className="text-left group cursor-pointer focus:outline-none"
+                            className="text-left group cursor-pointer focus:outline-none max-w-full truncate block"
                             title="Clique para editar dados desta Nota Fiscal"
                           >
-                            <div className="font-mono font-bold text-sm text-foreground group-hover:text-primary group-hover:underline flex items-center gap-1.5">
+                            <div className="font-mono font-bold text-sm text-foreground group-hover:text-primary group-hover:underline flex items-center gap-1.5 truncate">
                               <span>NF {inv.invoice_number}</span>
-                              <Pencil className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <Pencil className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
+                            <div className="text-[11px] text-muted-foreground truncate">
                               {inv.series ? `Série ${inv.series}` : 'Série 1'} • {formatFiscalDate(inv.issue_date)}
                             </div>
                           </button>
                         ) : (
-                          <div>
-                            <div className="font-mono font-bold text-sm text-foreground">
+                          <div className="max-w-full truncate">
+                            <div className="font-mono font-bold text-sm text-foreground truncate">
                               NF {inv.invoice_number}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
+                            <div className="text-[11px] text-muted-foreground truncate">
                               {inv.series ? `Série ${inv.series}` : 'Série 1'} • {formatFiscalDate(inv.issue_date)}
                             </div>
                           </div>
@@ -803,10 +841,12 @@ export default function MotoInvoices() {
                       </TableCell>
 
                       {/* 2. LOJA / VENDA */}
-                      <TableCell className="py-3">
-                        <div className="text-xs font-medium text-foreground">{inv.store?.name || 'Concessionária'}</div>
+                      <TableCell className="py-2.5 truncate">
+                        <div className="text-xs font-medium text-foreground truncate" title={inv.store?.name || 'Concessionária'}>
+                          {inv.store?.name || 'Concessionária'}
+                        </div>
                         {inv.contract_number ? (
-                          <Badge variant="outline" className="font-mono text-[10px] font-semibold bg-primary/5 text-primary border-primary/20 mt-0.5">
+                          <Badge variant="outline" className="font-mono text-[10px] font-semibold bg-primary/5 text-primary border-primary/20 mt-0.5 truncate max-w-full">
                             Venda {inv.contract_number}
                           </Badge>
                         ) : (
@@ -815,8 +855,10 @@ export default function MotoInvoices() {
                       </TableCell>
 
                       {/* 3. COMPRADOR & PROTOCOLO */}
-                      <TableCell className="py-3">
-                        <div className="font-semibold text-xs text-foreground">{inv.customer_name}</div>
+                      <TableCell className="py-2.5 truncate">
+                        <div className="font-semibold text-xs text-foreground truncate" title={inv.customer_name}>
+                          {inv.customer_name}
+                        </div>
                         <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                           {inv.customer_document && (
                             <span className="text-[11px] font-mono text-muted-foreground">
@@ -824,7 +866,7 @@ export default function MotoInvoices() {
                             </span>
                           )}
                           {inv.sefaz_protocol && (
-                            <Badge variant="outline" className="text-[9px] font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 px-1 py-0">
+                            <Badge variant="outline" className="text-[9px] font-mono bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 px-1 py-0 truncate" title={`Protocolo SEFAZ: ${inv.sefaz_protocol}`}>
                               SEFAZ: {inv.sefaz_protocol}
                             </Badge>
                           )}
@@ -832,18 +874,18 @@ export default function MotoInvoices() {
                       </TableCell>
 
                       {/* 4. MOTOCICLETA & CHASSI */}
-                      <TableCell className="py-3">
-                        <div className="text-xs font-medium text-foreground">
+                      <TableCell className="py-2.5 truncate">
+                        <div className="text-xs font-medium text-foreground truncate" title={firstItem?.description || (inv.notes || '').replace(`[${TYPE_TAG}]`, '').trim()}>
                           {firstItem?.description || (inv.notes || '').replace(`[${TYPE_TAG}]`, '').trim()}
                         </div>
-                        <div className="text-[11px] font-mono text-muted-foreground">
+                        <div className="text-[11px] font-mono text-muted-foreground truncate" title={`Chassi: ${effectiveChassis}`}>
                           Chassi: {effectiveChassis}
                         </div>
                       </TableCell>
 
                       {/* 5. VALOR & STATUS */}
-                      <TableCell className="py-3">
-                        <div className="font-bold text-xs text-primary">
+                      <TableCell className="py-2.5">
+                        <div className="font-bold text-xs text-primary truncate">
                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
                             Number(inv.total) || 0
                           )}
@@ -1011,10 +1053,90 @@ export default function MotoInvoices() {
           </DialogHeader>
 
           <div className="space-y-4 text-sm py-2">
-            {/* ETAPA 1 & 2: SELEÇÃO DA LOJA E DA VENDA REALIZADA */}
+            {/* ETAPA 1: IMPORTAÇÃO E ANEXO DO ARQUIVO DA NOTA FISCAL COM AUTO-LEITURA */}
+            <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/40 hover:border-primary/70 rounded-xl p-4 space-y-3 transition-all shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-xs text-primary uppercase tracking-wider">
+                  <Upload className="w-4 h-4" /> 1. Importação Rápida da NF (XML ou PDF) — Preenchimento Automático
+                </div>
+                {attachedFile && (
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-bold">
+                    ✓ Arquivo Anexado & Lido
+                  </Badge>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,.xml"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+
+              {!attachedFile ? (
+                <div
+                  onClick={() => !isReadingNfFile && fileInputRef.current?.click()}
+                  className={cn(
+                    "cursor-pointer py-6 px-4 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-all border-2 border-dashed bg-card/60",
+                    isReadingNfFile ? "bg-primary/5 border-primary animate-pulse" : "hover:bg-primary/5 hover:border-primary border-border/80"
+                  )}
+                >
+                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                    {isReadingNfFile ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Upload className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div className="text-xs font-bold text-foreground">
+                    {isReadingNfFile
+                      ? 'Lendo dados da NF (XML/PDF) e auto-preenchendo todos os campos...'
+                      : 'Clique ou arraste o arquivo da NF (XML ou PDF / DANFE) aqui'}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground max-w-lg mx-auto">
+                    O sistema extrai instantaneamente: <strong>Número, Série, Data de Emissão, Chave de Acesso (44 dígitos), Protocolo SEFAZ (15 dígitos), Comprador, Chassi e Valor Total</strong>!
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-background border rounded-lg p-3 flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <div className="w-8 h-8 rounded bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                      <FileCheck className="w-4 h-4" />
+                    </div>
+                    <div className="truncate text-xs">
+                      <div className="font-semibold text-foreground truncate">{attachedFile.name}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {(attachedFile.size / 1024).toFixed(1)} KB • {attachedFile.type || 'Documento'} • Anexo pronto para salvar
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-7 text-xs px-2.5"
+                    >
+                      Trocar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleRemoveAttachment}
+                      className="h-7 text-xs text-destructive hover:text-destructive px-2"
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ETAPA 2: SELEÇÃO DA LOJA E DA VENDA REALIZADA */}
             <div className="bg-muted/40 border rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2 font-semibold text-xs text-foreground uppercase tracking-wider">
-                <Building2 className="w-4 h-4 text-primary" /> 1. Loja e Venda Vinculada
+                <Building2 className="w-4 h-4 text-primary" /> 2. Loja e Venda Vinculada
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1259,86 +1381,6 @@ export default function MotoInvoices() {
                   />
                 </div>
               </div>
-            </div>
-
-            {/* ETAPA 5: ANEXO DO ARQUIVO DA NOTA FISCAL */}
-            <div className="bg-muted/30 border-2 border-dashed rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-semibold text-xs text-foreground uppercase tracking-wider">
-                  <Paperclip className="w-4 h-4 text-primary" /> 4. Anexar Arquivo da Nota Fiscal (PDF ou Imagem)
-                </div>
-                {attachedFile && (
-                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]">
-                    Arquivo Carregado
-                  </Badge>
-                )}
-              </div>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,.xml"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-
-              {!attachedFile ? (
-                <div
-                  onClick={() => !isReadingNfFile && fileInputRef.current?.click()}
-                  className={cn(
-                    "cursor-pointer py-6 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-colors border-2 border-dashed",
-                    isReadingNfFile ? "bg-primary/5 border-primary animate-pulse" : "hover:bg-muted/50 border-border"
-                  )}
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                    {isReadingNfFile ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Upload className="w-5 h-5" />
-                    )}
-                  </div>
-                  <div className="text-xs font-semibold text-foreground">
-                    {isReadingNfFile
-                      ? 'Lendo dados da NF (XML/PDF) e auto-preenchendo...'
-                      : 'Anexar Arquivo da NF (XML ou PDF) com Leitura Automática'}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    O sistema lê automaticamente o XML ou PDF e preenche o número, série, data, chave, protocolo SEFAZ, cliente, chassi e valor!
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-background border rounded-lg p-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 overflow-hidden">
-                    <div className="w-8 h-8 rounded bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div className="truncate text-xs">
-                      <div className="font-semibold text-foreground truncate">{attachedFile.name}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {(attachedFile.size / 1024).toFixed(1)} KB • {attachedFile.type || 'Documento'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="h-8 text-xs px-2"
-                    >
-                      Trocar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleRemoveAttachment}
-                      className="h-8 text-xs text-destructive hover:text-destructive px-2"
-                    >
-                      Remover
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div>
