@@ -223,19 +223,31 @@ function replaceVariables(text: string, data: ContractGenerationData): string {
     '{{LOJA_TELEFONE}}': store.phone || '',
     '{{LOJA_EMAIL}}': store.email || '',
     '{{VALOR_TOTAL}}': formatCurrency(payment.total || 0),
-    '{{VALOR_ENTRADA}}': payment.downPayment ? formatCurrency(payment.downPayment) : 'R$ 0,00',
+    '{{VALOR_ENTRADA}}': payment.downPayment && payment.downPayment > 0 && payment.downPayment < (payment.total || 0)
+      ? formatCurrency(payment.downPayment)
+      : (payment.installments && payment.installments > 1 ? 'R$ 0,00' : '— (Integral)'),
     '{{FORMA_PAGAMENTO}}': payment.method || 'À Vista',
-    '{{PARCELAS}}': payment.installments && payment.installments > 0 ? `${payment.installments}x` : '1x',
-    '{{VALOR_PARCELA}}': payment.installmentValue
-      ? formatCurrency(payment.installmentValue)
-      : (payment.installments && payment.installments > 1
-          ? formatCurrency(Math.max(0, ((payment.total || 0) - (payment.downPayment || 0)) / payment.installments))
-          : formatCurrency(Math.max(0, (payment.total || 0) - (payment.downPayment || 0)))),
+    '{{PARCELAS}}': payment.installments && payment.installments > 1 ? `${payment.installments}x` : 'À Vista',
+    '{{VALOR_PARCELA}}': payment.installments && payment.installments > 1
+      ? (payment.installmentValue
+          ? formatCurrency(payment.installmentValue)
+          : formatCurrency(Math.max(0, ((payment.total || 0) - (payment.downPayment || 0)) / payment.installments)))
+      : 'Pagamento Integral',
+    '{{CONDICAO_PAGAMENTO}}': payment.installments && payment.installments > 1
+      ? `[b]Forma de Pagamento:[/b] ${payment.method || 'Parcelado'}${payment.downPayment ? `, [b]Entrada:[/b] ${formatCurrency(payment.downPayment)}` : ''}, [b]Parcelas:[/b] ${payment.installments}x de ${formatCurrency(payment.installmentValue || 0)}`
+      : `[b]Forma de Pagamento:[/b] ${payment.method || 'À Vista'}, [b]Condição:[/b] Pagamento Integral à Vista (${formatCurrency(payment.total || 0)})`,
     '{{NUMERO_CONTRATO}}': data.contractNumber || 'CTR-000000',
     '{{DATA_CONTRATO}}': data.contractDate || new Date().toLocaleDateString('pt-BR'),
   };
 
   let result = text;
+
+  // Se o pagamento for à vista (sem parcelamento), ajusta a frase clássica de parcelas para não exibir "1x de R$ 0,00"
+  if (!payment.installments || payment.installments <= 1) {
+    result = result.replace(/,\s*\[b\]Parcelas:\[\/b\]\s*\{\{PARCELAS\}\}\s*de\s*\{\{VALOR_PARCELA\}\}/gi, ' — [b]Condição:[/b] Quitado Integralmente à Vista');
+    result = result.replace(/,\s*\[b\]Saldo Parcelado:\[\/b\]\s*\{\{PARCELAS\}\}\s*de\s*\{\{VALOR_PARCELA\}\}/gi, ' — [b]Condição:[/b] Quitado Integralmente à Vista');
+  }
+
   for (const [variable, value] of Object.entries(replacements)) {
     result = result.replace(new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g'), value);
   }

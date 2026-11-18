@@ -480,8 +480,30 @@ export function CompleteSaleModal({
     setIsSubmitting(true);
     const unmaskedCpf = buyerCpf.replace(/\D/g, '');
     const financingBank = financedNum > 0 ? paymentMethods.financing.bank : '';
-    const installments = financedNum > 0 ? String(paymentMethods.financing.installments) : '1';
-    const installmentValue = financedNum > 0 ? paymentMethods.financing.installmentValue : '';
+    const isCardInstallmentSale = financedNum <= 0 && (paymentMethods.creditCardInstallments || 1) > 1 && cardNum > 0;
+    const isBoletoInstallmentSale = financedNum <= 0 && (paymentMethods.boleto.installments || 1) > 1 && boletoNum > 0;
+
+    let resolvedPaymentMethod = 'À Vista';
+    let resolvedInstallments = 1;
+    let resolvedInstallmentVal = 0;
+
+    if (financedNum > 0) {
+      resolvedPaymentMethod = financingBank ? `Financiamento (${financingBank})` : 'Financiamento';
+      resolvedInstallments = Number(paymentMethods.financing.installments) || 48;
+      resolvedInstallmentVal = parseCurrency(paymentMethods.financing.installmentValue) || (resolvedInstallments > 0 ? financedNum / resolvedInstallments : 0);
+    } else if (isCardInstallmentSale) {
+      resolvedInstallments = paymentMethods.creditCardInstallments || 1;
+      resolvedPaymentMethod = `Cartão de Crédito (${resolvedInstallments}x)`;
+      resolvedInstallmentVal = resolvedInstallments > 0 ? cardNum / resolvedInstallments : 0;
+    } else if (isBoletoInstallmentSale) {
+      resolvedInstallments = paymentMethods.boleto.installments || 1;
+      resolvedPaymentMethod = `Boleto Bancário (${resolvedInstallments}x)`;
+      resolvedInstallmentVal = resolvedInstallments > 0 ? boletoNum / resolvedInstallments : 0;
+    } else {
+      resolvedPaymentMethod = 'À Vista';
+      resolvedInstallments = 1;
+      resolvedInstallmentVal = 0;
+    }
 
     try {
       // REGRA: Se NÃO tiver solicitado NF previamente, emite a imagem oficial de NF
@@ -539,8 +561,9 @@ export function CompleteSaleModal({
           vehicleChassis: vehicleChassis.trim().toUpperCase(),
           salePrice: priceNum,
           downPayment: totalDownPayment,
-          installments: Number(installments) || 48,
-          installmentValue: parseCurrency(installmentValue) || 0,
+          paymentMethod: resolvedPaymentMethod,
+          installments: resolvedInstallments,
+          installmentValue: resolvedInstallmentVal,
         });
         pdfGenerated = true;
       };
@@ -584,9 +607,9 @@ export function CompleteSaleModal({
             payment: {
               total: priceNum,
               downPayment: totalDownPayment,
-              method: financedNum > 0 ? `Financiamento ${financingBank}` : 'À Vista',
-              installments: Number(installments) || 48,
-              installmentValue: parseCurrency(installmentValue) || 0,
+              method: resolvedPaymentMethod,
+              installments: resolvedInstallments,
+              installmentValue: resolvedInstallmentVal,
             },
             contractNumber: `CTR-${Date.now().toString().slice(-6)}`,
             contractDate: new Date().toLocaleDateString('pt-BR', {
@@ -676,9 +699,12 @@ export function CompleteSaleModal({
         down_payment_cash: cashNum,
         down_payment_card: cardNum,
         financed_amount: financedNum,
+        payment_method: resolvedPaymentMethod,
+        installments: resolvedInstallments,
+        installment_value: resolvedInstallmentVal || null,
         financing_bank: financingBank || null,
-        financing_installments: Number(installments) || null,
-        financing_installment_value: parseCurrency(installmentValue) || null,
+        financing_installments: financedNum > 0 ? resolvedInstallments : null,
+        financing_installment_value: financedNum > 0 ? (resolvedInstallmentVal || null) : null,
         status: 'concluido', // Concluída oficialmente! Saiu de Pré-NF para Venda
         notes: notes || null,
         signed_at: new Date().toISOString(),

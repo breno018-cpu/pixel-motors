@@ -40,6 +40,7 @@ import { SalesSecondCopyCenter } from '@/components/sales/SalesSecondCopyCenter'
 import { getSaleReceipts } from '@/components/sales/ReceiptAttachmentManager';
 import { CloudMonthlySpreadsheet } from '@/components/sheets/CloudMonthlySpreadsheet';
 import { INITIAL_USER_BACKUP_CSV, ONEDRIVE_DEFAULT_URL, SheetRowV9, parseBackupCsv } from '@/lib/dealershipSheetParser';
+import { extractInstallmentInfoFromNotes } from '@/lib/contractDataResolver';
 
 const statusConfig: Record<string, { label: string; class: string; icon: typeof CheckCircle }> = {
   pre_venda: { label: 'Pré-venda (NF)', class: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30', icon: FileText },
@@ -106,6 +107,16 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
 
   const downPayment = (r.dinheiro || 0) + (r.pix || 0) + (r.cartao || 0) + (r.carta_credito || 0);
 
+  const obsNotes = r.observacoes || (r as any).notes || '';
+  const noteInfo = extractInstallmentInfoFromNotes(obsNotes);
+  const isFin = (r.financiamento || 0) > 0 || Boolean(r.banco) || Boolean(noteInfo.bank);
+  const resolvedInstQty = noteInfo.installments || (isFin ? 48 : 1);
+  const resolvedInstVal = noteInfo.installmentValue || (isFin && (r.financiamento || 0) > 0 ? (r.financiamento / resolvedInstQty) : null);
+  const resolvedBank = r.banco || noteInfo.bank || null;
+  const resolvedPaymentMethod = resolvedBank 
+    ? `Financiamento (${resolvedBank})` 
+    : (isFin ? 'Financiamento' : (r.cartao > 0 ? 'Cartão de Crédito' : 'À Vista'));
+
   return {
     id: r.id || `sheet-${r.qt}`,
     contract_number: `${isMoc ? 'MOC' : 'DIV'}-${r.qt || '00'}`,
@@ -121,13 +132,13 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
     buyer_address: `${r.regiao || 'Divinópolis'} - MG`,
     sale_price: r.valor || 0,
     down_payment: downPayment,
-    installments: 1,
-    installment_value: null,
+    installments: resolvedInstQty,
+    installment_value: resolvedInstVal,
     status: (r.is_permitted || (r as any).tipo_registro === 'venda') && (r as any).tipo_registro !== 'pre_venda' ? 'concluido' : 'pre_venda',
-    payment_method: r.banco || (r.financiamento > 0 ? 'Financiamento' : 'À Vista'),
-    financing_bank: r.banco || null,
-    financing_installments: null,
-    financing_installment_value: null,
+    payment_method: resolvedPaymentMethod,
+    financing_bank: resolvedBank,
+    financing_installments: isFin ? resolvedInstQty : null,
+    financing_installment_value: isFin ? resolvedInstVal : null,
     down_payment_pix: r.pix || 0,
     down_payment_cash: r.dinheiro || 0,
     down_payment_card: r.cartao || 0,

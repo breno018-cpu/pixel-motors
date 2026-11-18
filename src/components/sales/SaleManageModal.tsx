@@ -63,6 +63,7 @@ import {
   SecondCopySaleData,
 } from '@/lib/secondCopyPdfs';
 import { downloadOriginalContract } from '@/lib/originalContractExport';
+import { resolveContractFinancialData } from '@/lib/contractDataResolver';
 import { getStoreFromDatabase } from '@/lib/storeResolution';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { ReceiptAttachmentManager } from '@/components/sales/ReceiptAttachmentManager';
@@ -188,12 +189,8 @@ export function SaleManageModal({
       sale.created_at ? sale.created_at.split('T')[0] : new Date().toISOString().split('T')[0]
     );
 
-    const m = (sale.payment_method || '').toLowerCase();
-    const isFinanced =
-      m.includes('financ') ||
-      Number((sale.external_data as any)?.financiamento || 0) > 0 ||
-      Number(sale.financing_installments || 0) > 0;
-    setPaymentMethod(isFinanced ? 'financiamento' : 'avista');
+    const resolvedFin = resolveContractFinancialData(sale);
+    setPaymentMethod(resolvedFin.isFinanced ? 'financiamento' : (resolvedFin.isCardInstallments ? 'cartao' : 'avista'));
 
     const ext = (sale.external_data || {}) as any;
     const pixVal = Number(sale.down_payment_pix ?? ext.pix ?? 0);
@@ -202,18 +199,18 @@ export function SaleManageModal({
     const finVal = Number(
       sale.financed_amount ??
         ext.financiamento ??
-        (isFinanced ? Math.max(0, Number(sale.sale_price || 0) - (pixVal + cashVal + cardVal)) : 0)
+        (resolvedFin.isFinanced ? Math.max(0, Number(sale.sale_price || 0) - (pixVal + cashVal + cardVal)) : 0)
     );
 
     setDownPayPix(maskCurrency(pixVal));
     setDownPayCash(maskCurrency(cashVal));
     setDownPayCard(maskCurrency(cardVal));
-    setDownPayCardInstallments(String(sale.down_payment_card_installments || 1));
-    setFinancedAmount(maskCurrency(finVal));
-    setFinancingBank(sale.financing_bank || ext.banco || 'BANCO PAN');
-    setFinancingInstallments(String(sale.financing_installments || 48));
+    setDownPayCardInstallments(String(resolvedFin.isCardInstallments ? resolvedFin.installments : (sale.down_payment_card_installments || 1)));
+    setFinancedAmount(maskCurrency(resolvedFin.isFinanced ? finVal : 0));
+    setFinancingBank(resolvedFin.bankName || 'BANCO PAN');
+    setFinancingInstallments(String(resolvedFin.isFinanced ? resolvedFin.installments : 48));
     setFinancingInstallmentValue(
-      maskCurrency(Number(sale.financing_installment_value || 0))
+      maskCurrency(Number(resolvedFin.isFinanced ? resolvedFin.installmentValue : 0))
     );
   }, [sale, open, defaultTab, stores]);
 
@@ -251,10 +248,14 @@ export function SaleManageModal({
       downPaymentCardInstallments: parseInt(downPayCardInstallments || '1', 10),
       financedAmount: parseCurrency(financedAmount),
       financingBank,
-      financingInstallments: parseInt(financingInstallments || '48', 10),
-      financingInstallmentValue: parseCurrency(financingInstallmentValue),
+      financingInstallments: paymentMethod === 'financiamento' ? parseInt(financingInstallments || '48', 10) : 1,
+      financingInstallmentValue: paymentMethod === 'financiamento' ? parseCurrency(financingInstallmentValue) : 0,
       paymentMethod:
-        paymentMethod === 'financiamento' ? `Financiamento (${financingBank})` : 'À Vista',
+        paymentMethod === 'financiamento'
+          ? `Financiamento (${financingBank || 'Banco'})`
+          : (parseInt(downPayCardInstallments || '1', 10) > 1
+              ? `Cartão de Crédito (${downPayCardInstallments}x)`
+              : 'À Vista'),
       invoiceNumber: invoiceNumber || undefined,
       storeName: currentStore.storeName,
       storeCnpj: currentStore.cnpj || '18.456.789/0001-01',

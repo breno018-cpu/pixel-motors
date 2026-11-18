@@ -3,6 +3,7 @@ import { normalizePickup } from '@/lib/pickupAuthorization';
 import { getStoreFromDatabase } from '@/lib/storeResolution';
 import { generateContractFromTemplate, loadTemplateAssets } from '@/lib/templatePdf';
 import { downloadContractPDF, CLASSIC_SALE_TEMPLATE, CLASSIC_REPASSE_TEMPLATE } from '@/lib/contractPdf';
+import { resolveContractFinancialData } from '@/lib/contractDataResolver';
 
 const isUuid = (val: any): boolean =>
   typeof val === 'string' &&
@@ -175,6 +176,8 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
     isMotoItem;
   const defaultTemplate = isRepasse ? CLASSIC_REPASSE_TEMPLATE : CLASSIC_SALE_TEMPLATE;
 
+  const fin = resolveContractFinancialData(sale);
+
   const fallbackDownload = () => {
     downloadContractPDF({
       contractNumber: sale.contract_number,
@@ -191,21 +194,22 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
       buyerCpf: sale.buyer_cpf || '',
       buyerPhone: sale.buyer_phone || ext.buyer_phone || undefined,
       buyerEmail: sale.buyer_email || undefined,
-      buyerAddress: sale.buyer_address || ext.buyer_address || undefined,
+      buyerAddress: fin.fullBuyerAddress,
       vehicleBrand,
       vehicleModel,
-      vehicleYear,
-      vehicleColor,
-      vehicleChassis,
-      vehiclePlate,
+      vehicleYear: Number(fin.vehicleYearText.split('/')[0]) || vehicleYear,
+      vehicleColor: vehicleColor || 'Padrão',
+      vehicleChassis: fin.vehicleChassisText,
+      vehiclePlate: fin.vehiclePlateText,
       vehicles: groupVehicles,
-      salePrice: groupTotal,
-      downPayment: sale.down_payment ? Number(sale.down_payment) : undefined,
-      installments: sale.installments || undefined,
-      installmentValue: sale.installment_value ? Number(sale.installment_value) : undefined,
+      salePrice: groupTotal || fin.salePrice,
+      downPayment: fin.downPayment,
+      paymentMethod: fin.paymentMethod,
+      installments: fin.installments,
+      installmentValue: fin.installmentValue,
       resellerName: sale.reseller?.full_name || resellerData?.full_name || undefined,
       operatorName,
-      notes: (sale.notes && !sale.notes.includes('Modelo: Contrato') && !sale.notes.includes('Financiamento bancário')) ? sale.notes : undefined,
+      notes: fin.cleanNotes || undefined,
       signedAt: (sale as any).signed_at || undefined,
       status: sale.status,
     });
@@ -242,7 +246,7 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
         client: {
           name: sale.buyer_name ? sale.buyer_name.toUpperCase() : 'COMPRADOR',
           cpf: sale.buyer_cpf || '',
-          address: sale.buyer_address || ext.buyer_address || undefined,
+          address: fin.fullBuyerAddress,
           phone: sale.buyer_phone || ext.buyer_phone || undefined,
           email: sale.buyer_email || undefined,
         },
@@ -250,9 +254,9 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
           brand: vehicleBrand ? vehicleBrand.toUpperCase() : 'SHINERAY',
           model: vehicleModel ? vehicleModel.toUpperCase() : 'MOTO',
           year: vehicleYear,
-          color: vehicleColor,
-          chassis: vehicleChassis,
-          plate: vehiclePlate,
+          color: vehicleColor || 'Padrão',
+          chassis: fin.vehicleChassisText,
+          plate: fin.vehiclePlateText,
         },
         store: {
           name: resolvedStore.storeName ? resolvedStore.storeName.toUpperCase() : 'CONCESSIONÁRIA',
@@ -271,11 +275,11 @@ export async function downloadOriginalContract(sale: any): Promise<void> {
         },
         vehicles: groupVehicles,
         payment: {
-          total: groupTotal,
-          downPayment: sale.down_payment ? Number(sale.down_payment) : undefined,
-          method: sale.payment_method || 'À Vista',
-          installments: sale.installments || 1,
-          installmentValue: sale.installment_value ? Number(sale.installment_value) : undefined,
+          total: groupTotal || fin.salePrice,
+          downPayment: fin.downPayment,
+          method: fin.paymentMethod,
+          installments: fin.installments,
+          installmentValue: fin.installmentValue,
         },
         contractNumber: sale.contract_number,
         pickup: normalizePickup(ext?.pickup),

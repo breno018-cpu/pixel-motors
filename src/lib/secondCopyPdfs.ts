@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { maskCPFCNPJ } from './masks';
 import { downloadContractPDF } from './contractPdf';
+import { resolveContractFinancialData } from './contractDataResolver';
 
 export interface SecondCopySaleData {
   id?: string;
@@ -79,6 +80,7 @@ const BG_PANEL: [number, number, number] = [248, 250, 252];
  * Emite o CONTRATO ORIGINAL DE COMPRA E VENDA (idêntico ao original desde o início)
  */
 export function downloadContractSecondCopyPDF(data: SecondCopySaleData): void {
+  const resolved = resolveContractFinancialData(data);
   downloadContractPDF({
     contractNumber: data.contractNumber,
     contractType: data.contractType === 'repasse' ? 'repasse' : 'venda',
@@ -92,20 +94,20 @@ export function downloadContractSecondCopyPDF(data: SecondCopySaleData): void {
     buyerCpf: data.buyerCpf,
     buyerPhone: data.buyerPhone,
     buyerEmail: data.buyerEmail,
-    buyerAddress: data.buyerAddress,
+    buyerAddress: resolved.fullBuyerAddress || data.buyerAddress,
     vehicleBrand: data.vehicleBrand || 'VEÍCULO',
     vehicleModel: data.vehicleModel || 'Modelo não informado',
     vehicleYear: Number(data.vehicleYear) || 2026,
     vehicleColor: data.vehicleColor,
-    vehicleChassis: data.vehicleChassis,
-    vehiclePlate: data.vehiclePlate,
-    salePrice: data.salePrice,
-    downPayment: data.downPayment,
-    installments: data.financingInstallments || 1,
-    installmentValue: data.financingInstallmentValue,
-    paymentMethod: data.paymentMethod,
+    vehicleChassis: resolved.vehicleChassisText || data.vehicleChassis,
+    vehiclePlate: resolved.vehiclePlateText || data.vehiclePlate,
+    salePrice: resolved.salePrice || data.salePrice,
+    downPayment: resolved.downPayment,
+    installments: resolved.installments,
+    installmentValue: resolved.installmentValue,
+    paymentMethod: resolved.paymentMethod,
     operatorName: data.operatorName,
-    notes: data.notes,
+    notes: resolved.cleanNotes || data.notes,
     signedAt: data.completedAt,
     status: data.status,
   });
@@ -458,6 +460,14 @@ export function downloadPaymentReceiptSecondCopyPDF(data: SecondCopySaleData): v
     { desc: `Cartão de Crédito (${data.downPaymentCardInstallments || 1}x)`, val: card, extra: 'Comprovante em arquivo' },
     { desc: `Financiamento Bancário (${data.financingBank || 'Banco Homologado'})`, val: financed, extra: `${data.financingInstallments || 48} parcelas aprovadas` },
   ];
+
+  if (pix + cash + card + financed === 0 && Number(data.salePrice) > 0) {
+    paymentsList.push({
+      desc: `Pagamento Integral (${data.paymentMethod || 'À Vista'})`,
+      val: Number(data.salePrice),
+      extra: 'Quitado integralmente no ato',
+    });
+  }
 
   paymentsList.forEach((p) => {
     if (p.val > 0) {

@@ -651,10 +651,13 @@ export function CreateSaleModal({
         : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0');
       const newRowId = saleUuid;
 
+      const cleanFinValText = finInstallmentValue ? finInstallmentValue.replace(/^R\$\s*/i, '').trim() : (finInstallments > 0 ? (finValNum / finInstallments).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00');
+      const cleanCardValText = cardInstallmentValue ? cardInstallmentValue.replace(/^R\$\s*/i, '').trim() : (cardInstallments > 0 ? (cardValNum / cardInstallments).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00');
+
       const installmentSummary = [
-        (notes || '').trim(),
-        finValNum > 0 ? `Financiamento: ${finInstallments}x de R$ ${finInstallmentValue || (finInstallments > 0 ? (finValNum / finInstallments).toFixed(2) : '0.00')} (${selectedBank || 'Banco'})` : '',
-        cardValNum > 0 && cardInstallments > 1 ? `Cartão: ${cardInstallments}x de R$ ${cardInstallmentValue || (cardInstallments > 0 ? (cardValNum / cardInstallments).toFixed(2) : '0.00')}` : '',
+        (notes || '').trim().replace(/R\$\s*R\$/gi, 'R$'),
+        finValNum > 0 ? `Financiamento: ${finInstallments}x de R$ ${cleanFinValText} (${selectedBank || 'Banco'})` : '',
+        cardValNum > 0 && cardInstallments > 1 ? `Cartão: ${cardInstallments}x de R$ ${cleanCardValText}` : '',
         hasTradeIn && tradeInValNum > 0 ? `Troca: ${tradeInModel || 'Veículo Usado'} (R$ ${tradeInValNum.toLocaleString('pt-BR')})` : '',
       ].filter(Boolean).join(' | ');
 
@@ -743,6 +746,17 @@ export function CreateSaleModal({
           }
         }
 
+        const finalFinInstallmentVal = finValNum > 0 ? (parseCurrency(finInstallmentValue) || (finInstallments > 0 ? finValNum / finInstallments : 0)) : null;
+        const finalCardInstallmentVal = cardValNum > 0 && cardInstallments > 1 ? (parseCurrency(cardInstallmentValue) || (cardInstallments > 0 ? cardValNum / cardInstallments : 0)) : null;
+
+        const effectiveInstallments = finValNum > 0 
+          ? finInstallments 
+          : (cardValNum > 0 && cardInstallments > 1 ? cardInstallments : 1);
+
+        const effectiveInstallmentValue = finValNum > 0 
+          ? finalFinInstallmentVal 
+          : (cardValNum > 0 && cardInstallments > 1 ? finalCardInstallmentVal : null);
+
         const contractPayload: any = {
           id: saleUuid,
           contract_number: contractNumber,
@@ -751,14 +765,14 @@ export function CreateSaleModal({
           buyer_phone: buyerPhone || null,
           buyer_address: buyerAddress || (buyerCity ? `${buyerCity} - MG` : 'Não informado'),
           sale_price: totalValNum,
-          down_payment: cashValNum + pixValNum + cardValNum + consValNum + tradeInValNum,
-          installments: finValNum > 0 ? finInstallments : 1,
-          installment_value: finValNum > 0 ? (parseFloat(finInstallmentValue) || (finValNum / finInstallments)) : null,
+          down_payment: cashValNum + pixValNum + (cardInstallments <= 1 ? cardValNum : 0) + consValNum + tradeInValNum,
+          installments: effectiveInstallments,
+          installment_value: effectiveInstallmentValue,
           status: saleType,
-          payment_method: PAYMENT_METHOD_OPTIONS.find(p => p.value === paymentMethodCategory)?.label || (finValNum > 0 ? 'Financiamento' : 'À Vista'),
+          payment_method: PAYMENT_METHOD_OPTIONS.find(p => p.value === paymentMethodCategory)?.label || (finValNum > 0 ? `Financiamento (${selectedBank || 'Banco'})` : (cardInstallments > 1 ? `Cartão de Crédito (${cardInstallments}x)` : 'À Vista')),
           financing_bank: finValNum > 0 ? selectedBank : null,
           financing_installments: finValNum > 0 ? finInstallments : null,
-          financing_installment_value: finValNum > 0 ? (parseFloat(finInstallmentValue) || (finValNum / finInstallments)) : null,
+          financing_installment_value: finalFinInstallmentVal,
           down_payment_pix: pixValNum,
           down_payment_cash: cashValNum,
           down_payment_card: cardValNum,
@@ -784,10 +798,10 @@ export function CreateSaleModal({
             store_name: storeName,
             payment_method_category: paymentMethodCategory,
             financing_installments: finInstallments,
-            financing_installment_value: parseFloat(finInstallmentValue) || (finInstallments > 0 ? finValNum / finInstallments : 0),
+            financing_installment_value: finalFinInstallmentVal || 0,
             first_due_date: firstDueDate,
             card_installments: cardInstallments,
-            card_installment_value: parseFloat(cardInstallmentValue) || (cardInstallments > 0 ? cardValNum / cardInstallments : 0),
+            card_installment_value: finalCardInstallmentVal || 0,
             has_trade_in: hasTradeIn,
             trade_in_model: tradeInModel,
             trade_in_plate: tradeInPlate,
@@ -1594,8 +1608,7 @@ export function CreateSaleModal({
                   <div className="flex items-center gap-2">
                     {cardValNum > 0 && (
                       <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 text-[10px]">
-                        {cardInstallments}x de R${' '}
-                        {(parseFloat(cardInstallmentValue) || (cardValNum / cardInstallments)).toFixed(2)}
+                        {cardInstallments}x de {cardInstallmentValue || (cardValNum > 0 && cardInstallments > 0 ? maskCurrency(cardValNum / cardInstallments) : 'R$ 0,00')}
                       </Badge>
                     )}
                     <Button
