@@ -586,21 +586,20 @@ export function CreateSaleModal({
         sellerStore?.storeId === STORE_MONTESCLAROS_MULTIMARCAS_UUID;
 
       const isMoc =
-        isMultimarcas ||
-        (effectiveStoreId || '').includes('montesclaros') ||
-        effectiveStoreId === STORE_MONTESCLAROS_UUID ||
-        (storeId || '').toLowerCase().includes('montes') ||
-        storeId === STORE_MONTESCLAROS_UUID ||
-        (sellerStore?.storeId || '').includes('montesclaros') ||
-        sellerStore?.storeId === STORE_MONTESCLAROS_UUID ||
-        cleanSeller.includes('mariana') ||
-        cleanSeller.includes('sabrina') ||
-        cleanSeller.includes('halana') ||
-        cleanSeller.includes('natan') ||
-        cleanSeller.includes('moc') ||
-        (buyerCity || '').toUpperCase().includes('MONTES CLAROS');
+        !isMultimarcas &&
+        ((effectiveStoreId || '').includes('montesclaros') ||
+          effectiveStoreId === STORE_MONTESCLAROS_UUID ||
+          (storeId || '').toLowerCase().includes('montes') ||
+          storeId === STORE_MONTESCLAROS_UUID ||
+          (sellerStore?.storeId || '').includes('montesclaros') ||
+          sellerStore?.storeId === STORE_MONTESCLAROS_UUID ||
+          cleanSeller.includes('mariana') ||
+          cleanSeller.includes('sabrina') ||
+          cleanSeller.includes('halana') ||
+          cleanSeller.includes('moc') ||
+          (buyerCity || '').toUpperCase().includes('MONTES CLAROS'));
 
-      const prefix = isMoc ? 'MOC' : 'DIV';
+      const prefix = isMultimarcas ? 'MLT' : isMoc ? 'MOC' : 'DIV';
       let maxNum = 0;
 
       // 1. Varre contratos do banco de dados (Supabase)
@@ -614,12 +613,17 @@ export function CreateSaleModal({
 
       // 2. Varre linhas da planilha local / nuvem
       currentRows.forEach((r) => {
-        const isRowMoc =
-          r.store_id === STORE_MONTESCLAROS_UUID ||
-          (r.store_name || '').toLowerCase().includes('montes') ||
-          (r.regiao || '').toUpperCase().includes('MONTES') ||
-          (r.vendedor && ['mariana', 'natan', 'sabrina', 'halana'].some((v) => r.vendedor.toLowerCase().includes(v)));
-        if (isMoc === isRowMoc) {
+        const rowMulti =
+          r.store_id === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+          (r.store_name || '').toLowerCase().includes('multimarcas');
+        const rowMoc =
+          !rowMulti &&
+          (r.store_id === STORE_MONTESCLAROS_UUID ||
+            (r.store_name || '').toLowerCase().includes('montes') ||
+            (r.regiao || '').toUpperCase().includes('MONTES') ||
+            (r.vendedor && ['mariana', 'sabrina', 'halana'].some((v) => r.vendedor.toLowerCase().includes(v))));
+        const rowPrefix = rowMulti ? 'MLT' : rowMoc ? 'MOC' : 'DIV';
+        if (rowPrefix === prefix) {
           const raw = String(r.qt || '').replace(/^[A-Z]+-/, '').trim();
           const parsed = parseInt(raw, 10);
           if (!isNaN(parsed) && parsed > maxNum) maxNum = parsed;

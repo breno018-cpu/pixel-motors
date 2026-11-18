@@ -21,7 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
 import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
-import { resolveSaleStore, isMatchingStore, STORE_MONTESCLAROS_UUID } from '@/lib/storeResolution';
+import { resolveSaleStore, isMatchingStore, STORE_MONTESCLAROS_UUID, getContractPrefix } from '@/lib/storeResolution';
 import { getCleanSellerOptions, resolveSellerDisplayName, isValidSellerName, matchesSellerFilter } from '@/lib/sellerSanitizer';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
@@ -414,11 +414,8 @@ export default function Sales() {
           cliente: r.cliente,
           regiao: r.regiao,
         });
-        const isMoc =
-          resolved.storeId === 'store-montesclaros' ||
-          resolved.storeId === STORE_MONTESCLAROS_UUID ||
-          (resolved.storeName || '').toLowerCase().includes('montes');
-        const expectedNum = `${isMoc ? 'MOC' : 'DIV'}-${r.qt || '00'}`;
+        const prefix = getContractPrefix(resolved.storeId, resolved.storeName);
+        const expectedNum = `${prefix}-${r.qt || '00'}`;
         const scKey = normalizeContractKey(expectedNum) || normalizeContractKey(r.qt);
         if (scKey && seenContractKeys.has(scKey)) return false;
         const ch = normalizeChassisKey(r.chassi);

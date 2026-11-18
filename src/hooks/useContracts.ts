@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { INITIAL_USER_BACKUP_CSV, parseBackupCsv, SheetRowV9 } from '@/lib/dealershipSheetParser';
-import { resolveSaleStore } from '@/lib/storeResolution';
+import { resolveSaleStore, getContractPrefix } from '@/lib/storeResolution';
 import { resolveSellerDisplayName, isValidSellerName } from '@/lib/sellerSanitizer';
 import { fetchCloudSyncState, GLOBAL_SYNC_CONTRACT_NUMBER, initCloudSalesRealtime } from '@/lib/cloudSalesSync';
 import officialContractsSeed from '@/data/officialContractsSeed.json';
@@ -126,10 +126,8 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
   const storeName = resolved.storeName;
 
   const regUpper = (r.regiao || '').toUpperCase();
-  const isMoc =
-    storeId === 'store-montesclaros' ||
-    storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-    (storeName || '').toLowerCase().includes('montes');
+  const prefix = getContractPrefix(storeId, storeName);
+  const isMoc = prefix === 'MOC';
   const isHubCity = regUpper.includes('DIVINOPOLIS') || regUpper.includes('DIVINÓPOLIS') || regUpper.includes('MONTES CLAROS');
   const channel: 'interna' | 'externa' = isHubCity ? 'interna' : 'externa';
 
@@ -152,7 +150,7 @@ export function sheetRowToContract(r: SheetRowV9): Contract {
 
   return {
     id: r.id || `sheet-${r.qt}`,
-    contract_number: `${isMoc ? 'MOC' : 'DIV'}-${r.qt || '00'}`,
+    contract_number: `${prefix}-${r.qt || '00'}`,
     vehicle_id: (r as any).vehicle_id || `veh-${r.id || r.qt}`,
     reseller_id: (r as any).reseller_id || null,
     store_id: storeId,

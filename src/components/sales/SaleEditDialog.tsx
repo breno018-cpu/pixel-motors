@@ -25,6 +25,15 @@ import {
 import { maskCPFCNPJ, maskCurrency, maskPhone, parseCurrency } from '@/lib/masks';
 import { useFinancingBanks } from '@/hooks/useFinancingBanks';
 import { useActiveTemplates } from '@/hooks/useContractTemplates';
+import { useStores } from '@/hooks/useStores';
+import {
+  getContractPrefix,
+  STORE_DIVINOPOLIS_UUID,
+  STORE_MONTESCLAROS_UUID,
+  STORE_MONTESCLAROS_MULTIMARCAS_UUID,
+} from '@/lib/storeResolution';
+import { cloudSaveSheetRows } from '@/lib/cloudSalesSync';
+import { SheetRowV9 } from '@/lib/dealershipSheetParser';
 import {
   LEAD_SOURCES,
   LEAD_SOURCE_GROUPS,
@@ -39,6 +48,7 @@ import { AddressFormFields } from './AddressFormFields';
 interface SaleEditDialogProps {
   sale: {
     id: string;
+    contract_number?: string | null;
     buyer_name: string;
     buyer_cpf: string;
     buyer_phone: string | null;
@@ -134,6 +144,7 @@ export function SaleEditDialog({ sale, open, onOpenChange, reviewMode = false }:
   const [adId, setAdId] = useState('');
   const [storeId, setStoreId] = useState('');
 
+  const { data: stores = [] } = useStores();
   const { data: templates } = useActiveTemplates();
   const { data: banks } = useFinancingBanks();
   const activeBanks = (banks || []).filter((b) => b.is_active);
@@ -248,9 +259,19 @@ export function SaleEditDialog({ sale, open, onOpenChange, reviewMode = false }:
         normalizedInstValue = null;
       }
 
+      const selectedStore = stores.find((s) => s.id === storeId);
+      const newPrefix = getContractPrefix(storeId, selectedStore?.name);
+
+      let targetContractNum = (sale as any).contract_number;
+      if (targetContractNum && /^(DIV|MOC|MLT)-/i.test(targetContractNum)) {
+        targetContractNum = targetContractNum.replace(/^(DIV|MOC|MLT)-/i, `${newPrefix}-`);
+      }
+
       const { error } = await supabase
         .from('contracts')
         .update({
+          store_id: storeId || sale.store_id,
+          ...(targetContractNum ? { contract_number: targetContractNum } : {}),
           buyer_name: buyerName.trim(),
           buyer_cpf: buyerCpf.replace(/\D/g, ''),
           buyer_phone: buyerPhone ? buyerPhone.replace(/\D/g, '') : null,
@@ -287,6 +308,12 @@ export function SaleEditDialog({ sale, open, onOpenChange, reviewMode = false }:
             paymentMethod !== 'avista' && parseCurrency(downPayCard) > 0
               ? Math.max(1, parseInt(downPayCardInstallments || '1', 10))
               : null,
+          external_data: {
+            ...((sale as any).external_data || {}),
+            store_id: storeId || sale.store_id,
+            store_name: selectedStore?.name || (newPrefix === 'MLT' ? 'L1MA MOTORS MULTIMARCAS' : newPrefix === 'MOC' ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS' : 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS'),
+            last_edited_at: new Date().toISOString(),
+          },
           ...(reviewMode
             ? {
                 review_status: 'corrigida',
@@ -297,6 +324,41 @@ export function SaleEditDialog({ sale, open, onOpenChange, reviewMode = false }:
         } as any)
         .eq('id', sale.id);
       if (error) throw error;
+
+      // Sincroniza em segundo plano a planilha da nuvem caso a linha corresponda
+      try {
+        const sheetKey = 'dealflow_cloud_monthly_sheet_v9';
+        const raw = localStorage.getItem(sheetKey);
+        if (raw) {
+          const list: SheetRowV9[] = JSON.parse(raw);
+          const cleanQt = (sale.contract_number || '').replace(/^[A-Z]+-/, '').trim();
+          let changed = false;
+          const updated = list.map((r) => {
+            if (r.id === sale.id || (cleanQt && String(r.qt).padStart(2, '0') === cleanQt.padStart(2, '0'))) {
+              changed = true;
+              return {
+                ...r,
+                cliente: buyerName.trim().toUpperCase(),
+                store_id: storeId || sale.store_id,
+                store_name: selectedStore?.name || r.store_name,
+                regiao: selectedStore?.city?.toUpperCase() || r.regiao,
+                valor: total,
+                total: total,
+                pix: parseCurrency(downPayPix),
+                dinheiro: parseCurrency(downPayCash),
+                cartao: parseCurrency(downPayCard),
+                observacoes: notes || r.observacoes,
+              };
+            }
+            return r;
+          });
+          if (changed) {
+            void cloudSaveSheetRows(updated);
+          }
+        }
+      } catch (sheetErr) {
+        console.warn('Aviso sincronização planilha no modal editar:', sheetErr);
+      }
       logActivity('editar', 'venda', sale.id, {
         cliente: buyerName.trim(),
         pagamento: paymentMethod,
@@ -348,6 +410,33 @@ export function SaleEditDialog({ sale, open, onOpenChange, reviewMode = false }:
         )}
 
         <div className="space-y-5">
+          <section className="space-y-3">
+            <h3 className="text-sm font-medium text-muted-foreground">Unidade / Concessionária</h3>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Loja Responsável pela Venda *</Label>
+              <Select value={storeId} onValueChange={setStoreId}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione a loja da venda..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {stores.length > 0 ? (
+                    stores.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} ({s.city || 'MG'})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <>
+                      <SelectItem value={STORE_DIVINOPOLIS_UUID}>SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS</SelectItem>
+                      <SelectItem value={STORE_MONTESCLAROS_UUID}>SHINERAY GRUPO L1MA MOTORS MONTES CLAROS</SelectItem>
+                      <SelectItem value={STORE_MONTESCLAROS_MULTIMARCAS_UUID}>L1MA MOTORS MULTIMARCAS</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </section>
+
           <section className="space-y-3">
             <h3 className="text-sm font-medium text-muted-foreground">Comprador</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

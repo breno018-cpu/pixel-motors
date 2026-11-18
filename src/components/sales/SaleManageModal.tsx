@@ -64,7 +64,7 @@ import {
 } from '@/lib/secondCopyPdfs';
 import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { resolveContractFinancialData } from '@/lib/contractDataResolver';
-import { getStoreFromDatabase } from '@/lib/storeResolution';
+import { getStoreFromDatabase, getContractPrefix } from '@/lib/storeResolution';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { ReceiptAttachmentManager } from '@/components/sales/ReceiptAttachmentManager';
 import { SaleReceiptsModal } from '@/components/sales/SaleReceiptsModal';
@@ -467,6 +467,12 @@ export function SaleManageModal({
         }
       }
 
+      const newPrefix = getContractPrefix(storeId || sale.store_id, currentStore?.storeName);
+      let targetContractNum = contractNumber.trim().toUpperCase() || sale.contract_number;
+      if (targetContractNum && /^(DIV|MOC|MLT)-/i.test(targetContractNum)) {
+        targetContractNum = targetContractNum.replace(/^(DIV|MOC|MLT)-/i, `${newPrefix}-`);
+      }
+
       // 1. Atualizar no Supabase se for registro salvo
       const payload: any = {
         buyer_name: buyerName.trim().toUpperCase(),
@@ -481,7 +487,7 @@ export function SaleManageModal({
         down_payment_card: cardNum,
         down_payment_card_installments: parseInt(downPayCardInstallments || '1', 10),
         status: saleStatus,
-        contract_number: contractNumber.trim().toUpperCase() || sale.contract_number,
+        contract_number: targetContractNum,
         notes: notes || null,
         template_id: templateId || null,
         store_id: storeId || sale.store_id,
@@ -494,6 +500,8 @@ export function SaleManageModal({
           paymentMethod === 'financiamento' ? parseCurrency(financingInstallmentValue) : null,
         external_data: {
           ...(sale.external_data || {}),
+          store_id: storeId || sale.store_id,
+          store_name: currentStore?.storeName,
           invoice_number: invoiceNumber || null,
           vehicle_model_custom: vehicleModel,
           chassi: vehicleChassis,
@@ -529,7 +537,6 @@ export function SaleManageModal({
             .eq('id', sale.vehicle_id);
         }
       } else {
-        const targetContractNum = contractNumber.trim().toUpperCase() || sale.contract_number;
         const { error: upsertErr } = await supabase
           .from('contracts')
           .upsert({
@@ -560,6 +567,9 @@ export function SaleManageModal({
               return {
                 ...r,
                 cliente: buyerName.trim().toUpperCase(),
+                store_id: storeId || sale.store_id,
+                store_name: currentStore?.storeName || r.store_name,
+                regiao: currentStore?.city?.toUpperCase() || r.regiao,
                 modelo: vehicleModel || r.modelo,
                 chassi: vehicleChassis || r.chassi,
                 cor: vehicleColor,
@@ -879,7 +889,16 @@ export function SaleManageModal({
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold">Loja / Concessionária Responsável</Label>
-                  <Select value={storeId} onValueChange={setStoreId}>
+                  <Select
+                    value={storeId}
+                    onValueChange={(val) => {
+                      setStoreId(val);
+                      const prefix = getContractPrefix(val, stores.find((s) => s.id === val)?.name);
+                      if (contractNumber && /^(DIV|MOC|MLT)-/i.test(contractNumber)) {
+                        setContractNumber(contractNumber.replace(/^(DIV|MOC|MLT)-/i, `${prefix}-`));
+                      }
+                    }}
+                  >
                     <SelectTrigger className="h-10 text-xs">
                       <SelectValue placeholder="Selecione a loja..." />
                     </SelectTrigger>

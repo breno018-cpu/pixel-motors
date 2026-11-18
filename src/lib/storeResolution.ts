@@ -79,6 +79,50 @@ export function isMatchingStore(vehicleStoreId: string | null | undefined, filte
 }
 
 /**
+ * Retorna o prefixo oficial do contrato ('MLT', 'MOC' ou 'DIV') de acordo com a loja.
+ * - L1MA MOTORS MULTIMARCAS: 'MLT'
+ * - SHINERAY MONTES CLAROS: 'MOC'
+ * - SHINERAY DIVINÓPOLIS (Matriz): 'DIV'
+ */
+export function getContractPrefix(
+  storeId?: string | null,
+  storeName?: string | null
+): 'MLT' | 'MOC' | 'DIV' {
+  const sId = (storeId || '').toLowerCase().trim();
+  const sName = (storeName || '').toLowerCase().trim();
+
+  // 1. Multimarcas tem precedência estrita
+  if (
+    sId === STORE_MONTESCLAROS_MULTIMARCAS_UUID.toLowerCase() ||
+    sId === 'store-multimarcas' ||
+    sId.includes('multimarcas') ||
+    sId.includes('multi marcas') ||
+    sId.includes('seminovos') ||
+    sName.includes('multimarcas') ||
+    sName.includes('multi marcas') ||
+    sName.includes('seminovos')
+  ) {
+    return 'MLT';
+  }
+
+  // 2. Concessionária Montes Claros
+  if (
+    sId === STORE_MONTESCLAROS_UUID.toLowerCase() ||
+    sId === 'store-montesclaros' ||
+    sId.includes('montes') ||
+    sId.includes('moc') ||
+    sName.includes('montes') ||
+    sName.includes('moc') ||
+    sName.includes('polo norte')
+  ) {
+    return 'MOC';
+  }
+
+  // 3. Divinópolis (Padrão)
+  return 'DIV';
+}
+
+/**
  * Verifica de forma definitiva e à prova de falhas de caixa (case-insensitive)
  * se uma venda, linha de planilha ou registro pertence à concessionária de Montes Claros.
  */

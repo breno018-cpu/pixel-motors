@@ -169,32 +169,41 @@ export async function deleteAttachmentFromIdb(idOrUrl: string): Promise<boolean>
 /**
  * Remove qualquer DataURL base64 pesado de objetos antes de gravar no localStorage,
  * substituindo por ponteiro idb://{id} para nunca estourar a cota de 5MB.
+ * Varre de forma recursiva e profunda qualquer propriedade que contenha dataURL ou base64 grande.
  */
-export function sanitizeAttachmentsForLocalStorage<T>(list: T[]): T[] {
-  if (!Array.isArray(list)) return list;
-  return list.map((item: any) => {
-    if (!item) return item;
-    let sanitizedItem = { ...item };
-    const url = item.attachment_url;
-    if (typeof url === 'string' && (url.length > 300 || url.startsWith('data:'))) {
+export function sanitizeAttachmentsForLocalStorage<T>(input: T): T {
+  if (!input) return input;
+
+  const sanitizeValue = (val: any, fallbackId: string): any => {
+    if (typeof val === 'string') {
+      if (val.startsWith('data:') || (val.length > 500 && (val.includes('base64') || /^[A-Za-z0-9+/=]{100,}/.test(val)))) {
+        return `idb://${fallbackId}`;
+      }
+      return val;
+    }
+    if (Array.isArray(val)) {
+      return val.map((sub, idx) => sanitizeValue(sub, `${fallbackId}_${idx}`));
+    }
+    if (typeof val === 'object' && val !== null) {
+      const objId = val.id || val.invoice_number || fallbackId;
+      const cleanObj: any = {};
+      for (const k of Object.keys(val)) {
+        cleanObj[k] = sanitizeValue(val[k], `${objId}_${k}`);
+      }
+      return cleanObj;
+    }
+    return val;
+  };
+
+  if (Array.isArray(input)) {
+    return input.map((item: any) => {
+      if (!item) return item;
       const safeId = item.id || `inv_${item.invoice_number || Date.now()}`;
-      sanitizedItem.attachment_url = `idb://${safeId}`;
-    }
-    // Also sanitize nested items[].attachment_url
-    if (Array.isArray(sanitizedItem.items)) {
-      sanitizedItem.items = sanitizedItem.items.map((sub: any) => {
-        if (sub && typeof sub.attachment_url === 'string' && (sub.attachment_url.length > 300 || sub.attachment_url.startsWith('data:'))) {
-          const safeId = sanitizedItem.id || `inv_${sanitizedItem.invoice_number || Date.now()}`;
-          return {
-            ...sub,
-            attachment_url: `idb://${safeId}`,
-          };
-        }
-        return sub;
-      });
-    }
-    return sanitizedItem;
-  });
+      return sanitizeValue(item, safeId);
+    }) as unknown as T;
+  }
+
+  return sanitizeValue(input, 'root') as unknown as T;
 }
 
 /**
@@ -203,7 +212,7 @@ export function sanitizeAttachmentsForLocalStorage<T>(list: T[]): T[] {
  */
 export function safeSaveToLocalStorage(key: string, data: any): boolean {
   try {
-    const sanitized = Array.isArray(data) ? sanitizeAttachmentsForLocalStorage(data) : data;
+    const sanitized = sanitizeAttachmentsForLocalStorage(data);
     localStorage.setItem(key, JSON.stringify(sanitized));
     return true;
   } catch (err: any) {
@@ -213,7 +222,7 @@ export function safeSaveToLocalStorage(key: string, data: any): boolean {
       cleanLocalStorageBloat();
 
       // 2. Tenta novamente após a purga
-      const sanitized = Array.isArray(data) ? sanitizeAttachmentsForLocalStorage(data) : data;
+      const sanitized = sanitizeAttachmentsForLocalStorage(data);
       localStorage.setItem(key, JSON.stringify(sanitized));
       return true;
     } catch (err2: any) {
@@ -221,11 +230,11 @@ export function safeSaveToLocalStorage(key: string, data: any): boolean {
       // Como última tentativa: grava os itens desprovidos de attachments e trunca lista se necessário
       try {
         if (Array.isArray(data)) {
-          const minimal = data.map((item: any) => {
-            const { attachment_url, ...rest } = item || {};
+          const minimal = data.slice(0, 60).map((item: any) => {
+            const { attachment_url, dataUrl, url, file, preview, ...rest } = item || {};
             return { ...rest, attachment_url: item?.id ? `idb://${item.id}` : undefined };
           });
-          localStorage.setItem(key, JSON.stringify(minimal.slice(0, 100)));
+          localStorage.setItem(key, JSON.stringify(minimal));
           return true;
         }
       } catch {}
@@ -246,6 +255,7 @@ export function cleanLocalStorageBloat(): void {
     'dealflow_cloud_invoices_v1',
     'dealflow_registered_invoices_v1',
     'dealflow_local_invoices_v1',
+    'dealflow_cloud_monthly_sheet_v9',
   ];
 
   targetKeys.forEach((key) => {
@@ -253,32 +263,28 @@ export function cleanLocalStorageBloat(): void {
       const raw = localStorage.getItem(key);
       if (!raw) return;
 
-      // Se a string da chave tiver mais de 100KB, ou contiver DataURL de PDF/imagem
-      if (raw.length > 100 * 1024 || raw.includes('data:application/pdf') || raw.includes('data:image/')) {
+      // Se a string da chave tiver mais de 50KB, ou contiver DataURL de PDF/imagem
+      if (raw.length > 50 * 1024 || raw.includes('data:application/pdf') || raw.includes('data:image/')) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          const cleaned = sanitizeAttachmentsForLocalStorage(parsed);
-          localStorage.setItem(key, JSON.stringify(cleaned));
-        }
+        const cleaned = sanitizeAttachmentsForLocalStorage(parsed);
+        localStorage.setItem(key, JSON.stringify(cleaned));
       }
     } catch (e) {
       console.warn(`[cleanLocalStorageBloat] Erro ao limpar chave ${key}:`, e);
     }
   });
 
-  // Varredura de emergência em qualquer chave do localStorage com DataURLs pesados
+  // Varredura de emergência em todas as chaves do localStorage com DataURLs pesados
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
       const val = localStorage.getItem(k);
-      if (val && val.length > 300_000 && (val.includes('data:application/pdf') || val.includes('data:image/'))) {
+      if (val && (val.length > 50_000 || val.includes('data:application/pdf') || val.includes('data:image/'))) {
         try {
           const p = JSON.parse(val);
-          if (Array.isArray(p)) {
-            const cl = sanitizeAttachmentsForLocalStorage(p);
-            localStorage.setItem(k, JSON.stringify(cl));
-          }
+          const cl = sanitizeAttachmentsForLocalStorage(p);
+          localStorage.setItem(k, JSON.stringify(cl));
         } catch {}
       }
     }
