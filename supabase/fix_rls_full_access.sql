@@ -91,3 +91,40 @@ CREATE POLICY "Public full access contract_templates" ON public.contract_templat
   FOR ALL TO anon, authenticated
   USING (true)
   WITH CHECK (true);
+
+-- 6. Políticas de Acesso Total para Activity Logs (Auditoria e Sessões de Dispositivos)
+DROP POLICY IF EXISTS "Public full access activity_logs" ON public.activity_logs;
+DROP POLICY IF EXISTS "System can insert logs" ON public.activity_logs;
+DROP POLICY IF EXISTS "Admins can view all logs" ON public.activity_logs;
+CREATE POLICY "Public full access activity_logs" ON public.activity_logs
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- 7. Políticas de Acesso Total para Invoices (Notas Fiscais)
+DROP POLICY IF EXISTS "Public full access invoices" ON public.invoices;
+DROP POLICY IF EXISTS "Admins and managers can manage invoices" ON public.invoices;
+DROP POLICY IF EXISTS "View invoices based on role" ON public.invoices;
+CREATE POLICY "Public full access invoices" ON public.invoices
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- 8. Transferências de Estoque e Consignações
+DROP POLICY IF EXISTS "Public full access stock_transfers" ON public.stock_transfers;
+CREATE POLICY "Public full access stock_transfers" ON public.stock_transfers
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access reseller_consignment_contracts" ON public.reseller_consignment_contracts;
+CREATE POLICY "Public full access reseller_consignment_contracts" ON public.reseller_consignment_contracts
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access store_ads" ON public.store_ads;
+CREATE POLICY "Public full access store_ads" ON public.store_ads
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);

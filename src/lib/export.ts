@@ -83,7 +83,7 @@ async function logExport(config: ExportConfig, auditId: string, recordCount: num
         user_name: config.userName,
         store_name: config.storeName,
       },
-      user_id: user?.id,
+      user_id: user?.id || null,
     });
   } catch (error) {
     console.error('Failed to log export:', error);

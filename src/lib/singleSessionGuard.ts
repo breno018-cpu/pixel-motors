@@ -91,12 +91,21 @@ export async function initializeSingleSessionGuard(userId: string): Promise<stri
 
   // 1. Registra a nova sessão ativa no log central de dispositivos do Supabase
   try {
-    await supabase.from('activity_logs').insert({
-      user_id: userId,
+    const isUuid = (val: any) =>
+      typeof val === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+    const { data: auth } = await supabase.auth.getUser();
+    // Apenas vincula a chave estrangeira user_id se o ID for o usuário ativo autenticado no auth.users
+    const validUserId = auth?.user?.id && auth.user.id === userId ? userId : null;
+
+    const { error: sessErr } = await supabase.from('activity_logs').insert({
+      user_id: validUserId,
       action: 'SESSION_START',
       entity_type: 'active_device_session',
-      entity_id: userId,
+      entity_id: isUuid(userId) ? userId : null,
       details: {
+        raw_user_id: userId,
         session_token: sessionToken,
         device_id: fingerprint.deviceId,
         device_name: `${fingerprint.browser} (${fingerprint.os})`,
@@ -105,8 +114,11 @@ export async function initializeSingleSessionGuard(userId: string): Promise<stri
         timestamp: new Date().toISOString(),
       } as any,
     });
-  } catch (err) {
-    console.warn('Registro de sessão em activity_logs:', err);
+    if (sessErr && sessErr.code !== '42501') {
+      console.warn('Registro de sessão em activity_logs:', sessErr.message);
+    }
+  } catch {
+    // Silencioso em caso de restrição RLS de banco
   }
 
   // 2. Limpa canal anterior se houver
