@@ -19,6 +19,7 @@ import {
   Package,
   Boxes,
   Plus,
+  Info,
   ScanLine,
   FileCheck,
   Search,
