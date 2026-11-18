@@ -3,7 +3,7 @@ import {
   Search, ShoppingCart, Calendar, Store, User, Car, Bike, Plus,
   TrendingUp, DollarSign, Clock, CheckCircle, AlertCircle, FileText,
   ImageDown, CheckCircle2, ArrowRight, Paperclip, FileSpreadsheet,
-  Printer, Pencil, Copy, Check, FileCheck2
+  Printer, Pencil, Copy, Check, FileCheck2, Eye
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -209,6 +209,7 @@ export default function Sales() {
     isDateInPeriod,
     defaultMonthKey,
     resetToActiveMonth,
+    activePeriodLabel,
   } = useDateFilter();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   
@@ -910,6 +911,45 @@ export default function Sales() {
               )}
             </div>
           </FilterBar>
+
+          {/* Banner de Transparência e Escopo do Período */}
+          {periodFilter !== 'all' ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-primary/10 border border-primary/20 text-xs animate-scale-in">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary shrink-0" />
+                <span>
+                  Exibindo competência: <strong className="text-foreground">{activePeriodLabel || currentMonthLabel}</strong> ({filteredSales.length} de {allSales.length} vendas registradas no sistema).
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPeriodFilter('all')}
+                className="h-7 text-xs font-semibold gap-1.5 shrink-0 bg-background hover:bg-muted shadow-2xs border-primary/30"
+              >
+                <Eye className="w-3.5 h-3.5 text-primary" />
+                Ver Todo o Histórico ({allSales.length} Vendas)
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs animate-scale-in">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  Exibindo o <strong>Histórico Completo da Concessionária</strong> ({allSales.length} vendas cadastradas em todos os meses).
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetToActiveMonth}
+                className="h-7 text-xs font-semibold gap-1.5 shrink-0 bg-background hover:bg-muted shadow-2xs"
+              >
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                Voltar para Mês Atual ({currentMonthLabel})
+              </Button>
+            </div>
+          )}
 
       {/* Table */}
       {contractsLoading && allSales.length === 0 ? (

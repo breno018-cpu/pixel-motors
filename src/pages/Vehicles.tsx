@@ -1006,11 +1006,11 @@ export default function Vehicles() {
                 {[
                   { id: 'all', label: `Todos (${scopedVehicles.length})` },
                   { id: 'active', label: `Estoque Ativo (${activeInventory.length})` },
-                  { id: 'disponivel', label: 'Disponíveis' },
-                  { id: 'reservado', label: 'Reservados' },
+                  { id: 'disponivel', label: `Disponíveis (${scopedVehicles.filter((v) => v.status === 'disponivel').length})` },
+                  { id: 'reservado', label: `Reservados (${scopedVehicles.filter((v) => v.status === 'reservado').length})` },
                   { id: 'aguardando_codigo', label: `Elétricas Aguardando Código (${waitingElectricCount})` },
                   { id: 'aging60', label: `Pátio > 60d (${kpis.aging60Count})` },
-                  { id: 'vendido', label: 'Histórico Vendidos' },
+                  { id: 'vendido', label: `Histórico Vendidos (${scopedVehicles.filter((v) => v.status === 'vendido').length})` },
                 ].map((st) => (
                   <button
                     key={st.id}
@@ -1123,7 +1123,15 @@ export default function Vehicles() {
           {isLoading ? (
             <LoadingList />
           ) : filteredVehicles.length === 0 ? (
-            <EmptyState filtered={hasActiveFilters} onReset={resetAllFilters} />
+            <EmptyState
+              filtered={hasActiveFilters}
+              onReset={resetAllFilters}
+              search={search}
+              allVehicles={vehicles || []}
+              stores={stores || []}
+              onShowSold={() => setStatusFilter('vendido')}
+              onShowAllStores={() => handleStoreChange('all')}
+            />
           ) : activeGroup ? (
             <UnitList
               group={activeGroup}
@@ -1970,24 +1978,105 @@ function LoadingList() {
   );
 }
 
-function EmptyState({ filtered, onReset }: { filtered: boolean; onReset: () => void }) {
+function EmptyState({
+  filtered,
+  onReset,
+  search,
+  allVehicles = [],
+  stores = [],
+  onShowSold,
+  onShowAllStores,
+}: {
+  filtered: boolean;
+  onReset: () => void;
+  search?: string;
+  allVehicles?: Vehicle[];
+  stores?: any[];
+  onShowSold?: () => void;
+  onShowAllStores?: () => void;
+}) {
+  const searchTerm = (search || '').trim().toLowerCase();
+  const searchDigits = searchTerm.replace(/\D/g, '');
+
+  const matchingInOtherScopes = useMemo(() => {
+    if (!searchTerm || allVehicles.length === 0) return [];
+    return allVehicles.filter((v) => {
+      const brandModel = `${v.brand} ${v.model}`.toLowerCase();
+      const ch = (v.chassis || '').toLowerCase();
+      const pl = (v.plate || '').toLowerCase();
+      const ren = (v.renavam || '');
+      return (
+        brandModel.includes(searchTerm) ||
+        (ch && ch.includes(searchTerm)) ||
+        (pl && pl.includes(searchTerm)) ||
+        (searchDigits.length >= 4 && ren.includes(searchDigits))
+      );
+    });
+  }, [searchTerm, searchDigits, allVehicles]);
+
+  const soldMatch = matchingInOtherScopes.find((v) => v.status === 'vendido');
+  const otherStoreMatch = matchingInOtherScopes.find((v) => v.status !== 'vendido');
+
   return (
-    <Card>
-      <CardContent className="flex flex-col items-center justify-center py-14">
+    <Card className="border-dashed">
+      <CardContent className="flex flex-col items-center justify-center py-12 text-center max-w-lg mx-auto">
         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
           <Car className="h-6 w-6 text-muted-foreground" />
         </div>
         <h3 className="font-display text-base font-semibold text-foreground">
-          {filtered ? 'Nenhum veículo encontrado com esses filtros' : 'Nenhum veículo cadastrado'}
+          {filtered ? 'Nenhum veículo encontrado com os filtros atuais' : 'Nenhum veículo cadastrado'}
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
           {filtered
-            ? 'Ajuste os termos de busca ou limpe os filtros ativos.'
+            ? 'Ajuste os filtros de loja, status ou termos de busca para localizar a moto.'
             : 'Adicione veículos ao estoque para visualizá-los aqui.'}
         </p>
+
+        {/* Localização inteligente de motos em outro status ou outra loja */}
+        {searchTerm && matchingInOtherScopes.length > 0 && (
+          <div className="mt-4 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-left w-full space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
+              <Info className="w-4 h-4 shrink-0" />
+              <span>
+                {matchingInOtherScopes.length} {matchingInOtherScopes.length === 1 ? 'veículo localizado' : 'veículos localizados'} fora do filtro atual:
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              {matchingInOtherScopes.slice(0, 3).map((v) => {
+                const storeName = stores.find((s) => s.id === v.store_id)?.name || 'Outra Loja';
+                return (
+                  <div key={v.id} className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-background/60 border border-border/50">
+                    <div>
+                      <strong className="text-foreground">{v.brand} {v.model}</strong> · {v.color || 'Sem cor'}
+                      <div className="text-[11px] text-muted-foreground">
+                        Chassi: {v.chassis || 'S/ Chassi'} · Loja: {storeName}
+                      </div>
+                    </div>
+                    <Badge variant={v.status === 'vendido' ? 'secondary' : 'default'} className="text-[10px] uppercase shrink-0">
+                      {v.status}
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {soldMatch && onShowSold && (
+                <Button size="sm" variant="outline" onClick={onShowSold} className="h-7 text-xs font-semibold">
+                  Ver no Histórico Vendidos
+                </Button>
+              )}
+              {otherStoreMatch && onShowAllStores && (
+                <Button size="sm" variant="outline" onClick={onShowAllStores} className="h-7 text-xs font-semibold">
+                  Ver em Todas as Lojas
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
         {filtered && (
-          <Button variant="outline" size="sm" onClick={onReset} className="mt-4 text-xs">
-            Limpar todos os filtros
+          <Button variant="outline" size="sm" onClick={onReset} className="mt-4 text-xs font-semibold">
+            Limpar todos os filtros ({allVehicles.length} no estoque total)
           </Button>
         )}
       </CardContent>
