@@ -1070,6 +1070,8 @@ export async function cloudAttachInvoiceToSale(
   data: {
     invoice_number: string;
     series?: string;
+    access_key?: string;
+    sefaz_protocol?: string;
     issue_date?: string;
     attachment_name: string;
     attachment_url: string;
@@ -1140,6 +1142,8 @@ export async function cloudAttachInvoiceToSale(
       id: existingInv?.id || crypto.randomUUID(),
       invoice_number: data.invoice_number,
       series: series,
+      access_key: data.access_key || existingInv?.access_key || ext.invoice_access_key || undefined,
+      sefaz_protocol: data.sefaz_protocol || existingInv?.sefaz_protocol || ext.sefaz_protocol || undefined,
       issue_date: issueDate,
       store_id: isUuid(saleContract?.store_id) ? saleContract.store_id : STORE_DIVINOPOLIS_UUID,
       sale_id: saleId,
@@ -1178,6 +1182,8 @@ export async function cloudAttachInvoiceToSale(
             invoice_number: data.invoice_number,
             invoice_series: series,
             invoice_date: issueDate,
+            invoice_access_key: data.access_key || ext.invoice_access_key,
+            sefaz_protocol: data.sefaz_protocol || ext.sefaz_protocol,
             invoice_url: data.attachment_url,
             invoice_name: data.attachment_name,
             invoice_size: data.attachment_size || 0,
