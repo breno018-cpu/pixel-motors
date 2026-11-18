@@ -255,6 +255,26 @@ export function useCancelInvoice() {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
+    onMutate: async ({ id, cancellation_date, cancellation_reason, cancellation_type = 'estorno', sefaz_protocol }) => {
+      await qc.cancelQueries({ queryKey: ['invoices'] });
+      const prevInvoices = qc.getQueryData<Invoice[]>(['invoices']);
+
+      qc.setQueryData<Invoice[]>(['invoices'], (old = []) =>
+        old.map((inv) => {
+          if (inv.id === id) {
+            return {
+              ...inv,
+              status: 'cancelada' as const,
+              notes: `[CANCELADA em ${cancellation_date} - ${cancellation_type.toUpperCase()}: ${cancellation_reason}]`,
+              sefaz_protocol: sefaz_protocol || inv.sefaz_protocol,
+            };
+          }
+          return inv;
+        })
+      );
+
+      return { prevInvoices };
+    },
     mutationFn: async ({
       id,
       cancellation_date,
@@ -279,15 +299,19 @@ export function useCancelInvoice() {
       return { success: true };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['invoices'] });
-      qc.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
+      qc.invalidateQueries({ queryKey: ['invoices'], refetchType: 'none' });
+      qc.invalidateQueries({ queryKey: ['store-fiscal-invoices'], refetchType: 'none' });
       toast({
         title: 'Nota Fiscal cancelada com sucesso',
         description: 'O cancelamento foi homologado e registrado no fluxo fiscal.',
       });
     },
-    onError: (e: any) =>
-      toast({ variant: 'destructive', title: 'Erro ao cancelar NF', description: e?.message }),
+    onError: (e: any, _vars, context: any) => {
+      if (context?.prevInvoices) {
+        qc.setQueryData(['invoices'], context.prevInvoices);
+      }
+      toast({ variant: 'destructive', title: 'Erro ao cancelar NF', description: e?.message });
+    },
   });
 }
 
@@ -449,6 +473,23 @@ export function useDeleteInvoice() {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
+    onMutate: async (idOrParams) => {
+      const id = typeof idOrParams === 'string' ? idOrParams : idOrParams.id;
+      const invoiceNumber = typeof idOrParams === 'object' ? idOrParams.invoice_number : undefined;
+
+      await qc.cancelQueries({ queryKey: ['invoices'] });
+      const prevInvoices = qc.getQueryData<Invoice[]>(['invoices']);
+
+      qc.setQueryData<Invoice[]>(['invoices'], (old = []) =>
+        old.filter((inv) => {
+          if (inv.id === id) return false;
+          if (invoiceNumber && String(inv.invoice_number || '').trim() === String(invoiceNumber).trim()) return false;
+          return true;
+        })
+      );
+
+      return { prevInvoices };
+    },
     mutationFn: async (idOrParams: string | { id: string; invoice_number?: string }) => {
       const id = typeof idOrParams === 'string' ? idOrParams : idOrParams.id;
       const invoiceNumber = typeof idOrParams === 'object' ? idOrParams.invoice_number : undefined;
@@ -477,13 +518,17 @@ export function useDeleteInvoice() {
       await cloudDeleteInvoice(id);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['invoices'] });
-      qc.invalidateQueries({ queryKey: ['store-fiscal-invoices'] });
+      qc.invalidateQueries({ queryKey: ['invoices'], refetchType: 'none' });
+      qc.invalidateQueries({ queryKey: ['store-fiscal-invoices'], refetchType: 'none' });
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
       toast({ title: 'Nota fiscal excluída com sucesso!' });
     },
-    onError: (e: any) =>
-      toast({ variant: 'destructive', title: 'Erro ao remover NF', description: e?.message }),
+    onError: (e: any, _vars, context: any) => {
+      if (context?.prevInvoices) {
+        qc.setQueryData(['invoices'], context.prevInvoices);
+      }
+      toast({ variant: 'destructive', title: 'Erro ao remover NF', description: e?.message });
+    },
   });
 }

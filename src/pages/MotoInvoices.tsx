@@ -634,18 +634,26 @@ export default function MotoInvoices() {
       toast({ variant: 'destructive', title: 'Informe o motivo do cancelamento.' });
       return;
     }
+    const target = selectedInvoiceToCancel;
+    const date = cancelDate;
+    const reason = cancelReason;
+    const type = cancelType;
+    const protocol = cancelProtocol;
+
+    // Resposta imediata: fecha diálogo e limpa estado
+    setCancelDialogOpen(false);
+    setSelectedInvoiceToCancel(null);
+    setCancelReason('');
+    setCancelProtocol('');
+
     try {
       await cancelInvoiceMutation.mutateAsync({
-        id: selectedInvoiceToCancel.id,
-        cancellation_date: cancelDate,
-        cancellation_reason: cancelReason,
-        cancellation_type: cancelType,
-        sefaz_protocol: cancelProtocol || undefined,
+        id: target.id,
+        cancellation_date: date,
+        cancellation_reason: reason,
+        cancellation_type: type,
+        sefaz_protocol: protocol || undefined,
       });
-      setCancelDialogOpen(false);
-      setSelectedInvoiceToCancel(null);
-      setCancelReason('');
-      setCancelProtocol('');
     } catch (e: any) {
       toast({
         variant: 'destructive',
@@ -658,13 +666,17 @@ export default function MotoInvoices() {
   // Confirmação de exclusão permanente da NF
   const handleConfirmDelete = async () => {
     if (!selectedInvoiceToDelete) return;
+    const target = selectedInvoiceToDelete;
+
+    // Resposta imediata: fecha diálogo e limpa seleção
+    setDeleteDialogOpen(false);
+    setSelectedInvoiceToDelete(null);
+
     try {
       await del.mutateAsync({
-        id: selectedInvoiceToDelete.id,
-        invoice_number: selectedInvoiceToDelete.invoice_number,
+        id: target.id,
+        invoice_number: target.invoice_number,
       });
-      setDeleteDialogOpen(false);
-      setSelectedInvoiceToDelete(null);
     } catch (err: any) {
       toast({
         variant: 'destructive',
@@ -1739,7 +1751,14 @@ export default function MotoInvoices() {
               disabled={cancelInvoiceMutation.isPending}
               className="gap-1.5 font-semibold"
             >
-              Confirmar Cancelamento
+              {cancelInvoiceMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cancelando...
+                </>
+              ) : (
+                'Confirmar Cancelamento'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2001,10 +2020,20 @@ export default function MotoInvoices() {
               variant="destructive"
               size="sm"
               onClick={handleConfirmDelete}
+              disabled={del.isPending}
               className="font-bold rounded-xl gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
             >
-              <Trash2 className="w-4 h-4" />
-              Sim, Excluir Definitivamente
+              {del.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  Sim, Excluir Definitivamente
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

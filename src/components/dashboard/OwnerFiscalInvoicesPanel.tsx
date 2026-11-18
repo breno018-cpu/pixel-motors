@@ -211,6 +211,13 @@ export function OwnerFiscalInvoicesPanel() {
   const [quickAttachIsReading, setQuickAttachIsReading] = useState(false);
   const quickAttachFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Estados de resposta instantânea / loading dos botões de ação
+  const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [isSubmittingQuickAttach, setIsSubmittingQuickAttach] = useState(false);
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
+
   const readFileAsDataUrl = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -386,6 +393,7 @@ export function OwnerFiscalInvoicesPanel() {
   const handleSaveQuickAttach = async () => {
     if (!quickAttachRecord || !quickAttachFile) return;
 
+    setIsSubmittingQuickAttach(true);
     try {
       let finalUrl = quickAttachFile.url;
       if (finalUrl.startsWith('data:')) {
@@ -463,29 +471,29 @@ export function OwnerFiscalInvoicesPanel() {
         attachment_type: quickAttachFile.type,
       };
 
-      try {
-        await cloudSaveInvoice(payload as any);
-        await upsertInvoiceMutation.mutateAsync(payload);
-      } catch (cloudErr) {
-        console.warn('Aviso sincronização cloud anexo:', cloudErr);
-      }
-
-      toast({
-        title: 'Anexo Vinculado com Sucesso!',
-        description: `Arquivo vinculado à NF Nº ${quickAttachRecord.invoice_number}.`,
-      });
-
+      // Resposta instantânea (0ms): fecha modal e atualiza interface sem bloquear o usuário
+      const invoiceNumberAttached = quickAttachRecord.invoice_number;
       setQuickAttachDialogOpen(false);
       setQuickAttachRecord(null);
       setQuickAttachFile(null);
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+
+      toast({
+        title: 'Anexo Vinculado com Sucesso!',
+        description: `Arquivo vinculado à NF Nº ${invoiceNumberAttached}.`,
+      });
+
+      // Sincronização em nuvem em segundo plano
+      void upsertInvoiceMutation.mutateAsync(payload);
     } catch (err: any) {
       toast({
         variant: 'destructive',
         title: 'Erro ao anexar arquivo',
         description: err?.message,
       });
+    } finally {
+      setIsSubmittingQuickAttach(false);
     }
   };
 
@@ -539,6 +547,7 @@ export function OwnerFiscalInvoicesPanel() {
       return;
     }
 
+    setIsSubmittingEdit(true);
     try {
       let finalAttachmentUrl = editAttachedFile?.url;
       if (editAttachedFile?.url && editAttachedFile.url.startsWith('data:')) {
@@ -612,23 +621,23 @@ export function OwnerFiscalInvoicesPanel() {
         attachment_type: editAttachedFile?.type,
       };
 
-      try {
-        await cloudSaveInvoice(editPayload as any);
-        await upsertInvoiceMutation.mutateAsync(editPayload);
-      } catch (cloudErr) {
-        console.warn('Aviso sincronização cloud edição:', cloudErr);
-      }
-
-      toast({
-        title: 'NF Atualizada com Sucesso!',
-        description: `Dados da NF ${editInvoiceNumber} atualizados no painel da diretoria.`,
-      });
-
+      // Resposta instantânea (0ms): fecha modal e notifica UI imediatamente
+      const updatedNum = editInvoiceNumber;
       setEditingRecord(null);
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+
+      toast({
+        title: 'NF Atualizada com Sucesso!',
+        description: `Dados da NF ${updatedNum} atualizados no painel da diretoria.`,
+      });
+
+      // Sincronização em nuvem em segundo plano
+      void upsertInvoiceMutation.mutateAsync(editPayload);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao salvar alterações da NF', description: err?.message });
+    } finally {
+      setIsSubmittingEdit(false);
     }
   };
 
@@ -976,6 +985,7 @@ export function OwnerFiscalInvoicesPanel() {
       ],
     };
 
+    setIsSubmittingInvoice(true);
     try {
       const storageKey = 'dealflow_store_fiscal_invoices_v1';
       const raw = localStorage.getItem(storageKey);
@@ -983,49 +993,47 @@ export function OwnerFiscalInvoicesPanel() {
       list.unshift(newRecord);
       safeSaveToLocalStorage(storageKey, list);
 
-      try {
-        await cloudSaveInvoice(newRecord as any);
-        await upsertInvoiceMutation.mutateAsync({
-          id: newRecord.id,
-          invoice_number: newRecord.invoice_number,
-          invoice_type: newRecord.fiscal_type,
-          issue_date: newRecord.issue_date,
-          store_id: newRecord.store_id,
-          store_name: storeName,
-          customer_name: newRecord.party_name,
-          total_value: val,
-          total: val,
-          subtotal: val,
-          sefaz_protocol: cleanProtocol || undefined,
-          attachment_name: attachedFile?.name,
-          attachment_url: finalAttachmentUrl,
-          attachment_size: attachedFile?.size,
-          attachment_type: attachedFile?.type,
-          status: newRecord.status,
-          notes: newRecord.notes,
-          items: newRecord.items,
-        });
-      } catch (cloudErr) {
-        console.warn('Persistência local concluída, aviso de sincronização nuvem:', cloudErr);
-      }
-
-      toast({
-        title: 'NF Registrada com Sucesso!',
-        description: `NF Nº ${cleanNum} com protocolo e anexo salvos para a Diretoria.`,
-      });
-
-      // Limpa formulário
+      // Resposta instantânea (0ms): fecha modal, limpa campos e atualiza UI
+      setIsNewInvoiceModalOpen(false);
       setNewInvoiceNumber('');
       setNewTotalValue('');
       setNewNotes('');
       setNewSefazProtocol('');
       setAttachedFile(null);
       setParsedBannerInfo(null);
-      setIsNewInvoiceModalOpen(false);
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+
+      toast({
+        title: 'NF Registrada com Sucesso!',
+        description: `NF Nº ${cleanNum} com protocolo e anexo salvos para a Diretoria.`,
+      });
+
+      // Sincronização em nuvem em segundo plano sem travar a interface
+      void upsertInvoiceMutation.mutateAsync({
+        id: newRecord.id,
+        invoice_number: newRecord.invoice_number,
+        invoice_type: newRecord.fiscal_type,
+        issue_date: newRecord.issue_date,
+        store_id: newRecord.store_id,
+        store_name: storeName,
+        customer_name: newRecord.party_name,
+        total_value: val,
+        total: val,
+        subtotal: val,
+        sefaz_protocol: cleanProtocol || undefined,
+        attachment_name: attachedFile?.name,
+        attachment_url: finalAttachmentUrl,
+        attachment_size: attachedFile?.size,
+        attachment_type: attachedFile?.type,
+        status: newRecord.status,
+        notes: newRecord.notes,
+        items: newRecord.items,
+      });
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao registrar NF', description: err?.message });
+    } finally {
+      setIsSubmittingInvoice(false);
     }
   };
 
@@ -1037,6 +1045,7 @@ export function OwnerFiscalInvoicesPanel() {
       return;
     }
 
+    setIsSubmittingCancel(true);
     try {
       const storageKey = 'dealflow_store_fiscal_invoices_v1';
       const raw = localStorage.getItem(storageKey);
@@ -1077,34 +1086,42 @@ export function OwnerFiscalInvoicesPanel() {
       list.unshift(cancelRecord);
       safeSaveToLocalStorage(storageKey, list);
 
-      // Se tiver vínculo com o Supabase, chama a mutation também
-      if (invoiceToCancel.rawInvoiceId && !invoiceToCancel.rawInvoiceId.startsWith('loc-')) {
+      // Resposta instantânea (0ms): fecha modal e notifica UI imediatamente
+      const cancelledTotal = invoiceToCancel.total_value;
+      const rawInvId = invoiceToCancel.rawInvoiceId;
+      setInvoiceToCancel(null);
+      setCancellationReason('');
+      setCancellationProtocol('');
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+
+      toast({
+        title: 'NF Cancelada com Sucesso!',
+        description: `Cancelamento homologado na data ${new Date(cancellationDate).toLocaleDateString('pt-BR')}. O valor de ${formatCurrencyBRL(cancelledTotal)} constará como ${cancellationType === 'estorno' ? 'Estorno Financeiro' : 'Crédito Fiscal'} na semana correspondente.`,
+      });
+
+      // Se tiver vínculo com o Supabase, chama a mutation em segundo plano
+      if (rawInvId && !rawInvId.startsWith('loc-')) {
         void cancelInvoiceMutation.mutateAsync({
-          id: invoiceToCancel.rawInvoiceId,
+          id: rawInvId,
           cancellation_date: cancellationDate,
           cancellation_reason: cancellationReason.trim(),
           cancellation_type: cancellationType,
           sefaz_protocol: cancellationProtocol.trim(),
         });
       }
-
-      toast({
-        title: 'NF Cancelada com Sucesso!',
-        description: `Cancelamento homologado na data ${new Date(cancellationDate).toLocaleDateString('pt-BR')}. O valor de ${formatCurrencyBRL(invoiceToCancel.total_value)} constará como ${cancellationType === 'estorno' ? 'Estorno Financeiro' : 'Crédito Fiscal'} na semana correspondente.`,
-      });
-
-      setInvoiceToCancel(null);
-      setCancellationReason('');
-      setCancellationProtocol('');
-      window.dispatchEvent(new Event('storage'));
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao cancelar NF', description: err?.message });
+    } finally {
+      setIsSubmittingCancel(false);
     }
   };
 
   // Ação: Excluir NF permanentemente (Remove do Banco, Supabase e LocalStorage)
   const handleConfirmDelete = async () => {
     if (!invoiceToDelete) return;
+
+    setIsSubmittingDelete(true);
     try {
       const storageKey = 'dealflow_store_fiscal_invoices_v1';
       const raw = localStorage.getItem(storageKey);
@@ -1122,25 +1139,31 @@ export function OwnerFiscalInvoicesPanel() {
       }
 
       const targetId = invoiceToDelete.rawInvoiceId || invoiceToDelete.id;
-      await deleteInvoiceMutation.mutateAsync({
-        id: targetId,
-        invoice_number: invoiceToDelete.invoice_number,
-      });
+      const numToDelete = invoiceToDelete.invoice_number;
 
-      toast({
-        title: 'NF Excluída com Sucesso!',
-        description: `A Nota Fiscal Nº ${invoiceToDelete.invoice_number} foi permanentemente removida.`,
-      });
-
+      // Resposta instantânea (0ms): fecha modal e notifica UI imediatamente
       setInvoiceToDelete(null);
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+
+      toast({
+        title: 'NF Excluída com Sucesso!',
+        description: `A Nota Fiscal Nº ${numToDelete} foi permanentemente removida.`,
+      });
+
+      // Sincronização e exclusão no banco em segundo plano
+      void deleteInvoiceMutation.mutateAsync({
+        id: targetId,
+        invoice_number: numToDelete,
+      });
     } catch (err: any) {
       toast({
         variant: 'destructive',
         title: 'Erro ao excluir NF',
         description: err?.message,
       });
+    } finally {
+      setIsSubmittingDelete(false);
     }
   };
 
@@ -1964,12 +1987,21 @@ export function OwnerFiscalInvoicesPanel() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setIsNewInvoiceModalOpen(false)} className="rounded-xl">
+            <Button variant="outline" size="sm" onClick={() => setIsNewInvoiceModalOpen(false)} className="rounded-xl" disabled={isSubmittingInvoice}>
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleCreateInvoice} className="font-bold rounded-xl gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
-              Salvar Lançamento da NF
+            <Button size="sm" onClick={handleCreateInvoice} disabled={isSubmittingInvoice} className="font-bold rounded-xl gap-1.5">
+              {isSubmittingInvoice ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Salvar Lançamento da NF
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2055,11 +2087,18 @@ export function OwnerFiscalInvoicesPanel() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setInvoiceToCancel(null)} className="rounded-xl">
+            <Button variant="outline" size="sm" onClick={() => setInvoiceToCancel(null)} disabled={isSubmittingCancel} className="rounded-xl">
               Voltar
             </Button>
-            <Button variant="destructive" size="sm" onClick={handleConfirmCancellation} className="font-bold rounded-xl">
-              Confirmar Cancelamento
+            <Button variant="destructive" size="sm" onClick={handleConfirmCancellation} disabled={isSubmittingCancel} className="font-bold rounded-xl gap-1.5">
+              {isSubmittingCancel ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cancelando...
+                </>
+              ) : (
+                'Confirmar Cancelamento da NF'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2112,6 +2151,7 @@ export function OwnerFiscalInvoicesPanel() {
               variant="outline"
               size="sm"
               onClick={() => setInvoiceToDelete(null)}
+              disabled={isSubmittingDelete}
               className="rounded-xl"
             >
               Cancelar
@@ -2120,10 +2160,20 @@ export function OwnerFiscalInvoicesPanel() {
               variant="destructive"
               size="sm"
               onClick={handleConfirmDelete}
+              disabled={isSubmittingDelete}
               className="font-bold rounded-xl gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
             >
-              <Trash2 className="w-4 h-4" />
-              Sim, Excluir Definitivamente
+              {isSubmittingDelete ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  Sim, Excluir Definitivamente
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2302,12 +2352,21 @@ export function OwnerFiscalInvoicesPanel() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setEditingRecord(null)} className="rounded-xl">
+            <Button variant="outline" size="sm" onClick={() => setEditingRecord(null)} disabled={isSubmittingEdit} className="rounded-xl">
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleSaveEdit} className="font-bold rounded-xl gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
-              Salvar Alterações da NF
+            <Button size="sm" onClick={handleSaveEdit} disabled={isSubmittingEdit} className="font-bold rounded-xl gap-1.5">
+              {isSubmittingEdit ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Salvar Alterações da NF
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2406,6 +2465,7 @@ export function OwnerFiscalInvoicesPanel() {
             <Button
               variant="outline"
               size="sm"
+              disabled={isSubmittingQuickAttach}
               onClick={() => {
                 setQuickAttachDialogOpen(false);
                 setQuickAttachRecord(null);
@@ -2417,12 +2477,21 @@ export function OwnerFiscalInvoicesPanel() {
             </Button>
             <Button
               size="sm"
-              disabled={!quickAttachFile}
+              disabled={!quickAttachFile || isSubmittingQuickAttach}
               onClick={handleSaveQuickAttach}
               className="font-bold rounded-xl gap-1.5"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              Salvar Anexo da NF
+              {isSubmittingQuickAttach ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Salvar Anexo da NF
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
