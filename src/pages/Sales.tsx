@@ -1168,19 +1168,19 @@ export default function Sales() {
           </div>
 
           {/* Visualização Desktop: Tabela Tradicional com 9 Colunas */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
             <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Contrato / Ref</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Cliente</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Veículo & Chassi</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden xl:table-cell">Loja</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden lg:table-cell">Operador</TableHead>
-                  <TableHead className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Valor</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Status / Etapa</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap">Data</TableHead>
-                  <TableHead className="w-28 text-right pr-3">Ações</TableHead>
+              <TableHeader className="bg-muted/30">
+                <TableRow className="hover:bg-transparent border-b border-border/60">
+                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap min-w-[95px] pl-4">Contrato / Ref</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground min-w-[150px]">Cliente</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground min-w-[190px]">Veículo & Chassi</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden xl:table-cell min-w-[130px]">Loja</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden lg:table-cell min-w-[110px]">Operador</TableHead>
+                  <TableHead className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap min-w-[100px]">Valor</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap min-w-[145px]">Status / Etapa</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap text-center min-w-[90px]">Data</TableHead>
+                  <TableHead className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap min-w-[175px] pr-4">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1200,24 +1200,24 @@ export default function Sales() {
                     <TableRow
                       key={sale.id}
                       className={cn(
-                        'group transition-colors',
+                        'group transition-colors border-b border-border/40 hover:bg-muted/40',
                         isPreSale && 'bg-amber-500/5 hover:bg-amber-500/10',
                         (sale as any).review_status === 'questionada' && 'review-row'
                       )}
                     >
-                      <TableCell>
-                        <span className="whitespace-nowrap font-mono text-xs font-bold">{sale.contract_number}</span>
+                      <TableCell className="pl-4 py-3">
+                        <span className="whitespace-nowrap font-mono text-xs font-bold text-foreground">{sale.contract_number}</span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-3">
                         <div>
-                          <p className="font-bold text-xs text-foreground">{sale.buyer_name}</p>
-                          <p className="text-[11px] text-muted-foreground font-mono">{formatCPFDisplay(sale.buyer_cpf)}</p>
+                          <p className="font-bold text-xs text-foreground leading-tight">{sale.buyer_name}</p>
+                          <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{formatCPFDisplay(sale.buyer_cpf)}</p>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-3">
                         <div className="flex items-start gap-2">
                           <VehicleIcon className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                          <div className="min-w-0 space-y-0.5">
+                          <div className="min-w-0 space-y-1">
                             <p className="text-xs font-semibold text-foreground truncate">
                               {vehicle ? `${vehicle.brand} ${vehicle.model}` : (sale as any).external_data?.vehicle_model_custom || 'Veículo'}
                               {vehicle?.year ? ` (${vehicle.year})` : ''}
@@ -1247,18 +1247,18 @@ export default function Sales() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden text-xs xl:table-cell">{sale.store?.name || '-'}</TableCell>
-                      <TableCell className="hidden lg:table-cell">
+                      <TableCell className="hidden text-xs xl:table-cell py-3 text-muted-foreground font-medium">{sale.store?.name || '-'}</TableCell>
+                      <TableCell className="hidden lg:table-cell py-3">
                         <span className="text-xs text-muted-foreground">
                           {resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || '-'}
                         </span>
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-right">
+                      <TableCell className="whitespace-nowrap text-right py-3">
                         <span className="font-display font-black text-xs text-foreground">{formatCurrency(Number(sale.sale_price))}</span>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col items-start gap-1">
-                          <Badge variant="secondary" className={cn('text-[10px] font-bold py-0.5 px-2', statusInfo.class)}>
+                      <TableCell className="whitespace-nowrap min-w-[145px] py-3">
+                        <div className="flex flex-col items-start gap-1.5">
+                          <Badge variant="secondary" className={cn('text-[10px] font-bold py-0.5 px-2.5 whitespace-nowrap inline-flex items-center gap-1 rounded-md shadow-2xs', statusInfo.class)}>
                             {statusInfo.label}
                           </Badge>
                           
@@ -1268,11 +1268,11 @@ export default function Sales() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleStartCompleteExisting(sale)}
-                              className="h-6 px-2 text-[10px] gap-1 font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 mt-1 shadow-2xs"
+                              className="h-6 px-2 text-[10px] gap-1 font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 shadow-2xs whitespace-nowrap"
                               title="Concluir todo o cadastro do comprador, chassi e pagamento para faturar e emitir contrato"
                             >
-                              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                              Concluir Cadastro
+                              <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                              <span>Concluir Cadastro</span>
                             </Button>
                           )}
 
@@ -1293,7 +1293,7 @@ export default function Sales() {
                                     setReceiptsModalOpen(true);
                                   }}
                                   className={cn(
-                                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors shadow-2xs',
+                                    'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold border transition-colors shadow-2xs whitespace-nowrap',
                                     hasNfFile
                                       ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
                                       : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
@@ -1316,11 +1316,11 @@ export default function Sales() {
                                     setReceiptsDefaultTab('nf');
                                     setReceiptsModalOpen(true);
                                   }}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/50 text-muted-foreground border border-dashed border-border hover:border-primary/40 hover:text-primary transition-colors"
+                                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-muted/70 text-muted-foreground border border-dashed border-border/80 hover:border-primary/50 hover:text-primary transition-all shadow-2xs whitespace-nowrap"
                                   title="Clique para anexar a Nota Fiscal oficial desta venda"
                                 >
-                                  <Plus className="w-2.5 h-2.5" />
-                                  <span>+ Anexar NF</span>
+                                  <FileText className="w-3 h-3 shrink-0" />
+                                  <span>Anexar NF</span>
                                 </button>
                               );
                             }
@@ -1329,9 +1329,9 @@ export default function Sales() {
                           })()}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(sale.created_at)}</TableCell>
-                      <TableCell className="text-right pr-3">
-                        <div className="flex items-center justify-end gap-1">
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap text-center py-3">{formatDate(sale.created_at)}</TableCell>
+                      <TableCell className="text-right pr-4 whitespace-nowrap min-w-[175px] py-3">
+                        <div className="flex items-center justify-end gap-1.5">
                           <Button
                             size="sm"
                             variant="outline"
@@ -1340,10 +1340,10 @@ export default function Sales() {
                               setManageDefaultTab('documentos');
                               setManageModalOpen(true);
                             }}
-                            className="h-8 px-2 text-xs font-bold gap-1 text-primary border-primary/20 hover:bg-primary/10 hidden sm:inline-flex"
+                            className="h-8 px-2.5 text-xs font-bold gap-1.5 text-primary border-primary/25 hover:bg-primary/10 hover:border-primary/40 hidden sm:inline-flex shadow-2xs"
                             title="Emitir 2ª via ou alterar dados cadastrais / finalização"
                           >
-                            <Printer className="w-3.5 h-3.5 text-primary" />
+                            <Printer className="w-3.5 h-3.5 text-primary shrink-0" />
                             <span className="hidden xl:inline">2ª Via & Gestão</span>
                           </Button>
 
@@ -1356,20 +1356,20 @@ export default function Sales() {
                               setReceiptsModalOpen(true);
                             }}
                             className={cn(
-                              'h-8 px-2 text-xs gap-1.5 transition-colors',
+                              'h-8 px-2.5 text-xs gap-1.5 transition-colors',
                               receiptsCount > 0
-                                ? 'text-primary font-medium hover:bg-primary/10'
+                                ? 'text-primary font-bold hover:bg-primary/10'
                                 : 'text-muted-foreground hover:text-foreground',
                             )}
                             title="Gerenciar e anexar comprovantes da venda"
                           >
-                            <Paperclip className="w-3.5 h-3.5" />
+                            <Paperclip className="w-3.5 h-3.5 shrink-0" />
                             {receiptsCount > 0 ? (
-                              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 font-mono font-bold">
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-mono font-bold">
                                 {receiptsCount}
                               </Badge>
                             ) : (
-                              <span className="text-[11px] hidden sm:inline text-muted-foreground/70">Anexar</span>
+                              <span className="text-[11px] hidden sm:inline text-muted-foreground/80">Comprovantes</span>
                             )}
                           </Button>
                           <SaleActionsMenu 
