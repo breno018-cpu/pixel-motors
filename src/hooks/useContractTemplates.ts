@@ -117,6 +117,7 @@ export function useCreateTemplate() {
 
   return useMutation({
     mutationFn: async (data: CreateTemplateData) => {
+      await ensureSupabaseSession();
       const { data: user } = await supabase.auth.getUser();
       
       const { data: template, error } = await supabase
@@ -155,6 +156,7 @@ export function useUpdateTemplate() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: Partial<ContractTemplate> & { id: string }) => {
+      await ensureSupabaseSession();
       const { data: user } = await supabase.auth.getUser();
       
       const { data: template, error } = await supabase
@@ -194,6 +196,7 @@ export function useDuplicateTemplate() {
 
   return useMutation({
     mutationFn: async (template: ContractTemplate) => {
+      await ensureSupabaseSession();
       const { data: user } = await supabase.auth.getUser();
       
       const { data: newTemplate, error } = await supabase
@@ -240,6 +243,7 @@ export function useDeleteTemplate() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      await ensureSupabaseSession();
       const { error } = await supabase
         .from('contract_templates')
         .delete()
