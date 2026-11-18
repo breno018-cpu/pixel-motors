@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   ReceiptText,
   ArrowUpRight,
@@ -15,6 +15,15 @@ import {
   AlertTriangle,
   DollarSign,
   Pencil,
+  Upload,
+  Eye,
+  Paperclip,
+  FileCheck,
+  Loader2,
+  AlertCircle,
+  ExternalLink,
+  FileText,
+  Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +48,11 @@ import { exportToXLSX } from '@/lib/export';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { formatFiscalDate, getLocalTodayDateString } from '@/lib/fiscalDates';
 import { useAuth } from '@/contexts/AuthContext';
+import { parseInvoiceFile } from '@/lib/invoiceFileParser';
+import { parseFlexibleCurrency, formatBrlNumber } from '@/lib/masks';
+import { saveAttachmentToIdb, getAttachmentFromIdb } from '@/lib/invoiceAttachmentStorage';
+import { cloudSaveInvoice } from '@/lib/cloudSalesSync';
+import { cn } from '@/lib/utils';
 
 export interface CombinedFiscalRecord {
   id: string;
@@ -56,6 +70,10 @@ export interface CombinedFiscalRecord {
   sefaz_protocol?: string;
   notes?: string;
   rawInvoiceId?: string;
+  attachment_url?: string;
+  attachment_name?: string;
+  attachment_type?: string;
+  attachment_size?: number;
 }
 
 export const WEEKS_CONFIG = [
@@ -126,6 +144,24 @@ export function OwnerFiscalInvoicesPanel() {
   const [newSefazProtocol, setNewSefazProtocol] = useState('');
   const [newNotes, setNewNotes] = useState('');
 
+  // Anexo & Auto-Leitura de Arquivo da Nova NF
+  const [attachedFile, setAttachedFile] = useState<{
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+  } | null>(null);
+  const [isReadingFile, setIsReadingFile] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [parsedBannerInfo, setParsedBannerInfo] = useState<{
+    invoice_number?: string;
+    sefaz_protocol?: string;
+    chassis?: string;
+    total_value?: number;
+    customer_name?: string;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Formulário de Cancelamento
   const [cancellationDate, setCancellationDate] = useState('2026-11-16');
   const [cancellationType, setCancellationType] = useState<'estorno' | 'credito'>('estorno');
@@ -141,6 +177,314 @@ export function OwnerFiscalInvoicesPanel() {
   const [editTotalValue, setEditTotalValue] = useState('');
   const [editSefazProtocol, setEditSefazProtocol] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [editAttachedFile, setEditAttachedFile] = useState<{
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+  } | null>(null);
+  const [editIsReadingFile, setEditIsReadingFile] = useState(false);
+  const [editIsDragging, setEditIsDragging] = useState(false);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Modal de Visualização de Arquivo Oficial
+  const [viewingAttachment, setViewingAttachment] = useState<{
+    name: string;
+    url: string;
+    invoiceNumber: string;
+    customerName: string;
+    type?: string;
+  } | null>(null);
+
+  // Modal de Anexação Rápida Direto na Linha da Tabela
+  const [quickAttachRecord, setQuickAttachRecord] = useState<CombinedFiscalRecord | null>(null);
+  const [quickAttachFile, setQuickAttachFile] = useState<{
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+  } | null>(null);
+  const [quickAttachDialogOpen, setQuickAttachDialogOpen] = useState(false);
+  const [quickAttachIsReading, setQuickAttachIsReading] = useState(false);
+  const quickAttachFileInputRef = useRef<HTMLInputElement>(null);
+
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Processa arquivo da Nova NF (XML ou PDF) com auto-preenchimento
+  const processFileAttachment = async (file: File) => {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      toast({
+        variant: 'destructive',
+        title: 'Arquivo muito grande',
+        description: 'O tamanho máximo permitido para o anexo da NF é de 25MB.',
+      });
+      return;
+    }
+
+    setIsReadingFile(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const mimeType = file.type || (file.name.endsWith('.xml') ? 'text/xml' : 'application/pdf');
+
+      setAttachedFile({
+        name: file.name,
+        url: dataUrl,
+        size: file.size,
+        type: mimeType,
+      });
+
+      const parsed = await parseInvoiceFile(file);
+
+      if (parsed.invoice_number) setNewInvoiceNumber(parsed.invoice_number);
+      if (parsed.sefaz_protocol) setNewSefazProtocol(parsed.sefaz_protocol);
+      if (parsed.customer_name) setNewPartyName(parsed.customer_name);
+      if (parsed.store_id) setNewStoreId(parsed.store_id);
+      if (parsed.issue_date) setNewEventDate(parsed.issue_date);
+      if (parsed.total_value !== undefined && parsed.total_value > 0) {
+        setNewTotalValue(formatBrlNumber(parsed.total_value));
+      }
+      if (parsed.vehicle_model || parsed.vehicle_chassis) {
+        const extraNote = `${parsed.vehicle_brand || 'SHINERAY'} ${parsed.vehicle_model || ''}${parsed.vehicle_chassis ? ` - Chassi: ${parsed.vehicle_chassis}` : ''}`.trim();
+        setNewNotes((prev) => (prev ? `${prev} | ${extraNote}` : extraNote));
+      }
+
+      setParsedBannerInfo({
+        invoice_number: parsed.invoice_number,
+        sefaz_protocol: parsed.sefaz_protocol,
+        chassis: parsed.vehicle_chassis,
+        total_value: parsed.total_value,
+        customer_name: parsed.customer_name,
+      });
+
+      const filled = [
+        parsed.invoice_number ? `Nº ${parsed.invoice_number}` : null,
+        parsed.sefaz_protocol ? `Protocolo SEFAZ ${parsed.sefaz_protocol}` : null,
+        parsed.customer_name ? `Parte: ${parsed.customer_name}` : null,
+        parsed.total_value ? `R$ ${formatBrlNumber(parsed.total_value)}` : null,
+      ].filter(Boolean);
+
+      toast({
+        title: 'Leitura da NF realizada com sucesso!',
+        description: filled.length > 0 ? `${filled.join(' • ')} preenchidos automaticamente.` : 'Arquivo carregado com sucesso.',
+      });
+    } catch (err: any) {
+      console.warn('Erro ao processar arquivo da NF:', err);
+      toast({
+        title: 'Arquivo anexado',
+        description: `${file.name} carregado. Preencha os campos fiscais manualmente se necessário.`,
+      });
+    } finally {
+      setIsReadingFile(false);
+    }
+  };
+
+  const handleNewFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFileAttachment(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemoveAttachment = () => {
+    setAttachedFile(null);
+    setParsedBannerInfo(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Processa arquivo da Edição de NF
+  const processEditFileAttachment = async (file: File) => {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      toast({
+        variant: 'destructive',
+        title: 'Arquivo muito grande',
+        description: 'O tamanho máximo permitido para o anexo é de 25MB.',
+      });
+      return;
+    }
+
+    setEditIsReadingFile(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const mimeType = file.type || (file.name.endsWith('.xml') ? 'text/xml' : 'application/pdf');
+
+      setEditAttachedFile({
+        name: file.name,
+        url: dataUrl,
+        size: file.size,
+        type: mimeType,
+      });
+
+      const parsed = await parseInvoiceFile(file);
+      if (parsed.invoice_number) setEditInvoiceNumber(parsed.invoice_number);
+      if (parsed.sefaz_protocol) setEditSefazProtocol(parsed.sefaz_protocol);
+      if (parsed.customer_name) setEditPartyName(parsed.customer_name);
+      if (parsed.store_id) setEditStoreId(parsed.store_id);
+      if (parsed.issue_date) setEditEventDate(parsed.issue_date);
+      if (parsed.total_value !== undefined && parsed.total_value > 0) {
+        setEditTotalValue(formatBrlNumber(parsed.total_value));
+      }
+      toast({
+        title: 'Arquivo lido e associado!',
+        description: `${file.name} vinculado à NF.`,
+      });
+    } catch (err) {
+      console.warn('Erro ao ler anexo de edição:', err);
+    } finally {
+      setEditIsReadingFile(false);
+    }
+  };
+
+  // Visualização e Download de Anexo
+  const handleOpenAttachment = async (record: CombinedFiscalRecord) => {
+    let url = record.attachment_url;
+    if (!url) return;
+    if (url.startsWith('idb:')) {
+      const idbFile = await getAttachmentFromIdb(url);
+      if (idbFile?.dataUrl) {
+        url = idbFile.dataUrl;
+      }
+    }
+    setViewingAttachment({
+      name: record.attachment_name || `NF_${record.invoice_number}.pdf`,
+      url,
+      invoiceNumber: record.invoice_number,
+      customerName: record.party_name,
+      type: record.attachment_type || (record.attachment_name?.endsWith('.xml') ? 'text/xml' : 'application/pdf'),
+    });
+  };
+
+  const handleDownloadAttachment = async (record: CombinedFiscalRecord) => {
+    let url = record.attachment_url;
+    if (!url) return;
+    if (url.startsWith('idb:')) {
+      const idbFile = await getAttachmentFromIdb(url);
+      if (idbFile?.dataUrl) {
+        url = idbFile.dataUrl;
+      }
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = record.attachment_name || `NF_${record.invoice_number}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Salvar Anexo Rápido vindo da Tabela
+  const handleSaveQuickAttach = async () => {
+    if (!quickAttachRecord || !quickAttachFile) return;
+
+    try {
+      let finalUrl = quickAttachFile.url;
+      if (finalUrl.startsWith('data:')) {
+        try {
+          finalUrl = await saveAttachmentToIdb(
+            `inv_${quickAttachRecord.invoice_number}_${Date.now()}`,
+            quickAttachFile.name,
+            quickAttachFile.url,
+            quickAttachFile.type,
+            quickAttachFile.size
+          );
+        } catch (e) {
+          console.warn('Falha ao salvar no IDB:', e);
+        }
+      }
+
+      const storageKey = 'dealflow_store_fiscal_invoices_v1';
+      const raw = localStorage.getItem(storageKey);
+      let list = raw ? JSON.parse(raw) : [];
+      let foundInLocal = false;
+      list = list.map((item: any) => {
+        if (item.id === quickAttachRecord.id || item.invoice_number === quickAttachRecord.invoice_number) {
+          foundInLocal = true;
+          return {
+            ...item,
+            attachment_name: quickAttachFile.name,
+            attachment_url: finalUrl,
+            attachment_size: quickAttachFile.size,
+            attachment_type: quickAttachFile.type,
+          };
+        }
+        return item;
+      });
+      if (!foundInLocal) {
+        list.unshift({
+          id: quickAttachRecord.id,
+          invoice_number: quickAttachRecord.invoice_number,
+          fiscal_type: quickAttachRecord.fiscal_type,
+          store_id: quickAttachRecord.store_id,
+          store_name: quickAttachRecord.store_name,
+          issue_date: quickAttachRecord.issue_date,
+          entry_or_cancel_date: quickAttachRecord.event_date,
+          party_name: quickAttachRecord.party_name,
+          total_value: quickAttachRecord.total_value,
+          sefaz_protocol: quickAttachRecord.sefaz_protocol,
+          status: quickAttachRecord.status,
+          notes: quickAttachRecord.notes,
+          attachment_name: quickAttachFile.name,
+          attachment_url: finalUrl,
+          attachment_size: quickAttachFile.size,
+          attachment_type: quickAttachFile.type,
+        });
+      }
+      localStorage.setItem(storageKey, JSON.stringify(list));
+
+      const rawInv = invoices.find((x) => x.id === quickAttachRecord.rawInvoiceId || x.invoice_number === quickAttachRecord.invoice_number);
+      const invId = rawInv?.id || (quickAttachRecord.rawInvoiceId && !quickAttachRecord.rawInvoiceId.startsWith('loc-') ? quickAttachRecord.rawInvoiceId : undefined);
+
+      const payload = {
+        id: invId,
+        invoice_number: quickAttachRecord.invoice_number,
+        invoice_type: quickAttachRecord.fiscal_type,
+        issue_date: quickAttachRecord.event_date || quickAttachRecord.issue_date,
+        store_id: quickAttachRecord.store_id,
+        store_name: quickAttachRecord.store_name,
+        customer_name: quickAttachRecord.party_name,
+        total_value: quickAttachRecord.total_value,
+        total: quickAttachRecord.total_value,
+        subtotal: quickAttachRecord.total_value,
+        sefaz_protocol: quickAttachRecord.sefaz_protocol,
+        status: rawInv?.status || (quickAttachRecord.fiscal_type === 'cancelamento' ? 'cancelada' : 'emitida'),
+        attachment_name: quickAttachFile.name,
+        attachment_url: finalUrl,
+        attachment_size: quickAttachFile.size,
+        attachment_type: quickAttachFile.type,
+      };
+
+      try {
+        await cloudSaveInvoice(payload as any);
+        await upsertInvoiceMutation.mutateAsync(payload);
+      } catch (cloudErr) {
+        console.warn('Aviso sincronização cloud anexo:', cloudErr);
+      }
+
+      toast({
+        title: 'Anexo Vinculado com Sucesso!',
+        description: `Arquivo vinculado à NF Nº ${quickAttachRecord.invoice_number}.`,
+      });
+
+      setQuickAttachDialogOpen(false);
+      setQuickAttachRecord(null);
+      setQuickAttachFile(null);
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao anexar arquivo',
+        description: err?.message,
+      });
+    }
+  };
 
   const handleOpenEdit = (r: CombinedFiscalRecord) => {
     if (!canModifyNf) {
@@ -156,9 +500,20 @@ export function OwnerFiscalInvoicesPanel() {
     setEditStoreId(r.store_id || 'store-montesclaros');
     setEditEventDate(r.event_date || r.issue_date || getLocalTodayDateString());
     setEditPartyName(r.party_name || '');
-    setEditTotalValue(r.total_value ? String(r.total_value) : '');
+    setEditTotalValue(r.total_value ? formatBrlNumber(r.total_value) : '');
     setEditSefazProtocol(r.sefaz_protocol || '');
     setEditNotes(r.notes || '');
+
+    if (r.attachment_url) {
+      setEditAttachedFile({
+        name: r.attachment_name || `NF_${r.invoice_number}.pdf`,
+        url: r.attachment_url,
+        size: r.attachment_size || 0,
+        type: r.attachment_type || 'application/pdf',
+      });
+    } else {
+      setEditAttachedFile(null);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -175,13 +530,28 @@ export function OwnerFiscalInvoicesPanel() {
       toast({ variant: 'destructive', title: 'Número da NF obrigatório' });
       return;
     }
-    const val = Number(editTotalValue.replace(/\D/g, '')) / 100 || Number(editTotalValue) || 0;
+    const val = parseFlexibleCurrency(editTotalValue);
     if (val <= 0) {
       toast({ variant: 'destructive', title: 'Valor inválido', description: 'Informe o valor total da NF.' });
       return;
     }
 
     try {
+      let finalAttachmentUrl = editAttachedFile?.url;
+      if (editAttachedFile?.url && editAttachedFile.url.startsWith('data:')) {
+        try {
+          finalAttachmentUrl = await saveAttachmentToIdb(
+            `inv_edit_${editInvoiceNumber.trim()}_${Date.now()}`,
+            editAttachedFile.name,
+            editAttachedFile.url,
+            editAttachedFile.type,
+            editAttachedFile.size
+          );
+        } catch (e) {
+          console.warn('Falha ao salvar no IDB:', e);
+        }
+      }
+
       const storageKey = 'dealflow_store_fiscal_invoices_v1';
       const raw = localStorage.getItem(storageKey);
       let list = raw ? JSON.parse(raw) : [];
@@ -199,40 +569,51 @@ export function OwnerFiscalInvoicesPanel() {
             entry_or_cancel_date: editEventDate,
             party_name: editPartyName.trim(),
             total_value: val,
+            total: val,
+            subtotal: val,
             sefaz_protocol: editSefazProtocol.trim(),
             notes: editNotes.trim(),
+            attachment_name: editAttachedFile?.name,
+            attachment_url: finalAttachmentUrl,
+            attachment_size: editAttachedFile?.size,
+            attachment_type: editAttachedFile?.type,
           };
         }
         return item;
       });
       localStorage.setItem(storageKey, JSON.stringify(list));
 
-      if (editingRecord.rawInvoiceId && !editingRecord.rawInvoiceId.startsWith('loc-')) {
-        const rawInv = invoices.find((x) => x.id === editingRecord.rawInvoiceId);
-        const storeObj = stores.find((s) => s.id === editStoreId);
-        const storeName = storeObj?.name || (editStoreId.includes('montes') ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
+      const rawInv = invoices.find((x) => x.id === editingRecord.rawInvoiceId || x.invoice_number === editingRecord.invoice_number);
+      const storeObj = stores.find((s) => s.id === editStoreId);
+      const storeName = storeObj?.name || (editStoreId.includes('montes') ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
 
-        await upsertInvoiceMutation.mutateAsync({
-          id: editingRecord.rawInvoiceId,
-          invoice_number: editInvoiceNumber.trim(),
-          issue_date: editEventDate,
-          store_id: editStoreId,
-          store_name: storeName,
-          customer_name: editPartyName.trim(),
-          total_value: val,
-          total: val,
-          subtotal: val,
-          sefaz_protocol: editSefazProtocol.trim(),
-          notes: editNotes.trim(),
-          status: rawInv?.status || (editingRecord.fiscal_type === 'cancelamento' ? 'cancelada' : 'emitida'),
-          created_at: rawInv?.created_at,
-          sale_id: rawInv?.sale_id,
-          contract_number: rawInv?.contract_number,
-          attachment_name: rawInv?.attachment_name,
-          attachment_url: rawInv?.attachment_url,
-          attachment_size: rawInv?.attachment_size,
-          attachment_type: rawInv?.attachment_type,
-        });
+      const editPayload = {
+        id: editingRecord.rawInvoiceId && !editingRecord.rawInvoiceId.startsWith('loc-') ? editingRecord.rawInvoiceId : rawInv?.id,
+        invoice_number: editInvoiceNumber.trim(),
+        issue_date: editEventDate,
+        store_id: editStoreId,
+        store_name: storeName,
+        customer_name: editPartyName.trim(),
+        total_value: val,
+        total: val,
+        subtotal: val,
+        sefaz_protocol: editSefazProtocol.trim(),
+        notes: editNotes.trim(),
+        status: rawInv?.status || (editingRecord.fiscal_type === 'cancelamento' ? 'cancelada' : 'emitida'),
+        created_at: rawInv?.created_at,
+        sale_id: rawInv?.sale_id,
+        contract_number: rawInv?.contract_number,
+        attachment_name: editAttachedFile?.name,
+        attachment_url: finalAttachmentUrl,
+        attachment_size: editAttachedFile?.size,
+        attachment_type: editAttachedFile?.type,
+      };
+
+      try {
+        await cloudSaveInvoice(editPayload as any);
+        await upsertInvoiceMutation.mutateAsync(editPayload);
+      } catch (cloudErr) {
+        console.warn('Aviso sincronização cloud edição:', cloudErr);
       }
 
       toast({
@@ -292,6 +673,10 @@ export function OwnerFiscalInvoicesPanel() {
           sefaz_protocol: inv.sefaz_protocol || '',
           notes: inv.notes || '',
           rawInvoiceId: inv.id,
+          attachment_url: inv.attachment_url,
+          attachment_name: inv.attachment_name,
+          attachment_type: inv.attachment_type,
+          attachment_size: inv.attachment_size,
         });
         return;
       }
@@ -308,8 +693,13 @@ export function OwnerFiscalInvoicesPanel() {
         event_date: issueDate,
         total_value: Number(inv.total) || 0,
         status: isCancelada ? 'cancelada_posteriormente' : 'emitida',
+        sefaz_protocol: inv.sefaz_protocol || '',
         notes: inv.notes || '',
         rawInvoiceId: inv.id,
+        attachment_url: inv.attachment_url,
+        attachment_name: inv.attachment_name,
+        attachment_type: inv.attachment_type,
+        attachment_size: inv.attachment_size,
       });
 
       // Se foi cancelada, cria o evento de cancelamento na DATA DO CANCELAMENTO
@@ -331,6 +721,10 @@ export function OwnerFiscalInvoicesPanel() {
           sefaz_protocol: inv.sefaz_protocol || '',
           notes: inv.notes || '',
           rawInvoiceId: inv.id,
+          attachment_url: inv.attachment_url,
+          attachment_name: inv.attachment_name,
+          attachment_type: inv.attachment_type,
+          attachment_size: inv.attachment_size,
         });
       }
     });
@@ -365,6 +759,10 @@ export function OwnerFiscalInvoicesPanel() {
           sefaz_protocol: loc.sefaz_protocol || '',
           notes: loc.notes || '',
           rawInvoiceId: loc.id,
+          attachment_url: loc.attachment_url,
+          attachment_name: loc.attachment_name,
+          attachment_type: loc.attachment_type,
+          attachment_size: loc.attachment_size,
         });
       }
     });
@@ -497,44 +895,120 @@ export function OwnerFiscalInvoicesPanel() {
     };
   }, [filteredRecords]);
 
-  // Ação: Lançar Nova NF (Inclusão manual pelo operador)
+  // Ação: Lançar Nova NF com persistência robusta (Cloud + LocalStorage + Anexo)
   const handleCreateInvoice = async () => {
+    if (!canModifyNf) {
+      toast({
+        variant: 'destructive',
+        title: 'Acesso Restrito',
+        description: 'Apenas a Diretoria e Gerência têm permissão para cadastrar Notas Fiscais.',
+      });
+      return;
+    }
     if (!newInvoiceNumber.trim()) {
       toast({ variant: 'destructive', title: 'Informe o número da NF' });
       return;
     }
-    const val = parseFloat(newTotalValue.replace(/\D/g, '')) / 100 || Number(newTotalValue) || 0;
+    const val = parseFlexibleCurrency(newTotalValue);
     if (val <= 0) {
       toast({ variant: 'destructive', title: 'Informe um valor total válido para a NF' });
       return;
     }
 
+    const cleanNum = newInvoiceNumber.trim();
+    const cleanProtocol = newSefazProtocol.trim();
+    const cleanParty = newPartyName.trim() || (newType === 'entrada' ? 'Shineray do Brasil S.A.' : 'Consumidor Final');
+    const storeObj = stores.find((s) => s.id === newStoreId);
+    const isMoc = newStoreId.includes('montes');
+    const storeName = storeObj?.name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis');
+
+    let finalAttachmentUrl = attachedFile?.url;
+    if (attachedFile?.url && attachedFile.url.startsWith('data:')) {
+      try {
+        finalAttachmentUrl = await saveAttachmentToIdb(
+          `inv_${cleanNum}_${Date.now()}`,
+          attachedFile.name,
+          attachedFile.url,
+          attachedFile.type,
+          attachedFile.size
+        );
+      } catch (e) {
+        console.warn('Falha ao salvar anexo no IDB:', e);
+      }
+    }
+
+    const newRecordId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `fisc-man-${Date.now()}`;
+
+    const newRecord = {
+      id: newRecordId,
+      invoice_number: cleanNum,
+      fiscal_type: newType,
+      store_id: newStoreId,
+      store_name: storeName,
+      issue_date: newEventDate,
+      entry_or_cancel_date: newEventDate,
+      party_name: cleanParty,
+      total_value: val,
+      total: val,
+      subtotal: val,
+      status: newType === 'entrada' ? 'conferido' : 'emitida',
+      sefaz_protocol: cleanProtocol || undefined,
+      notes: newNotes.trim() || undefined,
+      attachment_name: attachedFile?.name,
+      attachment_url: finalAttachmentUrl,
+      attachment_size: attachedFile?.size,
+      attachment_type: attachedFile?.type,
+      created_at: new Date().toISOString(),
+      items: [
+        {
+          description: newType === 'entrada' ? 'Entrada de Veículos / Peças (Remessa Montadora)' : 'Venda de Veículo / Mercadoria',
+          quantity: 1,
+          unit_value: val,
+          sefaz_protocol: cleanProtocol || undefined,
+          attachment_name: attachedFile?.name,
+          attachment_url: finalAttachmentUrl,
+          attachment_size: attachedFile?.size,
+          attachment_type: attachedFile?.type,
+        },
+      ],
+    };
+
     try {
       const storageKey = 'dealflow_store_fiscal_invoices_v1';
       const raw = localStorage.getItem(storageKey);
       const list = raw ? JSON.parse(raw) : [];
-
-      const newRecord = {
-        id: `fisc-man-${Date.now()}`,
-        invoice_number: newInvoiceNumber.trim(),
-        fiscal_type: newType,
-        store_id: newStoreId,
-        issue_date: newEventDate,
-        entry_or_cancel_date: newEventDate,
-        party_name: newPartyName.trim() || (newType === 'entrada' ? 'Shineray do Brasil S.A.' : 'Consumidor Final'),
-        total_value: val,
-        status: newType === 'entrada' ? 'conferido' : 'emitida',
-        sefaz_protocol: newSefazProtocol.trim(),
-        notes: newNotes.trim(),
-        created_at: new Date().toISOString(),
-      };
-
       list.unshift(newRecord);
       localStorage.setItem(storageKey, JSON.stringify(list));
 
+      try {
+        await cloudSaveInvoice(newRecord as any);
+        await upsertInvoiceMutation.mutateAsync({
+          id: newRecord.id,
+          invoice_number: newRecord.invoice_number,
+          invoice_type: newRecord.fiscal_type,
+          issue_date: newRecord.issue_date,
+          store_id: newRecord.store_id,
+          store_name: storeName,
+          customer_name: newRecord.party_name,
+          total_value: val,
+          total: val,
+          subtotal: val,
+          sefaz_protocol: cleanProtocol || undefined,
+          attachment_name: attachedFile?.name,
+          attachment_url: finalAttachmentUrl,
+          attachment_size: attachedFile?.size,
+          attachment_type: attachedFile?.type,
+          status: newRecord.status,
+          notes: newRecord.notes,
+          items: newRecord.items,
+        });
+      } catch (cloudErr) {
+        console.warn('Persistência local concluída, aviso de sincronização nuvem:', cloudErr);
+      }
+
       toast({
         title: 'NF Registrada com Sucesso!',
-        description: `NF ${newInvoiceNumber} adicionada na semana de ${new Date(newEventDate).toLocaleDateString('pt-BR')}.`,
+        description: `NF Nº ${cleanNum} com protocolo e anexo salvos para a Diretoria.`,
       });
 
       // Limpa formulário
@@ -542,8 +1016,11 @@ export function OwnerFiscalInvoicesPanel() {
       setNewTotalValue('');
       setNewNotes('');
       setNewSefazProtocol('');
+      setAttachedFile(null);
+      setParsedBannerInfo(null);
       setIsNewInvoiceModalOpen(false);
       window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Erro ao registrar NF', description: err?.message });
     }
@@ -961,32 +1438,30 @@ export function OwnerFiscalInvoicesPanel() {
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-x-auto max-h-[550px]">
-            <Table>
+          <div className="w-full max-h-[580px] overflow-y-auto">
+            <Table className="w-full">
               <TableHeader className="sticky top-0 bg-background z-10 shadow-xs">
-                <TableRow>
-                  <TableHead className="text-xs">Operação</TableHead>
-                  <TableHead className="text-xs">Número da NF</TableHead>
-                  <TableHead className="text-xs">Data da Operação (Semana)</TableHead>
-                  <TableHead className="text-xs">Emissão Original</TableHead>
-                  <TableHead className="text-xs">Concessionária</TableHead>
-                  <TableHead className="text-xs">Fornecedor / Cliente</TableHead>
-                  <TableHead className="text-xs text-right">Valor Total</TableHead>
-                  <TableHead className="text-xs">Tratamento Financeiro</TableHead>
-                  <TableHead className="text-xs">Protocolo / Motivo</TableHead>
-                  <TableHead className="text-xs text-center">Ações</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-[110px] text-xs">Operação</TableHead>
+                  <TableHead className="w-[140px] text-xs">NF / Protocolo SEFAZ</TableHead>
+                  <TableHead className="w-[95px] text-xs">Data (Sem.)</TableHead>
+                  <TableHead className="w-[120px] text-xs">Concessionária</TableHead>
+                  <TableHead className="min-w-[140px] text-xs">Fornecedor / Cliente</TableHead>
+                  <TableHead className="w-[110px] text-xs text-right">Valor Total</TableHead>
+                  <TableHead className="w-[105px] text-xs text-center">Anexo NF</TableHead>
+                  <TableHead className="w-[110px] text-xs text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-xs text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-xs text-muted-foreground">
                       Carregando dados fiscais da semana...
                     </TableCell>
                   </TableRow>
                 ) : filteredRecords.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-10 text-xs text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
                       Nenhuma operação de NF registrada para {currentWeekLabel}.
                     </TableCell>
                   </TableRow>
@@ -998,8 +1473,8 @@ export function OwnerFiscalInvoicesPanel() {
 
                     return (
                       <TableRow key={r.id} className="hover:bg-muted/40">
-                        {/* Tipo de Operação */}
-                        <TableCell>
+                        {/* 1. Tipo de Operação */}
+                        <TableCell className="align-middle">
                           <Badge
                             className={`text-[10px] font-bold ${
                               isEntrada
@@ -1009,77 +1484,112 @@ export function OwnerFiscalInvoicesPanel() {
                                 : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                             }`}
                           >
-                            {isEntrada ? 'ENTRADA FÁBRICA' : isCancel ? 'CANCELADA' : 'FATURADA'}
+                            {isEntrada ? 'ENTRADA' : isCancel ? 'CANCELADA' : 'FATURADA'}
                           </Badge>
+                          {isCancel && (
+                            <div className="text-[10px] font-medium text-muted-foreground mt-0.5">
+                              {r.cancellation_type === 'credito' ? 'Crédito Fábrica' : 'Estorno Financeiro'}
+                            </div>
+                          )}
                         </TableCell>
 
-                        {/* Número da NF */}
-                        <TableCell className="font-mono text-xs font-bold text-foreground">
-                          {r.invoice_number}
+                        {/* 2. Número da NF & Protocolo SEFAZ */}
+                        <TableCell className="align-middle">
+                          <div className="font-mono text-xs font-bold text-foreground">
+                            NF {r.invoice_number}
+                          </div>
+                          {r.sefaz_protocol ? (
+                            <div
+                              className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate max-w-[130px]"
+                              title={`Protocolo SEFAZ: ${r.sefaz_protocol}`}
+                            >
+                              Prot: {r.sefaz_protocol}
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-muted-foreground truncate max-w-[130px]">
+                              {r.cancellation_reason || r.notes || '—'}
+                            </div>
+                          )}
                         </TableCell>
 
-                        {/* Data da Operação nesta Semana */}
-                        <TableCell className="text-xs">
+                        {/* 3. Data da Operação nesta Semana */}
+                        <TableCell className="text-xs align-middle">
                           <span className="font-semibold text-foreground">
                             {formatFiscalDate(r.event_date)}
                           </span>
+                          {isCancel && r.issue_date && r.issue_date !== r.event_date && (
+                            <div className="text-[10px] text-muted-foreground">
+                              Emis: {formatFiscalDate(r.issue_date)}
+                            </div>
+                          )}
                         </TableCell>
 
-                        {/* Emissão Original */}
-                        <TableCell className="text-xs text-muted-foreground">
-                          {formatFiscalDate(r.issue_date)}
+                        {/* 4. Concessionária */}
+                        <TableCell className="text-xs font-medium align-middle">
+                          <span className="truncate block max-w-[110px]" title={r.store_name}>
+                            {r.store_name.replace('Concessionária ', '')}
+                          </span>
                         </TableCell>
 
-                        {/* Concessionária */}
-                        <TableCell className="text-xs font-medium">
-                          {r.store_name}
+                        {/* 5. Fornecedor / Destinatário */}
+                        <TableCell className="text-xs align-middle">
+                          <span className="truncate block max-w-[160px] font-medium text-foreground" title={r.party_name}>
+                            {r.party_name}
+                          </span>
                         </TableCell>
 
-                        {/* Fornecedor / Destinatário */}
-                        <TableCell className="text-xs max-w-[180px] truncate text-foreground font-medium">
-                          {r.party_name}
-                        </TableCell>
-
-                        {/* Valor Total */}
-                        <TableCell className="text-xs text-right font-bold font-mono">
+                        {/* 6. Valor Total */}
+                        <TableCell className="text-xs text-right font-bold font-mono align-middle">
                           <span className={isCancel ? 'text-destructive' : 'text-foreground'}>
                             {formatCurrencyBRL(r.total_value)}
                           </span>
                         </TableCell>
 
-                        {/* Tratamento Financeiro */}
-                        <TableCell className="text-xs">
-                          {isCancel ? (
-                            r.cancellation_type === 'credito' ? (
-                              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
-                                <CheckCircle2 className="w-3 h-3" /> Crédito na Fábrica
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold text-[11px]">
-                                <RotateCcw className="w-3 h-3" /> Estorno a Receber
-                              </span>
-                            )
-                          ) : isEntrada ? (
-                            <span className="text-muted-foreground text-[11px]">Carga Recebida</span>
+                        {/* 7. Anexo Oficial da NF */}
+                        <TableCell className="text-center align-middle">
+                          {r.attachment_url ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenAttachment(r)}
+                                className="h-6 text-[10px] px-2 rounded-lg text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 font-semibold"
+                                title="Visualizar arquivo oficial desta NF"
+                              >
+                                <Eye className="w-3 h-3" />
+                                Ver NF
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDownloadAttachment(r)}
+                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                title="Baixar arquivo oficial da NF"
+                              >
+                                <Download className="w-3 h-3" />
+                              </Button>
+                            </div>
                           ) : (
-                            <span className="text-muted-foreground text-[11px]">Faturamento de Venda</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setQuickAttachRecord(r);
+                                setQuickAttachFile(null);
+                                setQuickAttachDialogOpen(true);
+                              }}
+                              className="h-6 text-[10px] px-2 rounded-lg border-dashed border-primary/40 text-primary hover:bg-primary/10 gap-1 font-semibold"
+                              title="Anexar arquivo oficial desta Nota Fiscal"
+                            >
+                              <Upload className="w-3 h-3" />
+                              Anexar
+                            </Button>
                           )}
                         </TableCell>
 
-                        {/* Protocolo / Motivo */}
-                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                          {r.sefaz_protocol ? (
-                            <span className="font-mono text-[10px] text-foreground font-semibold">
-                              Prot: {r.sefaz_protocol}
-                            </span>
-                          ) : (
-                            r.cancellation_reason || r.notes || '—'
-                          )}
-                        </TableCell>
-
-                        {/* Ações */}
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1.5">
+                        {/* 8. Ações */}
+                        <TableCell className="text-center align-middle">
+                          <div className="flex items-center justify-center gap-1">
                             {canModifyNf && (
                               <Button
                                 variant="outline"
@@ -1101,11 +1611,13 @@ export function OwnerFiscalInvoicesPanel() {
                                   setCancellationDate(getLocalTodayDateString());
                                   setCancellationType('estorno');
                                   setCancellationReason('');
+                                  setCancellationProtocol(r.sefaz_protocol || '');
                                 }}
                                 className="h-6 text-[10px] px-2 rounded-lg text-destructive border-destructive/30 hover:bg-destructive/10"
+                                title="Cancelar Nota Fiscal"
                               >
-                                <XCircle className="w-3 h-3 mr-1" />
-                                Cancelar NF
+                                <XCircle className="w-3 h-3 mr-0.5" />
+                                Cancelar
                               </Button>
                             )}
                             {isCancel ? (
@@ -1128,21 +1640,154 @@ export function OwnerFiscalInvoicesPanel() {
       </Card>
 
       {/* =================================================================== */}
-      {/* MODAL 1: LANÇAR / REGISTRAR NOVA NF                                  */}
+      {/* MODAL 1: LANÇAR / REGISTRAR NOVA NF COM AUTO-LEITURA E ANEXO         */}
       {/* =================================================================== */}
       <Dialog open={isNewInvoiceModalOpen} onOpenChange={setIsNewInvoiceModalOpen}>
-        <DialogContent className="max-w-lg rounded-2xl p-6">
+        <DialogContent className="max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <ReceiptText className="w-5 h-5 text-primary" />
               Lançar Nota Fiscal no Controle Semanal
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Adicione uma nova NF de entrada de fábrica ou de saída/faturamento para controle da diretoria.
+              Importe o XML ou PDF da NF para leitura e preenchimento automático de todos os campos contábeis, ou preencha manualmente.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* ETAPA 1: IMPORTAÇÃO E ANEXO DO ARQUIVO DA NF COM AUTO-LEITURA */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={async (e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) await processFileAttachment(file);
+              }}
+              className={cn(
+                "bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-2 border-dashed rounded-xl p-4 space-y-3 transition-all",
+                isDragging ? "border-primary bg-primary/10 scale-[1.01]" : "border-primary/40 hover:border-primary/70"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-xs text-primary uppercase tracking-wider">
+                  <Upload className="w-4 h-4" /> 1. Importação da NF (XML ou PDF) — Preenchimento Automático
+                </div>
+                {attachedFile && (
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-bold">
+                    ✓ Arquivo Anexado & Lido
+                  </Badge>
+                )}
+              </div>
+
+              {parsedBannerInfo && (
+                <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-lg p-2.5 flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <div className="text-xs space-y-1">
+                    <div className="font-bold text-emerald-800 dark:text-emerald-200">
+                      ✅ Leitura da NF realizada com sucesso! Todos os dados foram auto-preenchidos:
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 text-[11px] font-mono">
+                      {parsedBannerInfo.invoice_number && (
+                        <Badge variant="secondary" className="bg-background text-foreground border">
+                          NF Nº {parsedBannerInfo.invoice_number}
+                        </Badge>
+                      )}
+                      {parsedBannerInfo.sefaz_protocol && (
+                        <Badge variant="secondary" className="bg-background text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold">
+                          Protocolo SEFAZ: {parsedBannerInfo.sefaz_protocol}
+                        </Badge>
+                      )}
+                      {parsedBannerInfo.chassis && (
+                        <Badge variant="secondary" className="bg-background text-foreground border">
+                          Chassi: {parsedBannerInfo.chassis}
+                        </Badge>
+                      )}
+                      {parsedBannerInfo.total_value ? (
+                        <Badge variant="secondary" className="bg-background text-primary border font-bold">
+                          {formatCurrencyBRL(parsedBannerInfo.total_value)}
+                        </Badge>
+                      ) : null}
+                      {parsedBannerInfo.customer_name && (
+                        <Badge variant="secondary" className="bg-background text-muted-foreground border truncate max-w-xs">
+                          {parsedBannerInfo.customer_name}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,.xml"
+                onChange={handleNewFileUpload}
+                className="hidden"
+              />
+
+              {!attachedFile ? (
+                <div
+                  onClick={() => !isReadingFile && fileInputRef.current?.click()}
+                  className={cn(
+                    "cursor-pointer py-5 px-4 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-all border-2 border-dashed bg-card/60",
+                    isReadingFile ? "bg-primary/5 border-primary animate-pulse" : "hover:bg-primary/5 hover:border-primary border-border/80"
+                  )}
+                >
+                  <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                    {isReadingFile ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div className="text-xs font-bold text-foreground">
+                    {isReadingFile
+                      ? 'Lendo dados da NF (XML/PDF) e auto-preenchendo todos os campos...'
+                      : 'Clique ou arraste o arquivo da NF (XML ou PDF) aqui'}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground max-w-md mx-auto">
+                    O sistema extrai automaticamente o Número da NF, Protocolo SEFAZ, Concessionária, Data, Destinatário e Valor Total.
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-2.5 rounded-lg border bg-background text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-semibold truncate text-foreground">{attachedFile.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      ({(attachedFile.size / 1024).toFixed(0)} KB)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-7 text-[11px] text-primary hover:bg-primary/10 px-2"
+                    >
+                      Trocar Arquivo
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveAttachment}
+                      className="h-7 text-[11px] text-destructive hover:bg-destructive/10 px-2"
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ETAPA 2: CAMPOS FISCAIS (AUTO-PREENCHIDOS OU MANUAIS) */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold">Tipo de Operação</Label>
@@ -1150,8 +1795,7 @@ export function OwnerFiscalInvoicesPanel() {
                   value={newType}
                   onValueChange={(val: any) => {
                     setNewType(val);
-                    if (val === 'entrada') setNewPartyName('Shineray do Brasil S.A.');
-                    else setNewPartyName('');
+                    if (val === 'entrada' && !newPartyName) setNewPartyName('Shineray do Brasil S.A.');
                   }}
                 >
                   <SelectTrigger className="h-9 text-xs rounded-xl mt-1">
@@ -1165,9 +1809,9 @@ export function OwnerFiscalInvoicesPanel() {
               </div>
 
               <div>
-                <Label className="text-xs font-semibold">Número da NF</Label>
+                <Label className="text-xs font-semibold">Número da NF *</Label>
                 <Input
-                  className="h-9 text-xs font-mono rounded-xl mt-1"
+                  className="h-9 text-xs font-mono font-bold rounded-xl mt-1"
                   placeholder="Ex: 10450"
                   value={newInvoiceNumber}
                   onChange={(e) => setNewInvoiceNumber(e.target.value)}
@@ -1183,8 +1827,8 @@ export function OwnerFiscalInvoicesPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="store-montesclaros">Montes Claros (Matriz)</SelectItem>
-                    <SelectItem value="store-divinopolis">Divinópolis (Filial)</SelectItem>
+                    <SelectItem value="store-montesclaros">Concessionária Montes Claros (Matriz)</SelectItem>
+                    <SelectItem value="store-divinopolis">Concessionária Divinópolis (Filial)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1203,7 +1847,7 @@ export function OwnerFiscalInvoicesPanel() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold">
-                  {newType === 'entrada' ? 'Montadora / Fornecedor' : 'Nome do Cliente / Comprador'}
+                  {newType === 'entrada' ? 'Montadora / Fornecedor' : 'Nome do Cliente / Comprador'} *
                 </Label>
                 <Input
                   className="h-9 text-xs rounded-xl mt-1"
@@ -1214,32 +1858,48 @@ export function OwnerFiscalInvoicesPanel() {
               </div>
 
               <div>
-                <Label className="text-xs font-semibold">Valor Total da NF (R$)</Label>
+                <Label className="text-xs font-semibold">Valor Total da NF (R$) *</Label>
                 <Input
                   className="h-9 text-xs font-mono font-bold rounded-xl mt-1"
                   placeholder="Ex: 18.990,00"
                   value={newTotalValue}
                   onChange={(e) => setNewTotalValue(e.target.value)}
+                  onBlur={() => {
+                    if (newTotalValue.trim()) {
+                      const parsedVal = parseFlexibleCurrency(newTotalValue);
+                      if (parsedVal > 0) {
+                        setNewTotalValue(formatBrlNumber(parsedVal));
+                      }
+                    }
+                  }}
                 />
+                {parseFlexibleCurrency(newTotalValue) > 0 && (
+                  <span className="text-[10px] text-primary font-bold font-mono mt-0.5 block">
+                    Valor reconhecido: {formatCurrencyBRL(parseFlexibleCurrency(newTotalValue))}
+                  </span>
+                )}
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-semibold">Protocolo SEFAZ / Chave (Opcional)</Label>
+              <Label className="text-xs font-semibold">Protocolo SEFAZ de Autorização / Chave de Acesso</Label>
               <Input
                 className="h-9 text-xs font-mono rounded-xl mt-1"
-                placeholder="Ex: 312611009182399"
+                placeholder="Ex: 312611009182399 ou 44 dígitos da chave"
                 value={newSefazProtocol}
                 onChange={(e) => setNewSefazProtocol(e.target.value)}
               />
+              <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                Salvo e vinculado permanentemente à NF no banco de dados e nuvem.
+              </span>
             </div>
 
             <div>
-              <Label className="text-xs font-semibold">Observações / Detalhes do Lote</Label>
+              <Label className="text-xs font-semibold">Observações / Detalhes dos Veículos</Label>
               <Textarea
                 className="text-xs rounded-xl mt-1 resize-none"
                 rows={2}
-                placeholder="Ex: Lote com 10 motos SHI 175 e JET 125..."
+                placeholder="Ex: Lote com 10 motos SHI 175 EFI..."
                 value={newNotes}
                 onChange={(e) => setNewNotes(e.target.value)}
               />
@@ -1250,8 +1910,9 @@ export function OwnerFiscalInvoicesPanel() {
             <Button variant="outline" size="sm" onClick={() => setIsNewInvoiceModalOpen(false)} className="rounded-xl">
               Cancelar
             </Button>
-            <Button size="sm" onClick={handleCreateInvoice} className="font-bold rounded-xl">
-              Salvar Lançamento
+            <Button size="sm" onClick={handleCreateInvoice} className="font-bold rounded-xl gap-1.5">
+              <CheckCircle2 className="w-4 h-4" />
+              Salvar Lançamento da NF
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1351,18 +2012,84 @@ export function OwnerFiscalInvoicesPanel() {
       {/* MODAL 3: EDIÇÃO DE NF NO PAINEL DIRETOR                             */}
       {/* =================================================================== */}
       <Dialog open={Boolean(editingRecord)} onOpenChange={(v) => { if (!v) setEditingRecord(null); }}>
-        <DialogContent className="max-w-lg rounded-2xl p-6">
+        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Pencil className="w-5 h-5 text-primary" />
               Editar Dados da Nota Fiscal Nº {editInvoiceNumber}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Atualize as informações contábeis, loja, data, cliente e valores desta NF diretamente pelo Painel Diretor.
+              Atualize as informações contábeis, loja, data, cliente, valores, protocolo SEFAZ e anexo desta NF diretamente pelo Painel Diretor.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* Anexo da NF na Edição */}
+            <div className="p-3 rounded-xl border bg-muted/20 space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="flex items-center gap-1.5 text-primary">
+                  <Paperclip className="w-4 h-4" /> Anexo Oficial da NF
+                </span>
+                {editAttachedFile && (
+                  <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                    Arquivo Vinculado
+                  </Badge>
+                )}
+              </div>
+
+              <input
+                ref={editFileInputRef}
+                type="file"
+                accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,.xml"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) await processEditFileAttachment(file);
+                  if (editFileInputRef.current) editFileInputRef.current.value = '';
+                }}
+                className="hidden"
+              />
+
+              {editAttachedFile ? (
+                <div className="flex items-center justify-between p-2 rounded-lg bg-background border text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-medium truncate">{editAttachedFile.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => editFileInputRef.current?.click()}
+                      className="h-6 text-[10px] px-2 text-primary hover:bg-primary/10"
+                    >
+                      Trocar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditAttachedFile(null)}
+                      className="h-6 text-[10px] px-2 text-destructive hover:bg-destructive/10"
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => editFileInputRef.current?.click()}
+                  className="w-full text-xs border-dashed gap-1.5 text-primary hover:bg-primary/10"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {editIsReadingFile ? 'Lendo arquivo...' : 'Vincular Arquivo (XML ou PDF)'}
+                </Button>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold">Número da NF *</Label>
@@ -1403,10 +2130,21 @@ export function OwnerFiscalInvoicesPanel() {
                 <Label className="text-xs font-semibold">Valor Total (R$) *</Label>
                 <Input
                   className="h-9 text-xs font-mono font-bold rounded-xl mt-1"
-                  placeholder="R$ 0,00"
+                  placeholder="Ex: 18.990,00"
                   value={editTotalValue}
                   onChange={(e) => setEditTotalValue(e.target.value)}
+                  onBlur={() => {
+                    if (editTotalValue.trim()) {
+                      const parsed = parseFlexibleCurrency(editTotalValue);
+                      if (parsed > 0) setEditTotalValue(formatBrlNumber(parsed));
+                    }
+                  }}
                 />
+                {parseFlexibleCurrency(editTotalValue) > 0 && (
+                  <span className="text-[10px] text-primary font-bold font-mono mt-0.5 block">
+                    Valor reconhecido: {formatCurrencyBRL(parseFlexibleCurrency(editTotalValue))}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -1421,7 +2159,7 @@ export function OwnerFiscalInvoicesPanel() {
             </div>
 
             <div>
-              <Label className="text-xs font-semibold">Protocolo SEFAZ (Opcional)</Label>
+              <Label className="text-xs font-semibold">Protocolo SEFAZ de Autorização / Chave de Acesso</Label>
               <Input
                 className="h-9 text-xs font-mono rounded-xl mt-1"
                 placeholder="Ex: 312611000000001"
@@ -1449,6 +2187,239 @@ export function OwnerFiscalInvoicesPanel() {
             <Button size="sm" onClick={handleSaveEdit} className="font-bold rounded-xl gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
               Salvar Alterações da NF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =================================================================== */}
+      {/* MODAL 4: ANEXAÇÃO RÁPIDA DE ARQUIVO DA NF                           */}
+      {/* =================================================================== */}
+      <Dialog open={quickAttachDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setQuickAttachDialogOpen(false);
+          setQuickAttachRecord(null);
+          setQuickAttachFile(null);
+        }
+      }}>
+        <DialogContent className="max-w-md rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Upload className="w-5 h-5 text-primary" />
+              Anexar Arquivo Oficial da NF Nº {quickAttachRecord?.invoice_number}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Vincule o arquivo oficial (PDF ou XML) a esta Nota Fiscal para consulta e auditoria da diretoria.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <input
+              ref={quickAttachFileInputRef}
+              type="file"
+              accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,.xml"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setQuickAttachIsReading(true);
+                  try {
+                    const dataUrl = await readFileAsDataUrl(file);
+                    const mimeType = file.type || (file.name.endsWith('.xml') ? 'text/xml' : 'application/pdf');
+                    setQuickAttachFile({
+                      name: file.name,
+                      url: dataUrl,
+                      size: file.size,
+                      type: mimeType,
+                    });
+                  } finally {
+                    setQuickAttachIsReading(false);
+                  }
+                }
+                if (quickAttachFileInputRef.current) quickAttachFileInputRef.current.value = '';
+              }}
+              className="hidden"
+            />
+
+            {!quickAttachFile ? (
+              <div
+                onClick={() => !quickAttachIsReading && quickAttachFileInputRef.current?.click()}
+                className="cursor-pointer py-8 px-4 flex flex-col items-center justify-center gap-2 text-center rounded-xl transition-all border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 bg-muted/20"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                  {quickAttachIsReading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Upload className="w-5 h-5" />
+                  )}
+                </div>
+                <div className="text-xs font-bold text-foreground">
+                  {quickAttachIsReading ? 'Lendo arquivo...' : 'Clique para selecionar o PDF ou XML da NF'}
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Formatos suportados: PDF, XML ou imagem (máx. 25MB).
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-semibold truncate text-foreground">{quickAttachFile.name}</span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    ({(quickAttachFile.size / 1024).toFixed(0)} KB)
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setQuickAttachFile(null)}
+                  className="h-7 text-[11px] text-destructive hover:bg-destructive/10 px-2"
+                >
+                  Remover
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setQuickAttachDialogOpen(false);
+                setQuickAttachRecord(null);
+                setQuickAttachFile(null);
+              }}
+              className="rounded-xl"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              disabled={!quickAttachFile}
+              onClick={handleSaveQuickAttach}
+              className="font-bold rounded-xl gap-1.5"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Salvar Anexo da NF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =================================================================== */}
+      {/* MODAL 5: VISUALIZADOR DE ARQUIVO ANEXADO DA NF                      */}
+      {/* =================================================================== */}
+      <Dialog
+        open={Boolean(viewingAttachment)}
+        onOpenChange={(v) => {
+          if (!v) setViewingAttachment(null);
+        }}
+      >
+        <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-6 rounded-2xl">
+          <DialogHeader className="shrink-0">
+            <div className="flex items-center justify-between pr-6">
+              <div>
+                <DialogTitle className="flex items-center gap-2 text-base font-bold">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Arquivo Oficial da Nota Fiscal Nº {viewingAttachment?.invoiceNumber}
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  {viewingAttachment?.name} • Cliente / Destinatário: {viewingAttachment?.customerName}
+                </DialogDescription>
+              </div>
+              {viewingAttachment?.url && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = viewingAttachment.url;
+                    a.download = viewingAttachment.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }}
+                  className="gap-1.5 text-xs font-semibold rounded-xl"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Baixar Arquivo
+                </Button>
+              )}
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 min-h-[450px] w-full rounded-xl overflow-hidden border bg-muted/20 my-2 flex items-center justify-center">
+            {viewingAttachment?.type?.includes('pdf') || viewingAttachment?.url.startsWith('data:application/pdf') ? (
+              <iframe
+                src={viewingAttachment.url}
+                className="w-full h-[550px] border-none rounded-xl"
+                title={viewingAttachment.name}
+              />
+            ) : viewingAttachment?.type?.includes('image') || viewingAttachment?.url.startsWith('data:image/') ? (
+              <img
+                src={viewingAttachment.url}
+                alt={viewingAttachment.name}
+                className="max-h-[550px] max-w-full object-contain rounded-xl"
+              />
+            ) : viewingAttachment?.name.endsWith('.xml') || viewingAttachment?.type?.includes('xml') ? (
+              <div className="p-6 text-center space-y-3">
+                <FileText className="w-12 h-12 text-primary mx-auto" />
+                <div className="text-sm font-bold text-foreground">
+                  Arquivo XML da Nota Fiscal Eletrônica (NF-e)
+                </div>
+                <div className="text-xs text-muted-foreground font-mono">
+                  {viewingAttachment?.name}
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = viewingAttachment.url;
+                    a.download = viewingAttachment.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }}
+                  className="gap-1.5 font-bold rounded-xl"
+                >
+                  <Download className="w-4 h-4" />
+                  Baixar Arquivo XML Completo
+                </Button>
+              </div>
+            ) : (
+              <div className="p-6 text-center space-y-3">
+                <FileText className="w-12 h-12 text-muted-foreground mx-auto" />
+                <div className="text-sm font-semibold text-foreground">
+                  Visualização direta não disponível no navegador.
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = viewingAttachment?.url || '';
+                    a.download = viewingAttachment?.name || 'arquivo';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }}
+                  className="gap-1.5 font-bold rounded-xl"
+                >
+                  <Download className="w-4 h-4" />
+                  Baixar Arquivo
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setViewingAttachment(null)}
+              className="rounded-xl text-xs font-semibold"
+            >
+              Fechar Visualizador
             </Button>
           </DialogFooter>
         </DialogContent>
