@@ -35,7 +35,7 @@ export interface ParsedInvoiceData {
 }
 
 /**
- * Normaliza formato de data brasileira (DD/MM/YYYY) para ISO (YYYY-MM-DD)
+ * Normaliza formato de data brasileira (DD/MM/YYYY ou ISO) para ISO (YYYY-MM-DD)
  */
 function normalizeDateStr(dateStr?: string | null): string | undefined {
   if (!dateStr) return undefined;
@@ -56,7 +56,7 @@ function normalizeDateStr(dateStr?: string | null): string | undefined {
 /**
  * Converte valor em formato string monetário para number
  */
-function parseMoneyValue(val?: string | null): number | undefined {
+export function parseMoneyValue(val?: string | null): number | undefined {
   if (!val) return undefined;
   const clean = val.replace(/[^\d,.-]/g, '').trim();
   if (!clean) return undefined;
@@ -72,117 +72,137 @@ function parseMoneyValue(val?: string | null): number | undefined {
 
 /**
  * Parser de XML da NF-e (Padrão Nacional SEFAZ)
+ * Utiliza getElementsByTagName para ser totalmente imune a problemas de namespace XML.
  */
 export function parseNfeXml(xmlString: string): ParsedInvoiceData {
   const result: ParsedInvoiceData = {
     parser_type: 'xml',
-    raw_text: xmlString.slice(0, 2000),
+    raw_text: xmlString.slice(0, 3000),
   };
 
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlString, 'text/xml');
 
+    const getTag = (name: string, context: Document | Element = doc): string => {
+      const el = context.getElementsByTagName(name)[0];
+      return el?.textContent?.trim() || '';
+    };
+
     // 1. Chave de Acesso (44 dígitos)
-    const infNFe = doc.querySelector('infNFe');
-    const idAttr = infNFe?.getAttribute('Id') || '';
-    const keyMatch = idAttr.replace(/\D/g, '');
-    if (keyMatch.length === 44) {
-      result.access_key = keyMatch;
+    const infNFeEl = doc.getElementsByTagName('infNFe')[0];
+    const idAttr = infNFeEl?.getAttribute('Id') || '';
+    const keyFromId = idAttr.replace(/\D/g, '');
+    if (keyFromId.length === 44) {
+      result.access_key = keyFromId;
     } else {
-      const chNFeEl = doc.querySelector('chNFe') || doc.querySelector('chNFeProt');
-      const chClean = chNFeEl?.textContent?.replace(/\D/g, '') || '';
-      if (chClean.length === 44) {
-        result.access_key = chClean;
+      const chNFe = getTag('chNFe') || getTag('chNFeProt');
+      const cleanCh = chNFe.replace(/\D/g, '');
+      if (cleanCh.length === 44) {
+        result.access_key = cleanCh;
       }
     }
 
     // 2. Protocolo de Autorização SEFAZ (15 dígitos)
-    const nProtEl = doc.querySelector('protNFe > infProt > nProt') || doc.querySelector('nProt');
-    if (nProtEl?.textContent) {
-      result.sefaz_protocol = nProtEl.textContent.trim();
+    const nProt = getTag('nProt');
+    if (nProt) {
+      result.sefaz_protocol = nProt.replace(/\D/g, '') || nProt;
     }
 
     // 3. Dados Básicos da NF (ide)
-    const nNF = doc.querySelector('ide > nNF')?.textContent?.trim();
+    const ideEl = doc.getElementsByTagName('ide')[0] || doc;
+    const nNF = getTag('nNF', ideEl);
     if (nNF) result.invoice_number = nNF;
 
-    const serie = doc.querySelector('ide > serie')?.textContent?.trim();
+    const serie = getTag('serie', ideEl);
     if (serie) result.series = serie;
 
-    const dhEmi = doc.querySelector('ide > dhEmi, ide > dEmi')?.textContent?.trim();
+    const dhEmi = getTag('dhEmi', ideEl) || getTag('dEmi', ideEl);
     if (dhEmi) {
       result.issue_date = normalizeDateStr(dhEmi);
     }
 
-    const natOp = doc.querySelector('ide > natOp')?.textContent?.trim();
+    const natOp = getTag('natOp', ideEl);
     if (natOp) result.operation_nature = natOp;
 
     // 4. Emitente / Loja
-    const emitNome = doc.querySelector('emit > xNome')?.textContent?.trim() || '';
-    const emitCnpj = doc.querySelector('emit > CNPJ')?.textContent?.trim() || '';
-    const emitMun = doc.querySelector('emit > enderEmit > xMun')?.textContent?.trim() || '';
+    const emitEl = doc.getElementsByTagName('emit')[0];
+    if (emitEl) {
+      const emitNome = getTag('xNome', emitEl);
+      const emitCnpj = getTag('CNPJ', emitEl);
+      const emitMun = getTag('xMun', emitEl);
+      const emitFull = `${emitNome} ${emitCnpj} ${emitMun}`.toLowerCase();
 
-    const emitFull = `${emitNome} ${emitCnpj} ${emitMun}`.toLowerCase();
-    if (emitFull.includes('montes') || emitFull.includes('moc')) {
-      result.store_id = STORE_MONTESCLAROS_UUID;
-      result.store_name = 'Concessionária Montes Claros';
-    } else if (emitFull.includes('divin')) {
-      result.store_id = STORE_DIVINOPOLIS_UUID;
-      result.store_name = 'Concessionária Divinópolis';
+      if (emitFull.includes('montes') || emitFull.includes('moc')) {
+        result.store_id = STORE_MONTESCLAROS_UUID;
+        result.store_name = 'Concessionária Montes Claros';
+      } else if (emitFull.includes('divin')) {
+        result.store_id = STORE_DIVINOPOLIS_UUID;
+        result.store_name = 'Concessionária Divinópolis';
+      }
     }
 
     // 5. Destinatário / Comprador (dest)
-    const xNome = doc.querySelector('dest > xNome')?.textContent?.trim();
-    if (xNome) result.customer_name = xNome;
+    const destEl = doc.getElementsByTagName('dest')[0];
+    if (destEl) {
+      const xNome = getTag('xNome', destEl);
+      if (xNome) result.customer_name = xNome;
 
-    const cpfCnpj = doc.querySelector('dest > CPF, dest > CNPJ')?.textContent?.trim();
-    if (cpfCnpj) result.customer_document = cpfCnpj;
+      const cpf = getTag('CPF', destEl);
+      const cnpj = getTag('CNPJ', destEl);
+      if (cpf || cnpj) result.customer_document = cpf || cnpj;
 
-    const fone = doc.querySelector('dest > enderDest > fone')?.textContent?.trim();
-    if (fone) result.customer_phone = fone;
+      const fone = getTag('fone', destEl);
+      if (fone) result.customer_phone = fone;
 
-    const email = doc.querySelector('dest > email')?.textContent?.trim();
-    if (email) result.customer_email = email;
+      const email = getTag('email', destEl);
+      if (email) result.customer_email = email;
 
-    // Endereço do Destinatário
-    const xLgr = doc.querySelector('dest > enderDest > xLgr')?.textContent?.trim() || '';
-    const nro = doc.querySelector('dest > enderDest > nro')?.textContent?.trim() || '';
-    const xCpl = doc.querySelector('dest > enderDest > xCpl')?.textContent?.trim() || '';
-    const xBairro = doc.querySelector('dest > enderDest > xBairro')?.textContent?.trim() || '';
-    const xMun = doc.querySelector('dest > enderDest > xMun')?.textContent?.trim() || '';
-    const uf = doc.querySelector('dest > enderDest > UF')?.textContent?.trim() || '';
-    const cep = doc.querySelector('dest > enderDest > CEP')?.textContent?.trim() || '';
+      // Endereço do Destinatário
+      const xLgr = getTag('xLgr', destEl);
+      const nro = getTag('nro', destEl);
+      const xCpl = getTag('xCpl', destEl);
+      const xBairro = getTag('xBairro', destEl);
+      const xMun = getTag('xMun', destEl);
+      const uf = getTag('UF', destEl);
+      const cep = getTag('CEP', destEl);
 
-    result.customer_city = xMun;
-    result.customer_state = uf;
-    result.customer_zip = cep;
+      result.customer_city = xMun;
+      result.customer_state = uf;
+      result.customer_zip = cep;
 
-    const addressParts = [
-      xLgr ? `${xLgr}${nro ? `, ${nro}` : ''}` : '',
-      xCpl,
-      xBairro,
-      xMun && uf ? `${xMun}/${uf}` : xMun,
-      cep ? `CEP: ${cep}` : '',
-    ].filter(Boolean);
+      const addressParts = [
+        xLgr ? `${xLgr}${nro ? `, ${nro}` : ''}` : '',
+        xCpl,
+        xBairro,
+        xMun && uf ? `${xMun}/${uf}` : xMun,
+        cep ? `CEP: ${cep}` : '',
+      ].filter(Boolean);
 
-    if (addressParts.length > 0) {
-      result.customer_address = addressParts.join(' - ');
+      if (addressParts.length > 0) {
+        result.customer_address = addressParts.join(' - ');
+      }
     }
 
     // 6. Valor Total da NF
-    const vNF = doc.querySelector('total > ICMSTot > vNF')?.textContent?.trim();
+    const vNF = getTag('vNF');
     if (vNF) {
-      result.total_value = parseFloat(vNF);
+      const parsedVal = parseFloat(vNF);
+      if (!isNaN(parsedVal) && parsedVal > 0) {
+        result.total_value = parsedVal;
+      }
     }
 
     // 7. Dados do Veículo / Motocicleta
-    const xProd = doc.querySelector('det > prod > xProd')?.textContent?.trim();
+    const prodEl = doc.getElementsByTagName('prod')[0];
+    const veicEl = doc.getElementsByTagName('veicProd')[0];
+
+    const xProd = prodEl ? getTag('xProd', prodEl) : getTag('xProd');
     if (xProd) {
       result.vehicle_model = xProd;
     }
 
-    const veicChassi = doc.querySelector('det > prod > veicProd > chassi')?.textContent?.trim();
+    const veicChassi = veicEl ? getTag('chassi', veicEl) : getTag('chassi');
     if (veicChassi) {
       result.vehicle_chassis = veicChassi.toUpperCase();
     } else if (xProd) {
@@ -190,16 +210,16 @@ export function parseNfeXml(xmlString: string): ParsedInvoiceData {
       if (chassisInProd) result.vehicle_chassis = chassisInProd[1].toUpperCase();
     }
 
-    const veicCor = doc.querySelector('det > prod > veicProd > xCor')?.textContent?.trim();
+    const veicCor = veicEl ? getTag('xCor', veicEl) : getTag('xCor');
     if (veicCor) result.vehicle_color = veicCor;
 
-    const anoMod = doc.querySelector('det > prod > veicProd > anoMod')?.textContent?.trim();
+    const anoMod = veicEl ? getTag('anoMod', veicEl) : getTag('anoMod');
     if (anoMod) result.vehicle_year = parseInt(anoMod, 10);
 
     result.vehicle_brand = 'SHINERAY';
 
     // 8. Alienação / Pagamento
-    const tPag = doc.querySelector('pag > detPag > tPag')?.textContent?.trim();
+    const tPag = getTag('tPag');
     if (tPag === '01') result.alienacao = 'À VISTA (DINHEIRO)';
     else if (tPag === '03') result.alienacao = 'CARTÃO DE CRÉDITO';
     else if (tPag === '17') result.alienacao = 'PIX';
@@ -208,20 +228,30 @@ export function parseNfeXml(xmlString: string): ParsedInvoiceData {
     console.warn('Erro ao processar DOM XML da NF-e, aplicando fallback regex:', err);
   }
 
-  // Fallbacks de Regex para garantir que nada passe em branco
+  // Fallbacks de Regex para garantir 100% de preenchimento mesmo com XMLs corrompidos ou parciais
   if (!result.access_key) {
-    const kMatch = xmlString.match(/Id=["']NFe(\d{44})["']/i) || xmlString.match(/<chNFe>(\d{44})<\/chNFe>/i);
+    const kMatch = xmlString.match(/Id=["']NFe(\d{44})["']/i) || xmlString.match(/<chNFe>(\d{44})<\/chNFe>/i) || xmlString.match(/\b(\d{44})\b/);
     if (kMatch) result.access_key = kMatch[1];
   }
 
   if (!result.sefaz_protocol) {
-    const pMatch = xmlString.match(/<nProt>(\d+)<\/nProt>/i);
+    const pMatch = xmlString.match(/<nProt>(\d+)<\/nProt>/i) || xmlString.match(/nProt["']?\s*[:=]\s*["']?(\d+)["']?/i) || xmlString.match(/\b(131\d{12})\b/) || xmlString.match(/\b(132\d{12})\b/);
     if (pMatch) result.sefaz_protocol = pMatch[1];
   }
 
   if (!result.invoice_number) {
     const nMatch = xmlString.match(/<nNF>(\d+)<\/nNF>/i);
     if (nMatch) result.invoice_number = nMatch[1];
+  }
+
+  if (!result.series) {
+    const sMatch = xmlString.match(/<serie>(\d+)<\/serie>/i);
+    if (sMatch) result.series = sMatch[1];
+  }
+
+  if (!result.issue_date) {
+    const dMatch = xmlString.match(/<(?:dhEmi|dEmi)>([^<]+)<\/(?:dhEmi|dEmi)>/i);
+    if (dMatch) result.issue_date = normalizeDateStr(dMatch[1]);
   }
 
   if (!result.customer_name) {
@@ -241,14 +271,17 @@ export function parseNfeXml(xmlString: string): ParsedInvoiceData {
 
   if (!result.total_value) {
     const vMatch = xmlString.match(/<vNF>([^<]+)<\/vNF>/i);
-    if (vMatch) result.total_value = parseFloat(vMatch[1]);
+    if (vMatch) {
+      const val = parseFloat(vMatch[1]);
+      if (!isNaN(val) && val > 0) result.total_value = val;
+    }
   }
 
   return result;
 }
 
 /**
- * Extrai texto bruto e campos fiscais de um arquivo PDF ou de texto
+ * Extrai texto bruto e campos fiscais de um arquivo PDF ou texto de DANFE
  */
 export function parsePdfText(text: string): ParsedInvoiceData {
   const result: ParsedInvoiceData = {
@@ -257,7 +290,6 @@ export function parsePdfText(text: string): ParsedInvoiceData {
   };
 
   // 1. Chave de Acesso (44 dígitos numéricos)
-  // No DANFE PDF muitas vezes vem formatada em blocos de 4 dígitos: 3124 1112 3456 ...
   const formattedKeyMatch = text.match(/\b(\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4}[\s.-]?\d{4})\b/);
   if (formattedKeyMatch) {
     const cleanKey = formattedKeyMatch[1].replace(/\D/g, '');
@@ -272,7 +304,6 @@ export function parsePdfText(text: string): ParsedInvoiceData {
   }
 
   // 2. Protocolo de Autorização SEFAZ (15 dígitos)
-  // Ex: "Protocolo de autorização de uso: 131260001234567" ou "131240001234567"
   const protocolMatch =
     text.match(/(?:protocolo\s*(?:de)?\s*(?:autoriza[cç][aã]o|uso)?|n[ºo]?\s*prot(?:ocolo)?)[^\d]{0,25}(\d{15})/i) ||
     text.match(/\b(131\d{12})\b/) ||
@@ -311,7 +342,6 @@ export function parsePdfText(text: string): ParsedInvoiceData {
   if (cpfMatch) {
     result.customer_document = cpfMatch[1].replace(/\D/g, '');
   } else if (cnpjMatch) {
-    // Evita pegar o CNPJ do emitente caso haja mais de um
     const allCnpjs = [...text.matchAll(/\b(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})\b/g)].map((m) => m[1]);
     if (allCnpjs.length > 1) {
       result.customer_document = allCnpjs[allCnpjs.length - 1].replace(/\D/g, '');
@@ -382,16 +412,10 @@ export async function parseInvoiceFile(file: File): Promise<ParsedInvoiceData> {
   if (fileName.endsWith('.pdf') || fileType.includes('pdf')) {
     try {
       const buffer = await file.arrayBuffer();
-      // Extrai cadeias de caracteres legíveis do buffer do PDF
       const bytes = new Uint8Array(buffer);
-      let textChunk = '';
-      
-      // Decodificação rápida de strings UTF-8 / Latin-1 em blocos
       const decoder = new TextDecoder('latin1');
       const rawText = decoder.decode(bytes);
-
-      // Limpa caracteres de controle para análise de texto
-      textChunk = rawText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ');
+      const textChunk = rawText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ');
 
       const parsed = parsePdfText(textChunk);
       parsed.parser_type = 'pdf';

@@ -151,3 +151,48 @@ export function validateCEP(cep: string): boolean {
   const cleaned = cep.replace(/\D/g, '');
   return cleaned.length === 8;
 }
+
+/**
+ * Converte valor digitado ou colado pelo usuário de forma intuitiva e flexível.
+ * Não divide por 100 inadvertidamente se o usuário digitar inteiros normais (ex: 18900 -> 18900).
+ * Suporta formatos: "18900", "18900,50", "18.900,50", "18900.50", "R$ 18.900,00".
+ */
+export function parseFlexibleCurrency(input: string | number | null | undefined): number {
+  if (input === null || input === undefined || input === '') return 0;
+  if (typeof input === 'number') return isNaN(input) ? 0 : input;
+  const str = String(input).trim().replace(/[R$\s]/g, '');
+  if (!str) return 0;
+
+  // Formato brasileiro com milhar e decimal: "18.900,50"
+  if (str.includes(',') && str.includes('.')) {
+    const clean = str.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(clean);
+    return isNaN(n) ? 0 : n;
+  }
+  // Apenas vírgula como decimal: "18900,50"
+  if (str.includes(',')) {
+    const clean = str.replace(',', '.');
+    const n = parseFloat(clean);
+    return isNaN(n) ? 0 : n;
+  }
+  // Formato com ponto
+  if (str.includes('.')) {
+    const parts = str.split('.');
+    // Separador de milhar: "18.900" ou "1.000"
+    if (parts.length === 2 && parts[1].length === 3) {
+      const n = parseFloat(str.replace(/\./g, ''));
+      return isNaN(n) ? 0 : n;
+    }
+    const n = parseFloat(str);
+    return isNaN(n) ? 0 : n;
+  }
+  // Apenas dígitos inteiros: "18900" -> 18900
+  const n = parseFloat(str);
+  return isNaN(n) ? 0 : n;
+}
+
+export function formatBrlNumber(value: number | null | undefined): string {
+  if (value === null || value === undefined || isNaN(value)) return '0,00';
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+

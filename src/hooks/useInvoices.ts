@@ -223,15 +223,25 @@ export function useInvoices() {
         .filter((inv: any) => !seenIds.has(inv.id) && !seenNumbers.has(`${inv.store_id || ''}-${inv.invoice_number}`))
         .map((inv: any): Invoice => {
           const itemObj = Array.isArray(inv.items) ? (inv.items[0] || {}) : (inv.items || {});
+          const extractedProtocol =
+            itemObj.sefaz_protocol ||
+            inv.sefaz_protocol ||
+            (inv.notes?.match(/SEFAZ:\s*([0-9]+)/i)?.[1]) ||
+            null;
+
           return {
             ...inv,
+            series: itemObj.series || inv.series || '1',
+            access_key: itemObj.access_key || inv.access_key || null,
             cancellation_date: itemObj.cancellation_date || inv.cancellation_date || (inv.status === 'cancelada' ? inv.updated_at?.slice(0, 10) : null),
             cancellation_reason: itemObj.cancellation_reason || inv.cancellation_reason || inv.notes || null,
             cancellation_type: itemObj.cancellation_type || inv.cancellation_type || 'estorno',
-            sefaz_protocol: itemObj.sefaz_protocol || inv.sefaz_protocol || null,
+            sefaz_protocol: extractedProtocol,
             cancelled_by: itemObj.cancelled_by || inv.cancelled_by || null,
-            attachment_name: itemObj.attachment_name || null,
-            attachment_url: itemObj.attachment_url || null,
+            attachment_name: itemObj.attachment_name || inv.attachment_name || null,
+            attachment_url: itemObj.attachment_url || inv.attachment_url || null,
+            attachment_size: itemObj.attachment_size || inv.attachment_size || null,
+            attachment_type: itemObj.attachment_type || inv.attachment_type || null,
           };
         });
 

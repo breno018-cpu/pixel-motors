@@ -3,6 +3,7 @@ import { queryClient } from '@/lib/queryClient';
 import { SheetRowV9, convertContractsSeedToSheetRows, SHEET_STORAGE_KEY_V9 } from '@/lib/dealershipSheetParser';
 import { getLocalTodayDateString, normalizeDateToYMD, formatFiscalDate } from '@/lib/fiscalDates';
 import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/hooks/useStores';
+import { saveAttachmentToIdb } from '@/lib/invoiceAttachmentStorage';
 
 export const GLOBAL_SYNC_CONTRACT_NUMBER = 'DEALFLOW_GLOBAL_SYNC';
 export const LOCAL_DELETED_KEY = 'dealflow_deleted_contract_ids';
@@ -749,7 +750,36 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
       updatedList = [readyInvoice, ...localInvs];
     }
 
-    localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(updatedList));
+    // Salva anexo em IndexedDB para nunca perder o arquivo original mesmo se localStorage estourar
+    if (readyInvoice.attachment_url) {
+      saveAttachmentToIdb({
+        id: readyInvoice.id,
+        name: readyInvoice.attachment_name || `NF_${readyInvoice.invoice_number}`,
+        url: readyInvoice.attachment_url,
+        size: readyInvoice.attachment_size || 0,
+        type: readyInvoice.attachment_type || 'application/pdf',
+        updated_at: new Date().toISOString(),
+      }).catch((idbErr) => console.warn('[cloudSaveInvoice] Aviso IDB:', idbErr));
+    }
+
+    const safeSaveLocal = (list: RegisteredInvoice[]) => {
+      try {
+        localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(list));
+      } catch (storageErr) {
+        // Se exceder a cota de 5MB por causa de DataURL de PDF ou imagem, preserva o restante com ponteiro
+        try {
+          const stripped = list.map((item) => {
+            if (item.attachment_url && item.attachment_url.length > 500) {
+              return { ...item, attachment_url: `idb://${item.id}` };
+            }
+            return item;
+          });
+          localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(stripped));
+        } catch {}
+      }
+    };
+
+    safeSaveLocal(updatedList);
 
     // Atualiza imediatamente o cache em memória do React Query (0ms)
     queryClient.setQueryData<any[]>(['invoices'], (old = []) => {
@@ -778,8 +808,19 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
             chassis: readyInvoice.vehicle_chassis,
             contract_number: readyInvoice.contract_number,
             sale_id: readyInvoice.sale_id,
+            series: readyInvoice.series || '1',
+            access_key: readyInvoice.access_key,
+            sefaz_protocol: readyInvoice.sefaz_protocol || null,
             attachment_name: readyInvoice.attachment_name,
             attachment_url: readyInvoice.attachment_url,
+            attachment_size: readyInvoice.attachment_size,
+            attachment_type: readyInvoice.attachment_type,
+            vehicle_model: readyInvoice.vehicle_model,
+            vehicle_chassis: readyInvoice.vehicle_chassis,
+            vehicle_brand: readyInvoice.vehicle_brand || 'SHINERAY',
+            vehicle_color: readyInvoice.vehicle_color,
+            vehicle_year: readyInvoice.vehicle_year,
+            alienacao: readyInvoice.alienacao,
           },
         ],
         subtotal: readyInvoice.total_value,
@@ -841,7 +882,19 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
       updatedList = [readyInvoice, ...currentInvoices];
     }
 
-    localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(updatedList));
+    try {
+      localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(updatedList));
+    } catch {
+      try {
+        const stripped = updatedList.map((item) => {
+          if (item.attachment_url && item.attachment_url.length > 500) {
+            return { ...item, attachment_url: `idb://${item.id}` };
+          }
+          return item;
+        });
+        localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(stripped));
+      } catch {}
+    }
 
     // Atualiza linha da planilha se existir
     let preservedSheetRows = currentState.sheet_rows || [];
@@ -859,12 +912,10 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
       localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(preservedSheetRows));
     }
 
+    // Objeto estritamente compatível com o schema da tabela public.invoices no Supabase
     const invPayload: any = {
       id: readyInvoice.id,
       invoice_number: readyInvoice.invoice_number,
-      series: readyInvoice.series || '1',
-      access_key: readyInvoice.access_key || null,
-      sefaz_protocol: readyInvoice.sefaz_protocol || null,
       invoice_type: 'produto',
       issue_date: readyInvoice.issue_date,
       store_id: isUuid(readyInvoice.store_id) ? readyInvoice.store_id : null,
@@ -878,11 +929,7 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
       tax_rate: readyInvoice.tax_rate || 0,
       tax_value: readyInvoice.tax_value || 0,
       status: readyInvoice.status || 'emitida',
-      attachment_name: readyInvoice.attachment_name || null,
-      attachment_url: readyInvoice.attachment_url || null,
-      attachment_size: readyInvoice.attachment_size || null,
-      attachment_type: readyInvoice.attachment_type || null,
-      notes: `[moto] ${readyInvoice.vehicle_model} - Chassi: ${readyInvoice.vehicle_chassis}${readyInvoice.alienacao ? ` | Alienação: ${readyInvoice.alienacao}` : ''} | Venda: ${readyInvoice.contract_number || readyInvoice.sale_id || '—'}`,
+      notes: `[moto] ${readyInvoice.vehicle_model} - Chassi: ${readyInvoice.vehicle_chassis}${readyInvoice.alienacao ? ` | Alienação: ${readyInvoice.alienacao}` : ''}${readyInvoice.sefaz_protocol ? ` | Protocolo SEFAZ: ${readyInvoice.sefaz_protocol}` : ''} | Venda: ${readyInvoice.contract_number || readyInvoice.sale_id || '—'}`,
       items: [
         {
           description: `${readyInvoice.vehicle_brand || 'SHINERAY'} ${readyInvoice.vehicle_model} (Chassi: ${readyInvoice.vehicle_chassis})`,
@@ -891,8 +938,19 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
           chassis: readyInvoice.vehicle_chassis,
           contract_number: readyInvoice.contract_number,
           sale_id: readyInvoice.sale_id,
-          attachment_name: readyInvoice.attachment_name,
-          attachment_url: readyInvoice.attachment_url,
+          series: readyInvoice.series || '1',
+          access_key: readyInvoice.access_key || null,
+          sefaz_protocol: readyInvoice.sefaz_protocol || null,
+          attachment_name: readyInvoice.attachment_name || null,
+          attachment_url: readyInvoice.attachment_url || null,
+          attachment_size: readyInvoice.attachment_size || null,
+          attachment_type: readyInvoice.attachment_type || null,
+          vehicle_model: readyInvoice.vehicle_model,
+          vehicle_chassis: readyInvoice.vehicle_chassis,
+          vehicle_brand: readyInvoice.vehicle_brand || 'SHINERAY',
+          vehicle_color: readyInvoice.vehicle_color || 'Padrão',
+          vehicle_year: readyInvoice.vehicle_year || 2026,
+          alienacao: readyInvoice.alienacao || 'À VISTA',
         },
       ],
     };
@@ -939,8 +997,12 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
             .eq('id', readyInvoice.sale_id)
         : Promise.resolve(null),
 
-      // C. Tabela invoices do Supabase
-      (supabase as any).from('invoices').upsert([invPayload], { onConflict: 'id' }),
+      // C. Tabela invoices do Supabase (ignora erro se RLS impedir para salvar mestre)
+      (supabase as any)
+        .from('invoices')
+        .upsert([invPayload], { onConflict: 'id' })
+        .then(() => null)
+        .catch((invDbErr: any) => console.warn('[cloudSaveInvoice] Aviso ao salvar tabela invoices:', invDbErr)),
     ]);
 
     // Invalida em segundo plano sem travar

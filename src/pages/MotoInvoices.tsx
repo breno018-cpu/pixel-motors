@@ -20,7 +20,15 @@ import {
   FileCheck,
   Loader2,
   Pencil,
+  MoreHorizontal,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { parseInvoiceFile } from '@/lib/invoiceFileParser';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -64,7 +72,8 @@ import {
   InvoiceItem,
 } from '@/hooks/useInvoices';
 import { downloadInvoicePDF } from '@/lib/invoicePdf';
-import { maskCPFCNPJ, maskPhone, maskCurrency, parseCurrency } from '@/lib/masks';
+import { maskCPFCNPJ, maskPhone, maskCurrency, parseCurrency, parseFlexibleCurrency, formatBrlNumber } from '@/lib/masks';
+import { getAttachmentFromIdb, saveAttachmentToIdb } from '@/lib/invoiceAttachmentStorage';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -182,6 +191,24 @@ export default function MotoInvoices() {
   };
 
   const [form, setForm] = useState<any>(initialForm);
+  const [displayTotalValue, setDisplayTotalValue] = useState<string>('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [parsedBannerInfo, setParsedBannerInfo] = useState<{
+    invoice_number?: string;
+    sefaz_protocol?: string;
+    chassis?: string;
+    total_value?: number;
+    customer_name?: string;
+  } | null>(null);
+
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  };
 
   // Filtra as vendas válidas da loja selecionada para vinculação semi-manual
   const storeSales = useMemo(() => {
@@ -274,22 +301,25 @@ export default function MotoInvoices() {
       total_value: salePrice || prev.total_value,
     }));
 
+    if (salePrice > 0) {
+      setDisplayTotalValue(formatBrlNumber(salePrice));
+    }
+
     toast({
       title: 'Venda vinculada!',
       description: `Dados de ${sale.buyer_name} e da moto ${motoModel} preenchidos.`,
     });
   };
 
-  // Upload e leitura do arquivo da NF como DataURL com extração inteligente de campos
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Processamento e leitura inteligente do arquivo da NF (XML ou PDF)
+  const processFileAttachment = async (file: File) => {
     if (!file) return;
 
-    if (file.size > 20 * 1024 * 1024) {
+    if (file.size > 25 * 1024 * 1024) {
       toast({
         variant: 'destructive',
         title: 'Arquivo muito grande',
-        description: 'O tamanho máximo permitido para o anexo da NF é de 20MB.',
+        description: 'O tamanho máximo permitido para o anexo da NF é de 25MB.',
       });
       return;
     }
@@ -297,20 +327,19 @@ export default function MotoInvoices() {
     setIsReadingNfFile(true);
 
     try {
-      // 1. Extração inteligente de dados da NF (XML ou PDF)
-      const parsed = await parseInvoiceFile(file);
+      // 1. Leitura promissificada em Base64 para garantir o DataURL imediatamente
+      const dataUrl = await readFileAsDataUrl(file);
+      const mimeType = file.type || (file.name.endsWith('.xml') ? 'text/xml' : 'application/pdf');
 
-      // 2. Leitura do arquivo em Base64 para anexo e preview
-      const reader = new FileReader();
-      reader.onload = () => {
-        setAttachedFile({
-          name: file.name,
-          url: reader.result as string,
-          size: file.size,
-          type: file.type || (file.name.endsWith('.xml') ? 'text/xml' : 'application/pdf'),
-        });
-      };
-      reader.readAsDataURL(file);
+      setAttachedFile({
+        name: file.name,
+        url: dataUrl,
+        size: file.size,
+        type: mimeType,
+      });
+
+      // 2. Extração inteligente de dados fiscais (XML ou PDF)
+      const parsed = await parseInvoiceFile(file);
 
       // 3. Tenta localizar venda já cadastrada por chassi ou documento
       let matchedSaleId = selectedSaleId;
@@ -337,7 +366,7 @@ export default function MotoInvoices() {
       setForm((prev: any) => ({
         ...prev,
         invoice_number: parsed.invoice_number || prev.invoice_number,
-        series: parsed.series || prev.series,
+        series: parsed.series || prev.series || '1',
         access_key: parsed.access_key || prev.access_key,
         sefaz_protocol: parsed.sefaz_protocol || prev.sefaz_protocol,
         issue_date: parsed.issue_date || prev.issue_date,
@@ -345,47 +374,68 @@ export default function MotoInvoices() {
         store_id: parsed.store_id || prev.store_id,
         sale_id: matchedSaleId || prev.sale_id,
         customer_name: parsed.customer_name || prev.customer_name,
-        customer_document: parsed.customer_document || prev.customer_document,
-        customer_phone: parsed.customer_phone || prev.customer_phone,
+        customer_document: parsed.customer_document ? maskCPFCNPJ(parsed.customer_document) : prev.customer_document,
+        customer_phone: parsed.customer_phone ? maskPhone(parsed.customer_phone) : prev.customer_phone,
         customer_email: parsed.customer_email || prev.customer_email,
         customer_address: parsed.customer_address || prev.customer_address,
         vehicle_model: parsed.vehicle_model || prev.vehicle_model,
         vehicle_chassis: parsed.vehicle_chassis || prev.vehicle_chassis,
-        vehicle_brand: parsed.vehicle_brand || prev.vehicle_brand,
+        vehicle_brand: parsed.vehicle_brand || prev.vehicle_brand || 'SHINERAY',
         vehicle_color: parsed.vehicle_color || prev.vehicle_color,
         vehicle_year: parsed.vehicle_year || prev.vehicle_year,
         alienacao: parsed.alienacao || prev.alienacao,
         total_value: parsed.total_value !== undefined ? parsed.total_value : prev.total_value,
       }));
 
+      if (parsed.total_value !== undefined && parsed.total_value > 0) {
+        setDisplayTotalValue(formatBrlNumber(parsed.total_value));
+      }
+
+      setParsedBannerInfo({
+        invoice_number: parsed.invoice_number,
+        sefaz_protocol: parsed.sefaz_protocol,
+        chassis: parsed.vehicle_chassis,
+        total_value: parsed.total_value,
+        customer_name: parsed.customer_name,
+      });
+
       const filled = [
-        parsed.invoice_number ? 'Nº NF' : null,
-        parsed.sefaz_protocol ? 'Protocolo SEFAZ' : null,
+        parsed.invoice_number ? `Nº ${parsed.invoice_number}` : null,
+        parsed.sefaz_protocol ? `Protocolo SEFAZ ${parsed.sefaz_protocol}` : null,
         parsed.access_key ? 'Chave de Acesso' : null,
-        parsed.customer_name ? 'Comprador' : null,
-        parsed.vehicle_chassis ? 'Chassi' : null,
-        parsed.total_value ? 'Valor Total' : null,
+        parsed.customer_name ? `Cliente: ${parsed.customer_name}` : null,
+        parsed.vehicle_chassis ? `Chassi: ${parsed.vehicle_chassis}` : null,
+        parsed.total_value ? `R$ ${formatBrlNumber(parsed.total_value)}` : null,
       ].filter(Boolean);
 
       toast({
         title: 'Leitura da NF realizada com sucesso!',
         description: filled.length > 0
-          ? `${filled.join(', ')} preenchidos automaticamente.`
-          : 'Arquivo analisado e pronto para envio.',
+          ? `${filled.join(' • ')} preenchidos automaticamente.`
+          : 'Arquivo carregado com sucesso.',
       });
     } catch (err: any) {
       console.warn('Erro ao processar arquivo da NF:', err);
       toast({
         title: 'Arquivo anexado',
-        description: `${file.name} carregado. Preencha os campos fiscais manualmente.`,
+        description: `${file.name} carregado. Preencha os campos fiscais manualmente se necessário.`,
       });
     } finally {
       setIsReadingNfFile(false);
     }
   };
 
+  // Upload e leitura do arquivo da NF como DataURL com extração inteligente de campos
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFileAttachment(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleRemoveAttachment = () => {
     setAttachedFile(null);
+    setParsedBannerInfo(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -444,6 +494,10 @@ export default function MotoInvoices() {
       notes: rawNotes,
       created_at: inv.created_at,
     });
+
+    const editVal = Number(inv.total) || 0;
+    setDisplayTotalValue(editVal > 0 ? formatBrlNumber(editVal) : '');
+    setParsedBannerInfo(null);
 
     if (inv.attachment_url) {
       setAttachedFile({
@@ -526,7 +580,7 @@ export default function MotoInvoices() {
       attachment_url: attachedFile?.url,
       attachment_size: attachedFile?.size,
       attachment_type: attachedFile?.type,
-      notes: `[${TYPE_TAG}] ${form.vehicle_model || 'Moto'} - Chassi: ${cleanChassis || 'S/ Chassi'}${form.alienacao ? ` | Alienação: ${form.alienacao}` : ''}${form.notes ? ` — ${form.notes}` : ''}`,
+      notes: `[${TYPE_TAG}] ${form.vehicle_model || 'Moto'} - Chassi: ${cleanChassis || 'S/ Chassi'}${form.alienacao ? ` | Alienação: ${form.alienacao}` : ''}${form.sefaz_protocol ? ` | Protocolo SEFAZ: ${form.sefaz_protocol.trim()}` : ''}${form.notes ? ` — ${form.notes}` : ''}`,
       items: [
         {
           description: `${form.vehicle_brand || 'SHINERAY'} ${form.vehicle_model || 'Motocicleta'} (Chassi: ${cleanChassis || 'Não informado'})`,
@@ -535,6 +589,18 @@ export default function MotoInvoices() {
           chassis: cleanChassis,
           contract_number: form.contract_number,
           sale_id: form.sale_id,
+          series: form.series || '1',
+          access_key: form.access_key?.replace(/\D/g, '') || undefined,
+          sefaz_protocol: form.sefaz_protocol?.trim() || undefined,
+          attachment_name: attachedFile?.name,
+          attachment_url: attachedFile?.url,
+          attachment_size: attachedFile?.size,
+          attachment_type: attachedFile?.type,
+          vehicle_model: form.vehicle_model,
+          vehicle_brand: form.vehicle_brand || 'SHINERAY',
+          vehicle_color: form.vehicle_color || 'Padrão',
+          vehicle_year: form.vehicle_year || 2026,
+          alienacao: form.alienacao || 'À VISTA',
         },
       ],
     };
@@ -543,6 +609,8 @@ export default function MotoInvoices() {
     setOpen(false);
     setEditingInvoiceId(null);
     setForm(initialForm);
+    setDisplayTotalValue('');
+    setParsedBannerInfo(null);
     setAttachedFile(null);
     setSelectedSaleId('');
 
@@ -585,9 +653,38 @@ export default function MotoInvoices() {
     }
   };
 
-  // Download do arquivo anexado da NF
-  const handleDownloadAttachment = (inv: Invoice) => {
-    if (!inv.attachment_url) {
+  // Visualização de anexo da NF com suporte a IndexedDB
+  const openAttachmentViewer = async (inv: Invoice) => {
+    let url = inv.attachment_url;
+    if (url && url.startsWith('idb://')) {
+      const stored = await getAttachmentFromIdb(inv.id);
+      if (stored?.url) url = stored.url;
+    }
+    if (!url) {
+      toast({
+        variant: 'destructive',
+        title: 'Sem anexo',
+        description: 'Esta Nota Fiscal não possui arquivo anexado.',
+      });
+      return;
+    }
+    setViewingAttachment({
+      name: inv.attachment_name || `NF_${inv.invoice_number}.pdf`,
+      url,
+      invoiceNumber: inv.invoice_number,
+      customerName: inv.customer_name,
+      type: inv.attachment_type || undefined,
+    });
+  };
+
+  // Download do arquivo anexado da NF com suporte a IndexedDB
+  const handleDownloadAttachment = async (inv: Invoice) => {
+    let url = inv.attachment_url;
+    if (url && url.startsWith('idb://')) {
+      const stored = await getAttachmentFromIdb(inv.id);
+      if (stored?.url) url = stored.url;
+    }
+    if (!url) {
       toast({
         variant: 'destructive',
         title: 'Sem anexo',
@@ -597,7 +694,7 @@ export default function MotoInvoices() {
     }
 
     const a = document.createElement('a');
-    a.href = inv.attachment_url;
+    a.href = url;
     a.download =
       inv.attachment_name ||
       `NF_${inv.invoice_number}_${(inv.customer_name || 'cliente').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
@@ -628,25 +725,39 @@ export default function MotoInvoices() {
       const vehicleDesc = inv.items?.[0]?.description || '';
       const vehicleModel = vehicleDesc.replace(/\(Chassi:.*\)/, '').trim();
 
+      const newAccessKey = (file as any).parsedAccessKey || inv.access_key;
+      const newProtocol = (file as any).parsedProtocol || inv.sefaz_protocol;
+
+      // Salva em IndexedDB para cache permanente sem risco de quota
+      saveAttachmentToIdb({
+        id: inv.id,
+        name: file.name,
+        url: file.url,
+        size: file.size,
+        type: file.type,
+        updated_at: new Date().toISOString(),
+      }).catch(() => {});
+
+      // Atualiza a Nota Fiscal no cache e Supabase com o protocolo e novo arquivo
+      await upsert.mutateAsync({
+        ...inv,
+        access_key: newAccessKey,
+        sefaz_protocol: newProtocol,
+        vehicle_model: vehicleModel || 'SHINERAY',
+        vehicle_chassis: chassiMatch?.[1] || '',
+        attachment_name: file.name,
+        attachment_url: file.url,
+        attachment_size: file.size,
+        attachment_type: file.type,
+      });
+
       if (inv.sale_id) {
         await cloudAttachInvoiceToSale(inv.sale_id, {
           invoice_number: inv.invoice_number,
           series: inv.series || '1',
-          access_key: (file as any).parsedAccessKey || inv.access_key,
-          sefaz_protocol: (file as any).parsedProtocol || inv.sefaz_protocol,
+          access_key: newAccessKey,
+          sefaz_protocol: newProtocol,
           issue_date: inv.issue_date,
-          attachment_name: file.name,
-          attachment_url: file.url,
-          attachment_size: file.size,
-          attachment_type: file.type,
-        });
-      } else {
-        await upsert.mutateAsync({
-          ...inv,
-          access_key: (file as any).parsedAccessKey || inv.access_key,
-          sefaz_protocol: (file as any).parsedProtocol || inv.sefaz_protocol,
-          vehicle_model: vehicleModel || 'SHINERAY',
-          vehicle_chassis: chassiMatch?.[1] || '',
           attachment_name: file.name,
           attachment_url: file.url,
           attachment_size: file.size,
@@ -705,10 +816,11 @@ export default function MotoInvoices() {
                   if (!file) return;
                   setEditingInvoiceId(null);
                   setForm(initialForm);
+                  setDisplayTotalValue('');
+                  setParsedBannerInfo(null);
                   setSelectedSaleId('');
                   setOpen(true);
-                  // Dispara a leitura do arquivo no handler unificado
-                  await handleFileUpload(e);
+                  await processFileAttachment(file);
                   if (headerFileInputRef.current) headerFileInputRef.current.value = '';
                 }}
                 className="hidden"
@@ -726,6 +838,8 @@ export default function MotoInvoices() {
                 onClick={() => {
                   setEditingInvoiceId(null);
                   setForm(initialForm);
+                  setDisplayTotalValue('');
+                  setParsedBannerInfo(null);
                   setAttachedFile(null);
                   setSelectedSaleId('');
                   setOpen(true);
@@ -741,18 +855,19 @@ export default function MotoInvoices() {
 
       <Card className="border shadow-sm overflow-hidden">
         <CardContent className="p-0 overflow-x-hidden">
-          <Table className="w-full table-fixed">
-            <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="font-semibold text-xs py-2.5 w-[16%]">Nota Fiscal</TableHead>
-                <TableHead className="font-semibold text-xs py-2.5 w-[14%]">Loja / Venda</TableHead>
-                <TableHead className="font-semibold text-xs py-2.5 w-[20%]">Comprador</TableHead>
-                <TableHead className="font-semibold text-xs py-2.5 w-[21%]">Motocicleta / Chassi</TableHead>
-                <TableHead className="font-semibold text-xs py-2.5 w-[12%]">Valor & Status</TableHead>
-                <TableHead className="font-semibold text-xs py-2.5 text-center w-[10%]">Arquivo da NF</TableHead>
-                <TableHead className="font-semibold text-xs py-2.5 text-right w-[7%]">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
+          <div className="w-full overflow-x-hidden">
+            <Table className="w-full table-fixed">
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="font-semibold text-xs py-2.5 w-[15%]">Nota Fiscal</TableHead>
+                  <TableHead className="font-semibold text-xs py-2.5 w-[13%]">Loja / Venda</TableHead>
+                  <TableHead className="font-semibold text-xs py-2.5 w-[19%]">Comprador</TableHead>
+                  <TableHead className="font-semibold text-xs py-2.5 w-[20%]">Motocicleta / Chassi</TableHead>
+                  <TableHead className="font-semibold text-xs py-2.5 w-[13%]">Valor & Status</TableHead>
+                  <TableHead className="font-semibold text-xs py-2.5 text-center w-[11%]">Arquivo da NF</TableHead>
+                  <TableHead className="font-semibold text-xs py-2.5 text-right w-[9%]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
@@ -904,48 +1019,27 @@ export default function MotoInvoices() {
                       </TableCell>
 
                       {/* 6. ARQUIVO ANEXO (Preview inline ou Anexar) */}
-                      <TableCell className="py-3 text-center">
+                      <TableCell className="py-3 text-center truncate">
                         {hasAttachment ? (
-                          <div className="inline-flex items-center gap-1">
+                          <div className="inline-flex items-center justify-center gap-1 max-w-full">
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => {
-                                setViewingAttachment({
-                                  name: inv.attachment_name || `NF_${inv.invoice_number}.pdf`,
-                                  url: inv.attachment_url!,
-                                  invoiceNumber: inv.invoice_number,
-                                  customerName: inv.customer_name,
-                                  type: inv.attachment_type || undefined,
-                                });
-                              }}
-                              className="h-7 text-[11px] font-semibold gap-1 px-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/15"
+                              onClick={() => openAttachmentViewer(inv)}
+                              className="h-7 text-[11px] font-semibold gap-1 px-2 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/15 max-w-[85px] truncate"
                               title="Visualizar arquivo da NF na tela"
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span className="max-w-[70px] truncate">{inv.attachment_name || 'Ver NF'}</span>
+                              <Eye className="w-3.5 h-3.5 shrink-0" />
+                              <span className="truncate">Ver NF</span>
                             </Button>
                             <Button
                               size="icon"
                               variant="ghost"
                               onClick={() => handleDownloadAttachment(inv)}
-                              className="h-7 w-7 text-emerald-600 hover:text-emerald-700"
+                              className="h-7 w-7 text-emerald-600 hover:text-emerald-700 shrink-0"
                               title="Baixar arquivo da NF"
                             >
                               <Download className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedInvoiceForQuickAttach(inv);
-                                setQuickAttachFile(null);
-                                setQuickAttachDialogOpen(true);
-                              }}
-                              className="h-7 w-7 text-muted-foreground hover:text-primary"
-                              title="Substituir arquivo da NF"
-                            >
-                              <Upload className="w-3 h-3" />
                             </Button>
                           </div>
                         ) : (
@@ -957,11 +1051,11 @@ export default function MotoInvoices() {
                               setQuickAttachFile(null);
                               setQuickAttachDialogOpen(true);
                             }}
-                            className="h-7 text-[11px] font-semibold gap-1 px-2 border-dashed border-primary/40 text-primary hover:bg-primary/10"
+                            className="h-7 text-[11px] font-semibold gap-1 px-2 border-dashed border-primary/40 text-primary hover:bg-primary/10 max-w-[85px] truncate"
                             title="Anexar arquivo oficial desta Nota Fiscal"
                           >
-                            <Upload className="w-3 h-3" />
-                            <span>Anexar NF</span>
+                            <Upload className="w-3 h-3 shrink-0" />
+                            <span className="truncate">Anexar</span>
                           </Button>
                         )}
                       </TableCell>
@@ -971,48 +1065,52 @@ export default function MotoInvoices() {
                         <div className="flex items-center justify-end gap-1">
                           {canModifyNf && (
                             <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-2 text-xs font-semibold gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:border-blue-800"
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40"
                               title="Editar dados desta Nota Fiscal"
                               onClick={() => handleOpenEdit(inv)}
                             >
-                              <Pencil className="w-3 h-3" />
-                              <span className="hidden sm:inline">Editar</span>
+                              <Pencil className="w-3.5 h-3.5" />
                             </Button>
                           )}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            title="Gerar DANFE / PDF do sistema"
-                            onClick={() => downloadInvoicePDF(inv)}
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 text-amber-500 hover:text-amber-600"
-                            title="Baixar PNG de solicitação de emissão"
-                            onClick={() => emitPng(inv)}
-                          >
-                            <ImageDown className="w-3.5 h-3.5" />
-                          </Button>
-                          {canModifyNf && inv.status !== 'cancelada' && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => {
-                                setSelectedInvoiceToCancel(inv);
-                                setCancelDialogOpen(true);
-                              }}
-                              className="h-7 w-7 text-destructive/80 hover:text-destructive"
-                              title="Cancelar Nota Fiscal"
-                            >
-                              <XCircle className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                title="Mais opções da Nota Fiscal"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 text-xs">
+                              <DropdownMenuItem onClick={() => downloadInvoicePDF(inv)} className="gap-2 cursor-pointer">
+                                <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span>Gerar DANFE (PDF)</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => emitPng(inv)} className="gap-2 cursor-pointer">
+                                <ImageDown className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Baixar Solicitação (PNG)</span>
+                              </DropdownMenuItem>
+                              {canModifyNf && inv.status !== 'cancelada' && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedInvoiceToCancel(inv);
+                                      setCancelDialogOpen(true);
+                                    }}
+                                    className="gap-2 text-destructive focus:text-destructive cursor-pointer"
+                                  >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    <span>Cancelar Nota Fiscal</span>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1021,6 +1119,7 @@ export default function MotoInvoices() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -1054,7 +1153,23 @@ export default function MotoInvoices() {
 
           <div className="space-y-4 text-sm py-2">
             {/* ETAPA 1: IMPORTAÇÃO E ANEXO DO ARQUIVO DA NOTA FISCAL COM AUTO-LEITURA */}
-            <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-2 border-dashed border-primary/40 hover:border-primary/70 rounded-xl p-4 space-y-3 transition-all shadow-2xs">
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={async (e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) await processFileAttachment(file);
+              }}
+              className={cn(
+                "bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-2 border-dashed rounded-xl p-4 space-y-3 transition-all shadow-2xs",
+                isDragging ? "border-primary bg-primary/10 scale-[1.01]" : "border-primary/40 hover:border-primary/70"
+              )}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-xs text-primary uppercase tracking-wider">
                   <Upload className="w-4 h-4" /> 1. Importação Rápida da NF (XML ou PDF) — Preenchimento Automático
@@ -1065,6 +1180,44 @@ export default function MotoInvoices() {
                   </Badge>
                 )}
               </div>
+
+              {parsedBannerInfo && (
+                <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-lg p-2.5 flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  <div className="text-xs space-y-1">
+                    <div className="font-bold text-emerald-800 dark:text-emerald-200">
+                      ✅ Leitura da NF realizada com sucesso! Todos os dados foram auto-preenchidos:
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 text-[11px] font-mono">
+                      {parsedBannerInfo.invoice_number && (
+                        <Badge variant="secondary" className="bg-background text-foreground border">
+                          NF Nº {parsedBannerInfo.invoice_number}
+                        </Badge>
+                      )}
+                      {parsedBannerInfo.sefaz_protocol && (
+                        <Badge variant="secondary" className="bg-background text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold">
+                          Protocolo SEFAZ: {parsedBannerInfo.sefaz_protocol}
+                        </Badge>
+                      )}
+                      {parsedBannerInfo.chassis && (
+                        <Badge variant="secondary" className="bg-background text-foreground border">
+                          Chassi: {parsedBannerInfo.chassis}
+                        </Badge>
+                      )}
+                      {parsedBannerInfo.total_value ? (
+                        <Badge variant="secondary" className="bg-background text-primary border font-bold">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parsedBannerInfo.total_value)}
+                        </Badge>
+                      ) : null}
+                      {parsedBannerInfo.customer_name && (
+                        <Badge variant="secondary" className="bg-background text-muted-foreground border truncate max-w-xs">
+                          {parsedBannerInfo.customer_name}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <input
                 ref={fileInputRef}
@@ -1275,13 +1428,50 @@ export default function MotoInvoices() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-medium">Valor Total da NF (R$) *</Label>
-                  <Input
-                    className="h-9 mt-1 font-bold text-primary font-mono"
-                    placeholder="R$ 0,00"
-                    value={form.total_value ? maskCurrency(form.total_value) : ''}
-                    onChange={(e) => setForm({ ...form, total_value: parseCurrency(e.target.value) })}
-                  />
+                  <Label className="text-xs font-medium flex items-center justify-between">
+                    <span>Valor Total da NF (R$) *</span>
+                    {form.total_value > 0 && (
+                      <span className="text-[11px] font-mono font-semibold text-emerald-600">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(form.total_value)}
+                      </span>
+                    )}
+                  </Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground select-none pointer-events-none">
+                      R$
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      className="h-9 pl-9 font-bold text-primary font-mono text-sm"
+                      placeholder="0,00"
+                      value={displayTotalValue}
+                      onFocus={() => {
+                        if (form.total_value) {
+                          setDisplayTotalValue(
+                            form.total_value % 1 === 0
+                              ? String(form.total_value)
+                              : form.total_value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                          );
+                        }
+                      }}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setDisplayTotalValue(raw);
+                        const parsed = parseFlexibleCurrency(raw);
+                        setForm((prev: any) => ({ ...prev, total_value: parsed }));
+                      }}
+                      onBlur={() => {
+                        const parsed = parseFlexibleCurrency(displayTotalValue);
+                        setForm((prev: any) => ({ ...prev, total_value: parsed }));
+                        setDisplayTotalValue(
+                          parsed > 0
+                            ? parsed.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                            : ''
+                        );
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -1552,24 +1742,22 @@ export default function MotoInvoices() {
                   onChange={async (e) => {
                     const f = e.target.files?.[0];
                     if (!f) return;
-                    if (f.size > 20 * 1024 * 1024) {
-                      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 20MB)' });
+                    if (f.size > 25 * 1024 * 1024) {
+                      toast({ variant: 'destructive', title: 'Arquivo muito grande (máx 25MB)' });
                       return;
                     }
                     try {
+                      const dataUrl = await readFileAsDataUrl(f);
                       const parsed = await parseInvoiceFile(f);
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        setQuickAttachFile({
-                          name: f.name,
-                          url: reader.result as string,
-                          size: f.size,
-                          type: f.type || (f.name.endsWith('.xml') ? 'text/xml' : 'application/pdf'),
-                          parsedAccessKey: parsed.access_key,
-                          parsedProtocol: parsed.sefaz_protocol,
-                        } as any);
-                      };
-                      reader.readAsDataURL(f);
+                      setQuickAttachFile({
+                        name: f.name,
+                        url: dataUrl,
+                        size: f.size,
+                        type: f.type || (f.name.endsWith('.xml') ? 'text/xml' : 'application/pdf'),
+                        parsedAccessKey: parsed.access_key,
+                        parsedProtocol: parsed.sefaz_protocol,
+                      } as any);
+
                       if (parsed.sefaz_protocol || parsed.access_key) {
                         toast({
                           title: 'Dados Fiscais Identificados!',
@@ -1577,16 +1765,15 @@ export default function MotoInvoices() {
                         });
                       }
                     } catch {
-                      const reader = new FileReader();
-                      reader.onload = () => {
+                      try {
+                        const dataUrl = await readFileAsDataUrl(f);
                         setQuickAttachFile({
                           name: f.name,
-                          url: reader.result as string,
+                          url: dataUrl,
                           size: f.size,
                           type: f.type || 'application/pdf',
                         });
-                      };
-                      reader.readAsDataURL(f);
+                      } catch {}
                     }
                   }}
                   className="hidden"
@@ -1661,6 +1848,19 @@ export default function MotoInvoices() {
                 alt={viewingAttachment.name}
                 className="max-h-[72vh] max-w-full object-contain rounded shadow-sm"
               />
+            ) : viewingAttachment?.name?.endsWith('.xml') || viewingAttachment?.type?.includes('xml') ? (
+              <div className="w-full h-full min-h-[65vh] max-h-[72vh] overflow-auto bg-slate-950 text-slate-100 p-4 rounded-lg font-mono text-xs select-text whitespace-pre-wrap">
+                {viewingAttachment.url.startsWith('data:')
+                  ? (() => {
+                      try {
+                        const base64 = viewingAttachment.url.split(',')[1];
+                        return decodeURIComponent(escape(atob(base64)));
+                      } catch {
+                        return viewingAttachment.url;
+                      }
+                    })()
+                  : 'Arquivo XML anexado e pronto para download.'}
+              </div>
             ) : (
               <iframe
                 src={viewingAttachment?.url}
