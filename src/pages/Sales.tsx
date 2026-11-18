@@ -66,6 +66,18 @@ function formatCPFDisplay(cpf: string) {
   return maskCPF(cpf);
 }
 
+export function formatShortStoreName(storeName?: string | null): string {
+  if (!storeName) return '-';
+  const s = storeName.toUpperCase();
+  if (s.includes('MONTES CLAROS') && s.includes('SHINERAY')) return 'Montes Claros';
+  if (s.includes('DIVINOPOLIS')) return 'Divinópolis';
+  if (s.includes('MULTIMARCAS')) return 'Multimarcas';
+  return storeName
+    .replace(/SHINERAY GRUPO L1MA MOTORS /gi, '')
+    .replace(/Concessionária /gi, '')
+    .trim();
+}
+
 export function getSaleChassis(sale: any): string {
   if (!sale) return '';
   return (
@@ -1167,23 +1179,23 @@ export default function Sales() {
             })}
           </div>
 
-          {/* Visualização Desktop: Tabela Tradicional com 9 Colunas */}
-          <div className="hidden md:block overflow-x-auto rounded-xl border border-border/60">
-            <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow className="hover:bg-transparent border-b border-border/60">
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap min-w-[95px] pl-4">Contrato / Ref</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground min-w-[150px]">Cliente</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground min-w-[190px]">Veículo & Chassi</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden xl:table-cell min-w-[130px]">Loja</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground hidden lg:table-cell min-w-[110px]">Operador</TableHead>
-                  <TableHead className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap min-w-[100px]">Valor</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap min-w-[145px]">Status / Etapa</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap text-center min-w-[90px]">Data</TableHead>
-                  <TableHead className="text-right text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground whitespace-nowrap min-w-[175px] pr-4">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          {/* Visualização Desktop: Tabela Compacta 100% Ajustada sem Barra Lateral */}
+          <div className="hidden md:block rounded-xl border border-border/60 overflow-hidden bg-card/40">
+            <table className="w-full table-fixed text-sm">
+              <thead className="bg-muted/40 border-b border-border/60">
+                <tr className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold text-left">
+                  <th className="whitespace-nowrap px-2.5 py-2.5 w-[80px]">Contrato</th>
+                  <th className="px-2 py-2.5 w-[150px]">Cliente</th>
+                  <th className="px-2 py-2.5 w-[180px]">Veículo & Chassi</th>
+                  <th className="hidden xl:table-cell px-2 py-2.5 w-[110px] whitespace-nowrap">Loja</th>
+                  <th className="hidden lg:table-cell px-2 py-2.5 w-[90px] whitespace-nowrap">Operador</th>
+                  <th className="text-right whitespace-nowrap px-2 py-2.5 w-[80px]">Valor</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 w-[120px]">Status / Etapa</th>
+                  <th className="whitespace-nowrap text-center px-2 py-2.5 w-[75px]">Data</th>
+                  <th className="text-right whitespace-nowrap pr-3 px-2 py-2.5 w-[90px]">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
                 {filteredSales.map((sale) => {
                   const statusInfo = statusConfig[sale.status] || statusConfig.pendente;
                   const vehicle = sale.vehicle;
@@ -1197,28 +1209,28 @@ export default function Sales() {
                   );
 
                   return (
-                    <TableRow
+                    <tr
                       key={sale.id}
                       className={cn(
-                        'group transition-colors border-b border-border/40 hover:bg-muted/40',
+                        'group transition-colors hover:bg-muted/40',
                         isPreSale && 'bg-amber-500/5 hover:bg-amber-500/10',
                         (sale as any).review_status === 'questionada' && 'review-row'
                       )}
                     >
-                      <TableCell className="pl-4 py-3">
+                      <td className="px-2.5 py-2">
                         <span className="whitespace-nowrap font-mono text-xs font-bold text-foreground">{sale.contract_number}</span>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <div>
-                          <p className="font-bold text-xs text-foreground leading-tight">{sale.buyer_name}</p>
-                          <p className="text-[11px] text-muted-foreground font-mono mt-0.5">{formatCPFDisplay(sale.buyer_cpf)}</p>
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="max-w-[145px]">
+                          <p className="font-bold text-xs text-foreground truncate" title={sale.buyer_name}>{sale.buyer_name}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{formatCPFDisplay(sale.buyer_cpf)}</p>
                         </div>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <div className="flex items-start gap-2">
-                          <VehicleIcon className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                          <div className="min-w-0 space-y-1">
-                            <p className="text-xs font-semibold text-foreground truncate">
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="flex items-start gap-1.5 max-w-[175px]">
+                          <VehicleIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="text-xs font-semibold text-foreground truncate" title={vehicle ? `${vehicle.brand} ${vehicle.model}` : (sale as any).external_data?.vehicle_model_custom}>
                               {vehicle ? `${vehicle.brand} ${vehicle.model}` : (sale as any).external_data?.vehicle_model_custom || 'Veículo'}
                               {vehicle?.year ? ` (${vehicle.year})` : ''}
                             </p>
@@ -1229,36 +1241,40 @@ export default function Sales() {
                                   e.stopPropagation();
                                   handleCopyChassis(saleChassis, sale.contract_number);
                                 }}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/80 hover:bg-primary/10 border border-border/70 hover:border-primary/40 text-[10.5px] font-mono font-bold text-foreground transition-all group/chassis shadow-2xs"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/80 hover:bg-primary/10 border border-border/70 hover:border-primary/40 text-[9.5px] font-mono font-bold text-foreground transition-all group/chassis shadow-2xs"
                                 title={`Clique para copiar o chassi: ${saleChassis}`}
                               >
                                 {copiedChassisId === saleChassis ? (
-                                  <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  <Check className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
                                 ) : (
-                                  <Copy className="w-3 h-3 text-muted-foreground group-hover/chassis:text-primary shrink-0" />
+                                  <Copy className="w-2.5 h-2.5 text-muted-foreground group-hover/chassis:text-primary shrink-0" />
                                 )}
                                 <span className="tracking-tight">{saleChassis}</span>
                               </button>
                             ) : (
-                              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium italic">
+                              <p className="text-[9px] text-amber-600 dark:text-amber-400 font-medium italic">
                                 Chassi a definir
                               </p>
                             )}
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell className="hidden text-xs xl:table-cell py-3 text-muted-foreground font-medium">{sale.store?.name || '-'}</TableCell>
-                      <TableCell className="hidden lg:table-cell py-3">
-                        <span className="text-xs text-muted-foreground">
+                      </td>
+                      <td className="hidden xl:table-cell px-2 py-2 whitespace-nowrap">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-muted/60 border border-border/50 text-[10px] font-semibold text-foreground/90" title={sale.store?.name || undefined}>
+                          {formatShortStoreName(sale.store?.name)}
+                        </span>
+                      </td>
+                      <td className="hidden lg:table-cell px-2 py-2 whitespace-nowrap">
+                        <span className="text-xs text-muted-foreground truncate max-w-[85px] block" title={resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || '-'}>
                           {resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || '-'}
                         </span>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-right py-3">
+                      </td>
+                      <td className="whitespace-nowrap text-right px-2 py-2">
                         <span className="font-display font-black text-xs text-foreground">{formatCurrency(Number(sale.sale_price))}</span>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap min-w-[145px] py-3">
-                        <div className="flex flex-col items-start gap-1.5">
-                          <Badge variant="secondary" className={cn('text-[10px] font-bold py-0.5 px-2.5 whitespace-nowrap inline-flex items-center gap-1 rounded-md shadow-2xs', statusInfo.class)}>
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2">
+                        <div className="flex flex-col items-start gap-1">
+                          <Badge variant="secondary" className={cn('text-[9.5px] font-bold py-0.5 px-1.5 whitespace-nowrap inline-flex items-center gap-1 rounded shadow-2xs', statusInfo.class)}>
                             {statusInfo.label}
                           </Badge>
                           
@@ -1268,11 +1284,11 @@ export default function Sales() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleStartCompleteExisting(sale)}
-                              className="h-6 px-2 text-[10px] gap-1 font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 shadow-2xs whitespace-nowrap"
+                              className="h-5 px-1 text-[9px] gap-1 font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 shadow-2xs whitespace-nowrap"
                               title="Concluir todo o cadastro do comprador, chassi e pagamento para faturar e emitir contrato"
                             >
-                              <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                              <span>Concluir Cadastro</span>
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
+                              <span>Concluir</span>
                             </Button>
                           )}
 
@@ -1293,14 +1309,14 @@ export default function Sales() {
                                     setReceiptsModalOpen(true);
                                   }}
                                   className={cn(
-                                    'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold border transition-colors shadow-2xs whitespace-nowrap',
+                                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors shadow-2xs whitespace-nowrap',
                                     hasNfFile
                                       ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
                                       : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
                                   )}
                                   title={`Nota Fiscal ${nfNum ? `nº ${nfNum}` : ''} ${hasNfFile ? '(Arquivo Anexado)' : '(Pendente de Arquivo)'}. Clique para visualizar ou anexar.`}
                                 >
-                                  <FileCheck2 className="w-3 h-3 shrink-0" />
+                                  <FileCheck2 className="w-2.5 h-2.5 shrink-0" />
                                   <span>NF {nfNum || 'Anexa'}</span>
                                 </button>
                               );
@@ -1316,10 +1332,10 @@ export default function Sales() {
                                     setReceiptsDefaultTab('nf');
                                     setReceiptsModalOpen(true);
                                   }}
-                                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-muted/70 text-muted-foreground border border-dashed border-border/80 hover:border-primary/50 hover:text-primary transition-all shadow-2xs whitespace-nowrap"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted/70 text-muted-foreground border border-dashed border-border/80 hover:border-primary/50 hover:text-primary transition-all shadow-2xs whitespace-nowrap"
                                   title="Clique para anexar a Nota Fiscal oficial desta venda"
                                 >
-                                  <FileText className="w-3 h-3 shrink-0" />
+                                  <FileText className="w-2.5 h-2.5 shrink-0" />
                                   <span>Anexar NF</span>
                                 </button>
                               );
@@ -1328,27 +1344,26 @@ export default function Sales() {
                             return null;
                           })()}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap text-center py-3">{formatDate(sale.created_at)}</TableCell>
-                      <TableCell className="text-right pr-4 whitespace-nowrap min-w-[175px] py-3">
-                        <div className="flex items-center justify-end gap-1.5">
+                      </td>
+                      <td className="text-xs text-muted-foreground whitespace-nowrap text-center px-2 py-2">{formatDate(sale.created_at)}</td>
+                      <td className="text-right pr-3 whitespace-nowrap px-2 py-2">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
-                            size="sm"
+                            size="icon"
                             variant="outline"
                             onClick={() => {
                               setSelectedSaleForManage(sale);
                               setManageDefaultTab('documentos');
                               setManageModalOpen(true);
                             }}
-                            className="h-8 px-2.5 text-xs font-bold gap-1.5 text-primary border-primary/25 hover:bg-primary/10 hover:border-primary/40 hidden sm:inline-flex shadow-2xs"
-                            title="Emitir 2ª via ou alterar dados cadastrais / finalização"
+                            className="h-7 w-7 text-primary border-primary/25 hover:bg-primary/10 hover:border-primary/40 shadow-2xs shrink-0"
+                            title="Emitir 2ª via ou alterar dados da venda"
                           >
-                            <Printer className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span className="hidden xl:inline">2ª Via & Gestão</span>
+                            <Printer className="w-3.5 h-3.5 text-primary" />
                           </Button>
 
                           <Button
-                            size="sm"
+                            size="icon"
                             variant="ghost"
                             onClick={() => {
                               setSelectedSaleForReceipts(sale);
@@ -1356,20 +1371,18 @@ export default function Sales() {
                               setReceiptsModalOpen(true);
                             }}
                             className={cn(
-                              'h-8 px-2.5 text-xs gap-1.5 transition-colors',
+                              'h-7 w-7 transition-colors relative shrink-0',
                               receiptsCount > 0
                                 ? 'text-primary font-bold hover:bg-primary/10'
                                 : 'text-muted-foreground hover:text-foreground',
                             )}
-                            title="Gerenciar e anexar comprovantes da venda"
+                            title="Gerenciar comprovantes da venda"
                           >
-                            <Paperclip className="w-3.5 h-3.5 shrink-0" />
-                            {receiptsCount > 0 ? (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-mono font-bold">
+                            <Paperclip className="w-3.5 h-3.5" />
+                            {receiptsCount > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[8.5px] font-bold rounded-full h-3.5 w-3.5 flex items-center justify-center font-mono">
                                 {receiptsCount}
-                              </Badge>
-                            ) : (
-                              <span className="text-[11px] hidden sm:inline text-muted-foreground/80">Comprovantes</span>
+                              </span>
                             )}
                           </Button>
                           <SaleActionsMenu 
@@ -1379,12 +1392,12 @@ export default function Sales() {
                             resellerName={sale.reseller?.full_name}
                           />
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
         </PanelCard>
       )}
