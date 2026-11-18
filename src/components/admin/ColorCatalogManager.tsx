@@ -149,6 +149,8 @@ export function ColorCatalogManager() {
         is_active: form.is_active,
       },
     });
+    setEditing(null);
+    setForm(empty);
     setOpen(false);
   };
 
@@ -209,7 +211,7 @@ export function ColorCatalogManager() {
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); setForm(empty); } }}>
         <DialogContent className="flex max-h-[90dvh] max-w-md flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{editing ? 'Editar cor' : 'Nova cor'}</DialogTitle>

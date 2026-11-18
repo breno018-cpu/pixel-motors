@@ -16,7 +16,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useContracts, Contract } from '@/hooks/useContracts';
+import { useContracts, Contract, normalizeContractKey, normalizeChassisKey } from '@/hooks/useContracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
 import { useResellers } from '@/hooks/useResellers';
@@ -370,19 +370,19 @@ export default function Sales() {
         operator: opFullName ? { full_name: opFullName } : (c.operator && isValidSellerName(c.operator.full_name) ? c.operator : null),
       };
     });
-    const contractIds = new Set(fromContracts.map((c) => c.id));
-    const seenContractNumbers = new Set(
-      fromContracts.map((c) => (c.contract_number || '').trim().toUpperCase()).filter(Boolean)
+    const contractIds = new Set(fromContracts.map((c) => c.id).filter(Boolean));
+    const seenContractKeys = new Set(
+      fromContracts.map((c) => normalizeContractKey(c.contract_number)).filter(Boolean)
     );
     const seenChassis = new Set(
       fromContracts
-        .map((c) => (getSaleChassis(c) || '').trim().toUpperCase())
-        .filter((ch) => ch.length >= 7 && !ch.includes('DEFINIR'))
+        .map((c) => normalizeChassisKey(getSaleChassis(c)))
+        .filter(Boolean)
     );
 
     const fromSheet = monthlySheetRows
       .filter((r) => {
-        if (contractIds.has(r.id)) return false;
+        if (r.id && contractIds.has(r.id)) return false;
         const resolved = resolveSaleStore({
           store_id: (r as any).store_id,
           vendedor: r.vendedor,
@@ -394,10 +394,11 @@ export default function Sales() {
           resolved.storeId === 'store-montesclaros' ||
           resolved.storeId === STORE_MONTESCLAROS_UUID ||
           (resolved.storeName || '').toLowerCase().includes('montes');
-        const expectedNum = `${isMoc ? 'MOC' : 'DIV'}-${r.qt || '00'}`.trim().toUpperCase();
-        if (seenContractNumbers.has(expectedNum)) return false;
-        const ch = (r.chassi || '').trim().toUpperCase();
-        if (ch && ch.length >= 7 && !ch.includes('DEFINIR') && seenChassis.has(ch)) return false;
+        const expectedNum = `${isMoc ? 'MOC' : 'DIV'}-${r.qt || '00'}`;
+        const scKey = normalizeContractKey(expectedNum) || normalizeContractKey(r.qt);
+        if (scKey && seenContractKeys.has(scKey)) return false;
+        const ch = normalizeChassisKey(r.chassi);
+        if (ch && seenChassis.has(ch)) return false;
         return true;
       })
       .map((r) => sheetRowToContract(r, employees));

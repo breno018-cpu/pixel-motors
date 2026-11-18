@@ -227,7 +227,7 @@ export function ChassisPatternManager({ embedded = false }: { embedded?: boolean
   );
 
   const dialog = (
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); else setDialogOpen(true); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editId ? 'Editar Padrão' : 'Novo Padrão de Chassi'}</DialogTitle>

@@ -92,22 +92,89 @@ export async function fetchCloudSyncState(): Promise<CloudSyncState> {
       const sheet_rows = Array.isArray(ext.sheet_rows) ? (ext.sheet_rows as SheetRowV9[]) : undefined;
       const registered_invoices = Array.isArray(ext.registered_invoices) ? (ext.registered_invoices as RegisteredInvoice[]) : [];
 
-      // Mantém localStorage alinhado com a nuvem
+      // Mescla inteligente: NUNCA descarta itens locais mais recentes não sincronizados
+      let mergedInvoices = registered_invoices;
+      let mergedSheetRows = sheet_rows;
+
       try {
-        localStorage.setItem(LOCAL_DELETED_KEY, JSON.stringify(deleted_ids));
-        localStorage.setItem(LOCAL_CANCELLED_KEY, JSON.stringify(cancelled_ids));
-        localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(registered_invoices));
-        if (sheet_rows && sheet_rows.length > 0) {
-          localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(sheet_rows));
+        // 1. Deleted & Cancelled: união com exclusões locais
+        const rawDel = localStorage.getItem(LOCAL_DELETED_KEY);
+        const localDel: string[] = rawDel ? JSON.parse(rawDel) : [];
+        const allDeleted = Array.from(new Set([...deleted_ids, ...localDel]));
+        localStorage.setItem(LOCAL_DELETED_KEY, JSON.stringify(allDeleted));
+
+        const rawCanc = localStorage.getItem(LOCAL_CANCELLED_KEY);
+        const localCanc: string[] = rawCanc ? JSON.parse(rawCanc) : [];
+        const allCancelled = Array.from(new Set([...cancelled_ids, ...localCanc]));
+        localStorage.setItem(LOCAL_CANCELLED_KEY, JSON.stringify(allCancelled));
+
+        // 2. Invoices: deduplicação por ID e chave (loja + número da NF)
+        const rawInvs = localStorage.getItem(LOCAL_INVOICES_KEY);
+        const localInvs: RegisteredInvoice[] = rawInvs ? JSON.parse(rawInvs) : [];
+        if (localInvs.length > 0) {
+          const invMap = new Map<string, RegisteredInvoice>();
+          registered_invoices.forEach((inv) => {
+            if (inv.id) invMap.set(inv.id, inv);
+            const numKey = `${inv.store_id || ''}::${inv.invoice_number || ''}`.toUpperCase();
+            if (numKey !== '::') invMap.set(numKey, inv);
+          });
+          localInvs.forEach((localInv) => {
+            const numKey = `${localInv.store_id || ''}::${localInv.invoice_number || ''}`.toUpperCase();
+            const existing = invMap.get(localInv.id) || (numKey !== '::' ? invMap.get(numKey) : undefined);
+            if (!existing) {
+              invMap.set(localInv.id, localInv);
+            } else if (localInv.attachment_url && !existing.attachment_url) {
+              invMap.set(localInv.id, { ...existing, ...localInv });
+            }
+          });
+          const seenIds = new Set<string>();
+          mergedInvoices = Array.from(invMap.values()).filter((inv) => {
+            if (!inv.id || seenIds.has(inv.id)) return false;
+            seenIds.add(inv.id);
+            return true;
+          });
         }
-      } catch {}
+        localStorage.setItem(LOCAL_INVOICES_KEY, JSON.stringify(mergedInvoices));
+
+        // 3. Sheet rows: deduplicação por ID e QT/Número
+        const rawSheet = localStorage.getItem(SHEET_STORAGE_KEY_V9);
+        const localSheet: SheetRowV9[] = rawSheet ? JSON.parse(rawSheet) : [];
+        if (localSheet.length > 0 && (!sheet_rows || sheet_rows.length === 0)) {
+          mergedSheetRows = localSheet;
+        } else if (localSheet.length > 0 && sheet_rows && sheet_rows.length > 0) {
+          const rowMap = new Map<string, SheetRowV9>();
+          sheet_rows.forEach((r) => {
+            if (r.id) rowMap.set(r.id, r);
+            if (r.qt) rowMap.set(`qt::${String(r.qt).replace(/^[A-Z]+-/, '')}`, r);
+          });
+          localSheet.forEach((lr) => {
+            const qtKey = lr.qt ? `qt::${String(lr.qt).replace(/^[A-Z]+-/, '')}` : '';
+            const existing = (lr.id ? rowMap.get(lr.id) : undefined) || (qtKey ? rowMap.get(qtKey) : undefined);
+            if (!existing) {
+              rowMap.set(lr.id || `local-${Math.random()}`, lr);
+            }
+          });
+          const seenRowIds = new Set<string>();
+          mergedSheetRows = Array.from(rowMap.values()).filter((r) => {
+            const uniqueKey = r.id || `qt-${r.qt}`;
+            if (seenRowIds.has(uniqueKey)) return false;
+            seenRowIds.add(uniqueKey);
+            return true;
+          });
+        }
+        if (mergedSheetRows && mergedSheetRows.length > 0) {
+          localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(mergedSheetRows));
+        }
+      } catch (mergeErr) {
+        console.warn('[cloudSalesSync] Aviso ao mesclar dados locais com remotos:', mergeErr);
+      }
 
       return {
         deleted_ids,
         cancelled_ids,
         last_sync: cv.last_sync || new Date().toISOString(),
-        sheet_rows,
-        registered_invoices,
+        sheet_rows: mergedSheetRows,
+        registered_invoices: mergedInvoices,
         version: ext.version || 1,
       };
     }
@@ -217,11 +284,11 @@ export async function cloudSaveSheetRows(rows: SheetRowV9[]): Promise<boolean> {
     // 1. Atualiza imediatamente cache local do navegador corrente
     localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(rows));
 
-    // 2. Busca estado atual para preservar notas fiscais cadastradas
-    let existingInvoices: RegisteredInvoice[] = [];
+    // 2. Busca estado atual para preservar notas fiscais cadastradas (mescla inteligente por ID)
+    let localInvoices: RegisteredInvoice[] = [];
     try {
       const rawInvs = localStorage.getItem(LOCAL_INVOICES_KEY);
-      if (rawInvs) existingInvoices = JSON.parse(rawInvs);
+      if (rawInvs) localInvoices = JSON.parse(rawInvs);
     } catch {}
 
     const { data: currentMaster } = await supabase
@@ -231,9 +298,12 @@ export async function cloudSaveSheetRows(rows: SheetRowV9[]): Promise<boolean> {
       .maybeSingle();
 
     const masterExt = (currentMaster?.external_data || {}) as any;
-    if (Array.isArray(masterExt.registered_invoices) && masterExt.registered_invoices.length > 0) {
-      existingInvoices = masterExt.registered_invoices;
-    }
+    const remoteInvoices: RegisteredInvoice[] = Array.isArray(masterExt.registered_invoices) ? masterExt.registered_invoices : [];
+
+    const invMap = new Map<string, RegisteredInvoice>();
+    remoteInvoices.forEach((inv) => { if (inv.id) invMap.set(inv.id, inv); });
+    localInvoices.forEach((inv) => { if (inv.id) invMap.set(inv.id, { ...(invMap.get(inv.id) || {}), ...inv }); });
+    const mergedInvoices = Array.from(invMap.values());
 
     // 3. Salva na nuvem (Supabase) preservando registered_invoices
     const { error } = await supabase
@@ -241,7 +311,7 @@ export async function cloudSaveSheetRows(rows: SheetRowV9[]): Promise<boolean> {
       .update({
         external_data: {
           ...masterExt,
-          registered_invoices: existingInvoices,
+          registered_invoices: mergedInvoices,
           sheet_rows: rows,
           version: Date.now(),
           updated_at: new Date().toISOString(),

@@ -93,6 +93,27 @@ export function getMonthlySheetRows(): SheetRowV9[] {
   return parseBackupCsv(INITIAL_USER_BACKUP_CSV, '2026-10').rows;
 }
 
+export function normalizeContractKey(num: string | null | undefined): string {
+  if (!num) return '';
+  const clean = String(num).toUpperCase().replace(/^[A-Z]{2,4}-/, '').replace(/[^A-Z0-9]/g, '');
+  return clean.replace(/^0+/, '') || clean;
+}
+
+export function normalizeChassisKey(ch: string | null | undefined): string {
+  if (!ch) return '';
+  const clean = String(ch).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (
+    clean.length < 6 ||
+    clean === 'DISPENSADO' ||
+    clean.includes('DEFINIR') ||
+    clean.includes('PENDENTE') ||
+    clean.includes('ESTOQUE')
+  ) {
+    return '';
+  }
+  return clean;
+}
+
 export function sheetRowToContract(r: SheetRowV9): Contract {
   const resolved = resolveSaleStore({
     store_id: (r as any).store_id,
@@ -302,49 +323,47 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
 
   // Deduplicação estrita de múltiplas chaves: o Banco de Dados Real (Supabase) tem precedência absoluta
   const seenIds = new Set<string>();
-  const seenContractNumbers = new Set<string>();
+  const seenContractKeys = new Set<string>();
   const seenChassis = new Set<string>();
 
   hydratedDb.forEach((c) => {
-    seenIds.add(c.id);
-    if (c.contract_number) {
-      seenContractNumbers.add(c.contract_number.trim().toUpperCase());
-    }
+    if (c.id) seenIds.add(c.id);
+    const cKey = normalizeContractKey(c.contract_number);
+    if (cKey) seenContractKeys.add(cKey);
     const ext = (c.external_data || {}) as any;
-    const ch = (ext.chassis || c.vehicle?.chassis || '').trim().toUpperCase();
-    if (ch && ch.length >= 7 && !ch.includes('DEFINIR')) {
-      seenChassis.add(ch);
-    }
+    const ch = normalizeChassisKey(ext.chassis || c.vehicle?.chassis);
+    if (ch) seenChassis.add(ch);
   });
 
   const fromSheet = sheetRows
     .map(sheetRowToContract)
     .filter((sc) => {
-      if (seenIds.has(sc.id)) return false;
-      const num = (sc.contract_number || '').trim().toUpperCase();
-      if (num && seenContractNumbers.has(num)) return false;
+      if (sc.id && seenIds.has(sc.id)) return false;
+      const scKey = normalizeContractKey(sc.contract_number);
+      if (scKey && seenContractKeys.has(scKey)) return false;
       const ext = (sc.external_data || {}) as any;
-      const ch = (ext.chassis || sc.vehicle?.chassis || '').trim().toUpperCase();
-      if (ch && ch.length >= 7 && !ch.includes('DEFINIR') && seenChassis.has(ch)) return false;
+      const ch = normalizeChassisKey(ext.chassis || sc.vehicle?.chassis);
+      if (ch && seenChassis.has(ch)) return false;
       return true;
     });
 
   fromSheet.forEach((sc) => {
-    seenIds.add(sc.id);
-    if (sc.contract_number) seenContractNumbers.add(sc.contract_number.trim().toUpperCase());
+    if (sc.id) seenIds.add(sc.id);
+    const scKey = normalizeContractKey(sc.contract_number);
+    if (scKey) seenContractKeys.add(scKey);
     const ext = (sc.external_data || {}) as any;
-    const ch = (ext.chassis || sc.vehicle?.chassis || '').trim().toUpperCase();
-    if (ch && ch.length >= 7 && !ch.includes('DEFINIR')) seenChassis.add(ch);
+    const ch = normalizeChassisKey(ext.chassis || sc.vehicle?.chassis);
+    if (ch) seenChassis.add(ch);
   });
 
   const typedSeed = (officialContractsSeed as unknown as Contract[]) || [];
   const fromSeed = typedSeed.filter((sc) => {
-    if (seenIds.has(sc.id)) return false;
-    const num = (sc.contract_number || '').trim().toUpperCase();
-    if (num && seenContractNumbers.has(num)) return false;
+    if (sc.id && seenIds.has(sc.id)) return false;
+    const scKey = normalizeContractKey(sc.contract_number);
+    if (scKey && seenContractKeys.has(scKey)) return false;
     const ext = (sc.external_data || {}) as any;
-    const ch = (ext.chassis || sc.vehicle?.chassis || '').trim().toUpperCase();
-    if (ch && ch.length >= 7 && !ch.includes('DEFINIR') && seenChassis.has(ch)) return false;
+    const ch = normalizeChassisKey(ext.chassis || sc.vehicle?.chassis);
+    if (ch && seenChassis.has(ch)) return false;
     return true;
   });
 

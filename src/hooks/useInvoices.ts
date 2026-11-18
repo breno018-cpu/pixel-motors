@@ -292,8 +292,18 @@ export function useUpsertInvoice() {
       const cleanIssueDate = normalizeDateToYMD(input.issue_date);
       const isMoc = (input.store_id || '').includes('montes') || (input.store_name || '').toLowerCase().includes('montes');
 
+      const isUuid = (val: any) =>
+        typeof val === 'string' &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+      if (!input.id || !isUuid(input.id)) {
+        input.id = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0');
+      }
+
       const optimisticInvoice: Invoice = {
-        id: input.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `inv-${Date.now()}`),
+        id: input.id,
         invoice_number: String(input.invoice_number || '').trim(),
         series: input.series || '1',
         access_key: input.access_key,

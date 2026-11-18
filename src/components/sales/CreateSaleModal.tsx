@@ -611,7 +611,10 @@ export function CreateSaleModal({
       const saleMonth = dateParts.length === 3 ? dateParts[1] : String(new Date().getMonth() + 1).padStart(2, '0');
       const saleMonthKey = `${saleYear}-${saleMonth}`;
 
-      const newRowId = `venda-${Date.now()}`;
+      const saleUuid = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : '00000000-0000-4000-8000-' + Date.now().toString(16).padStart(12, '0');
+      const newRowId = saleUuid;
 
       const installmentSummary = [
         (notes || '').trim(),
@@ -706,6 +709,7 @@ export function CreateSaleModal({
         }
 
         const contractPayload: any = {
+          id: saleUuid,
           contract_number: contractNumber,
           buyer_name: buyerName.trim(),
           buyer_cpf: buyerDoc.replace(/\D/g, '') || '00000000000',

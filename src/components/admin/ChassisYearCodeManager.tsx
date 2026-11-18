@@ -215,7 +215,7 @@ export function ChassisYearCodeManager() {
         em vez de chutar um valor.
       </p>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); else setDialogOpen(true); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editId ? 'Editar Código de Ano' : 'Novo Código de Ano/Modelo'}</DialogTitle>

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Bike,
   Plus,
@@ -111,6 +111,44 @@ export function NewInspectionDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isParsingCrlv, setIsParsingCrlv] = useState(false);
   const [copiedInfo, setCopiedInfo] = useState(false);
+
+  const resetForm = useCallback(() => {
+    setBrand('HONDA');
+    setModel('');
+    setYear(new Date().getFullYear() - 2);
+    setColor('Vermelho');
+    setPlate('');
+    setChassis('');
+    setRenavam('');
+    setMileage(25000);
+    setInspectorName(profile?.full_name || 'Avaliador de Seminovos');
+    setClientName('');
+    setClientPhone('');
+    setTheftStatus('nada_consta');
+    setRenajudStatus('nada_consta');
+    setAuctionStatus('sem_passagem');
+    setFinanceStatus('quitado');
+    setDebts([]);
+    setDebtDesc('');
+    setDebtAmount('');
+    setFrameChassis('alinhado_original');
+    setEngineCondition('otimo_silencioso');
+    setTransmissionGears('engates_perfeitos');
+    setFrontFork('alinhada_sem_vazamento');
+    setChainKit('otimo');
+    setTires('bons');
+    setFairingsPaint('original_impecavel');
+    setNumbersMatch(true);
+    setWorkshopCost('R$ 250,00');
+    setSuggestedTradeIn('R$ 0,00');
+    setNotes('');
+  }, [profile?.full_name]);
+
+  useEffect(() => {
+    if (open) {
+      resetForm();
+    }
+  }, [open, resetForm]);
 
   const handleCrlvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -326,6 +364,7 @@ export function NewInspectionDialog({
     };
 
     await onSave(payload);
+    resetForm();
     onOpenChange(false);
   };
 

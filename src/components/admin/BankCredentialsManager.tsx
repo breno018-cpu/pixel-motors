@@ -33,7 +33,16 @@ export function BankCredentialsManager() {
   });
 
   const openNew = () => {
-    setForm({ api_environment: 'sandbox', is_active: true, extra_config: {} });
+    setForm({
+      api_environment: 'sandbox',
+      is_active: true,
+      extra_config: {},
+      store_id: '',
+      bank_code: '',
+      partner_code: '',
+      client_id: '',
+      client_secret: '',
+    });
     setOpen(true);
   };
   const edit = (c: BankCredential) => { setForm({ ...c }); setOpen(true); };
@@ -41,6 +50,7 @@ export function BankCredentialsManager() {
     if (!form.store_id || !form.bank_code) return;
     const bank = SUPPORTED_BANKS.find((b) => b.code === form.bank_code);
     await upsert.mutateAsync({ ...form, bank_name: bank?.name || form.bank_code });
+    setForm({ api_environment: 'sandbox', is_active: true, extra_config: {} });
     setOpen(false);
   };
 

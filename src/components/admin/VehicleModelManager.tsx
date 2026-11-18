@@ -111,6 +111,8 @@ export function VehicleModelManager({ embedded = false }: { embedded?: boolean }
         is_active: form.is_active,
       },
     });
+    setEditing(null);
+    setForm(empty);
     setOpen(false);
   };
 
@@ -187,7 +189,7 @@ export function VehicleModelManager({ embedded = false }: { embedded?: boolean }
 
   const dialog = (
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditing(null); setForm(empty); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Editar modelo' : 'Novo modelo'}</DialogTitle>

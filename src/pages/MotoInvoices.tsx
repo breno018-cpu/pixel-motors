@@ -428,9 +428,11 @@ export default function MotoInvoices() {
     const normalizedDate = normalizeDateToYMD(form.issue_date);
     const isEditing = Boolean(editingInvoiceId);
 
+    const finalId = editingInvoiceId || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined);
+
     const payload = {
       ...form,
-      id: editingInvoiceId || undefined,
+      id: finalId,
       created_at: form.created_at || new Date().toISOString(),
       invoice_number: cleanNum,
       series: form.series || '1',

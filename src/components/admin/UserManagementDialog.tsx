@@ -230,7 +230,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
 
         <div className="flex justify-between items-center">
           <p className="text-sm text-muted-foreground">{users?.length || 0} usuários cadastrados</p>
-          <Button onClick={() => setIsCreating(true)} className="bg-primary hover:bg-primary/90" size="sm">
+          <Button onClick={() => { form.reset({ full_name: '', email: '', role: 'vendedor', store_id: STORE_UUIDS['store-divinopolis'], password: '' }); setIsCreating(true); }} className="bg-primary hover:bg-primary/90" size="sm">
             <UserPlus className="w-4 h-4 mr-2" />
             Novo Usuário
           </Button>

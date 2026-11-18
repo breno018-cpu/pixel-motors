@@ -393,15 +393,22 @@ export function useVehicles() {
           const filteredRemote = (data as Vehicle[]).filter((v) => !deletedIds.has(v.id));
           const remoteIdSet = new Set(filteredRemote.map((v) => v.id));
           const remoteChassisSet = new Set(
-            filteredRemote.map((v) => (v.chassis || '').toUpperCase()).filter(Boolean)
+            filteredRemote.map((v) => (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '')).filter((ch) => ch.length >= 6)
+          );
+          const remoteModelKeySet = new Set(
+            filteredRemote.map((v) => `${v.brand}::${v.model}::${v.color}::${v.year}::${v.store_id}`.toUpperCase())
           );
 
-          // Preserva motos registradas localmente (ex: de lojas externas sem app)
-          const localOnly = currentList.filter(
-            (v) =>
-              !remoteIdSet.has(v.id) &&
-              (!v.chassis || !remoteChassisSet.has(v.chassis.toUpperCase()))
-          );
+          // Preserva motos registradas localmente (ex: de contingência offline) que ainda não constam na nuvem
+          const localOnly = currentList.filter((v) => {
+            if (remoteIdSet.has(v.id)) return false;
+            const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (vCh.length >= 6 && remoteChassisSet.has(vCh)) return false;
+            // Se o veículo não tem chassi ou está com chassi provisório, verifica modelo/cor/ano/loja para evitar duplicata
+            const modelKey = `${v.brand}::${v.model}::${v.color}::${v.year}::${v.store_id}`.toUpperCase();
+            if ((!vCh || vCh.includes('DEFINIR') || vCh.includes('PENDENTE')) && remoteModelKeySet.has(modelKey)) return false;
+            return true;
+          });
 
           const combined = [...localOnly, ...filteredRemote];
           try {
