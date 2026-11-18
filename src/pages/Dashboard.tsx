@@ -65,7 +65,7 @@ import {
   Line,
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
-import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
+import { isUserSellerRestricted, filterSalesBySellerScope, resolveUserSellerStore } from '@/lib/salesScope';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { useVehicles, useVehicleStats } from '@/hooks/useVehicles';
 import { useStores } from '@/hooks/useStores';
@@ -118,25 +118,65 @@ export default function Dashboard() {
     isSellerPlus,
     isExternalSeller,
     dataScope,
+    userStore,
   } = auth;
 
-  // Regra de Privacidade Estrita: Vendedores NÃO veem vendas de outros vendedores
-  const isRestrictedSeller = useMemo(() => {
-    return isUserSellerRestricted({
-      userId: user?.id,
-      profileId: profile?.id,
-      fullName: profile?.full_name,
-      email: user?.email,
-      roles,
-      isAdmin,
-      isManager,
-      hasElevatedAccess,
-      isSeller,
-      isSellerPlus,
-      isExternalSeller,
-      dataScope,
-    });
-  }, [user, profile, roles, isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, dataScope]);
+  // Consultas Oficiais do Supabase / LocalFallback
+  const { data: vehicles = [], isLoading: loadingVehicles } = useVehicles();
+  const { data: stores = [] } = useStores();
+  const { data: contracts = [], isLoading: loadingContracts } = useContracts();
+  const { data: employees = [] } = useEmployees();
+
+  // Identificação universal para todos os cargos de vendedor
+  const isSellerRole = useMemo(() => {
+    if (isAdmin || isManager || hasElevatedAccess) return false;
+    return (
+      isSeller ||
+      isSellerPlus ||
+      isExternalSeller ||
+      roles.includes('vendedor') ||
+      roles.includes('vendedor_plus') ||
+      roles.includes('vendedor_externo') ||
+      isUserSellerRestricted({
+        userId: user?.id,
+        profileId: profile?.id,
+        fullName: profile?.full_name,
+        email: user?.email,
+        roles,
+        isAdmin,
+        isManager,
+        hasElevatedAccess,
+        isSeller,
+        isSellerPlus,
+        isExternalSeller,
+        dataScope,
+      })
+    );
+  }, [isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, roles, user, profile, dataScope]);
+
+  // Concessionária oficial de lotação do vendedor
+  const sellerStore = useMemo(() => {
+    return resolveUserSellerStore(
+      {
+        userId: user?.id,
+        profileId: profile?.id,
+        fullName: profile?.full_name,
+        email: user?.email,
+        roles,
+        isAdmin,
+        isManager,
+        hasElevatedAccess,
+        isSeller,
+        isSellerPlus,
+        isExternalSeller,
+        dataScope,
+        userStore,
+      },
+      employees
+    );
+  }, [user, profile, roles, isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, dataScope, userStore, employees]);
+
+  const isRestrictedSeller = isSellerRole;
 
   // Filtros Globais (Período Unificado com Todas as Abas)
   const {
@@ -153,8 +193,38 @@ export default function Dashboard() {
       setPeriodFilter(defaultMonthKey);
     }
   }, [defaultMonthKey, periodFilter, setPeriodFilter]);
+
   const [sellerFilter, setSellerFilter] = useState<string>('all');
-  const [storeFilter, setStoreFilter] = useState<string>('all');
+  const [storeFilter, setStoreFilter] = useState<string>(() => {
+    if (isSellerRole && sellerStore.storeId) {
+      return sellerStore.storeId;
+    }
+    return 'all';
+  });
+
+  // Para qualquer cargo de vendedor, a loja deve ser SEMPRE a sua concessionária
+  useEffect(() => {
+    if (isSellerRole && sellerStore.storeId && storeFilter !== sellerStore.storeId) {
+      setStoreFilter(sellerStore.storeId);
+    }
+  }, [isSellerRole, sellerStore.storeId, storeFilter]);
+
+  // Loja efetiva utilizada para todos os cálculos do Dashboard
+  const effectiveStore = useMemo(() => {
+    if (isSellerRole && sellerStore.storeId) {
+      return sellerStore.storeId;
+    }
+    return storeFilter;
+  }, [isSellerRole, sellerStore.storeId, storeFilter]);
+
+  // Cidade polo de referência para mapas e atlas de entregas
+  const currentBaseCity = useMemo(() => {
+    if (isMatchingStore(effectiveStore, 'store-montesclaros')) {
+      return 'Montes Claros';
+    }
+    return 'Divinópolis';
+  }, [effectiveStore]);
+
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState<'all' | 'moto' | 'carro'>('all');
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -228,12 +298,6 @@ export default function Dashboard() {
     };
     handleSaveBlocks([...modularBlocks, newBlock]);
   };
-
-  // Consultas Oficiais do Supabase / LocalFallback
-  const { data: vehicles = [], isLoading: loadingVehicles } = useVehicles();
-  const { data: stores = [] } = useStores();
-  const { data: contracts = [], isLoading: loadingContracts } = useContracts();
-  const { data: employees = [] } = useEmployees();
 
   const [sheetVersion, setSheetVersion] = useState(0);
 
@@ -442,25 +506,10 @@ export default function Dashboard() {
 
     const rawConsolidated = Array.from(salesMap.values());
 
-    // Se o usuário for vendedor restrito, exibe unicamente as suas vendas
-    if (isRestrictedSeller) {
-      return filterSalesBySellerScope(
-        rawConsolidated,
-        {
-          userId: user?.id,
-          profileId: profile?.id,
-          fullName: profile?.full_name,
-          email: user?.email,
-          roles,
-          isAdmin,
-          isManager,
-          hasElevatedAccess,
-          isSeller,
-          isSellerPlus,
-          isExternalSeller,
-          dataScope,
-        },
-        employees
+    // Para todos os cargos de vendedor, o dashboard deve exibir estritamente o dashboard da sua loja
+    if (isSellerRole) {
+      return rawConsolidated.filter((s) =>
+        isMatchingStore(s.store_id || s.raw_store_id, sellerStore.storeId)
       );
     }
 
@@ -469,17 +518,8 @@ export default function Dashboard() {
     monthlySheetRows,
     contracts,
     employees,
-    isRestrictedSeller,
-    user,
-    profile,
-    roles,
-    isAdmin,
-    isManager,
-    hasElevatedAccess,
-    isSeller,
-    isSellerPlus,
-    isExternalSeller,
-    dataScope,
+    isSellerRole,
+    sellerStore.storeId,
   ]);
 
   // =========================================================================
@@ -489,19 +529,23 @@ export default function Dashboard() {
     return getCleanSellerOptions({
       employees,
       allSales: consolidatedSales,
-      storeFilter: 'all',
+      storeFilter: effectiveStore,
       isRestrictedSeller,
       currentUserFullName: profile?.full_name,
     });
-  }, [employees, consolidatedSales, isRestrictedSeller, profile]);
+  }, [employees, consolidatedSales, effectiveStore, isRestrictedSeller, profile]);
 
   // Vendedores disponíveis respeitando o contexto da concessionária selecionada
   const availableSellers = useMemo(() => {
-    if (storeFilter === 'all') return allSellersList;
-    return allSellersList.filter((s) => isMatchingStore(s.storeId, storeFilter));
-  }, [allSellersList, storeFilter]);
+    if (effectiveStore === 'all') return allSellersList;
+    return allSellersList.filter((s) => isMatchingStore(s.storeId, effectiveStore));
+  }, [allSellersList, effectiveStore]);
 
   const handleStoreFilterChange = (newStore: string) => {
+    if (isSellerRole) {
+      setStoreFilter(sellerStore.storeId);
+      return;
+    }
     setStoreFilter(newStore);
     if (newStore !== 'all' && sellerFilter !== 'all') {
       const sellerStillInStore = allSellersList.some(
@@ -554,8 +598,8 @@ export default function Dashboard() {
       if (!isDateInPeriod(s.date)) return false;
 
       // 2. Filtro rigoroso de loja
-      if (storeFilter !== 'all') {
-        if (!isMatchingStore(s.store_id || s.raw_store_id, storeFilter)) return false;
+      if (effectiveStore !== 'all') {
+        if (!isMatchingStore(s.store_id || s.raw_store_id, effectiveStore)) return false;
       }
 
       // 3. Filtro de vendedor
@@ -570,7 +614,7 @@ export default function Dashboard() {
 
       return true;
     });
-  }, [consolidatedSales, isDateInPeriod, storeFilter, sellerFilter, vehicleTypeFilter, employees]);
+  }, [consolidatedSales, isDateInPeriod, effectiveStore, sellerFilter, vehicleTypeFilter, employees]);
 
   // Contratos Filtrados pelo Contexto de Período, Loja e Vendedor
   const filteredContracts = useMemo(() => {
@@ -589,7 +633,7 @@ export default function Dashboard() {
       if (!isDateInPeriod(contractDate)) return false;
 
       // 2. Filtro de Loja
-      if (storeFilter !== 'all') {
+      if (effectiveStore !== 'all') {
         const resolved = resolveSaleStore(
           {
             store_id: c.store_id,
@@ -603,7 +647,7 @@ export default function Dashboard() {
           },
           employees
         );
-        if (!isMatchingStore(resolved.storeId, storeFilter)) return false;
+        if (!isMatchingStore(resolved.storeId, effectiveStore)) return false;
       }
       if (sellerFilter !== 'all') {
         if (!matchesSellerFilter(c, sellerFilter, employees)) return false;
@@ -611,45 +655,13 @@ export default function Dashboard() {
       return true;
     });
 
-    if (isRestrictedSeller) {
-      return filterSalesBySellerScope(
-        raw,
-        {
-          userId: user?.id,
-          profileId: profile?.id,
-          fullName: profile?.full_name,
-          email: user?.email,
-          roles,
-          isAdmin,
-          isManager,
-          hasElevatedAccess,
-          isSeller,
-          isSellerPlus,
-          isExternalSeller,
-          dataScope,
-        },
-        employees
-      );
-    }
-
     return raw;
   }, [
     contracts,
     isDateInPeriod,
-    storeFilter,
+    effectiveStore,
     sellerFilter,
     employees,
-    isRestrictedSeller,
-    user,
-    profile,
-    roles,
-    isAdmin,
-    isManager,
-    hasElevatedAccess,
-    isSeller,
-    isSellerPlus,
-    isExternalSeller,
-    dataScope,
   ]);
 
   // =========================================================================
@@ -687,10 +699,10 @@ export default function Dashboard() {
     let metaFaturamento = 530000; // Global (Ambas lojas)
     let metaMotos = 30;
 
-    if (storeFilter === 'store-divinopolis') {
+    if (isMatchingStore(effectiveStore, 'store-divinopolis')) {
       metaFaturamento = 350000;
       metaMotos = 20;
-    } else if (storeFilter === 'store-montesclaros') {
+    } else if (isMatchingStore(effectiveStore, 'store-montesclaros')) {
       metaFaturamento = 180000;
       metaMotos = 10;
     }
@@ -722,7 +734,7 @@ export default function Dashboard() {
       progressoMetaValor,
       progressoMetaMotos,
     };
-  }, [filteredSales, storeFilter, sellerFilter]);
+  }, [filteredSales, effectiveStore, sellerFilter]);
 
   // 1. Dados para o Gráfico de Evolução Diária e Ritmo
   const timelineChartData = useMemo(() => {
@@ -808,7 +820,7 @@ export default function Dashboard() {
 
     const totalReservasEstoque = vehicles.filter((v) => {
       if (v.status === 'vendido') return false;
-      if (storeFilter !== 'all' && !isMatchingStore(v.store_id, storeFilter)) return false;
+      if (effectiveStore !== 'all' && !isMatchingStore(v.store_id, effectiveStore)) return false;
       return (v.status as string) === 'reservado' || (v.status as string) === 'pre_venda';
     }).length;
 
@@ -847,7 +859,7 @@ export default function Dashboard() {
         color: '#10b981',
       },
     ];
-  }, [metrics, vehicles, filteredSales, storeFilter]);
+  }, [metrics, vehicles, filteredSales, effectiveStore]);
 
   // 4. Inteligência por Banco Financiador
   const bankAnalytics = useMemo(() => {
@@ -887,7 +899,7 @@ export default function Dashboard() {
       stats[v].aVista += (s.dinheiro + s.pix + s.cartao + s.carta_credito + s.boleto) || 0;
     });
 
-    const targetPerSeller = storeFilter === 'store-montesclaros' ? 6 : 8;
+    const targetPerSeller = isMatchingStore(effectiveStore, 'store-montesclaros') ? 6 : 8;
 
     return Object.entries(stats)
       .map(([name, data]) => ({
@@ -897,13 +909,13 @@ export default function Dashboard() {
         metaIndividualPct: Math.min(Math.round((data.count / targetPerSeller) * 100), 100),
       }))
       .sort((a, b) => b.count - a.count || b.faturamento - a.faturamento);
-  }, [filteredSales, storeFilter]);
+  }, [filteredSales, effectiveStore]);
 
   // 6. Saúde e Estoque do Pátio (Filtrado estritamente pela Loja e Tipo)
   const stockAnalytics = useMemo(() => {
     const activeVehicles = (vehicles || []).filter((v) => {
       if (v.status === 'vendido') return false;
-      if (storeFilter !== 'all' && !isMatchingStore(v.store_id, storeFilter)) return false;
+      if (effectiveStore !== 'all' && !isMatchingStore(v.store_id, effectiveStore)) return false;
       if (vehicleTypeFilter !== 'all' && v.vehicle_type !== vehicleTypeFilter) return false;
       return true;
     });
@@ -933,7 +945,7 @@ export default function Dashboard() {
       valorEstoque,
       custoEstoque,
     };
-  }, [vehicles, storeFilter, vehicleTypeFilter]);
+  }, [vehicles, effectiveStore, vehicleTypeFilter]);
 
   // Dados consolidados injetados nos blocos modulares dinâmicos
   const sharedWidgetData = useMemo(() => {
@@ -947,8 +959,8 @@ export default function Dashboard() {
       topModels: topModelsList,
       filteredSales,
       filteredContracts,
-      baseCity: storeFilter === 'store-montesclaros' ? 'Montes Claros' : 'Divinópolis',
-      storeFilter,
+      baseCity: currentBaseCity,
+      storeFilter: effectiveStore,
     };
   }, [
     metrics,
@@ -960,7 +972,8 @@ export default function Dashboard() {
     topModelsList,
     filteredSales,
     filteredContracts,
-    storeFilter,
+    currentBaseCity,
+    effectiveStore,
   ]);
 
   // Simular Recarregamento / Sincronização
@@ -1015,13 +1028,24 @@ export default function Dashboard() {
     <div className="space-y-6 w-full min-w-0 pb-12 animate-fade-in">
       {/* 1. CABEÇALHO PADRONIZADO */}
       <PageHeader
-        title="Painel de Vendas"
-        description="Acompanhamento de vendas, faturamento e estoque das lojas de Montes Claros e Divinópolis."
+        title={isSellerRole ? `Painel de Vendas · ${sellerStore.storeName}` : "Painel de Vendas"}
+        description={
+          isSellerRole
+            ? `Acompanhamento comercial, metas, faturamento e estoque exclusivo da sua concessionária (${sellerStore.storeName}).`
+            : "Acompanhamento de vendas, faturamento e estoque das lojas de Montes Claros e Divinópolis."
+        }
         badge={
-          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
-            Shineray Motos
-          </Badge>
+          isSellerRole ? (
+            <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary mr-1.5 inline-block" />
+              {sellerStore.storeName}
+            </Badge>
+          ) : (
+            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />
+              Shineray Motos
+            </Badge>
+          )
         }
         actions={
           <div className="flex items-center gap-2">
@@ -1043,29 +1067,42 @@ export default function Dashboard() {
           glassEffectStyle="regular"
           className="flex flex-wrap items-center gap-2 p-2 rounded-2xl border border-white/20 dark:border-white/10 shadow-sm w-full min-w-0"
         >
-          {/* Seletor de Concessionária */}
-          <Select value={storeFilter} onValueChange={handleStoreFilterChange}>
-            <SelectTrigger className="w-full sm:w-[210px] h-9 text-xs btn-glass font-semibold rounded-xl border truncate">
-              <Store className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
-              <SelectValue placeholder="Concessionária" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as Concessionárias (MG)</SelectItem>
-              <SelectItem value="store-divinopolis">
-                Concessionária Divinópolis
-              </SelectItem>
-              <SelectItem value="store-montesclaros">
-                Concessionária Montes Claros
-              </SelectItem>
-              {stores
-                .filter((s) => s.id !== 'store-montesclaros' && s.id !== 'store-divinopolis')
-                .map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+          {/* Seletor de Concessionária: Para vendedores, bloqueia estritamente na sua loja */}
+          {isSellerRole ? (
+            <div
+              className="flex items-center gap-1.5 h-9 px-3 text-xs btn-glass font-bold rounded-xl border border-primary/30 bg-primary/10 text-primary truncate shrink-0"
+              title={`Dashboard exclusivo da sua concessionária: ${sellerStore.storeName}`}
+            >
+              <Store className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="truncate max-w-[150px] sm:max-w-[200px]">{sellerStore.storeName}</span>
+              <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/20 text-primary shrink-0 ml-1">
+                Sua Loja
+              </span>
+            </div>
+          ) : (
+            <Select value={storeFilter} onValueChange={handleStoreFilterChange}>
+              <SelectTrigger className="w-full sm:w-[210px] h-9 text-xs btn-glass font-semibold rounded-xl border truncate">
+                <Store className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+                <SelectValue placeholder="Concessionária" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Concessionárias (MG)</SelectItem>
+                <SelectItem value="store-divinopolis">
+                  Concessionária Divinópolis
+                </SelectItem>
+                <SelectItem value="store-montesclaros">
+                  Concessionária Montes Claros
+                </SelectItem>
+                {stores
+                  .filter((s) => s.id !== 'store-montesclaros' && s.id !== 'store-divinopolis')
+                  .map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Período / Competência */}
           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -1702,12 +1739,8 @@ export default function Dashboard() {
           <div className="pt-2">
             <MonthlyCitySalesMap
               sales={filteredSales}
-              baseCity={
-                storeFilter === 'store-montesclaros'
-                  ? 'Montes Claros'
-                  : stores.find((s) => s.id === storeFilter)?.city || 'Divinópolis'
-              }
-              selectedStoreId={storeFilter}
+              baseCity={currentBaseCity}
+              selectedStoreId={effectiveStore}
             />
           </div>
         </TabsContent>
@@ -1728,16 +1761,11 @@ export default function Dashboard() {
         <TabsContent value="geo" className="space-y-4 mt-0">
           <GeographicSalesRadiusMap
             sales={filteredSales}
-            referenceStoreCity={
-              storeFilter === 'store-montesclaros'
-                ? 'Montes Claros'
-                : stores.find((s) => s.id === storeFilter)?.city || 'Divinópolis'
-            }
+            referenceStoreCity={currentBaseCity}
             storeName={
-              storeFilter === 'store-montesclaros'
+              isMatchingStore(effectiveStore, 'store-montesclaros')
                 ? 'Concessionária Montes Claros'
-                : stores.find((s) => s.id === storeFilter)?.name ||
-                  'Concessionária Divinópolis'
+                : 'Concessionária Divinópolis'
             }
           />
         </TabsContent>
@@ -1775,11 +1803,7 @@ export default function Dashboard() {
             <div className="lg:col-span-7">
               <LogisticsDeliveriesWidget
                 sales={filteredSales}
-                baseCity={
-                  storeFilter === 'store-montesclaros'
-                    ? 'Montes Claros'
-                    : stores.find((s) => s.id === storeFilter)?.city || 'Divinópolis'
-                }
+                baseCity={currentBaseCity}
               />
             </div>
 
