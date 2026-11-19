@@ -14077,7 +14077,7 @@
     "down_payment": 2799,
     "installments": 36,
     "installment_value": 1233.79,
-    "status": "pendente",
+    "status": "concluido",
     "signed_at": "2026-11-09 22:10:33.171325+00",
     "notes": "Modelo: Contrato de Venda. Financiamento bancário.",
     "created_at": "2026-11-09 22:10:33.171325+00",
@@ -14118,7 +14118,7 @@
       "plate": null,
       "chassis": "99hst1250ts000494",
       "vehicle_type": "moto",
-      "status": "reservado"
+      "status": "vendido"
     },
     "store": {
       "id": "e8254a81-d669-464b-9806-457ba25ce7f0",
@@ -15281,7 +15281,7 @@
     "down_payment": 0,
     "installments": 48,
     "installment_value": 989.67,
-    "status": "pendente",
+    "status": "concluido",
     "signed_at": "2026-11-03 19:29:20.513593+00",
     "notes": "Modelo: Contrato de Venda. Financiamento bancário.",
     "created_at": "2026-11-03 19:29:20.513593+00",
@@ -15311,7 +15311,8 @@
       "vendedor": "Mariana",
       "vehicle_model_custom": "SHINERAY SHI 175 EFI",
       "chassis": "99hshf175vs003316",
-      "buyer_city": "SANTA CECÍLIA, MONTES CLAROS/MG"
+      "buyer_city": "SANTA CECÍLIA, MONTES CLAROS/MG",
+      "operator_name": "Mariana"
     },
     "vehicle": {
       "id": "e0aaea3d-6dc6-4db6-b430-4095d83c951e",
@@ -15322,7 +15323,7 @@
       "plate": null,
       "chassis": "99hshf175vs003316",
       "vehicle_type": "moto",
-      "status": "reservado"
+      "status": "vendido"
     },
     "store": {
       "id": "e8254a81-d669-464b-9806-457ba25ce7f0",
@@ -15867,6 +15868,85 @@
     "operator": {
       "id": "61c7c7ba-f328-44d4-8fad-acfc1941ed3c",
       "full_name": "Mariana"
+    }
+  },
+  {
+    "id": "f4ba7a70-659c-482b-a0ed-0d3c602099c8",
+    "contract_number": "MOC-240",
+    "vehicle_id": "7d5694b5-59ff-4ed8-9ab0-a9b63b936adf",
+    "reseller_id": null,
+    "store_id": "e8254a81-d669-464b-9806-457ba25ce7f0",
+    "buyer_name": "PAULO ALVES DOS SANTOS",
+    "buyer_cpf": "03129897682",
+    "buyer_phone": "(71) 99346-8121",
+    "buyer_email": null,
+    "buyer_address": "Rua B, 29 - Acácias - Montes Claros/MG - CEP: 39406-624",
+    "sale_price": 15000,
+    "down_payment": 0,
+    "installments": 36,
+    "installment_value": 864.14,
+    "status": "concluido",
+    "signed_at": "2026-11-19T17:48:35.772Z",
+    "notes": "Financiamento: 36x de R$ 864,14 (MOTRIX)",
+    "created_at": "2026-11-19T17:48:35.772Z",
+    "updated_at": "2026-11-19T17:48:35.772Z",
+    "signed_contract_url": null,
+    "template_id": null,
+    "contract_type": "venda",
+    "created_by": "02e3206a-a9b4-47b7-8d25-0c9092dc19dd",
+    "user_id": "02e3206a-a9b4-47b7-8d25-0c9092dc19dd",
+    "vendedor": "Halana",
+    "financing_bank": "MOTRIX",
+    "active_clause_ids": [],
+    "clause_variables": {},
+    "revision_number": 1,
+    "payment_method": "Financiamento 100% (Sem Entrada)",
+    "down_payment_pix": 0,
+    "down_payment_cash": 0,
+    "down_payment_card": 0,
+    "down_payment_card_installments": 1,
+    "financing_installments": 36,
+    "financing_installment_value": 864.14,
+    "lead_source": "Balcão",
+    "lead_source_detail": null,
+    "review_status": "ok",
+    "review_note": null,
+    "sale_channel": "interna",
+    "evidence_paths": [],
+    "external_data": {
+      "pix": 0,
+      "banco": "MOTRIX",
+      "cartao": 0,
+      "regiao": "Montes Claros",
+      "chassis": "99HCS2170VS000691",
+      "dinheiro": 0,
+      "vendedor": "Halana",
+      "seller_name": "Halana",
+      "operator_name": "Halana",
+      "sale_date": "2026-11-19",
+      "buyer_city": "Montes Claros",
+      "store_name": "Concessionária Montes Claros",
+      "vehicle_model_custom": "SHINERAY NEW FREE 170",
+      "financiamento": 15000
+    },
+    "vehicle": {
+      "id": "7d5694b5-59ff-4ed8-9ab0-a9b63b936adf",
+      "brand": "SHINERAY",
+      "model": "NEW FREE 170",
+      "year": 2026,
+      "color": "Padrão",
+      "plate": null,
+      "chassis": "99HCS2170VS000691",
+      "vehicle_type": "moto",
+      "status": "vendido"
+    },
+    "store": {
+      "id": "e8254a81-d669-464b-9806-457ba25ce7f0",
+      "name": "Concessionária Montes Claros"
+    },
+    "operator": {
+      "id": "02e3206a-a9b4-47b7-8d25-0c9092dc19dd",
+      "full_name": "Halana"
     }
   }
 ]

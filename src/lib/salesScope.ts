@@ -173,13 +173,18 @@ export function isSellerNameMatch(sellerOnSale: string, targetSeller: string): b
   // Igualdade exata
   if (sNorm === tNorm) return true;
 
+  // Unificação de grafias conhecidas (ex: Halana vs Halanna)
+  const normS = sNorm.replace(/nn/g, 'n');
+  const normT = tNorm.replace(/nn/g, 'n');
+  if (normS === normT) return true;
+
   const sWords = sNorm.split(' ').filter((w) => w.length >= 3 && !GENERIC_SELLER_WORDS.has(w));
   const tWords = tNorm.split(' ').filter((w) => w.length >= 3 && !GENERIC_SELLER_WORDS.has(w));
 
   if (sWords.length === 0 || tWords.length === 0) return false;
 
-  // Primeiro nome coincide exatamente (ex: "Mariana" === "Mariana")
-  if (sWords[0] === tWords[0]) return true;
+  // Primeiro nome coincide exatamente (ex: "Mariana" === "Mariana", "Halana" === "Halanna")
+  if (sWords[0] === tWords[0] || sWords[0].replace(/nn/g, 'n') === tWords[0].replace(/nn/g, 'n')) return true;
 
   // Se um for nome composto e contiver o outro termo inteiro (ex: "Mariana Sabino" contém "Sabino" ou "Mariana")
   if (sWords.length > 1 && tWords.length === 1 && sWords.includes(tWords[0])) return true;
@@ -222,6 +227,20 @@ export function getUserSalesIdentity(
   };
 
   addNameTokens(auth.fullName);
+
+  // Mapeamento específico para Halana / Halanna para evitar desencontro de nomes
+  if (
+    userEmailNorm.includes('halan') ||
+    userEmailNorm.includes('shineraymoch') ||
+    userNameNorm.includes('halan')
+  ) {
+    userNames.add('halana');
+    userNames.add('halanna');
+    userNames.add('halanna dos santos silva');
+    userNames.add('halana dos santos silva');
+    userIds.add('02e3206a-a9b4-47b7-8d25-0c9092dc19dd');
+    userIds.add('emp-halana');
+  }
 
   // Tenta achar o colaborador associado na tabela employees
   const userEmailNorm = (auth.email || '').toLowerCase().trim();

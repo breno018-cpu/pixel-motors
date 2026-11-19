@@ -133,7 +133,7 @@ export function resolveSellerDisplayName(
   const matchedEmp = (employees || []).find((e) => {
     if (!e.full_name) return false;
     const empNorm = normalizeName(e.full_name);
-    return empNorm === norm || empNorm.startsWith(norm) || norm.startsWith(empNorm);
+    return isSellerNameMatch(clean, e.full_name) || empNorm === norm || empNorm.startsWith(norm) || norm.startsWith(empNorm);
   });
   if (matchedEmp?.full_name) {
     return matchedEmp.full_name.trim();
@@ -143,8 +143,9 @@ export function resolveSellerDisplayName(
   const matchedOff = DEFAULT_OFFICIAL_USERS.find((u) => {
     if (!u.full_name) return false;
     const offNorm = normalizeName(u.full_name);
+    if (isSellerNameMatch(clean, u.full_name)) return true;
     if (offNorm === norm || offNorm.startsWith(norm) || norm.startsWith(offNorm)) return true;
-    if (u.aliases?.some((a) => normalizeName(a) === norm)) return true;
+    if (u.aliases?.some((a) => isSellerNameMatch(clean, a) || normalizeName(a) === norm)) return true;
     return false;
   });
   if (matchedOff?.full_name) {

@@ -299,7 +299,7 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
   const hydratedDb = dbContracts.map((c) => {
     const ext = (c.external_data || {}) as any;
     const sellerFromExt = ext.seller_name || ext.operator_name || ext.vendedor || (c as any).vendedor;
-    const rawOpName = (c.created_by ? operatorMap[c.created_by] : null) || sellerFromExt || (c as any).created_by;
+    const rawOpName = sellerFromExt || (c.created_by ? operatorMap[c.created_by] : null) || (c as any).created_by;
     const cleanOpName = resolveSellerDisplayName(rawOpName);
 
     const existingOpName = c.operator?.full_name;

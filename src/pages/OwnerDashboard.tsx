@@ -180,6 +180,7 @@ export default function OwnerDashboard() {
       }
 
       // 3. Filtro de Período
+      if (periodPreset === 'all') return true;
       const saleDate = new Date(item.date);
       if (periodPreset === 'today') return saleDate >= todayStart;
       if (periodPreset === '7days') {
@@ -393,7 +394,8 @@ export default function OwnerDashboard() {
     }>();
 
     filteredSales.forEach((s) => {
-      const sellerName = s.vendedor?.trim() || 'Vendedor Não Identificado';
+      const rawSeller = s.vendedor?.trim() || 'Vendedor Não Identificado';
+      const sellerName = resolveSellerDisplayName(rawSeller, employees) || rawSeller;
       const curr = map.get(sellerName) || {
         name: sellerName,
         store: getStoreDisplayName(s),
@@ -685,6 +687,7 @@ export default function OwnerDashboard() {
                 <SelectItem value="last_month">Mês Anterior (Outubro)</SelectItem>
                 <SelectItem value="7days">Últimos 7 dias</SelectItem>
                 <SelectItem value="today">Hoje</SelectItem>
+                <SelectItem value="all">Todos os Períodos</SelectItem>
                 <SelectItem value="custom">Data Personalizada</SelectItem>
               </SelectContent>
             </Select>

@@ -212,10 +212,11 @@ export function convertContractsSeedToSheetRows(): SheetRowV9[] {
     const bankName = c.financing_bank || (finVal > 0 ? 'FINANCIAMENTO' : 'À VISTA');
 
     // Mapeamento preciso de vendedor a partir de dados do banco (auth/profiles/employees)
-    let sellerName = c.vendedor || c.operator?.full_name || '';
+    let sellerName = ext.seller_name || ext.vendedor || c.vendedor || c.operator?.full_name || '';
     if (!sellerName || sellerName === 'Vendedor') {
       const creatorId = String(c.created_by || c.user_id || '').toLowerCase();
-      if (creatorId === '61c7c7ba-f328-44d4-8fad-acfc1941ed3c' || creatorId === '286e1fbc-57ef-4e0f-aa3e-b56880f52751') sellerName = 'Mariana';
+      if (creatorId === '02e3206a-a9b4-47b7-8d25-0c9092dc19dd' || creatorId === 'emp-halana') sellerName = 'Halana';
+      else if (creatorId === '61c7c7ba-f328-44d4-8fad-acfc1941ed3c' || creatorId === '286e1fbc-57ef-4e0f-aa3e-b56880f52751') sellerName = 'Mariana';
       else if (creatorId === '6a031ece-6175-4965-b0a9-51e7d330d58f' || creatorId === '0ce9be1d-ce73-498d-8c1a-87bb2eaac3da') sellerName = 'Natan';
       else if (creatorId === 'c75534a4-1b08-4ccf-a2d7-96d882df7966') sellerName = 'Sabrina';
       else if (creatorId === '71622fd8-0930-4c98-bec2-17f53d92ca75' || creatorId === '1b3f9d1d-86b4-4211-8f72-aee8e662beb3') sellerName = 'Lilian';
