@@ -25,6 +25,7 @@ import {
   Sparkles,
   ArrowUpRight,
   ArrowRight,
+  DollarSign,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -159,11 +160,16 @@ export default function MotoInvoices() {
   const [reissueDialogOpen, setReissueDialogOpen] = useState(false);
   const [selectedInvoiceToReissue, setSelectedInvoiceToReissue] = useState<Invoice | null>(null);
   const [reissueNewNumber, setReissueNewNumber] = useState('');
+  const [reissueNewValue, setReissueNewValue] = useState('');
   const [reissueNewDate, setReissueNewDate] = useState(getLocalTodayDateString());
   const [reissueCancelDate, setReissueCancelDate] = useState(getLocalTodayDateString());
   const [reissueProtocol, setReissueProtocol] = useState('');
   const [reissueReason, setReissueReason] = useState('Cancelada para reemissão (Substituição de NF)');
   const [isSubmittingReissue, setIsSubmittingReissue] = useState(false);
+
+  const originalReissueVal = Number(selectedInvoiceToReissue?.total) || 0;
+  const parsedReissueVal = parseFlexibleCurrency(reissueNewValue);
+  const reissueValDifference = parsedReissueVal - originalReissueVal;
 
   // Estado da Venda Selecionada para preenchimento semi-manual
   const [selectedSaleId, setSelectedSaleId] = useState<string>('');
@@ -721,6 +727,7 @@ export default function MotoInvoices() {
       suggested = String(nextVal).padStart(rawNum.length, '0');
     }
     setReissueNewNumber(suggested || '');
+    setReissueNewValue(formatBrlNumber(Number(inv.total) || 0));
     setReissueNewDate(getLocalTodayDateString());
     setReissueCancelDate(getLocalTodayDateString());
     setReissueProtocol('');
@@ -742,6 +749,10 @@ export default function MotoInvoices() {
     const effectiveNewDate = reissueNewDate || getLocalTodayDateString();
     const effectiveReason = reissueReason.trim() || `Cancelada para reemissão (Substituída pela NF ${cleanNewNum})`;
 
+    const originalValue = ((target as any).original_value ?? Number(target.total)) || 0;
+    const effectiveNewValue = parsedReissueVal > 0 ? parsedReissueVal : (Number(target.total) || 0);
+    const valueDifference = effectiveNewValue - originalValue;
+
     setIsSubmittingReissue(true);
     try {
       // Atualiza a nota fiscal existente in-place com o novo número e o histórico completo
@@ -761,7 +772,9 @@ export default function MotoInvoices() {
         customer_address: target.customer_address || undefined,
         vehicle_model: target.items?.[0]?.description || 'Motocicleta Shineray',
         vehicle_chassis: target.items?.[0]?.chassis || '',
-        total_value: Number(target.total) || 0,
+        total_value: effectiveNewValue,
+        original_value: originalValue,
+        value_difference: valueDifference,
         status: 'emitida',
         fiscal_type: 'emissao',
         contract_number: target.contract_number || undefined,
@@ -771,7 +784,7 @@ export default function MotoInvoices() {
         cancellation_reason: effectiveReason,
         cancellation_type: 'estorno',
         sefaz_protocol: reissueProtocol.trim() || target.sefaz_protocol || undefined,
-        notes: `Reemissão substituta da NF ${oldNum}`,
+        notes: `Reemissão substituta da NF ${oldNum}${valueDifference !== 0 ? ` (Ajuste de valor: de R$ ${formatBrlNumber(originalValue)} para R$ ${formatBrlNumber(effectiveNewValue)})` : ''}`,
         attachment_url: target.attachment_url || undefined,
         attachment_name: target.attachment_name || undefined,
         attachment_size: target.attachment_size || undefined,
@@ -782,6 +795,7 @@ export default function MotoInvoices() {
       setReissueDialogOpen(false);
       setSelectedInvoiceToReissue(null);
       setReissueNewNumber('');
+      setReissueNewValue('');
       setReissueProtocol('');
       setReissueReason('');
 
@@ -1265,6 +1279,18 @@ export default function MotoInvoices() {
                             Number(inv.total) || 0
                           )}
                         </div>
+                        {inv.original_value !== undefined && inv.original_value !== null && inv.original_value !== Number(inv.total) && (
+                          <div className="flex items-center gap-1 text-[10px] font-mono leading-none mt-0.5">
+                            <span className="line-through text-muted-foreground/70">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(inv.original_value)}
+                            </span>
+                            {inv.value_difference !== undefined && inv.value_difference !== null && (
+                              <span className={inv.value_difference > 0 ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>
+                                ({inv.value_difference > 0 ? '+' : ''}{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(inv.value_difference)})
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="mt-0.5">
                           {inv.reissued_as_invoice_number ? (
                             <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[9px] font-bold px-1.5 py-0 gap-1">
@@ -2042,7 +2068,57 @@ export default function MotoInvoices() {
                 </div>
                 <div className="text-muted-foreground">Cliente: {selectedInvoiceToReissue.customer_name}</div>
                 <div className="text-muted-foreground font-mono font-bold text-foreground">
-                  Valor: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(selectedInvoiceToReissue.total) || 0)}
+                  Valor da 1ª NF: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(selectedInvoiceToReissue.total) || 0)}
+                </div>
+              </div>
+
+              {/* SEÇÃO DEDICADA: ALTERAÇÃO DE VALOR ENTRE A 1ª E A 2ª NF */}
+              <div className="bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400 text-xs">
+                    <DollarSign className="w-4 h-4 text-amber-600" />
+                    <span>Alteração de Valor na Nova NF (Livre Ajuste)</span>
+                  </div>
+                  {reissueValDifference !== 0 && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 ${
+                        reissueValDifference > 0
+                          ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30'
+                          : 'bg-rose-500/15 text-rose-700 border-rose-500/30'
+                      }`}
+                    >
+                      {reissueValDifference > 0 ? '+' : ''}
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(reissueValDifference)}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  A 2ª NF pode ser emitida com valor diferente da 1ª (ex: de R$ 11.000 para R$ 14.000). A alteração é livre e reflete no balanço contábil.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="p-2 rounded-lg bg-background/80 border border-border/60">
+                    <span className="text-[10px] font-medium text-muted-foreground block">1ª NF (Original):</span>
+                    <span className="text-xs font-mono font-bold line-through text-muted-foreground">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(originalReissueVal)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <Label className="text-[10px] font-medium text-foreground block mb-1">
+                      2ª NF (Novo Valor) *
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">R$</span>
+                      <Input
+                        className="h-9 pl-8 font-mono font-bold text-xs bg-background"
+                        placeholder="0,00"
+                        value={reissueNewValue}
+                        onChange={(e) => setReissueNewValue(maskCurrency(e.target.value))}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 

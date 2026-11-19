@@ -65,7 +65,7 @@ import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { formatFiscalDate, getLocalTodayDateString } from '@/lib/fiscalDates';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseInvoiceFile } from '@/lib/invoiceFileParser';
-import { parseFlexibleCurrency, formatBrlNumber } from '@/lib/masks';
+import { parseFlexibleCurrency, formatBrlNumber, maskCurrency } from '@/lib/masks';
 import { saveAttachmentToIdb, getAttachmentFromIdb, safeSaveToLocalStorage, cleanLocalStorageBloat } from '@/lib/invoiceAttachmentStorage';
 import { cloudSaveInvoice } from '@/lib/cloudSalesSync';
 import { cn } from '@/lib/utils';
@@ -83,6 +83,8 @@ export interface CombinedFiscalRecord {
   original_issue_date?: string;
   cancellation_date?: string;
   total_value: number;
+  original_value?: number;
+  value_difference?: number;
   status: string;
   cancellation_reason?: string;
   cancellation_type?: 'estorno' | 'credito' | 'devolucao';
@@ -112,6 +114,8 @@ export interface InvoiceLifecycleData {
   reissuedAsNumber?: string;
   reissuedAsDate?: string;
   reissuedAsStatus?: string;
+  reissuedAsValue?: number;
+  valueDifference: number;
   reissuedFromNumber?: string;
   reissuedFromDate?: string;
   reissuedFromCancellationDate?: string;
@@ -128,9 +132,10 @@ export function computeInvoiceLifecycle(
   const reissuedAsNumber = r.reissued_as_invoice_number;
   let reissuedAsDate: string | undefined = undefined;
   let reissuedAsStatus: string | undefined = undefined;
+  let child: CombinedFiscalRecord | undefined = undefined;
 
   if (reissuedAsNumber) {
-    const child = allRecords.find(
+    child = allRecords.find(
       (c) => c.invoice_number === reissuedAsNumber && (c.store_id === r.store_id || !c.store_id || !r.store_id)
     );
     if (child) {
@@ -146,9 +151,10 @@ export function computeInvoiceLifecycle(
   const reissuedFromNumber = r.reissue_of_invoice_number;
   let reissuedFromDate: string | undefined = undefined;
   let reissuedFromCancellationDate: string | undefined = undefined;
+  let parent: CombinedFiscalRecord | undefined = undefined;
 
   if (reissuedFromNumber) {
-    const parent = allRecords.find(
+    parent = allRecords.find(
       (p) => p.invoice_number === reissuedFromNumber && (p.store_id === r.store_id || !p.store_id || !r.store_id)
     );
     if (parent) {
@@ -167,10 +173,18 @@ export function computeInvoiceLifecycle(
 
   const effectiveCancDate = r.cancellation_date || (isCancelled ? (r.event_date || r.issue_date) : (reissuedFromCancellationDate || r.event_date));
 
+  const originalVal = isReissueChild
+    ? (r.original_value || (parent ? parent.total_value : r.total_value))
+    : (r.original_value || r.total_value);
+  const reissuedAsVal = isReissueChild
+    ? r.total_value
+    : (reissuedAsNumber ? (child ? child.total_value : r.total_value) : r.total_value);
+  const valueDifference = hasReissue ? (reissuedAsVal - originalVal) : (r.value_difference || 0);
+
   return {
     originalNumber: isReissueChild && reissuedFromNumber ? reissuedFromNumber : r.invoice_number,
     originalIssueDate: effectiveOrigDate,
-    originalValue: r.total_value,
+    originalValue: originalVal,
     isCancelled: isCancelled || isReissueParent || Boolean(isReissueChild && effectiveCancDate),
     cancellationDate: effectiveCancDate,
     cancellationReason: r.cancellation_reason || (isReissueParent ? 'Cancelada para substituição e reemissão de nova NF' : (isReissueChild ? 'Cancelada para reemissão (Substituição de NF)' : undefined)),
@@ -182,6 +196,8 @@ export function computeInvoiceLifecycle(
     reissuedAsNumber: isReissueChild ? r.invoice_number : reissuedAsNumber,
     reissuedAsDate: isReissueChild ? (r.issue_date || r.event_date) : reissuedAsDate,
     reissuedAsStatus: isReissueChild ? (r.status === 'cancelada' ? 'Cancelada' : 'Faturada / Ativa') : reissuedAsStatus,
+    reissuedAsValue: reissuedAsVal,
+    valueDifference,
     reissuedFromNumber,
     reissuedFromDate,
     reissuedFromCancellationDate,
@@ -270,11 +286,11 @@ export function OwnerFiscalInvoicesPanel() {
   const [invoiceToCancel, setInvoiceToCancel] = useState<CombinedFiscalRecord | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = useState<CombinedFiscalRecord | null>(null);
 
-  // Formulário de Nova NF
+  // Formulário de Nova NF (Data padrão sempre hoje, com livre alteração pelo usuário)
   const [newType, setNewType] = useState<'entrada' | 'emissao'>('entrada');
   const [newInvoiceNumber, setNewInvoiceNumber] = useState('');
   const [newStoreId, setNewStoreId] = useState(STORE_MONTESCLAROS_UUID);
-  const [newEventDate, setNewEventDate] = useState('2026-11-16');
+  const [newEventDate, setNewEventDate] = useState(getLocalTodayDateString());
   const [newPartyName, setNewPartyName] = useState('Shineray do Brasil S.A.');
   const [newTotalValue, setNewTotalValue] = useState('');
   const [newSefazProtocol, setNewSefazProtocol] = useState('');
@@ -299,14 +315,15 @@ export function OwnerFiscalInvoicesPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Formulário de Cancelamento
-  const [cancellationDate, setCancellationDate] = useState('2026-11-16');
+  const [cancellationDate, setCancellationDate] = useState(getLocalTodayDateString());
   const [cancellationType, setCancellationType] = useState<'estorno' | 'credito'>('estorno');
   const [cancellationReason, setCancellationReason] = useState('');
   const [cancellationProtocol, setCancellationProtocol] = useState('');
 
-  // Cancelamento & Reemissão de NF (Substituição no mesmo plano)
+  // Cancelamento & Reemissão de NF (Substituição no mesmo plano com Livre Alteração de Valor)
   const [invoiceToReissue, setInvoiceToReissue] = useState<CombinedFiscalRecord | null>(null);
   const [reissueNewNumber, setReissueNewNumber] = useState('');
+  const [reissueNewValue, setReissueNewValue] = useState('');
   const [reissueNewDate, setReissueNewDate] = useState(getLocalTodayDateString());
   const [reissueCancelDate, setReissueCancelDate] = useState(getLocalTodayDateString());
   const [reissueProtocol, setReissueProtocol] = useState('');
@@ -317,6 +334,10 @@ export function OwnerFiscalInvoicesPanel() {
     size: number;
     type: string;
   } | null>(null);
+
+  const reissueParsedNewVal = parseFlexibleCurrency(reissueNewValue) || 0;
+  const reissueOriginalVal = invoiceToReissue?.original_value || invoiceToReissue?.total_value || 0;
+  const reissueDifference = reissueParsedNewVal > 0 ? (reissueParsedNewVal - reissueOriginalVal) : 0;
   const [reissueIsReadingFile, setReissueIsReadingFile] = useState(false);
   const [isSubmittingReissue, setIsSubmittingReissue] = useState(false);
   const reissueFileInputRef = useRef<HTMLInputElement>(null);
@@ -1531,7 +1552,7 @@ export function OwnerFiscalInvoicesPanel() {
     }
   };
 
-  // Abertura do Modal de Cancelar & Reemitir
+  // Abertura do Modal de Cancelar & Reemitir (com Livre Alteração de Data e Valor)
   const handleOpenReissue = (record: CombinedFiscalRecord) => {
     setInvoiceToReissue(record);
     const rawDigits = record.invoice_number.replace(/\D/g, '');
@@ -1544,6 +1565,7 @@ export function OwnerFiscalInvoicesPanel() {
       }
     }
     setReissueNewNumber(suggested || '');
+    setReissueNewValue(formatBrlNumber(record.total_value));
     setReissueNewDate(getLocalTodayDateString());
     setReissueCancelDate(getLocalTodayDateString());
     setReissueProtocol('');
@@ -1551,7 +1573,7 @@ export function OwnerFiscalInvoicesPanel() {
     setReissueAttachment(null);
   };
 
-  // Confirmação de Cancelamento & Reemissão no Mesmo Plano
+  // Confirmação de Cancelamento & Reemissão no Mesmo Plano (com Valor e Data Atualizados)
   const handleConfirmCancelAndReissue = async () => {
     if (!invoiceToReissue) return;
     if (!reissueNewNumber.trim()) {
@@ -1564,6 +1586,11 @@ export function OwnerFiscalInvoicesPanel() {
     const effectiveNewDate = reissueNewDate || getLocalTodayDateString();
     const effectiveReason = reissueReason.trim() || `Cancelada para reemissão (Substituída pela NF ${cleanNewNum})`;
     const oldNum = invoiceToReissue.invoice_number;
+
+    const parsedNewVal = parseFlexibleCurrency(reissueNewValue);
+    const effectiveNewValue = parsedNewVal > 0 ? parsedNewVal : invoiceToReissue.total_value;
+    const originalValue = invoiceToReissue.original_value || invoiceToReissue.total_value;
+    const valueDifference = effectiveNewValue - originalValue;
 
     setIsSubmittingReissue(true);
     try {
@@ -1584,14 +1611,16 @@ export function OwnerFiscalInvoicesPanel() {
         event_date: effectiveNewDate,
         party_name: invoiceToReissue.party_name,
         party_doc: invoiceToReissue.party_doc,
-        total_value: invoiceToReissue.total_value,
+        total_value: effectiveNewValue,
+        original_value: originalValue,
+        value_difference: valueDifference,
         status: 'emitida',
         reissue_of_invoice_number: oldNum,
         cancellation_date: effectiveCancelDate,
         cancellation_reason: effectiveReason,
         cancellation_type: 'estorno',
         sefaz_protocol: reissueProtocol.trim() || invoiceToReissue.sefaz_protocol || undefined,
-        notes: `Reemissão substituta da NF ${oldNum}`,
+        notes: `Reemissão substituta da NF ${oldNum}${valueDifference !== 0 ? ` (Ajuste: ${formatCurrencyBRL(originalValue)} ➔ ${formatCurrencyBRL(effectiveNewValue)})` : ''}`,
         attachment_url: reissueAttachment?.url || invoiceToReissue.attachment_url || undefined,
         attachment_name: reissueAttachment?.name || invoiceToReissue.attachment_name || undefined,
         attachment_size: reissueAttachment?.size || invoiceToReissue.attachment_size || undefined,
@@ -1615,56 +1644,45 @@ export function OwnerFiscalInvoicesPanel() {
       safeSaveToLocalStorage(storageKey, list);
 
       // 3. Atualiza na nuvem in-place mantendo apenas 1 registro único da operação
-      if (invoiceToReissue.rawInvoiceId && !invoiceToReissue.rawInvoiceId.startsWith('loc-')) {
-        void cloudSaveInvoice({
-          id: invoiceToReissue.rawInvoiceId,
-          invoice_number: cleanNewNum,
-          reissue_of_invoice_number: oldNum,
-          original_issue_date: invoiceToReissue.original_issue_date || invoiceToReissue.issue_date,
-          issue_date: effectiveNewDate,
-          cancellation_date: effectiveCancelDate,
-          cancellation_reason: effectiveReason,
-          cancellation_type: 'estorno',
-          store_id: invoiceToReissue.store_id,
-          store_name: invoiceToReissue.store_name,
-          party_name: invoiceToReissue.party_name,
-          customer_name: invoiceToReissue.party_name,
-          customer_document: invoiceToReissue.party_doc || '',
-          vehicle_model: 'Motocicleta Shineray',
-          vehicle_chassis: '',
-          total_value: invoiceToReissue.total_value,
-          status: 'emitida',
-          fiscal_type: 'emissao',
-          sefaz_protocol: reissueProtocol.trim() || invoiceToReissue.sefaz_protocol || undefined,
-          notes: `Reemissão e substituição da NF ${oldNum}`,
-          attachment_url: reissueAttachment?.url || invoiceToReissue.attachment_url,
-          attachment_name: reissueAttachment?.name || invoiceToReissue.attachment_name,
-          attachment_size: reissueAttachment?.size || invoiceToReissue.attachment_size,
-          attachment_type: reissueAttachment?.type || invoiceToReissue.attachment_type,
-          created_at: new Date().toISOString(),
-        });
-      }
+      const cloudId = invoiceToReissue.rawInvoiceId && !invoiceToReissue.rawInvoiceId.startsWith('loc-')
+        ? invoiceToReissue.rawInvoiceId
+        : unifiedReissuedRecord.id;
 
       void cloudSaveInvoice({
-        id: newRecordId,
+        id: cloudId,
         invoice_number: cleanNewNum,
+        reissue_of_invoice_number: oldNum,
+        original_issue_date: invoiceToReissue.original_issue_date || invoiceToReissue.issue_date,
         issue_date: effectiveNewDate,
+        cancellation_date: effectiveCancelDate,
+        cancellation_reason: effectiveReason,
+        cancellation_type: 'estorno',
         store_id: invoiceToReissue.store_id,
+        store_name: invoiceToReissue.store_name,
+        party_name: invoiceToReissue.party_name,
         customer_name: invoiceToReissue.party_name,
-        total_value: invoiceToReissue.total_value,
+        customer_document: invoiceToReissue.party_doc || '',
+        vehicle_model: 'Motocicleta Shineray',
+        vehicle_chassis: '',
+        total_value: effectiveNewValue,
+        original_value: originalValue,
+        value_difference: valueDifference,
         status: 'emitida',
         fiscal_type: 'emissao',
-        reissue_of_invoice_number: oldNum,
-        sefaz_protocol: reissueProtocol.trim() || undefined,
-        notes: `Reemissão e substituição da NF ${oldNum}`,
-        attachment_url: reissueAttachment?.url || undefined,
-        attachment_name: reissueAttachment?.name || undefined,
+        sefaz_protocol: reissueProtocol.trim() || invoiceToReissue.sefaz_protocol || undefined,
+        notes: `Reemissão e substituição da NF ${oldNum}${valueDifference !== 0 ? ` (Ajuste: ${formatCurrencyBRL(originalValue)} ➔ ${formatCurrencyBRL(effectiveNewValue)})` : ''}`,
+        attachment_url: reissueAttachment?.url || invoiceToReissue.attachment_url,
+        attachment_name: reissueAttachment?.name || invoiceToReissue.attachment_name,
+        attachment_size: reissueAttachment?.size || invoiceToReissue.attachment_size,
+        attachment_type: reissueAttachment?.type || invoiceToReissue.attachment_type,
+        created_at: new Date().toISOString(),
       });
 
       // Fecha modais e dispara evento
       setInvoiceToReissue(null);
       setInvoiceToCancel(null);
       setReissueNewNumber('');
+      setReissueNewValue('');
       setReissueProtocol('');
       setReissueReason('');
       setReissueAttachment(null);
@@ -2334,6 +2352,17 @@ export function OwnerFiscalInvoicesPanel() {
                           )}>
                             {formatCurrencyBRL(r.total_value)}
                           </div>
+                          {lifecycle.hasReissue && lifecycle.valueDifference !== 0 && (
+                            <div className="text-[10px] font-mono flex items-center justify-end gap-1">
+                              <span className="line-through text-muted-foreground">{formatCurrencyBRL(lifecycle.originalValue)}</span>
+                              <span className={cn(
+                                "font-bold",
+                                lifecycle.valueDifference > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                              )}>
+                                {lifecycle.valueDifference > 0 ? `(+${formatCurrencyBRL(lifecycle.valueDifference)})` : `(${formatCurrencyBRL(lifecycle.valueDifference)})`}
+                              </span>
+                            </div>
+                          )}
                           <span className="text-[10px] text-muted-foreground block">
                             {isCancel && !lifecycle.hasReissue ? 'Valor Estornado' : 'Valor Total NF'}
                           </span>
@@ -2505,7 +2534,7 @@ export function OwnerFiscalInvoicesPanel() {
                           </div>
 
                           {/* 3. Nova NF Gerada */}
-                          <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 space-y-1 shadow-2xs">
+                          <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/30 space-y-1.5 shadow-2xs">
                             <div className="flex items-center justify-between text-blue-800 dark:text-blue-300 font-bold text-xs">
                               <span className="flex items-center gap-1">
                                 <Sparkles className="w-3 h-3 text-blue-600 shrink-0" />
@@ -2519,7 +2548,24 @@ export function OwnerFiscalInvoicesPanel() {
                               <Calendar className="w-3 h-3 text-blue-500 shrink-0" />
                               <span>Gerada em: <strong>{formatFiscalDate(lifecycle.reissuedAsDate || lifecycle.originalIssueDate)}</strong></span>
                             </div>
-                            <div className="text-[10.5px] text-muted-foreground flex items-center justify-between">
+                            <div className="text-[10.5px] font-bold text-foreground flex items-center justify-between pt-0.5 border-t border-blue-500/20">
+                              <span>Novo Valor:</span>
+                              <span className="font-mono text-blue-700 dark:text-blue-300 font-black">
+                                {formatCurrencyBRL(lifecycle.reissuedAsValue || r.total_value)}
+                              </span>
+                            </div>
+                            {lifecycle.valueDifference !== 0 && (
+                              <div className="text-[10px] font-semibold flex items-center justify-between">
+                                <span className="text-muted-foreground">Ajuste de Valor:</span>
+                                <span className={cn(
+                                  "font-mono px-1 py-0.2 rounded font-bold",
+                                  lifecycle.valueDifference > 0 ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
+                                )}>
+                                  {lifecycle.valueDifference > 0 ? `+${formatCurrencyBRL(lifecycle.valueDifference)}` : formatCurrencyBRL(lifecycle.valueDifference)}
+                                </span>
+                              </div>
+                            )}
+                            <div className="text-[10.5px] text-muted-foreground flex items-center justify-between pt-0.5">
                               <span className="text-blue-600 dark:text-blue-400 font-bold">Ativa no faturamento</span>
                               <Badge variant="outline" className="text-[9px] font-bold border-blue-500/40 text-blue-600 dark:text-blue-300">
                                 Substituta
@@ -2702,9 +2748,14 @@ export function OwnerFiscalInvoicesPanel() {
 
                             {/* Momento 3: Nova NF Gerada */}
                             {lifecycle.hasReissue && (
-                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/25 text-[10px] font-bold whitespace-nowrap" title={`Nova NF ${lifecycle.reissuedAsNumber} gerada em ${formatFiscalDate(lifecycle.reissuedAsDate || lifecycle.originalIssueDate)}`}>
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/25 text-[10px] font-bold whitespace-nowrap" title={`Nova NF ${lifecycle.reissuedAsNumber} gerada em ${formatFiscalDate(lifecycle.reissuedAsDate || lifecycle.originalIssueDate)}${lifecycle.valueDifference !== 0 ? ` • Novo Valor: ${formatCurrencyBRL(lifecycle.reissuedAsValue || r.total_value)}` : ''}`}>
                                 <Sparkles className="w-2.5 h-2.5 shrink-0" />
                                 <span>Nova NF {lifecycle.reissuedAsNumber}: {formatFiscalDate(lifecycle.reissuedAsDate || lifecycle.originalIssueDate)}</span>
+                                {lifecycle.valueDifference !== 0 && (
+                                  <span className="ml-0.5 font-mono text-[9px] px-1 rounded bg-blue-500/20 text-blue-800 dark:text-blue-200">
+                                    {formatCurrencyBRL(lifecycle.reissuedAsValue || r.total_value)}
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -2723,10 +2774,24 @@ export function OwnerFiscalInvoicesPanel() {
                         </TableCell>
 
                         {/* 6. Valor Total */}
-                        <TableCell className="text-xs text-right font-bold font-mono align-middle">
-                          <span className={isCancel && !lifecycle.hasReissue ? 'line-through text-muted-foreground' : 'text-foreground'}>
+                        <TableCell className="text-xs text-right font-mono align-middle">
+                          <span className={cn(
+                            "font-bold block",
+                            isCancel && !lifecycle.hasReissue ? 'line-through text-muted-foreground' : 'text-foreground'
+                          )}>
                             {formatCurrencyBRL(r.total_value)}
                           </span>
+                          {lifecycle.hasReissue && lifecycle.valueDifference !== 0 && (
+                            <div className="text-[9.5px] text-muted-foreground flex items-center justify-end gap-1 font-mono">
+                              <span className="line-through">{formatCurrencyBRL(lifecycle.originalValue)}</span>
+                              <span className={cn(
+                                "font-bold",
+                                lifecycle.valueDifference > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                              )}>
+                                {lifecycle.valueDifference > 0 ? `(+${formatCurrencyBRL(lifecycle.valueDifference)})` : `(${formatCurrencyBRL(lifecycle.valueDifference)})`}
+                              </span>
+                            </div>
+                          )}
                         </TableCell>
 
                         {/* 7. Anexo Oficial da NF */}
@@ -3270,7 +3335,58 @@ export function OwnerFiscalInvoicesPanel() {
               </div>
             </div>
 
-            {/* Bloco 2: Dados da Nova NF Substituta */}
+            {/* Bloco 2: Ajuste e Livre Alteração de Valor da 1ª para a 2ª NF */}
+            <div className="p-3.5 rounded-xl bg-blue-500/5 border border-blue-500/25 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-blue-700 dark:text-blue-300 uppercase text-[10.5px] tracking-wider flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+                  Ajuste de Valor da 2ª NF (Livre Alteração)
+                </span>
+                {reissueDifference !== 0 && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] font-bold font-mono",
+                      reissueDifference > 0
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                        : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                    )}
+                  >
+                    {reissueDifference > 0 ? `+${formatCurrencyBRL(reissueDifference)}` : formatCurrencyBRL(reissueDifference)}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Comparador Visual 1ª NF vs 2ª NF */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-background/80 p-2.5 rounded-lg border border-border/60">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold block">1ª NF (Original)</span>
+                  <p className="text-sm font-black font-mono text-muted-foreground mt-0.5 line-through">
+                    {formatCurrencyBRL(reissueOriginalVal)}
+                  </p>
+                </div>
+                <div className="bg-background/80 p-2.5 rounded-lg border border-blue-500/40 ring-1 ring-blue-500/20">
+                  <span className="text-[10px] text-blue-700 dark:text-blue-300 uppercase font-bold block">2ª NF (Novo Valor) *</span>
+                  <div className="relative mt-0.5">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">R$</span>
+                    <Input
+                      type="text"
+                      className="text-sm font-black font-mono pl-8 h-8 rounded-md bg-transparent border-blue-500/30"
+                      placeholder="0,00"
+                      value={reissueNewValue}
+                      onChange={(e) => setReissueNewValue(maskCurrency(e.target.value))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span>Permite alterar livremente o valor da nova NF (ex: 1ª NF com R$ 11.000,00 ➔ 2ª NF com R$ 14.000,00).</span>
+              </div>
+            </div>
+
+            {/* Bloco 3: Dados da Nova NF Substituta */}
             <div className="space-y-3 pt-1">
               <div className="grid grid-cols-2 gap-3">
                 <div>

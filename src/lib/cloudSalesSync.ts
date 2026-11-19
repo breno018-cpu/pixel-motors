@@ -60,6 +60,8 @@ export interface RegisteredInvoice {
   sefaz_protocol?: string;
   reissued_as_invoice_number?: string; // Número da nova NF que substituiu esta
   reissue_of_invoice_number?: string;  // Número da NF anterior que deu origem a esta reemissão
+  original_value?: number;             // Valor da 1ª NF original antes da alteração na reemissão
+  value_difference?: number;           // Diferença de valor (2ª NF - 1ª NF, ex: +3000 ou -2000)
 }
 
 export interface CloudSyncState {

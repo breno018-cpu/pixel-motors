@@ -59,6 +59,8 @@ export interface Invoice {
   original_issue_date?: string | null;
   reissued_as_invoice_number?: string | null;
   reissue_of_invoice_number?: string | null;
+  original_value?: number | null;
+  value_difference?: number | null;
   store?: { id: string; name: string; cnpj?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
 }
 
@@ -117,6 +119,8 @@ export function getLocalCachedInvoices(): Invoice[] {
             sefaz_protocol: r.sefaz_protocol || null,
             reissued_as_invoice_number: r.reissued_as_invoice_number || null,
             reissue_of_invoice_number: r.reissue_of_invoice_number || null,
+            original_value: r.original_value ?? null,
+            value_difference: r.value_difference ?? null,
             store: {
               id: r.store_id,
               name: r.store_name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
@@ -216,6 +220,8 @@ export function useInvoices() {
           sefaz_protocol: r.sefaz_protocol || null,
           reissued_as_invoice_number: r.reissued_as_invoice_number || null,
           reissue_of_invoice_number: r.reissue_of_invoice_number || null,
+          original_value: r.original_value ?? null,
+          value_difference: r.value_difference ?? null,
           store: {
             id: r.store_id,
             name: r.store_name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
