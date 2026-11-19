@@ -35,6 +35,8 @@ import {
   Eye,
   Boxes,
   ArrowLeftRight,
+  XCircle,
+  Percent,
 } from 'lucide-react';
 import {
   Dialog,
@@ -120,9 +122,7 @@ interface ModelStockGroup {
   model: string;
   brand: string;
   totalCount: number;
-  mocCount: number;
-  divCount: number;
-  mltCount: number;
+  storeCounts: Map<string, number>;
   totalValue: number;
   avgPrice: number;
   colorCounts: { color: string; count: number }[];
@@ -146,14 +146,13 @@ export default function OwnerDashboard() {
   // Abas Executivas: caixa | nfs | patio | troca-estoque | vendedores | comprovantes | planilha
   const [activeTab, setActiveTab] = useState<'caixa' | 'nfs' | 'patio' | 'troca-estoque' | 'vendedores' | 'comprovantes' | 'planilha'>('caixa');
 
-  // Filtros Globais
-  const [storeFilter, setStoreFilter] = useState<string>('all');
+  // Filtros Globais do Cockpit
   const [periodPreset, setPeriodPreset] = useState<string>('this_month');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [stockSearch, setStockSearch] = useState<string>('');
-  const [stockStoreFilter, setStockStoreFilter] = useState<'all' | 'montesclaros' | 'divinopolis' | 'multimarcas'>('all');
+  const [stockStoreFilter, setStockStoreFilter] = useState<string>('all');
   const [stockSortBy, setStockSortBy] = useState<'count_desc' | 'count_asc' | 'value_desc' | 'name_asc'>('count_desc');
   const [selectedModelForChassis, setSelectedModelForChassis] = useState<ModelStockGroup | null>(null);
 
@@ -163,11 +162,10 @@ export default function OwnerDashboard() {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
 
     return sales.filter((item) => {
-      // 1. Filtro de Concessionária (Global ou Local)
-      const effectiveStoreFilter = dealershipScope.activeScope !== 'all' ? dealershipScope.activeScope : storeFilter;
-      if (effectiveStoreFilter !== 'all') {
+      // 1. Filtro de Concessionária (Global via DealershipScope)
+      if (dealershipScope.activeScope !== 'all') {
         const k = resolveStoreToKey(item.loja_slug || item.store_id || item.loja_cidade || item.loja_nome);
-        if (k !== effectiveStoreFilter) return false;
+        if (k !== dealershipScope.activeScope) return false;
       }
 
       // 2. Busca por texto
@@ -203,7 +201,7 @@ export default function OwnerDashboard() {
 
       return true;
     });
-  }, [sales, dealershipScope.activeScope, storeFilter, searchQuery, periodPreset, startDate, endDate]);
+  }, [sales, dealershipScope.activeScope, searchQuery, periodPreset, startDate, endDate]);
 
   // Contadores e Totais Financeiros por Concessionária
   const { dealershipCounts, dealershipFinancials } = useMemo(() => {
@@ -253,46 +251,10 @@ export default function OwnerDashboard() {
     const estimatedGrossProfit = totalRevenue * 0.185;
     const grossMarginPercent = totalRevenue > 0 ? (estimatedGrossProfit / totalRevenue) * 100 : 0;
 
-    // Divisão por Concessionária (Grupo L1MA Motors)
-    let mocRevenue = 0, mocCount = 0;
-    let divRevenue = 0, divCount = 0;
-    let mltRevenue = 0, mltCount = 0;
-
-    filteredSales.forEach((s) => {
-      const k = resolveStoreToKey(s.loja_slug || s.store_id || s.loja_cidade || s.loja_nome);
-      const val = s.valor || 0;
-      if (k === 'montesclaros') {
-        mocRevenue += val;
-        mocCount += 1;
-      } else if (k === 'multimarcas') {
-        mltRevenue += val;
-        mltCount += 1;
-      } else {
-        divRevenue += val;
-        divCount += 1;
-      }
-    });
-
-    const mocAvgTicket = mocCount > 0 ? mocRevenue / mocCount : 0;
-    const divAvgTicket = divCount > 0 ? divRevenue / divCount : 0;
-    const mltAvgTicket = mltCount > 0 ? mltRevenue / mltCount : 0;
-    const mocShare = totalRevenue > 0 ? (mocRevenue / totalRevenue) * 100 : 0;
-    const divShare = totalRevenue > 0 ? (divRevenue / totalRevenue) * 100 : 0;
-    const mltShare = totalRevenue > 0 ? (mltRevenue / totalRevenue) * 100 : 0;
-
-    // Métricas do Pátio / Estoque Parado
+    // Métricas do Pátio / Estoque
     const inStockVehicles = vehicles.filter((v) => v.status === 'disponivel' || (v.status as any) === 'em_estoque');
     const totalStockCount = inStockVehicles.length;
     const totalStockValue = inStockVehicles.reduce((acc, v) => acc + (Number(v.purchase_price) || Number(v.sale_price) || 0), 0);
-
-    const mocStockVehicles = inStockVehicles.filter((v) => resolveStoreToKey(v.store_id) === 'montesclaros');
-    const mocStockValue = mocStockVehicles.reduce((acc, v) => acc + (Number(v.sale_price) || 0), 0);
-
-    const divStockVehicles = inStockVehicles.filter((v) => resolveStoreToKey(v.store_id) === 'divinopolis');
-    const divStockValue = divStockVehicles.reduce((acc, v) => acc + (Number(v.sale_price) || 0), 0);
-
-    const mltStockVehicles = inStockVehicles.filter((v) => resolveStoreToKey(v.store_id) === 'multimarcas');
-    const mltStockValue = mltStockVehicles.reduce((acc, v) => acc + (Number(v.sale_price) || 0), 0);
 
     return {
       totalRevenue,
@@ -304,28 +266,80 @@ export default function OwnerDashboard() {
       totalCashPix,
       totalCard,
       totalConsortium,
-      mocRevenue,
-      mocCount,
-      mocAvgTicket,
-      mocShare,
-      divRevenue,
-      divCount,
-      divAvgTicket,
-      divShare,
-      mltRevenue,
-      mltCount,
-      mltAvgTicket,
-      mltShare,
       totalStockCount,
       totalStockValue,
-      mocStockCount: mocStockVehicles.length,
-      mocStockValue,
-      divStockCount: divStockVehicles.length,
-      divStockValue,
-      mltStockCount: mltStockVehicles.length,
-      mltStockValue,
     };
   }, [filteredSales, vehicles]);
+
+  // Desempenho 100% Dinâmico por Concessionária (Grupo L1MA Motors)
+  const storePerformance = useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      id: string;
+      name: string;
+      shortName: string;
+      revenue: number;
+      count: number;
+      stockCount: number;
+      stockValue: number;
+    }>();
+
+    // 1. Inicializa com todas as lojas cadastradas no sistema
+    stores.filter((s) => s.is_active !== false).forEach((s) => {
+      const key = resolveStoreToKey(s.id || s.slug || s.name);
+      map.set(key, {
+        key,
+        id: s.id,
+        name: s.name,
+        shortName: formatStoreShortName(s.name),
+        revenue: 0,
+        count: 0,
+        stockCount: 0,
+        stockValue: 0,
+      });
+    });
+
+    // 2. Apuração de vendas a partir das vendas filtradas no período
+    filteredSales.forEach((s) => {
+      const key = resolveStoreToKey(s.loja_slug || s.store_id || s.loja_cidade || s.loja_nome);
+      let entry = map.get(key);
+      if (!entry) {
+        entry = {
+          key,
+          id: key,
+          name: s.store_name || key,
+          shortName: formatStoreShortName(s.store_name || key),
+          revenue: 0,
+          count: 0,
+          stockCount: 0,
+          stockValue: 0,
+        };
+        map.set(key, entry);
+      }
+      entry.revenue += Number(s.valor) || 0;
+      entry.count += 1;
+    });
+
+    // 3. Apuração de estoque físico no pátio
+    const inStock = vehicles.filter((v) => v.status === 'disponivel' || (v.status as any) === 'em_estoque');
+    inStock.forEach((v) => {
+      const key = resolveStoreToKey(v.store_id);
+      const entry = map.get(key);
+      if (entry) {
+        entry.stockCount += 1;
+        entry.stockValue += Number(v.sale_price) || 0;
+      }
+    });
+
+    const totalRev = executiveMetrics.totalRevenue;
+    return Array.from(map.values())
+      .map((item) => ({
+        ...item,
+        avgTicket: item.count > 0 ? item.revenue / item.count : 0,
+        share: totalRev > 0 ? (item.revenue / totalRev) * 100 : 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }, [stores, filteredSales, vehicles, executiveMetrics.totalRevenue]);
 
   // Margem e Lucro por Modelo de Moto
   const modelProfitability = useMemo(() => {
@@ -336,7 +350,7 @@ export default function OwnerDashboard() {
       const curr = map.get(model) || { model, count: 0, revenue: 0, marginValue: 0 };
       curr.count += 1;
       curr.revenue += s.valor || 0;
-      // Margem média por modelo (~18% sobre o preço de venda faturado)
+      // Margem média por modelo (~18.5% sobre o preço de venda faturado)
       curr.marginValue += (s.valor || 0) * 0.185;
       map.set(model, curr);
     });
@@ -416,17 +430,15 @@ export default function OwnerDashboard() {
     return sellerPerformance.reduce((acc, s) => acc + s.commissionTotal, 0);
   }, [sellerPerformance]);
 
-  // Agrupamento Executivo do Pátio focado em MODELOS e QUANTIDADES
+  // Agrupamento Dinâmico do Pátio focado em MODELOS e QUANTIDADES
   const modelStockSummary = useMemo(() => {
     const inStock = vehicles.filter((v) => v.status === 'disponivel' || (v.status as any) === 'em_estoque');
     const map = new Map<string, {
       model: string;
       brand: string;
       totalCount: number;
-      mocCount: number;
-      divCount: number;
-      mltCount: number;
       totalValue: number;
+      storeCounts: Map<string, number>;
       colorMap: Map<string, number>;
       vehicles: typeof vehicles;
     }>();
@@ -439,18 +451,14 @@ export default function OwnerDashboard() {
         model: canonical,
         brand: v.brand || 'SHINERAY',
         totalCount: 0,
-        mocCount: 0,
-        divCount: 0,
-        mltCount: 0,
         totalValue: 0,
+        storeCounts: new Map<string, number>(),
         colorMap: new Map<string, number>(),
         vehicles: [],
       };
 
       curr.totalCount += 1;
-      if (vKey === 'divinopolis') curr.divCount += 1;
-      else if (vKey === 'multimarcas') curr.mltCount += 1;
-      else curr.mocCount += 1;
+      curr.storeCounts.set(vKey, (curr.storeCounts.get(vKey) || 0) + 1);
 
       const price = Number(v.sale_price) || 0;
       curr.totalValue += price;
@@ -472,9 +480,7 @@ export default function OwnerDashboard() {
         model: item.model,
         brand: item.brand,
         totalCount: item.totalCount,
-        mocCount: item.mocCount,
-        divCount: item.divCount,
-        mltCount: item.mltCount,
+        storeCounts: item.storeCounts,
         totalValue: item.totalValue,
         avgPrice,
         colorCounts,
@@ -482,13 +488,10 @@ export default function OwnerDashboard() {
       };
     });
 
-    // Filtro por Concessionária
-    if (stockStoreFilter === 'montesclaros') {
-      list = list.filter((m) => m.mocCount > 0);
-    } else if (stockStoreFilter === 'divinopolis') {
-      list = list.filter((m) => m.divCount > 0);
-    } else if (stockStoreFilter === 'multimarcas') {
-      list = list.filter((m) => m.mltCount > 0);
+    // Filtro Dinâmico por Concessionária
+    if (stockStoreFilter !== 'all') {
+      const targetKey = resolveStoreToKey(stockStoreFilter);
+      list = list.filter((m) => (m.storeCounts.get(targetKey) || 0) > 0);
     }
 
     // Busca textual por modelo ou cor
@@ -514,15 +517,13 @@ export default function OwnerDashboard() {
     }
 
     return list;
-  }, [vehicles, stores, stockSearch, stockStoreFilter, stockSortBy]);
+  }, [vehicles, stockSearch, stockStoreFilter, stockSortBy]);
 
   const exportModelStockExcel = () => {
     const data = modelStockSummary.map((m) => ({
       Modelo: m.model,
       Marca: m.brand,
       'Quantidade Total': m.totalCount,
-      'Qtd Montes Claros': m.mocCount,
-      'Qtd Divinópolis': m.divCount,
       'Preço Médio Unitário': m.avgPrice,
       'Valor Total no Pátio': m.totalValue,
       'Cores Disponíveis': m.colorCounts.map((c) => `${c.color}: ${c.count}`).join(', '),
@@ -536,8 +537,6 @@ export default function OwnerDashboard() {
         { key: 'Modelo', label: 'Modelo', type: 'text' },
         { key: 'Marca', label: 'Marca', type: 'text' },
         { key: 'Quantidade Total', label: 'Quantidade Total', type: 'number' },
-        { key: 'Qtd Montes Claros', label: 'Qtd Montes Claros', type: 'number' },
-        { key: 'Qtd Divinópolis', label: 'Qtd Divinópolis', type: 'number' },
         { key: 'Preço Médio Unitário', label: 'Preço Médio Unitário', type: 'currency' },
         { key: 'Valor Total no Pátio', label: 'Valor Total no Pátio', type: 'currency' },
         { key: 'Cores Disponíveis', label: 'Cores Disponíveis', type: 'text' },
@@ -566,7 +565,7 @@ export default function OwnerDashboard() {
     exportToXLSX({
       title: 'Cockpit da Diretoria - Relatório Executivo',
       module: 'sales',
-      filters: { Período: periodPreset, Loja: storeFilter },
+      filters: { Período: periodPreset, Loja: dealershipScope.activeScope },
       columns: [
         { key: 'Data', label: 'Data', type: 'text' },
         { key: 'Concessionária', label: 'Concessionária', type: 'text' },
@@ -586,12 +585,21 @@ export default function OwnerDashboard() {
     });
   };
 
+  const hasActiveFilters = searchQuery.trim() !== '' || periodPreset !== 'this_month';
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setPeriodPreset('this_month');
+    setStartDate('');
+    setEndDate('');
+  };
+
   return (
-    <div className="space-y-6 w-full min-w-0 pb-16 animate-fade-in">
+    <div className="space-y-5 w-full min-w-0 pb-16 animate-fade-in">
       {/* 1. CABEÇALHO EXECUTIVO PADRONIZADO */}
       <PageHeader
         title="Cockpit da Diretoria"
-        description="Painel estratégico e financeiro: fluxo de caixa real, pátio em R$, comissões a pagar e auditoria de comprovantes."
+        description="Painel estratégico consolidado: fluxo financeiro, pátio em R$, apuração de comissões e gestão de NFs."
         badge={
           <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 shrink-0 gap-1.5">
             <Crown className="w-3.5 h-3.5" />
@@ -605,25 +613,25 @@ export default function OwnerDashboard() {
               size="sm"
               onClick={refresh}
               disabled={isRefreshing}
-              className="gap-1.5"
+              className="gap-1.5 rounded-xl h-9"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Atualizar
+              <span className="hidden sm:inline">Atualizar Dados</span>
             </Button>
             <Button
               size="sm"
               onClick={exportExecutiveExcel}
-              className="gap-1.5 font-semibold"
+              className="gap-1.5 font-semibold rounded-xl h-9 shadow-sm"
             >
               <Download className="w-3.5 h-3.5" />
-              Exportar Relatório XLSX
+              <span>Exportar XLSX</span>
             </Button>
           </div>
         }
       />
 
-      {/* SELETOR EXECUTIVO DE CONCESSIONÁRIA */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-card border shadow-xs space-y-3">
+      {/* 2. SELETOR UNIFICADO DE CONCESSIONÁRIA (GRUPO L1MA MOTORS) */}
+      <div className="p-4 rounded-2xl bg-card border shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-border/50">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
@@ -639,7 +647,7 @@ export default function OwnerDashboard() {
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Isole métricas de faturamento, estoque e notas por unidade ou selecione a holding consolidada.
+                Alterne entre a holding unificada ou filtre métricas isoladas de faturamento e estoque por concessionária.
               </p>
             </div>
           </div>
@@ -648,12 +656,12 @@ export default function OwnerDashboard() {
             <DealershipBadge />
           </div>
         </div>
+
         <DealershipSegmentedBar
           variant="pills"
           activeScope={dealershipScope.activeScope}
           onChange={(scope) => {
             dealershipScope.setActiveScope(scope);
-            setStoreFilter(scope);
           }}
           counts={dealershipCounts}
           financials={dealershipFinancials}
@@ -662,196 +670,229 @@ export default function OwnerDashboard() {
         />
       </div>
 
-      {/* 2. NAVEGAÇÃO ENTRE AS ABAS ESTRATÉGICAS */}
+      {/* 3. BARRA DE CONTROLE EXECUTIVO GLOBAL (PERÍODO + BUSCA) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-card border shadow-xs">
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          {/* Seletor de Período Global */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Calendar className="w-4 h-4 text-muted-foreground ml-1" />
+            <Select value={periodPreset} onValueChange={setPeriodPreset}>
+              <SelectTrigger className="h-8.5 text-xs w-44 rounded-xl font-medium">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="this_month">Mês Atual (Novembro)</SelectItem>
+                <SelectItem value="last_month">Mês Anterior (Outubro)</SelectItem>
+                <SelectItem value="7days">Últimos 7 dias</SelectItem>
+                <SelectItem value="today">Hoje</SelectItem>
+                <SelectItem value="custom">Data Personalizada</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Range Personalizado de Data */}
+          {periodPreset === 'custom' && (
+            <div className="flex items-center gap-1.5 shrink-0 animate-fade-in">
+              <Input
+                type="date"
+                className="h-8.5 text-xs w-32 rounded-xl"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <span className="text-xs text-muted-foreground">até</span>
+              <Input
+                type="date"
+                className="h-8.5 text-xs w-32 rounded-xl"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* Campo de Busca Rápida */}
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="h-8.5 pl-8.5 text-xs rounded-xl pr-7"
+              placeholder="Buscar por cliente, chassi, modelo ou vendedor..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetFilters}
+              className="h-8.5 text-xs text-muted-foreground hover:text-foreground gap-1 px-2.5 rounded-xl"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              Limpar Filtros
+            </Button>
+          )}
+        </div>
+
+        {/* Resumo Dinâmico dos Registros */}
+        <div className="flex items-center gap-2 text-xs shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-border/50 justify-between md:justify-end">
+          <Badge variant="secondary" className="font-mono text-[11px] font-semibold px-2.5 py-0.5 rounded-lg">
+            {filteredSales.length} {filteredSales.length === 1 ? 'venda apurada' : 'vendas apuradas'}
+          </Badge>
+          <span className="font-mono font-bold text-foreground text-xs">
+            {formatCurrencyBRL(executiveMetrics.totalRevenue)}
+          </span>
+        </div>
+      </div>
+
+      {/* 4. NAVEGAÇÃO DE ABAS EXECUTIVAS REORGANIZADAS */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-6">
-        <TabsList className="bg-muted/40 p-1 rounded-xl border border-border/80 w-full grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 max-w-6xl mx-auto shadow-xs">
-          <TabsTrigger
-            value="caixa"
-            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
-          >
-            <DollarSign className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>Caixa &amp; Margens</span>
-          </TabsTrigger>
+        <div className="w-full overflow-x-auto pb-1 no-scrollbar">
+          <TabsList className="bg-muted/40 p-1 rounded-2xl border border-border/80 w-full flex items-center gap-1 shadow-xs min-w-[720px]">
+            <TabsTrigger
+              value="caixa"
+              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+            >
+              <DollarSign className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>Caixa &amp; Margens</span>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="nfs"
-            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
-          >
-            <ReceiptText className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>Controle de NFs</span>
-          </TabsTrigger>
+            <TabsTrigger
+              value="nfs"
+              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+            >
+              <ReceiptText className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>Controle de NFs</span>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="patio"
-            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
-          >
-            <Bike className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>Pátio em R$</span>
-          </TabsTrigger>
+            <TabsTrigger
+              value="patio"
+              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+            >
+              <Bike className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>Pátio em R$</span>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="troca-estoque"
-            className="rounded-lg text-xs font-bold gap-1.5 py-2 text-emerald-600 dark:text-emerald-400 data-[state=active]:bg-background data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-xs data-[state=active]:border-emerald-500/30 border border-transparent transition-all"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Troca de Estoque</span>
-          </TabsTrigger>
+            <TabsTrigger
+              value="troca-estoque"
+              className="flex-1 rounded-xl text-xs font-bold gap-1.5 py-2.5 text-emerald-600 dark:text-emerald-400 data-[state=active]:bg-background data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-xs data-[state=active]:border-emerald-500/30 border border-transparent transition-all"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Troca de Estoque</span>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="vendedores"
-            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
-          >
-            <Users className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>Vendedores</span>
-          </TabsTrigger>
+            <TabsTrigger
+              value="vendedores"
+              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+            >
+              <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>Vendedores</span>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="comprovantes"
-            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
-          >
-            <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>Comprovantes</span>
-          </TabsTrigger>
+            <TabsTrigger
+              value="comprovantes"
+              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+            >
+              <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>Comprovantes</span>
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="planilha"
-            className="rounded-lg text-xs font-semibold gap-1.5 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>Planilha</span>
-          </TabsTrigger>
-        </TabsList>
+            <TabsTrigger
+              value="planilha"
+              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>Planilha</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* =================================================================== */}
         {/* ABA 1: CAIXA & RESULTADOS FINANCEIROS                               */}
         {/* =================================================================== */}
         <TabsContent value="caixa" className="space-y-6 mt-0">
-          {/* Barra de Filtros Contextual da Aba Caixa & Margens */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-card border border-border/80 shadow-xs">
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-primary" />
-              <div>
-                <h4 className="text-xs font-bold text-foreground">Fluxo de Caixa &amp; Margens de Venda</h4>
-                <p className="text-[11px] text-muted-foreground">Apuração de faturamento, liquidações bancárias e lucro bruto.</p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={storeFilter} onValueChange={setStoreFilter}>
-                <SelectTrigger className="h-8 text-xs w-44 rounded-lg">
-                  <SelectValue placeholder="Concessionária" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as Lojas</SelectItem>
-                  {stores
-                    .filter((s) => s.is_active !== false)
-                    .map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {formatStoreShortName(s.name)}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={periodPreset} onValueChange={setPeriodPreset}>
-                <SelectTrigger className="h-8 text-xs w-40 rounded-lg">
-                  <SelectValue placeholder="Período" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="this_month">Mês Atual (Novembro)</SelectItem>
-                  <SelectItem value="last_month">Mês Anterior (Outubro)</SelectItem>
-                  <SelectItem value="7days">Últimos 7 dias</SelectItem>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="custom">Data Personalizada</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {periodPreset === 'custom' && (
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="date"
-                    className="h-8 text-xs w-32 rounded-lg"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                  <span className="text-xs text-muted-foreground">até</span>
-                  <Input
-                    type="date"
-                    className="h-8 text-xs w-32 rounded-lg"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 4 Cards de Liquidez e Caixa Real */}
+          {/* 4 Cards Principais de Liquidez e Caixa Real */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Card 1: Faturamento Bruto */}
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+            <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Faturamento Bruto</span>
-                  <DollarSign className="w-4 h-4 text-muted-foreground" />
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
                 </div>
                 <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.totalRevenue)}
                 </div>
-                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                  <span>{executiveMetrics.count} motos</span>
-                  <span>• Ticket médio: {formatCurrencyBRL(executiveMetrics.avgTicket)}</span>
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                  <span className="font-bold text-foreground">{executiveMetrics.count} motos</span>
+                  <span>• Ticket Médio:</span>
+                  <span className="font-mono font-medium">{formatCurrencyBRL(executiveMetrics.avgTicket)}</span>
                 </p>
               </CardContent>
             </Card>
 
             {/* Card 2: Entradas Imediatas (PIX / Dinheiro) */}
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+            <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Caixa Imediato (PIX / Dinheiro)</span>
-                  <QrCode className="w-4 h-4 text-muted-foreground" />
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                    <QrCode className="w-4 h-4" />
+                  </div>
                 </div>
                 <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.totalCashPix)}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   {executiveMetrics.totalRevenue > 0
-                    ? `${((executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100).toFixed(1)}% liquidado à vista`
-                    : 'Sem faturamento'}
+                    ? `${((executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100).toFixed(1)}% liquidado à vista na loja`
+                    : 'Sem faturamento apurado'}
                 </p>
               </CardContent>
             </Card>
 
             {/* Card 3: Financiamentos a Receber dos Bancos */}
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+            <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Financiamentos dos Bancos</span>
-                  <Landmark className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Financiamentos Bancários</span>
+                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                    <Landmark className="w-4 h-4" />
+                  </div>
                 </div>
                 <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.totalFinancing)}
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Repasses bancários em liquidação
+                  Repasses bancários contratados
                 </p>
               </CardContent>
             </Card>
 
             {/* Card 4: Lucro Bruto Estimado */}
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+            <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Lucro Bruto Estimado</span>
-                  <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
                 </div>
                 <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(executiveMetrics.estimatedGrossProfit)}
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Margem média:</span>
-                  <Badge variant="outline" className="font-mono font-bold text-[10px]">
+                  <span>Margem média operacional:</span>
+                  <Badge variant="outline" className="font-mono font-bold text-[10px] bg-primary/5 text-primary border-primary/20">
                     {executiveMetrics.grossMarginPercent.toFixed(1)}%
                   </Badge>
                 </div>
@@ -859,187 +900,267 @@ export default function OwnerDashboard() {
             </Card>
           </div>
 
-          {/* Comparativo Executivo entre as 3 Concessionárias do Grupo */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="rounded-xl border border-emerald-500/30 shadow-xs bg-card">
-              <CardHeader className="p-4 pb-2 border-b">
+          {/* COMPOSIÇÃO DOS PAGAMENTOS (MIX FINANCEIRO) */}
+          <div className="p-4 rounded-2xl bg-card border shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-primary" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Composição do Faturamento por Modalidade de Pagamento
+                </h3>
+              </div>
+              <span className="text-[11px] text-muted-foreground">
+                Total Faturado: <strong className="text-foreground font-mono">{formatCurrencyBRL(executiveMetrics.totalRevenue)}</strong>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* PIX / Dinheiro */}
+              <div className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-1">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Store className="w-4 h-4 text-emerald-600" /> Shineray Divinópolis (Matriz)
-                  </CardTitle>
-                  <Badge variant="outline" className="text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                    {executiveMetrics.divShare.toFixed(1)}% do total
-                  </Badge>
+                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <QrCode className="w-3.5 h-3.5 text-emerald-600" /> PIX / Dinheiro
+                  </span>
+                  <span className="font-mono text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                    {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
+                  </span>
                 </div>
+                <p className="text-sm font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.totalCashPix)}</p>
+              </div>
+
+              {/* Financiamento */}
+              <div className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <Landmark className="w-3.5 h-3.5 text-blue-600" /> Financiamento
+                  </span>
+                  <span className="font-mono text-[10px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded">
+                    {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalFinancing / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
+                  </span>
+                </div>
+                <p className="text-sm font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.totalFinancing)}</p>
+              </div>
+
+              {/* Cartão de Crédito/Débito */}
+              <div className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-purple-600" /> Cartão de Crédito
+                  </span>
+                  <span className="font-mono text-[10px] font-bold text-purple-600 bg-purple-500/10 px-1.5 py-0.5 rounded">
+                    {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalCard / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
+                  </span>
+                </div>
+                <p className="text-sm font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.totalCard)}</p>
+              </div>
+
+              {/* Consórcio / Cartas */}
+              <div className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <Banknote className="w-3.5 h-3.5 text-amber-600" /> Consórcio / Carta
+                  </span>
+                  <span className="font-mono text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                    {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalConsortium / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
+                  </span>
+                </div>
+                <p className="text-sm font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.totalConsortium)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* DESEMPENHO DINÂMICO POR CONCESSIONÁRIA (GRUPO L1MA MOTORS) */}
+          {dealershipScope.activeScope === 'all' ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-primary" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Desempenho por Unidade Comercial
+                  </h3>
+                </div>
+                <span className="text-[11px] text-muted-foreground">
+                  Comparativo consolidado da holding
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {storePerformance.map((store) => (
+                  <Card key={store.key} className="rounded-2xl border shadow-xs bg-card hover:border-primary/40 transition-all">
+                    <CardHeader className="p-4 pb-2 border-b border-border/50">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 truncate">
+                          <Store className="w-4 h-4 text-primary shrink-0" />
+                          <span className="truncate">{store.name}</span>
+                        </CardTitle>
+                        <Badge variant="outline" className="text-[10px] font-bold font-mono shrink-0 bg-primary/5 text-primary border-primary/20">
+                          {store.share.toFixed(1)}% do total
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-muted/30 p-2.5 rounded-xl border border-border/60">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
+                          <p className="text-sm font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(store.revenue)}</p>
+                        </div>
+                        <div className="bg-muted/30 p-2.5 rounded-xl border border-border/60">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Vendas Faturadas</span>
+                          <p className="text-sm font-black font-mono text-foreground mt-0.5">{store.count} un.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
+                        <span>Ticket Médio:</span>
+                        <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(store.avgTicket)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Estoque Físico em Pátio:</span>
+                        <span className="font-bold font-mono text-foreground">{store.stockCount} motos ({formatCurrencyBRL(store.stockValue)})</span>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => dealershipScope.setActiveScope(store.key)}
+                        className="w-full h-7 text-[11px] font-medium text-primary hover:bg-primary/10 rounded-lg gap-1 mt-1"
+                      >
+                        <span>Isolar Dados desta Loja</span>
+                        <ArrowUpRight className="w-3 h-3" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-xs">
+                  <Store className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                    Filtro Ativo: <DealershipBadge />
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Os números, métricas de caixa, vendedores e modelos exibidos no cockpit estão restritos a esta concessionária.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => dealershipScope.setActiveScope('all')}
+                className="h-8 text-xs font-medium rounded-xl gap-1.5 shrink-0"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Ver Grupo Consolidado</span>
+              </Button>
+            </div>
+          )}
+
+          {/* INTELIGÊNCIA COMERCIAL: MODELOS MAIS VENDIDOS & BANCOS LADO A LADO */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Tabela de Lucratividade por Modelo (7 Colunas no Desktop) */}
+            <Card className="lg:col-span-7 rounded-2xl border shadow-xs overflow-hidden flex flex-col">
+              <CardHeader className="p-4 border-b bg-muted/20">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                  <Bike className="w-4 h-4 text-primary" />
+                  Top Modelos Vendidos &amp; Rentabilidade
+                </CardTitle>
+                <CardDescription className="text-[11px]">
+                  Faturamento e margem bruta real estimada por modelo de motocicleta.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
-                    <p className="text-base font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(executiveMetrics.divRevenue)}</p>
-                  </div>
-                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Vendas</span>
-                    <p className="text-base font-black font-mono text-foreground mt-0.5">{executiveMetrics.divCount} un.</p>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground flex justify-between pt-1">
-                  <span>Ticket Médio Unitário:</span>
-                  <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.divAvgTicket)}</span>
-                </div>
+              <CardContent className="p-0 flex-1">
+                <Table>
+                  <TableHeader className="bg-muted/30 border-b">
+                    <TableRow>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-wider">Modelo</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Qtd</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Faturamento</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Margem (R$)</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Part.</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {modelProfitability.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-xs">
+                          Nenhuma venda registrada no período selecionado.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      modelProfitability.slice(0, 10).map((m, idx) => (
+                        <TableRow key={idx} className="hover:bg-muted/20 border-b border-border/40">
+                          <TableCell className="font-bold text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-md bg-muted font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <span className="truncate max-w-[150px]">{m.model}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-bold font-mono text-xs">{m.count}</TableCell>
+                          <TableCell className="text-right font-mono font-bold text-xs text-foreground">{formatCurrencyBRL(m.revenue)}</TableCell>
+                          <TableCell className="text-right font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">{formatCurrencyBRL(m.marginValue)}</TableCell>
+                          <TableCell className="text-right font-mono text-xs text-muted-foreground">{m.share.toFixed(1)}%</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
 
-            <Card className="rounded-xl border border-blue-500/30 shadow-xs bg-card">
-              <CardHeader className="p-4 pb-2 border-b">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Store className="w-4 h-4 text-blue-600" /> Shineray Montes Claros
-                  </CardTitle>
-                  <Badge variant="outline" className="text-[10px] font-bold font-mono bg-blue-500/10 text-blue-600 border-blue-500/20">
-                    {executiveMetrics.mocShare.toFixed(1)}% do total
-                  </Badge>
-                </div>
+            {/* Repasses por Banco de Financiamento (5 Colunas no Desktop) */}
+            <Card className="lg:col-span-5 rounded-2xl border shadow-xs overflow-hidden flex flex-col">
+              <CardHeader className="p-4 border-b bg-muted/20">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                  <Landmark className="w-4 h-4 text-primary" />
+                  Financiamentos por Banco
+                </CardTitle>
+                <CardDescription className="text-[11px]">
+                  Instituições financeiras parceiras e volume total contratado.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
-                    <p className="text-base font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(executiveMetrics.mocRevenue)}</p>
-                  </div>
-                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Vendas</span>
-                    <p className="text-base font-black font-mono text-foreground mt-0.5">{executiveMetrics.mocCount} un.</p>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground flex justify-between pt-1">
-                  <span>Ticket Médio Unitário:</span>
-                  <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.mocAvgTicket)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-xl border border-purple-500/30 shadow-xs bg-card">
-              <CardHeader className="p-4 pb-2 border-b">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Car className="w-4 h-4 text-purple-600" /> L1MA Motors Multimarcas
-                  </CardTitle>
-                  <Badge variant="outline" className="text-[10px] font-bold font-mono bg-purple-500/10 text-purple-600 border-purple-500/20">
-                    {executiveMetrics.mltShare.toFixed(1)}% do total
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
-                    <p className="text-base font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(executiveMetrics.mltRevenue)}</p>
-                  </div>
-                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Vendas</span>
-                    <p className="text-base font-black font-mono text-foreground mt-0.5">{executiveMetrics.mltCount} un.</p>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground flex justify-between pt-1">
-                  <span>Ticket Médio Unitário:</span>
-                  <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.mltAvgTicket)}</span>
-                </div>
+              <CardContent className="p-0 flex-1">
+                <Table>
+                  <TableHeader className="bg-muted/30 border-b">
+                    <TableRow>
+                      <TableHead className="text-[10px] font-bold uppercase tracking-wider">Banco</TableHead>
+                      <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Contratos</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Total Financiado</TableHead>
+                      <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Share</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bankDistribution.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-xs">
+                          Nenhum financiamento bancário registrado no período.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      bankDistribution.map((b, idx) => {
+                        const share = executiveMetrics.totalFinancing > 0 ? (b.totalFinanced / executiveMetrics.totalFinancing) * 100 : 0;
+                        return (
+                          <TableRow key={idx} className="hover:bg-muted/20 border-b border-border/40">
+                            <TableCell className="font-bold text-xs truncate max-w-[120px]">{b.bank}</TableCell>
+                            <TableCell className="text-center font-mono font-bold text-xs">{b.count}</TableCell>
+                            <TableCell className="text-right font-mono font-bold text-xs text-foreground">{formatCurrencyBRL(b.totalFinanced)}</TableCell>
+                            <TableCell className="text-right font-mono text-xs text-muted-foreground">{share.toFixed(1)}%</TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </div>
-
-          {/* Tabela de Lucratividade & Margem por Modelo de Moto */}
-          <Card className="rounded-xl border border-border/80 shadow-xs overflow-hidden">
-            <CardHeader className="p-3.5 border-b bg-muted/20">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                <Bike className="w-4 h-4 text-primary" />
-                Margem e Lucratividade por Modelo de Moto
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-muted/30 border-b">
-                  <TableRow>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Modelo da Motocicleta</TableHead>
-                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Unidades</TableHead>
-                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Faturamento</TableHead>
-                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Ticket Médio</TableHead>
-                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Margem Bruta (R$)</TableHead>
-                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Participação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {modelProfitability.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-xs">
-                        Nenhuma venda registrada no período selecionado.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    modelProfitability.map((m, idx) => (
-                      <TableRow key={idx} className="hover:bg-muted/20 border-b border-border/40">
-                        <TableCell className="font-bold text-xs flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-md bg-muted font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
-                            {idx + 1}
-                          </span>
-                          <span>{m.model}</span>
-                        </TableCell>
-                        <TableCell className="text-center font-bold font-mono text-xs">{m.count} un.</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-xs text-foreground">{formatCurrencyBRL(m.revenue)}</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-muted-foreground">{formatCurrencyBRL(m.avgTicket)}</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">{formatCurrencyBRL(m.marginValue)}</TableCell>
-                        <TableCell className="text-right font-mono text-xs">{m.share.toFixed(1)}%</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Repasses por Banco de Financiamento */}
-          <Card className="rounded-xl border border-border/80 shadow-xs overflow-hidden">
-            <CardHeader className="p-3.5 border-b bg-muted/20">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                <Landmark className="w-4 h-4 text-primary" />
-                Financiamentos Bancários por Instituição
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-muted/30 border-b">
-                  <TableRow>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Instituição Financeira</TableHead>
-                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Contratos</TableHead>
-                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Total Financiado</TableHead>
-                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Participação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bankDistribution.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground text-xs">
-                        Nenhum financiamento bancário registrado no período.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    bankDistribution.map((b, idx) => {
-                      const share = executiveMetrics.totalFinancing > 0 ? (b.totalFinanced / executiveMetrics.totalFinancing) * 100 : 0;
-                      return (
-                        <TableRow key={idx} className="hover:bg-muted/20 border-b border-border/40">
-                          <TableCell className="font-bold text-xs">{b.bank}</TableCell>
-                          <TableCell className="text-center font-mono font-bold text-xs">{b.count} contratos</TableCell>
-                          <TableCell className="text-right font-mono font-bold text-xs text-foreground">{formatCurrencyBRL(b.totalFinanced)}</TableCell>
-                          <TableCell className="text-right font-mono text-xs">{share.toFixed(1)}%</TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* =================================================================== */}
@@ -1054,7 +1175,7 @@ export default function OwnerDashboard() {
         {/* =================================================================== */}
         <TabsContent value="patio" className="space-y-6 mt-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+            <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Valor Total do Estoque</span>
                 <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
@@ -1064,27 +1185,7 @@ export default function OwnerDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pátio Montes Claros</span>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
-                  {formatCurrencyBRL(executiveMetrics.mocStockValue)}
-                </div>
-                <p className="text-[11px] text-muted-foreground">{executiveMetrics.mocStockCount} motos disponíveis</p>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pátio Divinópolis</span>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
-                  {formatCurrencyBRL(executiveMetrics.divStockValue)}
-                </div>
-                <p className="text-[11px] text-muted-foreground">{executiveMetrics.divStockCount} motos disponíveis</p>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+            <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Modelos no Catálogo</span>
                 <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
@@ -1093,22 +1194,42 @@ export default function OwnerDashboard() {
                 <p className="text-[11px] text-muted-foreground">Linhas ativas com estoque físico</p>
               </CardContent>
             </Card>
+
+            <Card className="rounded-2xl border shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Preço Médio por Moto</span>
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
+                  {formatCurrencyBRL(executiveMetrics.totalStockCount > 0 ? executiveMetrics.totalStockValue / executiveMetrics.totalStockCount : 0)}
+                </div>
+                <p className="text-[11px] text-muted-foreground">Média geral do pátio</p>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border shadow-xs bg-card">
+              <CardContent className="p-4 space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Concessionárias Ativas</span>
+                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
+                  {stores.filter((s) => s.is_active !== false).length} unidades
+                </div>
+                <p className="text-[11px] text-muted-foreground">Pontos de venda e pátios integrados</p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Listagem do Estoque do Pátio focada em MODELOS E QUANTIDADES */}
-          <Card className="rounded-xl border border-border/80 shadow-xs overflow-hidden bg-card">
-            <CardHeader className="p-3.5 border-b bg-muted/20">
+          <Card className="rounded-2xl border shadow-xs overflow-hidden bg-card">
+            <CardHeader className="p-4 border-b bg-muted/20">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                 <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                   <Bike className="w-4 h-4 text-primary" />
-                  Estoque de Motocicletas por Modelo &amp; Volume
+                  Estoque Físico de Motocicletas por Modelo &amp; Volume
                 </CardTitle>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative w-56">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      className="h-8 pl-8 text-xs rounded-lg"
+                      className="h-8.5 pl-8 text-xs rounded-xl"
                       placeholder="Filtrar por modelo ou cor..."
                       value={stockSearch}
                       onChange={(e) => setStockSearch(e.target.value)}
@@ -1116,7 +1237,7 @@ export default function OwnerDashboard() {
                   </div>
 
                   <Select value={stockStoreFilter} onValueChange={(val: any) => setStockStoreFilter(val)}>
-                    <SelectTrigger className="h-8 text-xs w-44 rounded-lg">
+                    <SelectTrigger className="h-8.5 text-xs w-48 rounded-xl">
                       <SelectValue placeholder="Concessionária" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1132,7 +1253,7 @@ export default function OwnerDashboard() {
                   </Select>
 
                   <Select value={stockSortBy} onValueChange={(val: any) => setStockSortBy(val)}>
-                    <SelectTrigger className="h-8 text-xs w-44 rounded-lg">
+                    <SelectTrigger className="h-8.5 text-xs w-44 rounded-xl">
                       <SelectValue placeholder="Ordenar por" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1147,7 +1268,7 @@ export default function OwnerDashboard() {
                     variant="outline"
                     size="sm"
                     onClick={exportModelStockExcel}
-                    className="h-8 text-xs gap-1.5 rounded-lg border-dashed"
+                    className="h-8.5 text-xs gap-1.5 rounded-xl border-dashed"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Exportar Excel
@@ -1163,8 +1284,6 @@ export default function OwnerDashboard() {
                     <TableRow>
                       <TableHead className="text-[10px] font-bold uppercase tracking-wider">Modelo da Motocicleta</TableHead>
                       <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Total em Pátio</TableHead>
-                      <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Montes Claros</TableHead>
-                      <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Divinópolis</TableHead>
                       <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Preço Médio</TableHead>
                       <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Capital Total</TableHead>
                       <TableHead className="text-[10px] font-bold uppercase tracking-wider">Cores em Estoque</TableHead>
@@ -1174,7 +1293,7 @@ export default function OwnerDashboard() {
                   <TableBody>
                     {modelStockSummary.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-10 text-muted-foreground text-xs">
+                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground text-xs">
                           Nenhum modelo disponível encontrado com os filtros aplicados.
                         </TableCell>
                       </TableRow>
@@ -1193,18 +1312,6 @@ export default function OwnerDashboard() {
                           <TableCell className="text-center">
                             <span className="font-mono font-bold text-xs text-foreground">
                               {item.totalCount} un.
-                            </span>
-                          </TableCell>
-
-                          <TableCell className="text-center">
-                            <span className="font-mono text-xs text-muted-foreground">
-                              {item.mocCount} un.
-                            </span>
-                          </TableCell>
-
-                          <TableCell className="text-center">
-                            <span className="font-mono text-xs text-muted-foreground">
-                              {item.divCount} un.
                             </span>
                           </TableCell>
 
@@ -1279,12 +1386,12 @@ export default function OwnerDashboard() {
                   <TableBody>
                     {selectedModelForChassis?.vehicles.map((veh) => {
                       const store = stores.find((s) => s.id === veh.store_id);
-                      const isMoc = (store?.name || store?.city || '').toUpperCase().includes('MONTES');
+                      const storeName = store?.name ? formatStoreShortName(store.name) : 'Concessionária Padrão';
                       return (
                         <TableRow key={veh.id} className="text-xs hover:bg-muted/20 border-b border-border/40">
                           <TableCell className="font-mono font-bold">{veh.chassis || '—'}</TableCell>
                           <TableCell className="text-muted-foreground">{veh.color || 'Padrão'}</TableCell>
-                          <TableCell className="font-medium">{isMoc ? 'Montes Claros' : 'Divinópolis'}</TableCell>
+                          <TableCell className="font-medium">{storeName}</TableCell>
                           <TableCell className="text-right font-mono font-bold text-foreground">
                             {formatCurrencyBRL(Number(veh.sale_price) || 0)}
                           </TableCell>
@@ -1304,28 +1411,28 @@ export default function OwnerDashboard() {
         </TabsContent>
 
         {/* =================================================================== */}
-        {/* ABA: CONTROLE DE TROCA DE ESTOQUE & TRANSFERÊNCIAS INTERLOJAS       */}
+        {/* ABA 4: CONTROLE DE TROCA DE ESTOQUE & TRANSFERÊNCIAS INTERLOJAS       */}
         {/* =================================================================== */}
         <TabsContent value="troca-estoque" className="space-y-6 mt-0">
           <ExecutiveStockExchangePanel />
         </TabsContent>
 
         {/* =================================================================== */}
-        {/* ABA 4: VENDEDORES & COMISSÕES                                       */}
+        {/* ABA 5: VENDEDORES & COMISSÕES                                       */}
         {/* =================================================================== */}
         <TabsContent value="vendedores" className="space-y-6 mt-0">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+            <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total de Comissões a Pagar</span>
                 <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
                   {formatCurrencyBRL(totalCommissionsToPay)}
                 </div>
-                <p className="text-[11px] text-muted-foreground">Acumulado a liquidar com a equipe de vendas</p>
+                <p className="text-[11px] text-muted-foreground">Acumulado apurado no período para a equipe de vendas</p>
               </CardContent>
             </Card>
 
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+            <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Consultores Ativos</span>
                 <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
@@ -1335,7 +1442,7 @@ export default function OwnerDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+            <Card className="rounded-2xl border shadow-xs bg-card">
               <CardContent className="p-4 space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ticket Médio por Consultor</span>
                 <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
@@ -1346,12 +1453,15 @@ export default function OwnerDashboard() {
             </Card>
           </div>
 
-          <Card className="rounded-xl border border-border/80 shadow-xs overflow-hidden bg-card">
-            <CardHeader className="p-3.5 border-b bg-muted/20">
+          <Card className="rounded-2xl border shadow-xs overflow-hidden bg-card">
+            <CardHeader className="p-4 border-b bg-muted/20">
               <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-primary" />
-                Desempenho Comercial &amp; Comissões a Pagar
+                Desempenho Comercial &amp; Comissões Apuradas
               </CardTitle>
+              <CardDescription className="text-[11px]">
+                Ranking da equipe comercial por volume faturado e comissão apurada.
+              </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -1378,7 +1488,17 @@ export default function OwnerDashboard() {
                     sellerPerformance.map((seller, idx) => (
                       <TableRow key={idx} className="hover:bg-muted/20 border-b border-border/40">
                         <TableCell>
-                          <span className="w-5 h-5 rounded-md bg-muted font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+                          <span
+                            className={`w-6 h-6 rounded-lg font-mono text-[11px] font-black flex items-center justify-center shrink-0 ${
+                              idx === 0
+                                ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30'
+                                : idx === 1
+                                ? 'bg-slate-300/30 text-slate-700 dark:text-slate-300 border border-slate-400/30'
+                                : idx === 2
+                                ? 'bg-amber-700/20 text-amber-800 dark:text-amber-500 border border-amber-700/30'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
                             #{idx + 1}
                           </span>
                         </TableCell>
@@ -1405,14 +1525,14 @@ export default function OwnerDashboard() {
         </TabsContent>
 
         {/* =================================================================== */}
-        {/* ABA 5: AUDITORIA DE COMPROVANTES DE CADA VENDA                      */}
+        {/* ABA 6: AUDITORIA DE COMPROVANTES DE CADA VENDA                      */}
         {/* =================================================================== */}
         <TabsContent value="comprovantes" className="space-y-6 mt-0">
           <ExecutiveSalesReceiptsAuditor sales={filteredSales} />
         </TabsContent>
 
         {/* =================================================================== */}
-        {/* ABA 6: PLANILHA INTERNA DA CONCESSIONÁRIA INTEGRADA                 */}
+        {/* ABA 7: PLANILHA INTERNA DA CONCESSIONÁRIA INTEGRADA                 */}
         {/* =================================================================== */}
         <TabsContent value="planilha" className="space-y-6 mt-0">
           <CloudMonthlySpreadsheet />
