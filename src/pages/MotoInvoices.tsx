@@ -1934,7 +1934,7 @@ export default function MotoInvoices() {
 
       {/* DIÁLOGO: CANCELAMENTO CONTÁBIL DE NF */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive font-bold text-base">
               <XCircle className="w-5 h-5 shrink-0" /> Cancelar Nota Fiscal
@@ -2015,12 +2015,12 @@ export default function MotoInvoices() {
             </div>
           )}
 
-          <DialogFooter className="flex flex-col gap-2 w-full pt-2 sm:space-x-0">
+          <div className="flex flex-col gap-2 w-full pt-2">
             <Button
               variant="destructive"
               onClick={handleConfirmCancel}
               disabled={cancelInvoiceMutation.isPending}
-              className="w-full gap-1.5 font-bold rounded-xl h-9 shadow-sm"
+              className="w-full gap-1.5 font-bold rounded-xl h-10 shadow-sm"
             >
               {cancelInvoiceMutation.isPending ? (
                 <>
@@ -2039,7 +2039,7 @@ export default function MotoInvoices() {
                 setCancelDialogOpen(false);
                 if (target) handleStartReissue(target);
               }}
-              className="w-full text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 gap-1.5 font-bold rounded-xl h-9"
+              className="w-full text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 gap-1.5 font-bold rounded-xl h-10"
             >
               <RotateCcw className="w-4 h-4 text-blue-500 shrink-0" />
               Cancelar & Reemitir Nova NF
@@ -2051,7 +2051,7 @@ export default function MotoInvoices() {
             >
               Voltar / Não Cancelar
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

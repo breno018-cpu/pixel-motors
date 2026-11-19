@@ -3253,7 +3253,7 @@ export function OwnerFiscalInvoicesPanel() {
       {/* MODAL 2: CANCELAR NF (CONFIRMAÇÃO DIRETA COM DATA EDITÁVEL)         */}
       {/* =================================================================== */}
       <Dialog open={!!invoiceToCancel} onOpenChange={(open) => !open && setInvoiceToCancel(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader className="space-y-1.5 text-left">
             <DialogTitle className="text-base font-bold flex items-center gap-2 text-destructive">
               <XCircle className="w-5 h-5 text-destructive shrink-0" />
@@ -3266,31 +3266,31 @@ export function OwnerFiscalInvoicesPanel() {
 
           <div className="space-y-3 py-2">
             <div className="p-3.5 rounded-xl bg-muted/40 border text-xs space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Nota Fiscal:</span>
-                <strong className="font-mono text-foreground font-bold">Nº {invoiceToCancel?.invoice_number}</strong>
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-muted-foreground shrink-0">Nota Fiscal:</span>
+                <strong className="font-mono text-foreground font-bold text-right truncate">Nº {invoiceToCancel?.invoice_number}</strong>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Valor Total:</span>
-                <strong className="font-mono text-destructive text-sm font-bold">
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-muted-foreground shrink-0">Valor Total:</span>
+                <strong className="font-mono text-destructive text-sm font-bold text-right truncate">
                   {formatCurrencyBRL(invoiceToCancel?.total_value || 0)}
                 </strong>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Destinatário:</span>
-                <span className="font-semibold text-foreground truncate max-w-[200px]" title={invoiceToCancel?.party_name}>
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-muted-foreground shrink-0">Destinatário:</span>
+                <span className="font-semibold text-foreground truncate max-w-[240px] text-right" title={invoiceToCancel?.party_name}>
                   {invoiceToCancel?.party_name}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Loja:</span>
-                <span className="font-semibold text-foreground">
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-muted-foreground shrink-0">Loja:</span>
+                <span className="font-semibold text-foreground text-right truncate">
                   {formatStoreShortName(invoiceToCancel?.store_name || invoiceToCancel?.store_id)}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Data de Emissão:</span>
-                <span className="font-mono text-muted-foreground">
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-muted-foreground shrink-0">Data de Emissão:</span>
+                <span className="font-mono text-muted-foreground text-right truncate">
                   {invoiceToCancel ? formatFiscalDate(invoiceToCancel.issue_date) : ''}
                 </span>
               </div>
@@ -3314,13 +3314,13 @@ export function OwnerFiscalInvoicesPanel() {
             </div>
           </div>
 
-          <DialogFooter className="flex flex-col gap-2 w-full pt-1 sm:space-x-0">
+          <div className="flex flex-col gap-2 w-full pt-2">
             <Button
               variant="destructive"
               size="default"
               onClick={handleConfirmCancellation}
               disabled={isSubmittingCancel}
-              className="w-full font-bold rounded-xl gap-1.5 shadow-sm h-9"
+              className="w-full font-bold rounded-xl gap-1.5 shadow-sm h-10"
             >
               {isSubmittingCancel ? (
                 <>
@@ -3340,7 +3340,7 @@ export function OwnerFiscalInvoicesPanel() {
                 handleOpenReissue(target);
               }}
               disabled={isSubmittingCancel}
-              className="w-full font-bold rounded-xl gap-1.5 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 h-9"
+              className="w-full font-bold rounded-xl gap-1.5 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 h-10"
             >
               <RotateCcw className="w-4 h-4 text-blue-500 shrink-0" />
               Cancelar & Reemitir Nova NF
@@ -3354,7 +3354,7 @@ export function OwnerFiscalInvoicesPanel() {
             >
               Voltar / Fechar sem Alterar
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
