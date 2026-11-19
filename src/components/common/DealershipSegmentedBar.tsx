@@ -99,19 +99,8 @@ export function DealershipSegmentedBar({
 
   // Versão rica com contadores e finanças para o topo de tabelas e painéis
   return (
-    <div
-      className={cn(
-        'w-full flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-card border border-border/80 shadow-xs',
-        className
-      )}
-    >
-      <div className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-2 flex items-center gap-1 shrink-0">
-        <Building2 className="w-3.5 h-3.5 text-primary" />
-        <span className="hidden sm:inline">Divisão por Concessionária:</span>
-      </div>
-
-      <div className="flex items-center gap-1.5 flex-wrap flex-1">
-        {items.map((item) => {
+    <div className={cn('w-full flex items-center gap-1.5 flex-wrap', className)}>
+      {items.map((item) => {
           const isSelected =
             currentScope === item.key.toLowerCase() ||
             currentScope === item.id.toLowerCase() ||
@@ -182,7 +171,6 @@ export function DealershipSegmentedBar({
             </button>
           );
         })}
-      </div>
     </div>
   );
 }

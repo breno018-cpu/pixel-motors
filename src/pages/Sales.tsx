@@ -850,7 +850,8 @@ export default function Sales() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 bg-muted/40 px-2.5 py-1 rounded-xl border border-border/50">
+                  <span className="text-[10.5px] font-medium text-muted-foreground">Filtro Ativo:</span>
                   <DealershipBadge />
                 </div>
               </div>

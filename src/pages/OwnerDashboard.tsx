@@ -623,20 +623,28 @@ export default function OwnerDashboard() {
       />
 
       {/* SELETOR EXECUTIVO DE CONCESSIONÁRIA */}
-      <div className="p-3.5 rounded-2xl bg-card border shadow-xs space-y-2.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-primary shrink-0" />
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-card border shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-border/50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+              <Building2 className="w-4 h-4" />
+            </div>
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                Divisão por Concessionária • Grupo L1MA Motors
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Selecione uma concessionária para isolar métricas de faturamento, estoque e notas, ou veja a holding consolidada.
-              </span>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
+                  Divisão por Concessionária
+                </h2>
+                <span className="text-[10px] font-bold text-primary/80 bg-primary/10 px-2 py-0.5 rounded-full">
+                  Grupo L1MA Motors
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Isole métricas de faturamento, estoque e notas por unidade ou selecione a holding consolidada.
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 bg-muted/40 px-3 py-1.5 rounded-xl border border-border/50">
+            <span className="text-[11px] font-medium text-muted-foreground">Filtro Ativo:</span>
             <DealershipBadge />
           </div>
         </div>
