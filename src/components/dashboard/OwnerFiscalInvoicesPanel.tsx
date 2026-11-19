@@ -1883,38 +1883,7 @@ export function OwnerFiscalInvoicesPanel() {
         </div>
       </div>
 
-      {/* 2. ARQUITETURA DE DIVISÃO POR CONCESSIONÁRIA (SEGMENTAÇÃO EXECUTIVA) */}
-      <div className="p-3.5 rounded-2xl bg-card border shadow-xs space-y-2.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-primary shrink-0" />
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                Divisão por Concessionária • Grupo L1MA Motors
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Selecione uma concessionária para isolar notas e métricas, ou veja a holding consolidada.
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <DealershipBadge />
-          </div>
-        </div>
 
-        <DealershipSegmentedBar
-          variant="pills"
-          activeScope={dealershipScope.activeScope}
-          onChange={(scope) => {
-            dealershipScope.setActiveScope(scope);
-            setStoreFilter(scope);
-          }}
-          counts={dealershipCounts}
-          financials={dealershipFinancials}
-          showCounts
-          showTotals
-        />
-      </div>
 
       {/* 3. REGUA DE NAVEGAÇÃO SEMANAL (O Centro da Interface) */}
       <div className="p-4 rounded-2xl bg-card border shadow-xs space-y-3">
