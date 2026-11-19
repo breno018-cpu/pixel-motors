@@ -2123,7 +2123,7 @@ export function OwnerFiscalInvoicesPanel() {
             /* ================================================================= */
             /* 1. VISUALIZAÇÃO POR GRUPO DE FORMATOS (CARDS COM CICLO COMPLETO)   */
             /* ================================================================= */
-            <div className="p-4 space-y-4 max-h-[640px] overflow-y-auto">
+            <div className="p-4 space-y-3">
               {filteredRecords.map((r) => {
                 const lifecycle = computeInvoiceLifecycle(r, allFiscalRecords);
                 const isEntrada = r.fiscal_type === 'entrada';
@@ -2477,7 +2477,7 @@ export function OwnerFiscalInvoicesPanel() {
             /* ================================================================= */
             /* 2. VISUALIZAÇÃO POR TABELA EXECUTIVA COM FORMATOS INTEGRADOS      */
             /* ================================================================= */
-            <div className="w-full max-h-[580px] overflow-y-auto">
+            <div className="w-full overflow-x-auto">
               <Table className="w-full">
                 <TableHeader className="sticky top-0 bg-background z-10 shadow-xs">
                   <TableRow className="hover:bg-transparent text-xs">
