@@ -53,6 +53,12 @@ import {
   STORE_MONTESCLAROS_MULTIMARCAS_UUID,
   formatStoreShortName,
 } from '@/lib/storeResolution';
+import {
+  useDealershipScope,
+  DealershipBadge,
+  resolveStoreToKey,
+} from '@/contexts/DealershipScopeContext';
+import { DealershipSegmentedBar } from '@/components/common/DealershipSegmentedBar';
 import { useToast } from '@/hooks/use-toast';
 import { exportToXLSX } from '@/lib/export';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
@@ -249,6 +255,7 @@ export function OwnerFiscalInvoicesPanel() {
   const cancelInvoiceMutation = useCancelInvoice();
   const upsertInvoiceMutation = useUpsertInvoice();
   const deleteInvoiceMutation = useDeleteInvoice();
+  const dealershipScope = useDealershipScope();
 
   // Foco estritamente semanal: por padrão a Semana 3 (atual de 16/11/2026)
   const [weekFilter, setWeekFilter] = useState<string>('sem_3');
@@ -1094,11 +1101,35 @@ export function OwnerFiscalInvoicesPanel() {
     return map;
   }, [allFiscalRecords]);
 
-  // Registros Filtrados estritamente pela Semana / Filtros Atuais
+  // Contadores e Totais Financeiros por Concessionária (Grupo L1MA Motors)
+  const { dealershipCounts, dealershipFinancials } = useMemo(() => {
+    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+
+    allFiscalRecords.forEach((r) => {
+      const key = resolveStoreToKey(r.store_id || r.store_name);
+      counts.all++;
+      if (key !== 'all') {
+        counts[key]++;
+      }
+      const val = Number(r.total_value) || 0;
+      financials.all += val;
+      if (key !== 'all') {
+        financials[key] += val;
+      }
+    });
+
+    return { dealershipCounts: counts, dealershipFinancials: financials };
+  }, [allFiscalRecords]);
+
+  // Registros Filtrados estritamente pela Concessionária / Semana / Filtros Atuais
   const filteredRecords = useMemo(() => {
     return allFiscalRecords.filter((rec) => {
-      // 1. Filtro de Loja
-      if (storeFilter !== 'all') {
+      // 1. Filtro de Concessionária (Escopo Global e Local)
+      if (dealershipScope.activeScope !== 'all') {
+        const recKey = resolveStoreToKey(rec.store_id || rec.store_name);
+        if (recKey !== dealershipScope.activeScope) return false;
+      } else if (storeFilter !== 'all') {
         const normFilter = normalizeStoreId(storeFilter);
         const normRec = normalizeStoreId(rec.store_id || rec.store_name);
         const matchesStore =
@@ -1148,7 +1179,7 @@ export function OwnerFiscalInvoicesPanel() {
 
       return true;
     });
-  }, [allFiscalRecords, storeFilter, weekFilter, typeFilter, searchTerm]);
+  }, [allFiscalRecords, dealershipScope.activeScope, storeFilter, weekFilter, typeFilter, searchTerm]);
 
   // Contadores para os Botões de Grupo de Formatos
   const lifecycleCounts = useMemo(() => {
@@ -1802,7 +1833,43 @@ export function OwnerFiscalInvoicesPanel() {
         </div>
       </div>
 
-      {/* 2. REGUA DE NAVEGAÇÃO SEMANAL (O Centro da Interface) */}
+      {/* 2. ARQUITETURA DE DIVISÃO POR CONCESSIONÁRIA (SEGMENTAÇÃO EXECUTIVA) */}
+      <div className="p-3.5 rounded-2xl bg-card border shadow-xs space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-primary shrink-0" />
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                Divisão por Concessionária • Grupo L1MA Motors
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Selecione uma concessionária para isolar notas e métricas, ou veja a holding consolidada.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <DealershipBadge />
+          </div>
+        </div>
+
+        <DealershipSegmentedBar
+          variant="pills"
+          activeScope={dealershipScope.activeScope}
+          onChange={(scope) => {
+            dealershipScope.setActiveScope(scope);
+            if (scope === 'all') setStoreFilter('all');
+            else if (scope === 'divinopolis') setStoreFilter(STORE_DIVINOPOLIS_UUID);
+            else if (scope === 'montesclaros') setStoreFilter(STORE_MONTESCLAROS_UUID);
+            else if (scope === 'multimarcas') setStoreFilter(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
+          }}
+          counts={dealershipCounts}
+          financials={dealershipFinancials}
+          showCounts
+          showTotals
+        />
+      </div>
+
+      {/* 3. REGUA DE NAVEGAÇÃO SEMANAL (O Centro da Interface) */}
       <div className="p-4 rounded-2xl bg-card border shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1899,7 +1966,16 @@ export function OwnerFiscalInvoicesPanel() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t">
           <div>
             <label className="text-[10px] font-bold text-muted-foreground uppercase">Filtrar Loja</label>
-            <Select value={storeFilter} onValueChange={setStoreFilter}>
+            <Select
+              value={storeFilter}
+              onValueChange={(val) => {
+                setStoreFilter(val);
+                if (val === 'all') dealershipScope.setActiveScope('all');
+                else if (val === STORE_DIVINOPOLIS_UUID) dealershipScope.setActiveScope('divinopolis');
+                else if (val === STORE_MONTESCLAROS_UUID) dealershipScope.setActiveScope('montesclaros');
+                else if (val === STORE_MONTESCLAROS_MULTIMARCAS_UUID) dealershipScope.setActiveScope('multimarcas');
+              }}
+            >
               <SelectTrigger className="h-8 text-xs rounded-xl mt-1">
                 <SelectValue placeholder="Concessionária" />
               </SelectTrigger>
@@ -2205,10 +2281,7 @@ export function OwnerFiscalInvoicesPanel() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-[10.5px] font-bold text-foreground border border-border/60">
-                            <Building2 className="w-3 h-3 mr-1 text-primary shrink-0" />
-                            {formatStoreShortName(r.store_name || r.store_id)}
-                          </span>
+                          <DealershipBadge storeIdOrName={r.store_name || r.store_id} />
 
                           <Badge
                             className={cn(
@@ -2639,9 +2712,7 @@ export function OwnerFiscalInvoicesPanel() {
 
                         {/* 4. Concessionária */}
                         <TableCell className="text-xs font-medium align-middle">
-                          <span className="truncate block font-semibold text-foreground text-xs" title={r.store_name}>
-                            {formatStoreShortName(r.store_name || r.store_id)}
-                          </span>
+                          <DealershipBadge storeIdOrName={r.store_name || r.store_id} />
                         </TableCell>
 
                         {/* 5. Fornecedor / Destinatário */}

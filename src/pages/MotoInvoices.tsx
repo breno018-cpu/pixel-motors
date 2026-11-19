@@ -64,7 +64,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useStores, STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/hooks/useStores';
+import { useStores } from '@/hooks/useStores';
+import {
+  STORE_DIVINOPOLIS_UUID,
+  STORE_MONTESCLAROS_UUID,
+  STORE_MONTESCLAROS_MULTIMARCAS_UUID,
+  formatStoreShortName,
+} from '@/lib/storeResolution';
+import {
+  useDealershipScope,
+  DealershipBadge,
+  resolveStoreToKey,
+} from '@/contexts/DealershipScopeContext';
+import { DealershipSegmentedBar } from '@/components/common/DealershipSegmentedBar';
 import { useVehicles } from '@/hooks/useVehicles';
 import { useContracts, Contract } from '@/hooks/useContracts';
 import {
@@ -226,20 +238,17 @@ export default function MotoInvoices() {
     });
   };
 
+  const dealershipScope = useDealershipScope();
+
   // Filtra as vendas válidas da loja selecionada para vinculação semi-manual
   const storeSales = useMemo(() => {
     if (!form.store_id) return allContracts;
-    const isMocTarget = form.store_id.includes('montes');
+    const targetKey = resolveStoreToKey(form.store_id);
 
     return allContracts.filter((c) => {
       if (c.status === 'cancelado') return false;
-      const sId = (c.store_id || c.store?.id || '').toLowerCase();
-      const sName = (c.store?.name || '').toLowerCase();
-      const matchStore = isMocTarget
-        ? sId.includes('montes') || sName.includes('montes')
-        : sId.includes('divin') || sName.includes('divin') || (!sId.includes('montes') && !sName.includes('montes'));
-
-      if (!matchStore) return false;
+      const cKey = resolveStoreToKey(c.store_id || c.store?.id || c.store?.name);
+      if (targetKey !== 'all' && cKey !== targetKey) return false;
 
       if (saleSearchQuery.trim()) {
         const q = saleSearchQuery.toLowerCase();
@@ -253,10 +262,35 @@ export default function MotoInvoices() {
     });
   }, [allContracts, form.store_id, saleSearchQuery]);
 
-  // Lista estrita de notas fiscais cadastradas (sem preenchimento fantasma)
-  const motoInvoices = useMemo(() => {
-    return invoices;
+  // Contadores e Totais Financeiros por Concessionária
+  const { dealershipCounts, dealershipFinancials } = useMemo(() => {
+    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+
+    invoices.forEach((inv) => {
+      const key = resolveStoreToKey(inv.store_id || inv.store?.id || inv.store?.name);
+      counts.all++;
+      if (key !== 'all') {
+        counts[key]++;
+      }
+      const val = Number(inv.total_value) || 0;
+      financials.all += val;
+      if (key !== 'all') {
+        financials[key] += val;
+      }
+    });
+
+    return { dealershipCounts: counts, dealershipFinancials: financials };
   }, [invoices]);
+
+  // Lista estrita de notas fiscais cadastradas filtradas pela concessionária
+  const motoInvoices = useMemo(() => {
+    if (dealershipScope.activeScope === 'all') return invoices;
+    return invoices.filter((inv) => {
+      const k = resolveStoreToKey(inv.store_id || inv.store?.id || inv.store?.name);
+      return k === dealershipScope.activeScope;
+    });
+  }, [invoices, dealershipScope.activeScope]);
 
   // Handler: Seleciona loja e reseta venda vinculada
   const handleStoreChange = (storeId: string) => {
@@ -992,6 +1026,35 @@ export default function MotoInvoices() {
         }
       />
 
+      {/* SELETOR EXECUTIVO DE CONCESSIONÁRIA */}
+      <div className="p-3.5 rounded-2xl bg-card border shadow-xs space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-primary shrink-0" />
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                Divisão por Concessionária • Grupo L1MA Motors
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Isole a emissão de notas fiscais por concessionária física ou acompanhe todas as unidades unificadas.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <DealershipBadge />
+          </div>
+        </div>
+        <DealershipSegmentedBar
+          variant="pills"
+          activeScope={dealershipScope.activeScope}
+          onChange={dealershipScope.setActiveScope}
+          counts={dealershipCounts}
+          financials={dealershipFinancials}
+          showCounts
+          showTotals
+        />
+      </div>
+
       <Card className="border shadow-sm overflow-hidden">
         <CardContent className="p-0 overflow-x-hidden">
           <div className="w-full overflow-x-hidden">
@@ -1156,15 +1219,13 @@ export default function MotoInvoices() {
 
                       {/* 2. LOJA / VENDA */}
                       <TableCell className="py-2.5 truncate">
-                        <div className="text-xs font-medium text-foreground truncate" title={inv.store?.name || 'Concessionária'}>
-                          {inv.store?.name || 'Concessionária'}
-                        </div>
+                        <DealershipBadge storeIdOrName={inv.store?.name || inv.store_id} />
                         {inv.contract_number ? (
-                          <Badge variant="outline" className="font-mono text-[10px] font-semibold bg-primary/5 text-primary border-primary/20 mt-0.5 truncate max-w-full">
+                          <Badge variant="outline" className="font-mono text-[10px] font-semibold bg-primary/5 text-primary border-primary/20 mt-1 truncate max-w-full block w-fit">
                             Venda {inv.contract_number}
                           </Badge>
                         ) : (
-                          <span className="text-[11px] text-muted-foreground">Venda direta</span>
+                          <span className="text-[11px] text-muted-foreground block mt-0.5">Venda direta</span>
                         )}
                       </TableCell>
 

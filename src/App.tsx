@@ -33,6 +33,7 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { ConcurrentSessionModal } from "@/components/security/ConcurrentSessionModal";
 import { ConfirmationProvider } from "@/contexts/ConfirmationContext";
 import { DateFilterProvider } from "@/contexts/DateFilterContext";
+import { DealershipScopeProvider } from "@/contexts/DealershipScopeContext";
 import { queryClient } from "@/lib/queryClient";
 import { useEffect } from "react";
 import { initCloudSalesRealtime } from "@/lib/cloudSalesSync";
@@ -49,15 +50,16 @@ const App = () => {
         <TooltipProvider>
           <ConfirmationProvider>
             <DateFilterProvider>
-              <Toaster />
-              <Sonner />
-              <ConcurrentSessionModal />
-              <BrowserRouter>
-              <ErrorBoundary
-                fallbackTitle="Erro na aplicação"
-                fallbackDescription="Ocorreu um erro ao carregar esta página. Você pode tentar recarregar sem perder a sessão."
-              >
-                <Routes>
+              <DealershipScopeProvider>
+                <Toaster />
+                <Sonner />
+                <ConcurrentSessionModal />
+                <BrowserRouter>
+                <ErrorBoundary
+                  fallbackTitle="Erro na aplicação"
+                  fallbackDescription="Ocorreu um erro ao carregar esta página. Você pode tentar recarregar sem perder a sessão."
+                >
+                  <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/dashboard" element={<Navigate to="/" replace />} />
               <Route
@@ -265,6 +267,7 @@ const App = () => {
             </Routes>
           </ErrorBoundary>
         </BrowserRouter>
+              </DealershipScopeProvider>
             </DateFilterProvider>
           </ConfirmationProvider>
         </TooltipProvider>

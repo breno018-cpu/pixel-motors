@@ -51,6 +51,12 @@ import { useEmployees } from '@/hooks/useEmployees';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { exportToXLSX } from '@/lib/export';
 import { isMontesClarosStore, getStoreDisplayName } from '@/lib/storeResolution';
+import {
+  useDealershipScope,
+  DealershipBadge,
+  resolveStoreToKey,
+} from '@/contexts/DealershipScopeContext';
+import { DealershipSegmentedBar } from '@/components/common/DealershipSegmentedBar';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { OwnerFiscalInvoicesPanel } from '@/components/dashboard/OwnerFiscalInvoicesPanel';
 import { ExecutiveSalesReceiptsAuditor } from '@/components/dashboard/ExecutiveSalesReceiptsAuditor';
@@ -116,6 +122,7 @@ interface ModelStockGroup {
   totalCount: number;
   mocCount: number;
   divCount: number;
+  mltCount: number;
   totalValue: number;
   avgPrice: number;
   colorCounts: { color: string; count: number }[];
@@ -125,6 +132,7 @@ interface ModelStockGroup {
 export default function OwnerDashboard() {
   const navigate = useNavigate();
   const { isAdmin, isManager, hasElevatedAccess } = useAuth();
+  const dealershipScope = useDealershipScope();
 
   if (!hasElevatedAccess && !isAdmin && !isManager) {
     return <Navigate to="/" replace />;
@@ -145,7 +153,7 @@ export default function OwnerDashboard() {
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [stockSearch, setStockSearch] = useState<string>('');
-  const [stockStoreFilter, setStockStoreFilter] = useState<'all' | 'montesclaros' | 'divinopolis'>('all');
+  const [stockStoreFilter, setStockStoreFilter] = useState<'all' | 'montesclaros' | 'divinopolis' | 'multimarcas'>('all');
   const [stockSortBy, setStockSortBy] = useState<'count_desc' | 'count_asc' | 'value_desc' | 'name_asc'>('count_desc');
   const [selectedModelForChassis, setSelectedModelForChassis] = useState<ModelStockGroup | null>(null);
 
@@ -155,12 +163,11 @@ export default function OwnerDashboard() {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
 
     return sales.filter((item) => {
-      // 1. Filtro de Loja
-      if (storeFilter !== 'all') {
-        const storeDisp = getStoreDisplayName(item).toLowerCase();
-        if (storeFilter === 'divinopolis' && storeDisp !== 'divinópolis') return false;
-        if (storeFilter === 'montesclaros' && storeDisp !== 'montes claros') return false;
-        if (storeFilter === 'multimarcas' && storeDisp !== 'multimarcas') return false;
+      // 1. Filtro de Concessionária (Global ou Local)
+      const effectiveStoreFilter = dealershipScope.activeScope !== 'all' ? dealershipScope.activeScope : storeFilter;
+      if (effectiveStoreFilter !== 'all') {
+        const k = resolveStoreToKey(item.loja_slug || item.store_id || item.loja_cidade || item.loja_nome);
+        if (k !== effectiveStoreFilter) return false;
       }
 
       // 2. Busca por texto
@@ -196,7 +203,28 @@ export default function OwnerDashboard() {
 
       return true;
     });
-  }, [sales, storeFilter, searchQuery, periodPreset, startDate, endDate]);
+  }, [sales, dealershipScope.activeScope, storeFilter, searchQuery, periodPreset, startDate, endDate]);
+
+  // Contadores e Totais Financeiros por Concessionária
+  const { dealershipCounts, dealershipFinancials } = useMemo(() => {
+    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+
+    sales.forEach((s) => {
+      const k = resolveStoreToKey(s.loja_slug || s.store_id || s.loja_cidade || s.loja_nome);
+      counts.all++;
+      if (k !== 'all') {
+        counts[k]++;
+      }
+      const val = Number(s.valor) || 0;
+      financials.all += val;
+      if (k !== 'all') {
+        financials[k] += val;
+      }
+    });
+
+    return { dealershipCounts: counts, dealershipFinancials: financials };
+  }, [sales]);
 
   // Indicadores de Caixa & Resultados Financeiros
   const executiveMetrics = useMemo(() => {
@@ -220,43 +248,46 @@ export default function OwnerDashboard() {
     const estimatedGrossProfit = totalRevenue * 0.185;
     const grossMarginPercent = totalRevenue > 0 ? (estimatedGrossProfit / totalRevenue) * 100 : 0;
 
-    // Divisão por Loja
-    let mocRevenue = 0;
-    let mocCount = 0;
-    let divRevenue = 0;
-    let divCount = 0;
+    // Divisão por Concessionária (Grupo L1MA Motors)
+    let mocRevenue = 0, mocCount = 0;
+    let divRevenue = 0, divCount = 0;
+    let mltRevenue = 0, mltCount = 0;
 
     filteredSales.forEach((s) => {
-      if (isMontesClarosStore(s)) {
-        mocRevenue += s.valor || 0;
+      const k = resolveStoreToKey(s.loja_slug || s.store_id || s.loja_cidade || s.loja_nome);
+      const val = s.valor || 0;
+      if (k === 'montesclaros') {
+        mocRevenue += val;
         mocCount += 1;
+      } else if (k === 'multimarcas') {
+        mltRevenue += val;
+        mltCount += 1;
       } else {
-        divRevenue += s.valor || 0;
+        divRevenue += val;
         divCount += 1;
       }
     });
 
     const mocAvgTicket = mocCount > 0 ? mocRevenue / mocCount : 0;
     const divAvgTicket = divCount > 0 ? divRevenue / divCount : 0;
+    const mltAvgTicket = mltCount > 0 ? mltRevenue / mltCount : 0;
     const mocShare = totalRevenue > 0 ? (mocRevenue / totalRevenue) * 100 : 0;
     const divShare = totalRevenue > 0 ? (divRevenue / totalRevenue) * 100 : 0;
+    const mltShare = totalRevenue > 0 ? (mltRevenue / totalRevenue) * 100 : 0;
 
     // Métricas do Pátio / Estoque Parado
     const inStockVehicles = vehicles.filter((v) => v.status === 'disponivel' || (v.status as any) === 'em_estoque');
     const totalStockCount = inStockVehicles.length;
     const totalStockValue = inStockVehicles.reduce((acc, v) => acc + (Number(v.purchase_price) || Number(v.sale_price) || 0), 0);
 
-    const mocStockVehicles = inStockVehicles.filter((v) => {
-      const s = stores.find((st) => st.id === v.store_id);
-      return (s?.name || '').toUpperCase().includes('MONTES') || (s?.city || '').toUpperCase().includes('MONTES');
-    });
+    const mocStockVehicles = inStockVehicles.filter((v) => resolveStoreToKey(v.store_id) === 'montesclaros');
     const mocStockValue = mocStockVehicles.reduce((acc, v) => acc + (Number(v.sale_price) || 0), 0);
 
-    const divStockVehicles = inStockVehicles.filter((v) => {
-      const s = stores.find((st) => st.id === v.store_id);
-      return (s?.name || '').toUpperCase().includes('DIVINOPOLIS') || (s?.city || '').toUpperCase().includes('DIVINOPOLIS');
-    });
+    const divStockVehicles = inStockVehicles.filter((v) => resolveStoreToKey(v.store_id) === 'divinopolis');
     const divStockValue = divStockVehicles.reduce((acc, v) => acc + (Number(v.sale_price) || 0), 0);
+
+    const mltStockVehicles = inStockVehicles.filter((v) => resolveStoreToKey(v.store_id) === 'multimarcas');
+    const mltStockValue = mltStockVehicles.reduce((acc, v) => acc + (Number(v.sale_price) || 0), 0);
 
     return {
       totalRevenue,
@@ -276,14 +307,20 @@ export default function OwnerDashboard() {
       divCount,
       divAvgTicket,
       divShare,
+      mltRevenue,
+      mltCount,
+      mltAvgTicket,
+      mltShare,
       totalStockCount,
       totalStockValue,
       mocStockCount: mocStockVehicles.length,
       mocStockValue,
       divStockCount: divStockVehicles.length,
       divStockValue,
+      mltStockCount: mltStockVehicles.length,
+      mltStockValue,
     };
-  }, [filteredSales, vehicles, stores]);
+  }, [filteredSales, vehicles]);
 
   // Margem e Lucro por Modelo de Moto
   const modelProfitability = useMemo(() => {
@@ -383,6 +420,7 @@ export default function OwnerDashboard() {
       totalCount: number;
       mocCount: number;
       divCount: number;
+      mltCount: number;
       totalValue: number;
       colorMap: Map<string, number>;
       vehicles: typeof vehicles;
@@ -390,10 +428,7 @@ export default function OwnerDashboard() {
 
     inStock.forEach((v) => {
       const canonical = getCanonicalModelName(v.model);
-      const store = stores.find((s) => s.id === v.store_id);
-      const storeUpper = (store?.name || store?.city || '').toUpperCase();
-      const isMoc = storeUpper.includes('MONTES') || storeUpper.includes('MOC');
-      const isDiv = storeUpper.includes('DIVINOPOLIS') || storeUpper.includes('DIV');
+      const vKey = resolveStoreToKey(v.store_id);
 
       const curr = map.get(canonical) || {
         model: canonical,
@@ -401,14 +436,16 @@ export default function OwnerDashboard() {
         totalCount: 0,
         mocCount: 0,
         divCount: 0,
+        mltCount: 0,
         totalValue: 0,
         colorMap: new Map<string, number>(),
         vehicles: [],
       };
 
       curr.totalCount += 1;
-      if (isDiv) curr.divCount += 1;
-      else curr.mocCount += 1; // Padrão Montes Claros (Matriz)
+      if (vKey === 'divinopolis') curr.divCount += 1;
+      else if (vKey === 'multimarcas') curr.mltCount += 1;
+      else curr.mocCount += 1;
 
       const price = Number(v.sale_price) || 0;
       curr.totalValue += price;
@@ -432,6 +469,7 @@ export default function OwnerDashboard() {
         totalCount: item.totalCount,
         mocCount: item.mocCount,
         divCount: item.divCount,
+        mltCount: item.mltCount,
         totalValue: item.totalValue,
         avgPrice,
         colorCounts,
@@ -444,6 +482,8 @@ export default function OwnerDashboard() {
       list = list.filter((m) => m.mocCount > 0);
     } else if (stockStoreFilter === 'divinopolis') {
       list = list.filter((m) => m.divCount > 0);
+    } else if (stockStoreFilter === 'multimarcas') {
+      list = list.filter((m) => m.mltCount > 0);
     }
 
     // Busca textual por modelo ou cor
@@ -576,6 +616,38 @@ export default function OwnerDashboard() {
           </div>
         }
       />
+
+      {/* SELETOR EXECUTIVO DE CONCESSIONÁRIA */}
+      <div className="p-3.5 rounded-2xl bg-card border shadow-xs space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-primary shrink-0" />
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                Divisão por Concessionária • Grupo L1MA Motors
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                Selecione uma concessionária para isolar métricas de faturamento, estoque e notas, ou veja a holding consolidada.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <DealershipBadge />
+          </div>
+        </div>
+        <DealershipSegmentedBar
+          variant="pills"
+          activeScope={dealershipScope.activeScope}
+          onChange={(scope) => {
+            dealershipScope.setActiveScope(scope);
+            setStoreFilter(scope);
+          }}
+          counts={dealershipCounts}
+          financials={dealershipFinancials}
+          showCounts
+          showTotals
+        />
+      </div>
 
       {/* 2. NAVEGAÇÃO ENTRE AS ABAS ESTRATÉGICAS */}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-6">
@@ -770,45 +842,16 @@ export default function OwnerDashboard() {
             </Card>
           </div>
 
-          {/* Comparativo entre Montes Claros e Divinópolis */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
+          {/* Comparativo Executivo entre as 3 Concessionárias do Grupo */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="rounded-xl border border-emerald-500/30 shadow-xs bg-card">
               <CardHeader className="p-4 pb-2 border-b">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Store className="w-4 h-4 text-primary" /> Concessionária Montes Claros (Matriz)
+                    <Store className="w-4 h-4 text-emerald-600" /> Shineray Divinópolis (Matriz)
                   </CardTitle>
-                  <Badge variant="outline" className="text-[10px] font-bold font-mono">
-                    {executiveMetrics.mocShare.toFixed(1)}% do faturamento
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
-                    <p className="text-base font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(executiveMetrics.mocRevenue)}</p>
-                  </div>
-                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Motos Faturadas</span>
-                    <p className="text-base font-black font-mono text-foreground mt-0.5">{executiveMetrics.mocCount} un.</p>
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground flex justify-between pt-1">
-                  <span>Ticket Médio Unitário:</span>
-                  <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.mocAvgTicket)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-xl border border-border/80 shadow-xs bg-card">
-              <CardHeader className="p-4 pb-2 border-b">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                    <Store className="w-4 h-4 text-primary" /> Concessionária Divinópolis (Filial)
-                  </CardTitle>
-                  <Badge variant="outline" className="text-[10px] font-bold font-mono">
-                    {executiveMetrics.divShare.toFixed(1)}% do faturamento
+                  <Badge variant="outline" className="text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                    {executiveMetrics.divShare.toFixed(1)}% do total
                   </Badge>
                 </div>
               </CardHeader>
@@ -819,13 +862,71 @@ export default function OwnerDashboard() {
                     <p className="text-base font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(executiveMetrics.divRevenue)}</p>
                   </div>
                   <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Motos Faturadas</span>
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Vendas</span>
                     <p className="text-base font-black font-mono text-foreground mt-0.5">{executiveMetrics.divCount} un.</p>
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground flex justify-between pt-1">
                   <span>Ticket Médio Unitário:</span>
                   <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.divAvgTicket)}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-xl border border-blue-500/30 shadow-xs bg-card">
+              <CardHeader className="p-4 pb-2 border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                    <Store className="w-4 h-4 text-blue-600" /> Shineray Montes Claros
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[10px] font-bold font-mono bg-blue-500/10 text-blue-600 border-blue-500/20">
+                    {executiveMetrics.mocShare.toFixed(1)}% do total
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
+                    <p className="text-base font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(executiveMetrics.mocRevenue)}</p>
+                  </div>
+                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Vendas</span>
+                    <p className="text-base font-black font-mono text-foreground mt-0.5">{executiveMetrics.mocCount} un.</p>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground flex justify-between pt-1">
+                  <span>Ticket Médio Unitário:</span>
+                  <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.mocAvgTicket)}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-xl border border-purple-500/30 shadow-xs bg-card">
+              <CardHeader className="p-4 pb-2 border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                    <Car className="w-4 h-4 text-purple-600" /> L1MA Motors Multimarcas
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[10px] font-bold font-mono bg-purple-500/10 text-purple-600 border-purple-500/20">
+                    {executiveMetrics.mltShare.toFixed(1)}% do total
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
+                    <p className="text-base font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(executiveMetrics.mltRevenue)}</p>
+                  </div>
+                  <div className="bg-muted/30 p-2.5 rounded-lg border border-border/60">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold">Vendas</span>
+                    <p className="text-base font-black font-mono text-foreground mt-0.5">{executiveMetrics.mltCount} un.</p>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground flex justify-between pt-1">
+                  <span>Ticket Médio Unitário:</span>
+                  <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.mltAvgTicket)}</span>
                 </div>
               </CardContent>
             </Card>

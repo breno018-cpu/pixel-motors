@@ -1,0 +1,166 @@
+import React from 'react';
+import {
+  useDealershipScope,
+  DEALERSHIPS_CONFIG,
+  DealershipKey,
+  DealershipMeta,
+} from '@/contexts/DealershipScopeContext';
+import { cn } from '@/lib/utils';
+import { Layers, Building2, Store, Sparkles } from 'lucide-react';
+
+interface DealershipSegmentedBarProps {
+  value?: DealershipKey;
+  onChange?: (scope: DealershipKey) => void;
+  counts?: Partial<Record<DealershipKey, number>>;
+  financials?: Partial<Record<DealershipKey, number>>;
+  variant?: 'pills' | 'tabs' | 'header';
+  className?: string;
+  showAllOption?: boolean;
+}
+
+export function DealershipSegmentedBar({
+  value,
+  onChange,
+  counts,
+  financials,
+  variant = 'pills',
+  className,
+  showAllOption = true,
+}: DealershipSegmentedBarProps) {
+  const scopeCtx = useDealershipScope();
+  const currentScope = value !== undefined ? value : scopeCtx.activeScope;
+  const setScope = onChange || scopeCtx.setActiveScope;
+
+  const items = Object.values(DEALERSHIPS_CONFIG).filter(
+    (item) => showAllOption || item.key !== 'all'
+  );
+
+  const formatBrlShort = (val: number) => {
+    if (val >= 1000000) return `R$ ${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `R$ ${(val / 1000).toFixed(0)}k`;
+    return `R$ ${val.toFixed(0)}`;
+  };
+
+  if (variant === 'header') {
+    // Versão compacta para a barra de topo do sistema (Header)
+    return (
+      <div
+        className={cn(
+          'inline-flex items-center gap-1 p-1 rounded-xl bg-card/90 border border-border/80 shadow-xs backdrop-blur-md',
+          className
+        )}
+      >
+        {items.map((item) => {
+          const isSelected = currentScope === item.key;
+          const Icon = item.icon;
+
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setScope(item.key)}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all select-none',
+                isSelected
+                  ? cn(
+                      'shadow-xs font-bold',
+                      item.key === 'all'
+                        ? 'bg-primary text-primary-foreground'
+                        : item.key === 'divinopolis'
+                        ? 'bg-emerald-600 text-white'
+                        : item.key === 'montesclaros'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-purple-600 text-white'
+                    )
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              )}
+              title={item.fullName}
+            >
+              <Icon className={cn('w-3.5 h-3.5 shrink-0', isSelected ? 'text-current' : 'opacity-70')} />
+              <span className="hidden md:inline">{item.shortName}</span>
+              <span className="md:hidden">{item.prefix}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Versão rica com contadores e finanças para o topo de tabelas e painéis
+  return (
+    <div
+      className={cn(
+        'w-full flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-card border border-border/80 shadow-xs',
+        className
+      )}
+    >
+      <div className="text-[11px] font-black uppercase tracking-wider text-muted-foreground px-2 flex items-center gap-1 shrink-0">
+        <Building2 className="w-3.5 h-3.5 text-primary" />
+        <span className="hidden sm:inline">Divisão por Concessionária:</span>
+      </div>
+
+      <div className="flex items-center gap-1.5 flex-wrap flex-1">
+        {items.map((item) => {
+          const isSelected = currentScope === item.key;
+          const Icon = item.icon;
+          const count = counts ? counts[item.key] : undefined;
+          const financial = financials ? financials[item.key] : undefined;
+
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setScope(item.key)}
+              className={cn(
+                'relative flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs select-none',
+                isSelected
+                  ? cn(
+                      'ring-2 ring-offset-1 font-bold shadow-xs',
+                      item.key === 'all'
+                        ? 'bg-primary/10 text-primary border-primary/40 ring-primary/30'
+                        : item.key === 'divinopolis'
+                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/40 ring-emerald-500/30'
+                        : item.key === 'montesclaros'
+                        ? 'bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/40 ring-blue-500/30'
+                        : 'bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/40 ring-purple-500/30'
+                    )
+                  : 'bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/80'
+              )}
+            >
+              <div className="flex items-center gap-1.5">
+                <Icon className={cn('w-3.5 h-3.5 shrink-0', isSelected ? item.textClass : 'opacity-60')} />
+                <span>{item.shortName}</span>
+                {item.key !== 'all' && (
+                  <span className="font-mono text-[9px] font-black opacity-70 px-1 py-0.2 rounded bg-black/5 dark:bg-white/10">
+                    {item.prefix}
+                  </span>
+                )}
+              </div>
+
+              {/* Contador de Registros da Concessionária */}
+              {count !== undefined && (
+                <span
+                  className={cn(
+                    'text-[10.5px] font-mono font-bold px-1.5 py-0.2 rounded-full',
+                    isSelected
+                      ? 'bg-background/80 shadow-2xs text-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  )}
+                >
+                  {count}
+                </span>
+              )}
+
+              {/* Subtotal Financeiro */}
+              {financial !== undefined && financial > 0 && (
+                <span className="hidden lg:inline text-[10px] font-mono opacity-80 border-l border-border/60 pl-1.5">
+                  {formatBrlShort(financial)}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

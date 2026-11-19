@@ -80,8 +80,15 @@ import { cn } from '@/lib/utils';
 import {
   STORE_DIVINOPOLIS_UUID,
   STORE_MONTESCLAROS_UUID,
+  STORE_MONTESCLAROS_MULTIMARCAS_UUID,
   isMatchingStore,
 } from '@/lib/storeResolution';
+import {
+  useDealershipScope,
+  DealershipBadge,
+  resolveStoreToKey,
+} from '@/contexts/DealershipScopeContext';
+import { DealershipSegmentedBar } from '@/components/common/DealershipSegmentedBar';
 
 const statusConfig = {
   disponivel: { label: 'Disponível', class: 'bg-success/10 text-success border-success/20' },
@@ -234,6 +241,7 @@ export default function Vehicles() {
   } = useAuth();
   const { toast } = useToast();
   const confirm = useConfirm();
+  const dealershipScope = useDealershipScope();
 
   // Regra de ouro: cada funcionário vê PRIMEIRO o estoque da sua respectiva loja por padrão.
   // Se o usuário alternar manualmente ou houver parâmetro na URL (?store=), respeita a escolha do usuário.
@@ -295,10 +303,38 @@ export default function Vehicles() {
     setSaleVehicleId(vehicle.id);
   };
 
-  // Lista base de veículos ativos no escopo de loja/revendedor (para contadores globais)
+  // Contadores e Totais Financeiros por Concessionária para Estoque Ativo
+  const { dealershipCounts, dealershipFinancials } = useMemo(() => {
+    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+
+    (vehicles || []).forEach((v) => {
+      if (v.status === 'vendido') return;
+      const key = resolveStoreToKey(v.store_id);
+      counts.all++;
+      if (key !== 'all') {
+        counts[key]++;
+      }
+      const val = Number(v.sale_price) || 0;
+      financials.all += val;
+      if (key !== 'all') {
+        financials[key] += val;
+      }
+    });
+
+    return { dealershipCounts: counts, dealershipFinancials: financials };
+  }, [vehicles]);
+
+  // Lista base de veículos ativos no escopo de concessionária/revendedor (para contadores globais)
   const scopedVehicles = useMemo(() => {
     return (vehicles || []).filter((vehicle) => {
-      const matchesStore = isMatchingStore(vehicle.store_id, storeFilter);
+      let matchesStore = true;
+      if (dealershipScope.activeScope !== 'all') {
+        const vKey = resolveStoreToKey(vehicle.store_id);
+        matchesStore = vKey === dealershipScope.activeScope;
+      } else {
+        matchesStore = isMatchingStore(vehicle.store_id, storeFilter);
+      }
       const matchesReseller =
         resellerFilter === 'all' ||
         (resellerFilter === 'loja'
@@ -308,7 +344,7 @@ export default function Vehicles() {
         typeFilter === 'all' || (vehicle.vehicle_type || 'carro') === typeFilter;
       return matchesStore && matchesReseller && matchesType;
     });
-  }, [vehicles, storeFilter, resellerFilter, typeFilter]);
+  }, [vehicles, dealershipScope.activeScope, storeFilter, resellerFilter, typeFilter]);
 
   const activeInventory = useMemo(
     () => scopedVehicles.filter((v) => v.status !== 'vendido'),
@@ -807,6 +843,41 @@ export default function Vehicles() {
         </TabsContent>
 
         <TabsContent value="estoque" className="mt-0 space-y-5">
+          {/* SELETOR EXECUTIVO DE PÁTIO / CONCESSIONÁRIA */}
+          <div className="p-3.5 rounded-2xl bg-card border shadow-xs space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Store className="w-4 h-4 text-primary shrink-0" />
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                    Divisão de Pátio por Concessionária • Grupo L1MA Motors
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Isole o estoque físico por pátio de concessionária ou acompanhe o estoque unificado.
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <DealershipBadge />
+              </div>
+            </div>
+            <DealershipSegmentedBar
+              variant="pills"
+              activeScope={dealershipScope.activeScope}
+              onChange={(scope) => {
+                dealershipScope.setActiveScope(scope);
+                if (scope === 'all') handleStoreChange('all');
+                else if (scope === 'divinopolis') handleStoreChange(STORE_DIVINOPOLIS_UUID);
+                else if (scope === 'montesclaros') handleStoreChange(STORE_MONTESCLAROS_UUID);
+                else if (scope === 'multimarcas') handleStoreChange(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
+              }}
+              counts={dealershipCounts}
+              financials={dealershipFinancials}
+              showCounts
+              showTotals
+            />
+          </div>
+
           {/* KPIs EXECUTIVOS DO PÁTIO */}
           {!isLoading && (
             <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5', canViewMargins ? 'xl:grid-cols-5' : 'xl:grid-cols-4')}>

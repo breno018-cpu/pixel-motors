@@ -21,7 +21,21 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
 import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
-import { resolveSaleStore, isMatchingStore, STORE_MONTESCLAROS_UUID, getContractPrefix, formatStoreShortName } from '@/lib/storeResolution';
+import {
+  resolveSaleStore,
+  isMatchingStore,
+  STORE_DIVINOPOLIS_UUID,
+  STORE_MONTESCLAROS_UUID,
+  STORE_MONTESCLAROS_MULTIMARCAS_UUID,
+  getContractPrefix,
+  formatStoreShortName,
+} from '@/lib/storeResolution';
+import {
+  useDealershipScope,
+  DealershipBadge,
+  resolveStoreToKey,
+} from '@/contexts/DealershipScopeContext';
+import { DealershipSegmentedBar } from '@/components/common/DealershipSegmentedBar';
 import { getCleanSellerOptions, resolveSellerDisplayName, isValidSellerName, matchesSellerFilter } from '@/lib/sellerSanitizer';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
@@ -216,6 +230,7 @@ export default function Sales() {
   const [search, setSearch] = useState('');
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [resellerFilter, setResellerFilter] = useState<string>('all');
+  const dealershipScope = useDealershipScope();
   const {
     periodFilter,
     setPeriodFilter,
@@ -585,9 +600,14 @@ export default function Sales() {
         }
       }
 
-      // 2. Filtro de Concessionária
-      const matchesStore = storeFilter === 'all' || isMatchingStore(sale.store_id, storeFilter);
-      if (!matchesStore) return false;
+      // 2. Filtro de Concessionária (Escopo Global e Local)
+      if (dealershipScope.activeScope !== 'all') {
+        const saleScope = resolveStoreToKey(sale.store_id || sale.store?.id || sale.store?.name);
+        if (saleScope !== dealershipScope.activeScope) return false;
+      } else if (storeFilter !== 'all') {
+        const matchesStore = isMatchingStore(sale.store_id, storeFilter);
+        if (!matchesStore) return false;
+      }
 
       // 3. Filtro de Vendedor / Operador
       let matchesReseller = true;
@@ -607,7 +627,32 @@ export default function Sales() {
 
       return true;
     });
-  }, [allSales, search, storeFilter, resellerFilter, periodFilter, isDateInPeriod, isRestrictedSeller, employees]);
+  }, [allSales, search, dealershipScope.activeScope, storeFilter, resellerFilter, periodFilter, isDateInPeriod, isRestrictedSeller, employees]);
+
+  // Contadores e Totais Financeiros por Concessionária (Grupo L1MA Motors)
+  const { dealershipCounts, dealershipFinancials } = useMemo(() => {
+    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+
+    allSales.forEach((sale) => {
+      if (periodFilter !== 'all' && (sale as any).review_status !== 'questionada') {
+        if (!isDateInPeriod(sale.signed_at || sale.created_at)) return;
+      }
+
+      const key = resolveStoreToKey(sale.store_id || sale.store?.id || sale.store?.name);
+      counts.all++;
+      if (key !== 'all') {
+        counts[key]++;
+      }
+      const val = Number(sale.sale_price) || 0;
+      financials.all += val;
+      if (key !== 'all') {
+        financials[key] += val;
+      }
+    });
+
+    return { dealershipCounts: counts, dealershipFinancials: financials };
+  }, [allSales, periodFilter, isDateInPeriod]);
 
   // Contadores oficiais das abas e métricas baseadas no escopo atual
   const completedSales = useMemo(() => {
@@ -785,6 +830,43 @@ export default function Sales() {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Seletor Executivo de Concessionária */}
+          {!isRestrictedSeller && (
+            <div className="p-3.5 rounded-2xl bg-card border shadow-xs space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Store className="w-4 h-4 text-primary shrink-0" />
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
+                      Divisão por Concessionária • Grupo L1MA Motors
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Filtre as vendas por unidade física ou visualize o resultado consolidado do grupo.
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DealershipBadge />
+                </div>
+              </div>
+              <DealershipSegmentedBar
+                variant="pills"
+                activeScope={dealershipScope.activeScope}
+                onChange={(scope) => {
+                  dealershipScope.setActiveScope(scope);
+                  if (scope === 'all') setStoreFilter('all');
+                  else if (scope === 'divinopolis') setStoreFilter(STORE_DIVINOPOLIS_UUID);
+                  else if (scope === 'montesclaros') setStoreFilter(STORE_MONTESCLAROS_UUID);
+                  else if (scope === 'multimarcas') setStoreFilter(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
+                }}
+                counts={dealershipCounts}
+                financials={dealershipFinancials}
+                showCounts
+                showTotals
+              />
+            </div>
+          )}
+
           {/* Filters */}
           <FilterBar>
             <div className="relative min-w-0 flex-1 w-full">
@@ -827,6 +909,11 @@ export default function Sales() {
                 value={storeFilter}
                 onValueChange={(val) => {
                   setStoreFilter(val);
+                  if (val === 'all') dealershipScope.setActiveScope('all');
+                  else if (val === STORE_DIVINOPOLIS_UUID) dealershipScope.setActiveScope('divinopolis');
+                  else if (val === STORE_MONTESCLAROS_UUID) dealershipScope.setActiveScope('montesclaros');
+                  else if (val === STORE_MONTESCLAROS_MULTIMARCAS_UUID) dealershipScope.setActiveScope('multimarcas');
+
                   if (val !== 'all' && resellerFilter !== 'all') {
                     setResellerFilter('all');
                   }
@@ -1155,8 +1242,8 @@ export default function Sales() {
 
                   {/* Rodapé: Loja/Vendedor + Data + Preço */}
                   <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/40 text-[11px]">
-                    <div className="flex items-center gap-1 text-muted-foreground truncate">
-                      <span className="truncate">{formatStoreShortName(sale.store?.name) || 'Loja'}</span>
+                    <div className="flex items-center gap-1.5 text-muted-foreground truncate flex-wrap">
+                      <DealershipBadge storeIdOrName={sale.store?.name || sale.store_id} />
                       <span>•</span>
                       <span className="truncate">{resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || 'Vendedor'}</span>
                       <span>•</span>
@@ -1271,12 +1358,7 @@ export default function Sales() {
                         </div>
                       </td>
                       <td className="hidden lg:table-cell px-2 py-2 whitespace-nowrap">
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 border border-border/50 text-[10.5px] font-bold text-foreground/90 whitespace-nowrap truncate max-w-[100px]"
-                          title={sale.store?.name || undefined}
-                        >
-                          {formatShortStoreName(sale.store?.name)}
-                        </span>
+                        <DealershipBadge storeIdOrName={sale.store?.name || sale.store_id} />
                       </td>
                       <td className="hidden lg:table-cell px-2 py-2 whitespace-nowrap">
                         <span className="text-xs text-muted-foreground truncate max-w-[85px] block whitespace-nowrap" title={resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || '-'}>

@@ -20,6 +20,7 @@ export interface Store {
 
 export const STORE_DIVINOPOLIS_UUID = 'ccf8e097-09d7-4305-8077-5c16fc8b5634';
 export const STORE_MONTESCLAROS_UUID = 'e8254a81-d669-464b-9806-457ba25ce7f0';
+export const STORE_MONTESCLAROS_MULTIMARCAS_UUID = '6b3afc94-86b2-41b0-9427-6f58ae8dbf21';
 
 export const STORES_LOCAL_CACHE_KEY = 'dealflow_custom_stores_v1';
 
@@ -54,6 +55,21 @@ export const DEFAULT_DEALERSHIP_STORES: Store[] = [
     created_at: '2024-01-01T00:00:00.000Z',
     updated_at: '2024-01-01T00:00:00.000Z',
   },
+  {
+    id: STORE_MONTESCLAROS_MULTIMARCAS_UUID,
+    name: 'L1MA MOTORS MULTIMARCAS',
+    city: 'Montes Claros',
+    state: 'MG',
+    cnpj: '18.456.789/0002-82',
+    address: 'AV. JOÃO XXIII N°990 B. EDGAR PEREIRA, Montes Claros/MG',
+    phone: '(38) 99938-1522',
+    email: 'multimarcas@pixelmotors.com.br',
+    instagram_handle: '@l1ma.multimarcas',
+    manager_id: null,
+    is_active: true,
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: '2024-01-01T00:00:00.000Z',
+  },
 ];
 
 export function getCustomStoresCache(): Store[] {
@@ -71,10 +87,15 @@ export function saveStoreToCache(storeUpdate: Partial<Store> & { id: string }) {
   try {
     if (typeof window === 'undefined') return;
     const list = getCustomStoresCache();
+    const isMulti =
+      storeUpdate.id === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+      storeUpdate.id === 'store-multimarcas' ||
+      (storeUpdate.name && storeUpdate.name.toLowerCase().includes('multimarcas'));
     const isMoc =
-      storeUpdate.id === STORE_MONTESCLAROS_UUID ||
-      storeUpdate.id === 'store-montesclaros' ||
-      (storeUpdate.city && storeUpdate.city.toLowerCase().includes('montes'));
+      !isMulti &&
+      (storeUpdate.id === STORE_MONTESCLAROS_UUID ||
+        storeUpdate.id === 'store-montesclaros' ||
+        (storeUpdate.city && storeUpdate.city.toLowerCase().includes('montes')));
     const isDiv =
       storeUpdate.id === STORE_DIVINOPOLIS_UUID ||
       storeUpdate.id === 'store-divinopolis' ||
@@ -83,10 +104,11 @@ export function saveStoreToCache(storeUpdate: Partial<Store> & { id: string }) {
     let found = false;
     const updated = list.map((s) => {
       const matchExact = s.id === storeUpdate.id;
+      const matchMulti = isMulti && (s.id === STORE_MONTESCLAROS_MULTIMARCAS_UUID || s.id === 'store-multimarcas');
       const matchMoc = isMoc && (s.id === STORE_MONTESCLAROS_UUID || s.id === 'store-montesclaros');
       const matchDiv = isDiv && (s.id === STORE_DIVINOPOLIS_UUID || s.id === 'store-divinopolis');
 
-      if (matchExact || matchMoc || matchDiv) {
+      if (matchExact || matchMulti || matchMoc || matchDiv) {
         found = true;
         return { ...s, ...storeUpdate, updated_at: new Date().toISOString() };
       }
