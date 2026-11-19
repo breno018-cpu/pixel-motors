@@ -374,8 +374,19 @@ export default function Sales() {
         },
         employees
       );
+      const expectedPrefix = getContractPrefix(resolved.storeId, resolved.storeName);
+      let alignedContractNumber = c.contract_number;
+      if (alignedContractNumber && expectedPrefix) {
+        if (/^[A-Z]{3}-/i.test(alignedContractNumber)) {
+          const currentPrefix = alignedContractNumber.slice(0, 3).toUpperCase();
+          if (currentPrefix !== expectedPrefix) {
+            alignedContractNumber = `${expectedPrefix}-${alignedContractNumber.slice(4)}`;
+          }
+        }
+      }
       return {
         ...c,
+        contract_number: alignedContractNumber,
         store_id: resolved.storeId,
         store: {
           id: resolved.storeId,
@@ -1030,6 +1041,7 @@ export default function Sales() {
               const vehicle = sale.vehicle;
               const VehicleIcon = vehicle?.vehicle_type === 'moto' ? Bike : Car;
               const isPreSale = sale.status === 'pre_venda';
+              const isCancelled = sale.status === 'cancelado';
               const saleChassis = getSaleChassis(sale);
               const receiptsCount = Math.max(
                 getSaleReceipts(sale.id).length,
@@ -1043,6 +1055,7 @@ export default function Sales() {
                   className={cn(
                     "rounded-2xl border bg-card/90 p-3 shadow-xs space-y-2.5 transition-all relative",
                     isPreSale && "bg-amber-500/5 border-amber-500/30",
+                    isCancelled && "opacity-75 bg-rose-500/[0.03] border-rose-500/20",
                     (sale as any).review_status === 'questionada' && "border-destructive/40 bg-destructive/5"
                   )}
                 >
@@ -1052,9 +1065,15 @@ export default function Sales() {
                       <span className="font-mono text-xs font-bold text-foreground">
                         {sale.contract_number}
                       </span>
-                      <Badge variant="secondary" className={cn("text-[9.5px] font-bold px-2 py-0 h-4.5 shrink-0", statusInfo.class)}>
-                        {statusInfo.label}
-                      </Badge>
+                      {isCancelled ? (
+                        <Badge variant="outline" className="text-[9.5px] font-bold px-2 py-0 h-4.5 shrink-0 bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20">
+                          Cancelado
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className={cn("text-[9.5px] font-bold px-2 py-0 h-4.5 shrink-0", statusInfo.class)}>
+                          {statusInfo.label}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
@@ -1143,7 +1162,7 @@ export default function Sales() {
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="font-display font-black text-xs text-foreground">
+                      <span className={cn("font-display font-black text-xs", isCancelled ? "line-through text-muted-foreground" : "text-foreground")}>
                         {formatCurrency(Number(sale.sale_price))}
                       </span>
                     </div>
@@ -1172,12 +1191,12 @@ export default function Sales() {
               <thead className="bg-muted/40 border-b border-border/60">
                 <tr className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold text-left">
                   <th className="whitespace-nowrap px-2.5 py-2.5 w-[80px]">Contrato</th>
-                  <th className="px-2 py-2.5 w-[150px]">Cliente</th>
-                  <th className="px-2 py-2.5 w-[180px]">Veículo & Chassi</th>
-                  <th className="hidden xl:table-cell px-2 py-2.5 w-[110px] whitespace-nowrap">Loja</th>
+                  <th className="px-2 py-2.5 w-[145px]">Cliente</th>
+                  <th className="px-2 py-2.5 w-[170px]">Veículo & Chassi</th>
+                  <th className="hidden lg:table-cell px-2 py-2.5 w-[100px] whitespace-nowrap">Loja</th>
                   <th className="hidden lg:table-cell px-2 py-2.5 w-[90px] whitespace-nowrap">Operador</th>
                   <th className="text-right whitespace-nowrap px-2 py-2.5 w-[80px]">Valor</th>
-                  <th className="whitespace-nowrap px-2 py-2.5 w-[120px]">Status / Etapa</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 w-[125px]">Status / Etapa</th>
                   <th className="whitespace-nowrap text-center px-2 py-2.5 w-[75px]">Data</th>
                   <th className="text-right whitespace-nowrap pr-3 px-2 py-2.5 w-[90px]">Ações</th>
                 </tr>
@@ -1188,6 +1207,7 @@ export default function Sales() {
                   const vehicle = sale.vehicle;
                   const VehicleIcon = vehicle?.vehicle_type === 'moto' ? Bike : Car;
                   const isPreSale = sale.status === 'pre_venda';
+                  const isCancelled = sale.status === 'cancelado';
                   const saleChassis = getSaleChassis(sale);
                   const receiptsCount = Math.max(
                     getSaleReceipts(sale.id).length,
@@ -1201,6 +1221,7 @@ export default function Sales() {
                       className={cn(
                         'group transition-colors hover:bg-muted/40',
                         isPreSale && 'bg-amber-500/5 hover:bg-amber-500/10',
+                        isCancelled && 'opacity-70 bg-rose-500/[0.02] dark:bg-rose-500/[0.04]',
                         (sale as any).review_status === 'questionada' && 'review-row'
                       )}
                     >
@@ -1208,13 +1229,13 @@ export default function Sales() {
                         <span className="whitespace-nowrap font-mono text-xs font-bold text-foreground">{sale.contract_number}</span>
                       </td>
                       <td className="px-2 py-2">
-                        <div className="max-w-[145px]">
+                        <div className="max-w-[140px]">
                           <p className="font-bold text-xs text-foreground truncate" title={sale.buyer_name}>{sale.buyer_name}</p>
                           <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{formatCPFDisplay(sale.buyer_cpf)}</p>
                         </div>
                       </td>
                       <td className="px-2 py-2">
-                        <div className="flex items-start gap-1.5 max-w-[175px]">
+                        <div className="flex items-start gap-1.5 max-w-[165px]">
                           <VehicleIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
                           <div className="min-w-0 space-y-0.5">
                             <p className="text-xs font-semibold text-foreground truncate" title={vehicle ? `${vehicle.brand} ${vehicle.model}` : (sale as any).external_data?.vehicle_model_custom}>
@@ -1246,24 +1267,31 @@ export default function Sales() {
                           </div>
                         </div>
                       </td>
-                      <td className="hidden xl:table-cell px-2 py-2 whitespace-nowrap">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-muted/60 border border-border/50 text-[10px] font-semibold text-foreground/90" title={sale.store?.name || undefined}>
+                      <td className="hidden lg:table-cell px-2 py-2 whitespace-nowrap">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-muted/60 border border-border/50 text-[10px] font-semibold text-foreground/90 whitespace-nowrap" title={sale.store?.name || undefined}>
                           {formatShortStoreName(sale.store?.name)}
                         </span>
                       </td>
                       <td className="hidden lg:table-cell px-2 py-2 whitespace-nowrap">
-                        <span className="text-xs text-muted-foreground truncate max-w-[85px] block" title={resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || '-'}>
+                        <span className="text-xs text-muted-foreground truncate max-w-[85px] block whitespace-nowrap" title={resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || '-'}>
                           {resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || '-'}
                         </span>
                       </td>
                       <td className="whitespace-nowrap text-right px-2 py-2">
-                        <span className="font-display font-black text-xs text-foreground">{formatCurrency(Number(sale.sale_price))}</span>
+                        <span className={cn('font-display font-black text-xs', isCancelled ? 'line-through text-muted-foreground' : 'text-foreground')}>{formatCurrency(Number(sale.sale_price))}</span>
                       </td>
                       <td className="whitespace-nowrap px-2 py-2">
                         <div className="flex flex-col items-start gap-1">
-                          <Badge variant="secondary" className={cn('text-[9.5px] font-bold py-0.5 px-1.5 whitespace-nowrap inline-flex items-center gap-1 rounded shadow-2xs', statusInfo.class)}>
-                            {statusInfo.label}
-                          </Badge>
+                          {isCancelled ? (
+                            <Badge variant="outline" className="text-[9.5px] font-bold py-0.5 px-1.5 whitespace-nowrap inline-flex items-center gap-1 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 shadow-2xs">
+                              <XCircle className="w-2.5 h-2.5 shrink-0" />
+                              <span>Cancelado</span>
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className={cn('text-[9.5px] font-bold py-0.5 px-1.5 whitespace-nowrap inline-flex items-center gap-1 rounded shadow-2xs', statusInfo.class)}>
+                              {statusInfo.label}
+                            </Badge>
+                          )}
                           
                           {/* BOTÃO DIRETO DE FINALIZAR VENDA (CONCLUIR CADASTRO) */}
                           {isPreSale && canCreateSales && (
@@ -1280,7 +1308,7 @@ export default function Sales() {
                           )}
 
                           {/* INDICADOR & ATALHO DE NOTA FISCAL (NF) */}
-                          {(() => {
+                          {!isCancelled && (() => {
                             const ext = (sale.external_data || {}) as Record<string, any>;
                             const nfNum = ext.invoice_number;
                             const hasNfFile = Boolean(ext.invoice_url);

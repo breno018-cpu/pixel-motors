@@ -721,32 +721,11 @@ export function OwnerFiscalInvoicesPanel() {
         return;
       }
 
-      // Emissão original
-      recordsList.push({
-        id: `emit-${inv.id}`,
-        invoice_number: inv.invoice_number,
-        fiscal_type: 'emissao',
-        store_id: inv.store_id || '',
-        store_name: storeName,
-        party_name: inv.customer_name || 'Consumidor Final',
-        issue_date: issueDate,
-        event_date: issueDate,
-        total_value: Number(inv.total) || 0,
-        status: isCancelada ? 'cancelada_posteriormente' : 'emitida',
-        sefaz_protocol: inv.sefaz_protocol || '',
-        notes: inv.notes || '',
-        rawInvoiceId: inv.id,
-        attachment_url: inv.attachment_url,
-        attachment_name: inv.attachment_name,
-        attachment_type: inv.attachment_type,
-        attachment_size: inv.attachment_size,
-      });
-
-      // Se foi cancelada, cria o evento de cancelamento na DATA DO CANCELAMENTO
+      // Se foi cancelada, mantém APENAS 1 registro com status cancelada (evita duplicação visual)
       if (isCancelada) {
         const cancelDate = inv.cancellation_date || inv.issue_date || inv.created_at?.slice(0, 10) || '';
         recordsList.push({
-          id: `canc-${inv.id}`,
+          id: `inv-${inv.id}`,
           invoice_number: inv.invoice_number,
           fiscal_type: 'cancelamento',
           store_id: inv.store_id || '',
@@ -766,10 +745,31 @@ export function OwnerFiscalInvoicesPanel() {
           attachment_type: inv.attachment_type,
           attachment_size: inv.attachment_size,
         });
+      } else {
+        // Emissão ativa
+        recordsList.push({
+          id: `inv-${inv.id}`,
+          invoice_number: inv.invoice_number,
+          fiscal_type: 'emissao',
+          store_id: inv.store_id || '',
+          store_name: storeName,
+          party_name: inv.customer_name || 'Consumidor Final',
+          issue_date: issueDate,
+          event_date: issueDate,
+          total_value: Number(inv.total) || 0,
+          status: 'emitida',
+          sefaz_protocol: inv.sefaz_protocol || '',
+          notes: inv.notes || '',
+          rawInvoiceId: inv.id,
+          attachment_url: inv.attachment_url,
+          attachment_name: inv.attachment_name,
+          attachment_type: inv.attachment_type,
+          attachment_size: inv.attachment_size,
+        });
       }
     });
 
-    // 2. Processa Registros Locais (inclusões do usuário)
+    // 2. Processa Registros Locais (inclusões do usuário com deduplicação inteligente)
     localRecords.forEach((loc: any) => {
       const storeName = stores.find((s) => s.id === loc.store_id)?.name || (loc.store_id?.includes('montes') ? 'Montes Claros' : 'Divinópolis');
       const isEntrada = loc.fiscal_type === 'entrada';
@@ -781,8 +781,7 @@ export function OwnerFiscalInvoicesPanel() {
       const existingIdx = recordsList.findIndex(
         (r) =>
           r.invoice_number === loc.invoice_number &&
-          (r.fiscal_type === (isEntrada ? 'entrada' : isCancel ? 'cancelamento' : 'emissao') ||
-           (!isEntrada && !isCancel && r.fiscal_type === 'emissao'))
+          (isEntrada ? r.fiscal_type === 'entrada' : r.fiscal_type !== 'entrada')
       );
 
       if (existingIdx >= 0) {
@@ -793,6 +792,7 @@ export function OwnerFiscalInvoicesPanel() {
           id: existing.id || loc.id,
           rawInvoiceId: existing.rawInvoiceId || loc.rawInvoiceId || loc.id,
           fiscal_type: isEntrada ? 'entrada' : isCancel ? 'cancelamento' : existing.fiscal_type,
+          status: loc.status || (isCancel ? 'cancelada' : existing.status),
           store_id: loc.store_id || existing.store_id,
           store_name: storeName || existing.store_name,
           party_name: loc.party_name || existing.party_name,
@@ -1110,39 +1110,54 @@ export function OwnerFiscalInvoicesPanel() {
       const raw = localStorage.getItem(storageKey);
       let list = raw ? JSON.parse(raw) : [];
 
-      // Atualiza o registro original para marcar status
+      // Atualiza o registro diretamente para cancelamento (1 única linha limpa)
+      let foundInLocal = false;
       list = list.map((item: any) => {
-        if (item.invoice_number === invoiceToCancel.invoice_number && item.fiscal_type === 'emissao') {
+        if (item.invoice_number === invoiceToCancel.invoice_number) {
+          foundInLocal = true;
           return {
             ...item,
-            status: 'cancelada_posteriormente',
+            fiscal_type: 'cancelamento',
+            status: 'cancelada',
             cancellation_date: effectiveCancelDate,
+            entry_or_cancel_date: effectiveCancelDate,
             cancellation_type: effectiveType,
             cancellation_reason: effectiveReason,
+            sefaz_protocol: cancellationProtocol.trim() || item.sefaz_protocol || '',
+            notes: item.notes || `Cancelada em ${effectiveCancelDate}`,
           };
         }
         return item;
       });
 
-      // Adiciona o EVENTO de cancelamento com a DATA DO CANCELAMENTO (para apuração daquela semana!)
-      const cancelRecord = {
-        id: `canc-${invoiceToCancel.invoice_number}-${Date.now()}`,
-        invoice_number: invoiceToCancel.invoice_number,
-        fiscal_type: 'cancelamento',
-        store_id: invoiceToCancel.store_id,
-        issue_date: invoiceToCancel.issue_date,
-        entry_or_cancel_date: effectiveCancelDate,
-        party_name: invoiceToCancel.party_name,
-        total_value: invoiceToCancel.total_value,
-        status: 'cancelada',
-        cancellation_reason: effectiveReason,
-        cancellation_type: effectiveType,
-        sefaz_protocol: cancellationProtocol.trim() || invoiceToCancel.sefaz_protocol || '',
-        notes: `Cancelamento de NF Nº ${invoiceToCancel.invoice_number} confirmado pela diretoria.`,
-        created_at: new Date().toISOString(),
-      };
+      if (!foundInLocal) {
+        list.unshift({
+          id: invoiceToCancel.rawInvoiceId || `canc-${invoiceToCancel.invoice_number}-${Date.now()}`,
+          invoice_number: invoiceToCancel.invoice_number,
+          fiscal_type: 'cancelamento',
+          store_id: invoiceToCancel.store_id,
+          issue_date: invoiceToCancel.issue_date,
+          entry_or_cancel_date: effectiveCancelDate,
+          party_name: invoiceToCancel.party_name,
+          total_value: invoiceToCancel.total_value,
+          status: 'cancelada',
+          cancellation_reason: effectiveReason,
+          cancellation_type: effectiveType,
+          sefaz_protocol: cancellationProtocol.trim() || invoiceToCancel.sefaz_protocol || '',
+          notes: `Cancelamento de NF Nº ${invoiceToCancel.invoice_number}`,
+          created_at: new Date().toISOString(),
+        });
+      }
 
-      list.unshift(cancelRecord);
+      // Filtra duplicidades para que nunca haja mais de uma linha por NF
+      const seen = new Set<string>();
+      list = list.filter((item: any) => {
+        const key = `${item.store_id || ''}-${item.invoice_number}-${item.fiscal_type === 'entrada' ? 'in' : 'out'}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
       safeSaveToLocalStorage(storageKey, list);
 
       // Resposta instantânea (0ms): fecha modal e notifica UI imediatamente
@@ -1174,6 +1189,53 @@ export function OwnerFiscalInvoicesPanel() {
       toast({ variant: 'destructive', title: 'Erro ao cancelar NF', description: err?.message });
     } finally {
       setIsSubmittingCancel(false);
+    }
+  };
+
+  // Ação: Reativar NF (Desfazer cancelamento)
+  const handleReactivateInvoice = async (record: CombinedFiscalRecord) => {
+    try {
+      const storageKey = 'dealflow_store_fiscal_invoices_v1';
+      const raw = localStorage.getItem(storageKey);
+      let list = raw ? JSON.parse(raw) : [];
+
+      list = list.map((item: any) => {
+        if (item.invoice_number === record.invoice_number) {
+          return {
+            ...item,
+            fiscal_type: 'emissao',
+            status: 'emitida',
+            cancellation_date: null,
+            cancellation_reason: null,
+            cancellation_type: null,
+          };
+        }
+        return item;
+      });
+      safeSaveToLocalStorage(storageKey, list);
+
+      if (record.rawInvoiceId && !record.rawInvoiceId.startsWith('loc-')) {
+        void cloudSaveInvoice({
+          id: record.rawInvoiceId,
+          status: 'emitida',
+          cancellation_date: null,
+          cancellation_reason: null,
+          invoice_type: 'saida',
+        });
+      }
+
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+      toast({
+        title: 'NF Reativada com Sucesso!',
+        description: `A NF Nº ${record.invoice_number} foi reativada como emitida.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao reativar',
+        description: err?.message || 'Falha ao reativar a nota fiscal.',
+      });
     }
   };
 
@@ -1601,7 +1663,10 @@ export function OwnerFiscalInvoicesPanel() {
                     const canCancel = r.fiscal_type === 'emissao' && r.status !== 'cancelada_posteriormente';
 
                     return (
-                      <TableRow key={r.id} className="hover:bg-muted/40">
+                      <TableRow
+                        key={r.id}
+                        className={isCancel ? 'bg-rose-500/[0.03] dark:bg-rose-500/[0.05] opacity-80 hover:opacity-100 transition-opacity' : 'hover:bg-muted/40'}
+                      >
                         {/* 1. Tipo de Operação */}
                         <TableCell className="align-middle">
                           <Badge
@@ -1609,22 +1674,17 @@ export function OwnerFiscalInvoicesPanel() {
                               isEntrada
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                                 : isCancel
-                                ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25'
                                 : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                             }`}
                           >
                             {isEntrada ? 'ENTRADA' : isCancel ? 'CANCELADA' : 'FATURADA'}
                           </Badge>
-                          {isCancel && (
-                            <div className="text-[10px] font-medium text-muted-foreground mt-0.5">
-                              {r.cancellation_type === 'credito' ? 'Crédito Fábrica' : 'Estorno Financeiro'}
-                            </div>
-                          )}
                         </TableCell>
 
                         {/* 2. Número da NF & Protocolo SEFAZ */}
                         <TableCell className="align-middle">
-                          <div className="font-mono text-xs font-bold text-foreground">
+                          <div className={`font-mono text-xs font-bold ${isCancel ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                             NF {r.invoice_number}
                           </div>
                           {r.sefaz_protocol ? (
@@ -1643,7 +1703,7 @@ export function OwnerFiscalInvoicesPanel() {
 
                         {/* 3. Data da Operação nesta Semana */}
                         <TableCell className="text-xs align-middle">
-                          <span className="font-semibold text-foreground">
+                          <span className={`font-semibold ${isCancel ? 'text-muted-foreground' : 'text-foreground'}`}>
                             {formatFiscalDate(r.event_date)}
                           </span>
                           {isCancel && r.issue_date && r.issue_date !== r.event_date && (
@@ -1669,7 +1729,7 @@ export function OwnerFiscalInvoicesPanel() {
 
                         {/* 6. Valor Total */}
                         <TableCell className="text-xs text-right font-bold font-mono align-middle">
-                          <span className={isCancel ? 'text-destructive' : 'text-foreground'}>
+                          <span className={isCancel ? 'line-through text-muted-foreground' : 'text-foreground'}>
                             {formatCurrencyBRL(r.total_value)}
                           </span>
                         </TableCell>
@@ -1719,55 +1779,83 @@ export function OwnerFiscalInvoicesPanel() {
                         {/* 8. Ações */}
                         <TableCell className="text-center align-middle">
                           <div className="flex items-center justify-center gap-1">
-                            {canModifyNf && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenEdit(r)}
-                                className="h-6 text-[10px] px-2 rounded-lg text-primary border-primary/30 hover:bg-primary/10 gap-1 font-semibold"
-                                title="Editar dados desta NF"
-                              >
-                                <Pencil className="w-3 h-3" />
-                                Editar
-                              </Button>
-                            )}
-                            {canModifyNf && canCancel && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setInvoiceToCancel(r);
-                                  setCancellationDate(getLocalTodayDateString());
-                                  setCancellationType('estorno');
-                                  setCancellationReason('');
-                                  setCancellationProtocol(r.sefaz_protocol || '');
-                                }}
-                                className="h-6 text-[10px] px-2 rounded-lg text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                                title="Cancelar Nota Fiscal"
-                              >
-                                <XCircle className="w-3 h-3 mr-0.5" />
-                                Cancelar
-                              </Button>
-                            )}
-                            {canModifyNf && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setInvoiceToDelete(r)}
-                                className="h-6 text-[10px] px-2 rounded-lg text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10 gap-0.5 font-semibold"
-                                title="Excluir Nota Fiscal permanentemente"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                Excluir
-                              </Button>
-                            )}
+                            {/* Ações para NF Cancelada: Reativar e Excluir */}
                             {isCancel ? (
-                              <Badge variant="outline" className="text-[9px] text-muted-foreground">
-                                Cancelada
-                              </Badge>
-                            ) : !canModifyNf ? (
-                              <span className="text-muted-foreground text-[10px]">Conferido</span>
-                            ) : null}
+                              <>
+                                {canModifyNf && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReactivateInvoice(r)}
+                                    className="h-6 text-[10px] px-2 rounded-lg text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 font-semibold"
+                                    title="Reativar esta Nota Fiscal (voltar status para emitida)"
+                                  >
+                                    <RotateCcw className="w-3 h-3" />
+                                    Reativar
+                                  </Button>
+                                )}
+                                {canModifyNf && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setInvoiceToDelete(r)}
+                                    className="h-6 text-[10px] px-2 rounded-lg text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10 gap-0.5 font-semibold"
+                                    title="Excluir Nota Fiscal permanentemente"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    Excluir
+                                  </Button>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                {canModifyNf && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleOpenEdit(r)}
+                                    className="h-6 text-[10px] px-2 rounded-lg text-primary border-primary/30 hover:bg-primary/10 gap-1 font-semibold"
+                                    title="Editar dados desta NF"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                    Editar
+                                  </Button>
+                                )}
+                                {canModifyNf && canCancel && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setInvoiceToCancel(r);
+                                      setCancellationDate(getLocalTodayDateString());
+                                      setCancellationType('estorno');
+                                      setCancellationReason('');
+                                      setCancellationProtocol(r.sefaz_protocol || '');
+                                    }}
+                                    className="h-6 text-[10px] px-2 rounded-lg text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                                    title="Cancelar Nota Fiscal"
+                                  >
+                                    <XCircle className="w-3 h-3 mr-0.5" />
+                                    Cancelar
+                                  </Button>
+                                )}
+                                {canModifyNf && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setInvoiceToDelete(r)}
+                                    className="h-6 text-[10px] px-2 rounded-lg text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/10 gap-0.5 font-semibold"
+                                    title="Excluir Nota Fiscal permanentemente"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    Excluir
+                                  </Button>
+                                )}
+                                {!canModifyNf && (
+                                  <span className="text-muted-foreground text-[10px]">Conferido</span>
+                                )}
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
