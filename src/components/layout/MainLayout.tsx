@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApprovalRequests } from '@/hooks/useApprovalRequests';
 import { ApprovalCenterDialog } from '@/components/approvals/ApprovalCenterDialog';
 import { AeroBladeMark } from '@/components/brand/PixelLoomLogo';
-import { DealershipSegmentedBar } from '@/components/common/DealershipSegmentedBar';
 import { DealershipBadge } from '@/contexts/DealershipScopeContext';
 
 interface MainLayoutProps {
@@ -91,14 +90,10 @@ export function MainLayout({ children }: MainLayoutProps) {
             </div>
           </div>
 
-          {/* Alternador Executivo de Concessionária (Arquitetura de Divisão) */}
-          {hasManagementAccess ? (
-            <DealershipSegmentedBar variant="header" className="hidden sm:inline-flex" />
-          ) : (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/60 border border-border/60 text-xs font-medium text-foreground">
-              <DealershipBadge storeIdOrName={userStore?.id || userStore?.name} />
-            </div>
-          )}
+          {/* Identificador discreto de escopo de concessionária */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-muted/60 border border-border/60 text-xs font-medium text-foreground">
+            <DealershipBadge storeIdOrName={userStore?.id || userStore?.name} />
+          </div>
         </div>
 
         {/* Lado Direito: Status, Alternador de Tema e Colaborador */}
