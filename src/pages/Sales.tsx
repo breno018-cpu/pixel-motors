@@ -44,10 +44,10 @@ import { extractInstallmentInfoFromNotes } from '@/lib/contractDataResolver';
 
 const statusConfig: Record<string, { label: string; class: string; icon: typeof CheckCircle }> = {
   pre_venda: { label: 'Pré-venda (NF)', class: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30', icon: FileText },
-  pendente: { label: 'Aguardando aprovação', class: 'bg-warning/10 text-warning', icon: Clock },
-  assinado: { label: 'Assinado', class: 'bg-primary/10 text-primary', icon: FileText },
-  cancelado: { label: 'Cancelado', class: 'bg-destructive/10 text-destructive', icon: AlertCircle },
-  concluido: { label: 'Quitado / Faturado', class: 'bg-success/10 text-success', icon: CheckCircle },
+  pendente: { label: 'Aguardando aprovação', class: 'bg-warning/10 text-warning border border-warning/30', icon: Clock },
+  assinado: { label: 'Assinado', class: 'bg-primary/10 text-primary border border-primary/30', icon: FileText },
+  cancelado: { label: 'Cancelado', class: 'bg-destructive/10 text-destructive border border-destructive/30', icon: AlertCircle },
+  concluido: { label: 'Quitado / Faturado', class: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30', icon: CheckCircle },
 };
 
 function formatCurrency(value: number) {
@@ -382,6 +382,8 @@ export default function Sales() {
           if (currentPrefix !== expectedPrefix) {
             alignedContractNumber = `${expectedPrefix}-${alignedContractNumber.slice(4)}`;
           }
+        } else if (/^\d+$/.test(alignedContractNumber)) {
+          alignedContractNumber = `${expectedPrefix}-${alignedContractNumber}`;
         }
       }
       return {
@@ -1185,25 +1187,26 @@ export default function Sales() {
             })}
           </div>
 
-          {/* Visualização Desktop: Tabela Compacta 100% Ajustada sem Barra Lateral */}
-          <div className="hidden md:block rounded-xl border border-border/60 overflow-hidden bg-card/40">
-            <table className="w-full table-fixed text-sm">
+          {/* Visualização Desktop: Tabela Compacta 100% Ajustada sem Quebra de Linhas Indesejadas */}
+          <div className="hidden md:block rounded-xl border border-border/60 overflow-x-auto bg-card/40">
+            <table className="w-full min-w-[990px] table-fixed text-sm">
               <thead className="bg-muted/40 border-b border-border/60">
                 <tr className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold text-left">
-                  <th className="whitespace-nowrap px-2.5 py-2.5 w-[80px]">Contrato</th>
+                  <th className="whitespace-nowrap px-2.5 py-2.5 w-[85px]">Contrato</th>
                   <th className="px-2 py-2.5 w-[145px]">Cliente</th>
                   <th className="px-2 py-2.5 w-[170px]">Veículo & Chassi</th>
-                  <th className="hidden lg:table-cell px-2 py-2.5 w-[100px] whitespace-nowrap">Loja</th>
+                  <th className="hidden lg:table-cell px-2 py-2.5 w-[105px] whitespace-nowrap">Loja</th>
                   <th className="hidden lg:table-cell px-2 py-2.5 w-[90px] whitespace-nowrap">Operador</th>
                   <th className="text-right whitespace-nowrap px-2 py-2.5 w-[80px]">Valor</th>
-                  <th className="whitespace-nowrap px-2 py-2.5 w-[125px]">Status / Etapa</th>
+                  <th className="whitespace-nowrap px-2 py-2.5 w-[135px]">Status / Etapa</th>
                   <th className="whitespace-nowrap text-center px-2 py-2.5 w-[75px]">Data</th>
-                  <th className="text-right whitespace-nowrap pr-3 px-2 py-2.5 w-[90px]">Ações</th>
+                  <th className="text-right whitespace-nowrap pr-3 px-2 py-2.5 w-[115px]">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {filteredSales.map((sale) => {
                   const statusInfo = statusConfig[sale.status] || statusConfig.pendente;
+                  const StatusIcon = statusInfo.icon || CheckCircle;
                   const vehicle = sale.vehicle;
                   const VehicleIcon = vehicle?.vehicle_type === 'moto' ? Bike : Car;
                   const isPreSale = sale.status === 'pre_venda';
@@ -1225,13 +1228,13 @@ export default function Sales() {
                         (sale as any).review_status === 'questionada' && 'review-row'
                       )}
                     >
-                      <td className="px-2.5 py-2">
+                      <td className="px-2.5 py-2 whitespace-nowrap">
                         <span className="whitespace-nowrap font-mono text-xs font-bold text-foreground">{sale.contract_number}</span>
                       </td>
                       <td className="px-2 py-2">
                         <div className="max-w-[140px]">
                           <p className="font-bold text-xs text-foreground truncate" title={sale.buyer_name}>{sale.buyer_name}</p>
-                          <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{formatCPFDisplay(sale.buyer_cpf)}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate">{formatCPFDisplay(sale.buyer_cpf)}</p>
                         </div>
                       </td>
                       <td className="px-2 py-2">
@@ -1249,7 +1252,7 @@ export default function Sales() {
                                   e.stopPropagation();
                                   handleCopyChassis(saleChassis, sale.contract_number);
                                 }}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/80 hover:bg-primary/10 border border-border/70 hover:border-primary/40 text-[9.5px] font-mono font-bold text-foreground transition-all group/chassis shadow-2xs"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted/80 hover:bg-primary/10 border border-border/70 hover:border-primary/40 text-[9.5px] font-mono font-bold text-foreground transition-all group/chassis shadow-2xs whitespace-nowrap shrink-0"
                                 title={`Clique para copiar o chassi: ${saleChassis}`}
                               >
                                 {copiedChassisId === saleChassis ? (
@@ -1260,7 +1263,7 @@ export default function Sales() {
                                 <span className="tracking-tight">{saleChassis}</span>
                               </button>
                             ) : (
-                              <p className="text-[9px] text-amber-600 dark:text-amber-400 font-medium italic">
+                              <p className="text-[9px] text-amber-600 dark:text-amber-400 font-medium italic whitespace-nowrap">
                                 Chassi a definir
                               </p>
                             )}
@@ -1268,7 +1271,10 @@ export default function Sales() {
                         </div>
                       </td>
                       <td className="hidden lg:table-cell px-2 py-2 whitespace-nowrap">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-muted/60 border border-border/50 text-[10px] font-semibold text-foreground/90 whitespace-nowrap" title={sale.store?.name || undefined}>
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 border border-border/50 text-[10.5px] font-bold text-foreground/90 whitespace-nowrap truncate max-w-[100px]"
+                          title={sale.store?.name || undefined}
+                        >
                           {formatShortStoreName(sale.store?.name)}
                         </span>
                       </td>
@@ -1278,18 +1284,19 @@ export default function Sales() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap text-right px-2 py-2">
-                        <span className={cn('font-display font-black text-xs', isCancelled ? 'line-through text-muted-foreground' : 'text-foreground')}>{formatCurrency(Number(sale.sale_price))}</span>
+                        <span className={cn('font-display font-black text-xs whitespace-nowrap', isCancelled ? 'line-through text-muted-foreground' : 'text-foreground')}>{formatCurrency(Number(sale.sale_price))}</span>
                       </td>
                       <td className="whitespace-nowrap px-2 py-2">
-                        <div className="flex flex-col items-start gap-1">
+                        <div className="flex flex-col items-start gap-1 shrink-0 whitespace-nowrap">
                           {isCancelled ? (
-                            <Badge variant="outline" className="text-[9.5px] font-bold py-0.5 px-1.5 whitespace-nowrap inline-flex items-center gap-1 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 shadow-2xs">
+                            <Badge variant="outline" className="text-[9.5px] font-bold py-0.5 px-2 whitespace-nowrap shrink-0 inline-flex items-center gap-1 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25 shadow-2xs">
                               <XCircle className="w-2.5 h-2.5 shrink-0" />
-                              <span>Cancelado</span>
+                              <span className="whitespace-nowrap">Cancelado</span>
                             </Badge>
                           ) : (
-                            <Badge variant="secondary" className={cn('text-[9.5px] font-bold py-0.5 px-1.5 whitespace-nowrap inline-flex items-center gap-1 rounded shadow-2xs', statusInfo.class)}>
-                              {statusInfo.label}
+                            <Badge variant="secondary" className={cn('text-[9.5px] font-bold py-0.5 px-2 whitespace-nowrap shrink-0 inline-flex items-center gap-1 rounded-full shadow-2xs', statusInfo.class)}>
+                              <StatusIcon className="w-2.5 h-2.5 shrink-0" />
+                              <span className="whitespace-nowrap">{statusInfo.label}</span>
                             </Badge>
                           )}
                           
@@ -1299,11 +1306,11 @@ export default function Sales() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleStartCompleteExisting(sale)}
-                              className="h-5 px-1 text-[9px] gap-1 font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 shadow-2xs whitespace-nowrap"
+                              className="h-5 px-1.5 text-[9px] gap-1 font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 shadow-2xs whitespace-nowrap shrink-0"
                               title="Concluir todo o cadastro do comprador, chassi e pagamento para faturar e emitir contrato"
                             >
                               <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
-                              <span>Concluir</span>
+                              <span className="whitespace-nowrap">Concluir</span>
                             </Button>
                           )}
 
@@ -1324,7 +1331,7 @@ export default function Sales() {
                                     setReceiptsModalOpen(true);
                                   }}
                                   className={cn(
-                                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors shadow-2xs whitespace-nowrap',
+                                    'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border transition-colors shadow-2xs whitespace-nowrap shrink-0',
                                     hasNfFile
                                       ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
                                       : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20'
@@ -1332,7 +1339,7 @@ export default function Sales() {
                                   title={`Nota Fiscal ${nfNum ? `nº ${nfNum}` : ''} ${hasNfFile ? '(Arquivo Anexado)' : '(Pendente de Arquivo)'}. Clique para visualizar ou anexar.`}
                                 >
                                   <FileCheck2 className="w-2.5 h-2.5 shrink-0" />
-                                  <span>NF {nfNum || 'Anexa'}</span>
+                                  <span className="whitespace-nowrap">NF {nfNum || 'Anexa'}</span>
                                 </button>
                               );
                             }
@@ -1347,11 +1354,11 @@ export default function Sales() {
                                     setReceiptsDefaultTab('nf');
                                     setReceiptsModalOpen(true);
                                   }}
-                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted/70 text-muted-foreground border border-dashed border-border/80 hover:border-primary/50 hover:text-primary transition-all shadow-2xs whitespace-nowrap"
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted/70 text-muted-foreground border border-dashed border-border/80 hover:border-primary/50 hover:text-primary transition-all shadow-2xs whitespace-nowrap shrink-0"
                                   title="Clique para anexar a Nota Fiscal oficial desta venda"
                                 >
                                   <FileText className="w-2.5 h-2.5 shrink-0" />
-                                  <span>Anexar NF</span>
+                                  <span className="whitespace-nowrap">+ Anexar NF</span>
                                 </button>
                               );
                             }
@@ -1362,19 +1369,20 @@ export default function Sales() {
                       </td>
                       <td className="text-xs text-muted-foreground whitespace-nowrap text-center px-2 py-2">{formatDate(sale.created_at)}</td>
                       <td className="text-right pr-3 whitespace-nowrap px-2 py-2">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1 shrink-0 whitespace-nowrap">
                           <Button
-                            size="icon"
+                            size="sm"
                             variant="outline"
                             onClick={() => {
                               setSelectedSaleForManage(sale);
                               setManageDefaultTab('documentos');
                               setManageModalOpen(true);
                             }}
-                            className="h-7 w-7 text-primary border-primary/25 hover:bg-primary/10 hover:border-primary/40 shadow-2xs shrink-0"
-                            title="Emitir 2ª via ou alterar dados da venda"
+                            className="h-7 px-2 text-[10.5px] font-bold text-primary border-primary/25 hover:bg-primary/10 hover:border-primary/40 shadow-2xs shrink-0 gap-1 whitespace-nowrap"
+                            title="Emitir 2ª via do contrato ou gerenciar documentos da venda"
                           >
-                            <Printer className="w-3.5 h-3.5 text-primary" />
+                            <Printer className="w-3 h-3 text-primary shrink-0" />
+                            <span className="whitespace-nowrap">2ª Via</span>
                           </Button>
 
                           <Button

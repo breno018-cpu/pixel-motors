@@ -56,6 +56,8 @@ export interface Invoice {
   cancellation_type?: 'estorno' | 'credito' | 'devolucao' | null;
   sefaz_protocol?: string | null;
   cancelled_by?: string | null;
+  reissued_as_invoice_number?: string | null;
+  reissue_of_invoice_number?: string | null;
   store?: { id: string; name: string; cnpj?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
 }
 
@@ -112,6 +114,8 @@ export function getLocalCachedInvoices(): Invoice[] {
             cancellation_reason: r.cancellation_reason || null,
             cancellation_type: r.cancellation_type || null,
             sefaz_protocol: r.sefaz_protocol || null,
+            reissued_as_invoice_number: r.reissued_as_invoice_number || null,
+            reissue_of_invoice_number: r.reissue_of_invoice_number || null,
             store: {
               id: r.store_id,
               name: r.store_name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
@@ -208,6 +212,8 @@ export function useInvoices() {
           cancellation_reason: r.cancellation_reason || null,
           cancellation_type: r.cancellation_type || null,
           sefaz_protocol: r.sefaz_protocol || null,
+          reissued_as_invoice_number: r.reissued_as_invoice_number || null,
+          reissue_of_invoice_number: r.reissue_of_invoice_number || null,
           store: {
             id: r.store_id,
             name: r.store_name || (isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis'),
@@ -230,6 +236,9 @@ export function useInvoices() {
             (inv.notes?.match(/SEFAZ:\s*([0-9]+)/i)?.[1]) ||
             null;
 
+          const reissuedAs = itemObj.reissued_as_invoice_number || inv.reissued_as_invoice_number || (inv.notes?.match(/Substituída pela NF\s*([0-9.]+)/i)?.[1]) || null;
+          const reissueOf = itemObj.reissue_of_invoice_number || inv.reissue_of_invoice_number || (inv.notes?.match(/Reemissão.*NF\s*([0-9.]+)/i)?.[1]) || null;
+
           return {
             ...inv,
             series: itemObj.series || inv.series || '1',
@@ -238,6 +247,8 @@ export function useInvoices() {
             cancellation_reason: itemObj.cancellation_reason || inv.cancellation_reason || inv.notes || null,
             cancellation_type: itemObj.cancellation_type || inv.cancellation_type || 'estorno',
             sefaz_protocol: extractedProtocol,
+            reissued_as_invoice_number: reissuedAs,
+            reissue_of_invoice_number: reissueOf,
             cancelled_by: itemObj.cancelled_by || inv.cancelled_by || null,
             attachment_name: itemObj.attachment_name || inv.attachment_name || null,
             attachment_url: itemObj.attachment_url || inv.attachment_url || null,
@@ -246,7 +257,30 @@ export function useInvoices() {
           };
         });
 
-      return [...mappedCloud, ...mappedDb];
+      // Unificação garantida no mesmo plano: agrupa emissão e cancelamento sob a mesma NF
+      const combined = [...mappedCloud, ...mappedDb];
+      const unifiedMap = new Map<string, Invoice>();
+      combined.forEach((inv) => {
+        const key = `${inv.store_id || ''}-${inv.invoice_number}`;
+        if (!unifiedMap.has(key)) {
+          unifiedMap.set(key, inv);
+        } else {
+          const prev = unifiedMap.get(key)!;
+          const isCancel = prev.status === 'cancelada' || inv.status === 'cancelada';
+          unifiedMap.set(key, {
+            ...prev,
+            ...inv,
+            status: isCancel ? 'cancelada' : prev.status,
+            issue_date: prev.issue_date || inv.issue_date,
+            cancellation_date: isCancel ? (prev.cancellation_date || inv.cancellation_date) : null,
+            cancellation_reason: prev.cancellation_reason || inv.cancellation_reason,
+            reissued_as_invoice_number: prev.reissued_as_invoice_number || inv.reissued_as_invoice_number,
+            reissue_of_invoice_number: prev.reissue_of_invoice_number || inv.reissue_of_invoice_number,
+          });
+        }
+      });
+
+      return Array.from(unifiedMap.values());
     },
   });
 }

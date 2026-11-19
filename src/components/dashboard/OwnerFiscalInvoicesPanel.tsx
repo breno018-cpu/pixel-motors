@@ -9,6 +9,7 @@ import {
   Filter,
   Truck,
   RotateCcw,
+  Sparkles,
   Plus,
   Search,
   Building2,
@@ -74,6 +75,8 @@ export interface CombinedFiscalRecord {
   cancellation_reason?: string;
   cancellation_type?: 'estorno' | 'credito' | 'devolucao';
   sefaz_protocol?: string;
+  reissued_as_invoice_number?: string;
+  reissue_of_invoice_number?: string;
   notes?: string;
   rawInvoiceId?: string;
   attachment_url?: string;
@@ -194,6 +197,23 @@ export function OwnerFiscalInvoicesPanel() {
   const [cancellationType, setCancellationType] = useState<'estorno' | 'credito'>('estorno');
   const [cancellationReason, setCancellationReason] = useState('');
   const [cancellationProtocol, setCancellationProtocol] = useState('');
+
+  // Cancelamento & Reemissão de NF (Substituição no mesmo plano)
+  const [invoiceToReissue, setInvoiceToReissue] = useState<CombinedFiscalRecord | null>(null);
+  const [reissueNewNumber, setReissueNewNumber] = useState('');
+  const [reissueNewDate, setReissueNewDate] = useState(getLocalTodayDateString());
+  const [reissueCancelDate, setReissueCancelDate] = useState(getLocalTodayDateString());
+  const [reissueProtocol, setReissueProtocol] = useState('');
+  const [reissueReason, setReissueReason] = useState('Cancelada para reemissão (Substituição de NF)');
+  const [reissueAttachment, setReissueAttachment] = useState<{
+    name: string;
+    url: string;
+    size: number;
+    type: string;
+  } | null>(null);
+  const [reissueIsReadingFile, setReissueIsReadingFile] = useState(false);
+  const [isSubmittingReissue, setIsSubmittingReissue] = useState(false);
+  const reissueFileInputRef = useRef<HTMLInputElement>(null);
 
   // Formulário de Edição de NF da Diretoria
   const [editingRecord, setEditingRecord] = useState<CombinedFiscalRecord | null>(null);
@@ -698,6 +718,9 @@ export function OwnerFiscalInvoicesPanel() {
       const storeName = inv.store?.name || (inv.store_id?.includes('montes') ? 'Montes Claros' : 'Divinópolis');
       const issueDate = inv.issue_date || inv.created_at?.slice(0, 10) || '';
 
+      const reissuedAs = (inv as any).reissued_as_invoice_number || (inv as any).items?.reissued_as_invoice_number || (inv.notes || '').match(/Substituída pela NF\s*([0-9.]+)/i)?.[1];
+      const reissueOf = (inv as any).reissue_of_invoice_number || (inv as any).items?.reissue_of_invoice_number || (inv.notes || '').match(/Reemissão.*NF\s*([0-9.]+)/i)?.[1];
+
       if (isEntrada) {
         recordsList.push({
           id: `entry-${inv.id}`,
@@ -721,7 +744,7 @@ export function OwnerFiscalInvoicesPanel() {
         return;
       }
 
-      // Se foi cancelada, mantém APENAS 1 registro com status cancelada (evita duplicação visual)
+      // Se foi cancelada, mantém APENAS 1 registro com status cancelada no mesmo plano
       if (isCancelada) {
         const cancelDate = inv.cancellation_date || inv.issue_date || inv.created_at?.slice(0, 10) || '';
         recordsList.push({
@@ -738,6 +761,8 @@ export function OwnerFiscalInvoicesPanel() {
           cancellation_reason: inv.cancellation_reason || inv.notes || 'Cancelamento registrado',
           cancellation_type: inv.cancellation_type || 'estorno',
           sefaz_protocol: inv.sefaz_protocol || '',
+          reissued_as_invoice_number: reissuedAs,
+          reissue_of_invoice_number: reissueOf,
           notes: inv.notes || '',
           rawInvoiceId: inv.id,
           attachment_url: inv.attachment_url,
@@ -759,6 +784,8 @@ export function OwnerFiscalInvoicesPanel() {
           total_value: Number(inv.total) || 0,
           status: 'emitida',
           sefaz_protocol: inv.sefaz_protocol || '',
+          reissued_as_invoice_number: reissuedAs,
+          reissue_of_invoice_number: reissueOf,
           notes: inv.notes || '',
           rawInvoiceId: inv.id,
           attachment_url: inv.attachment_url,
@@ -777,6 +804,8 @@ export function OwnerFiscalInvoicesPanel() {
 
       const issueDate = loc.issue_date || loc.entry_or_cancel_date || loc.created_at?.slice(0, 10) || '';
       const eventDate = loc.entry_or_cancel_date || loc.issue_date || loc.created_at?.slice(0, 10) || '';
+      const reissuedAs = loc.reissued_as_invoice_number || (loc.notes || '').match(/Substituída pela NF\s*([0-9.]+)/i)?.[1];
+      const reissueOf = loc.reissue_of_invoice_number || (loc.notes || '').match(/Reemissão.*NF\s*([0-9.]+)/i)?.[1];
 
       const existingIdx = recordsList.findIndex(
         (r) =>
@@ -797,6 +826,8 @@ export function OwnerFiscalInvoicesPanel() {
           store_name: storeName || existing.store_name,
           party_name: loc.party_name || existing.party_name,
           sefaz_protocol: loc.sefaz_protocol || existing.sefaz_protocol,
+          reissued_as_invoice_number: reissuedAs || existing.reissued_as_invoice_number,
+          reissue_of_invoice_number: reissueOf || existing.reissue_of_invoice_number,
           attachment_url: loc.attachment_url || existing.attachment_url,
           attachment_name: loc.attachment_name || existing.attachment_name,
           attachment_type: loc.attachment_type || existing.attachment_type,
@@ -818,6 +849,8 @@ export function OwnerFiscalInvoicesPanel() {
           cancellation_reason: loc.cancellation_reason || loc.notes || '',
           cancellation_type: loc.cancellation_type || 'estorno',
           sefaz_protocol: loc.sefaz_protocol || '',
+          reissued_as_invoice_number: reissuedAs,
+          reissue_of_invoice_number: reissueOf,
           notes: loc.notes || '',
           rawInvoiceId: loc.id,
           attachment_url: loc.attachment_url,
@@ -828,7 +861,37 @@ export function OwnerFiscalInvoicesPanel() {
       }
     });
 
-    return recordsList.sort(
+    // Unificação rigorosa: agrupa no MESMO PLANO por número de NF (elimina qualquer duplicata visual)
+    const unifiedMap = new Map<string, CombinedFiscalRecord>();
+    recordsList.forEach((r) => {
+      const key = `${r.store_id || ''}-${r.invoice_number}-${r.fiscal_type === 'entrada' ? 'in' : 'out'}`;
+      if (!unifiedMap.has(key)) {
+        unifiedMap.set(key, r);
+      } else {
+        const prev = unifiedMap.get(key)!;
+        const isPrevCancel = prev.fiscal_type === 'cancelamento' || prev.status === 'cancelada';
+        const isCurrCancel = r.fiscal_type === 'cancelamento' || r.status === 'cancelada';
+        const isCancelled = isPrevCancel || isCurrCancel;
+
+        unifiedMap.set(key, {
+          ...prev,
+          ...r,
+          fiscal_type: isCancelled ? 'cancelamento' : prev.fiscal_type,
+          status: isCancelled ? 'cancelada' : prev.status,
+          issue_date: prev.issue_date || r.issue_date,
+          event_date: isCancelled ? (prev.cancellation_reason ? prev.event_date : r.event_date) : (prev.event_date || r.event_date),
+          cancellation_reason: prev.cancellation_reason || r.cancellation_reason,
+          cancellation_type: prev.cancellation_type || r.cancellation_type,
+          reissued_as_invoice_number: prev.reissued_as_invoice_number || r.reissued_as_invoice_number,
+          reissue_of_invoice_number: prev.reissue_of_invoice_number || r.reissue_of_invoice_number,
+          sefaz_protocol: prev.sefaz_protocol || r.sefaz_protocol,
+          attachment_url: prev.attachment_url || r.attachment_url,
+          notes: prev.notes || r.notes,
+        });
+      }
+    });
+
+    return Array.from(unifiedMap.values()).sort(
       (a, b) => new Date(b.event_date || b.issue_date).getTime() - new Date(a.event_date || a.issue_date).getTime()
     );
   }, [invoices, stores]);
@@ -1236,6 +1299,177 @@ export function OwnerFiscalInvoicesPanel() {
         title: 'Erro ao reativar',
         description: err?.message || 'Falha ao reativar a nota fiscal.',
       });
+    }
+  };
+
+  // Abertura do Modal de Cancelar & Reemitir
+  const handleOpenReissue = (record: CombinedFiscalRecord) => {
+    setInvoiceToReissue(record);
+    const rawDigits = record.invoice_number.replace(/\D/g, '');
+    let suggested = '';
+    if (rawDigits) {
+      const nextVal = parseInt(rawDigits, 10) + 1;
+      suggested = String(nextVal).padStart(rawDigits.length, '0');
+      if (record.invoice_number.includes('.')) {
+        suggested = formatBrlNumber(nextVal) || suggested;
+      }
+    }
+    setReissueNewNumber(suggested || '');
+    setReissueNewDate(getLocalTodayDateString());
+    setReissueCancelDate(getLocalTodayDateString());
+    setReissueProtocol('');
+    setReissueReason(`Cancelada para reemissão (Substituição de NF)`);
+    setReissueAttachment(null);
+  };
+
+  // Confirmação de Cancelamento & Reemissão no Mesmo Plano
+  const handleConfirmCancelAndReissue = async () => {
+    if (!invoiceToReissue) return;
+    if (!reissueNewNumber.trim()) {
+      toast({ variant: 'destructive', title: 'Informe o número da nova Nota Fiscal.' });
+      return;
+    }
+
+    const cleanNewNum = reissueNewNumber.trim();
+    const effectiveCancelDate = reissueCancelDate || getLocalTodayDateString();
+    const effectiveNewDate = reissueNewDate || getLocalTodayDateString();
+    const effectiveReason = reissueReason.trim() || `Cancelada para reemissão (Substituída pela NF ${cleanNewNum})`;
+    const oldNum = invoiceToReissue.invoice_number;
+
+    setIsSubmittingReissue(true);
+    try {
+      const storageKey = 'dealflow_store_fiscal_invoices_v1';
+      const raw = localStorage.getItem(storageKey);
+      let list = raw ? JSON.parse(raw) : [];
+
+      // 1. Atualiza a NF anterior marcando o cancelamento e a substituição
+      let foundOld = false;
+      list = list.map((item: any) => {
+        if (item.invoice_number === oldNum) {
+          foundOld = true;
+          return {
+            ...item,
+            fiscal_type: 'cancelamento',
+            status: 'cancelada',
+            cancellation_date: effectiveCancelDate,
+            entry_or_cancel_date: effectiveCancelDate,
+            cancellation_reason: effectiveReason,
+            reissued_as_invoice_number: cleanNewNum,
+            notes: (item.notes || '') + ` | Substituída pela NF ${cleanNewNum}`,
+          };
+        }
+        return item;
+      });
+
+      if (!foundOld) {
+        list.push({
+          id: invoiceToReissue.rawInvoiceId || `canc-${oldNum}-${Date.now()}`,
+          invoice_number: oldNum,
+          fiscal_type: 'cancelamento',
+          store_id: invoiceToReissue.store_id,
+          store_name: invoiceToReissue.store_name,
+          issue_date: invoiceToReissue.issue_date,
+          entry_or_cancel_date: effectiveCancelDate,
+          party_name: invoiceToReissue.party_name,
+          total_value: invoiceToReissue.total_value,
+          status: 'cancelada',
+          cancellation_reason: effectiveReason,
+          reissued_as_invoice_number: cleanNewNum,
+          notes: `Substituída pela NF ${cleanNewNum}`,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      // 2. Cria a nova NF substituta no mesmo plano
+      const newRecordId = `inv-reissue-${Date.now()}`;
+      const newRecord = {
+        id: newRecordId,
+        invoice_number: cleanNewNum,
+        fiscal_type: 'emissao',
+        store_id: invoiceToReissue.store_id,
+        store_name: invoiceToReissue.store_name,
+        issue_date: effectiveNewDate,
+        entry_or_cancel_date: effectiveNewDate,
+        party_name: invoiceToReissue.party_name,
+        total_value: invoiceToReissue.total_value,
+        status: 'emitida',
+        reissue_of_invoice_number: oldNum,
+        sefaz_protocol: reissueProtocol.trim() || undefined,
+        notes: `Reemissão e substituição da NF ${oldNum}`,
+        attachment_url: reissueAttachment?.url || undefined,
+        attachment_name: reissueAttachment?.name || undefined,
+        attachment_size: reissueAttachment?.size || undefined,
+        attachment_type: reissueAttachment?.type || undefined,
+        created_at: new Date().toISOString(),
+      };
+
+      // Remove conflito com novo número se houver e adiciona
+      list = list.filter((item: any) => item.invoice_number !== cleanNewNum);
+      list.unshift(newRecord);
+
+      // Garante deduplicação de números
+      const seen = new Set<string>();
+      list = list.filter((item: any) => {
+        const key = `${item.store_id || ''}-${item.invoice_number}-${item.fiscal_type === 'entrada' ? 'in' : 'out'}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      safeSaveToLocalStorage(storageKey, list);
+
+      // 3. Atualiza na nuvem
+      if (invoiceToReissue.rawInvoiceId && !invoiceToReissue.rawInvoiceId.startsWith('loc-')) {
+        void cloudSaveInvoice({
+          id: invoiceToReissue.rawInvoiceId,
+          invoice_number: oldNum,
+          status: 'cancelada',
+          cancellation_date: effectiveCancelDate,
+          cancellation_reason: effectiveReason,
+          reissued_as_invoice_number: cleanNewNum,
+          notes: `Substituída pela NF ${cleanNewNum}`,
+        });
+      }
+
+      void cloudSaveInvoice({
+        id: newRecordId,
+        invoice_number: cleanNewNum,
+        issue_date: effectiveNewDate,
+        store_id: invoiceToReissue.store_id,
+        customer_name: invoiceToReissue.party_name,
+        total_value: invoiceToReissue.total_value,
+        status: 'emitida',
+        fiscal_type: 'emissao',
+        reissue_of_invoice_number: oldNum,
+        sefaz_protocol: reissueProtocol.trim() || undefined,
+        notes: `Reemissão e substituição da NF ${oldNum}`,
+        attachment_url: reissueAttachment?.url || undefined,
+        attachment_name: reissueAttachment?.name || undefined,
+      });
+
+      // Fecha modais e dispara evento
+      setInvoiceToReissue(null);
+      setInvoiceToCancel(null);
+      setReissueNewNumber('');
+      setReissueProtocol('');
+      setReissueReason('');
+      setReissueAttachment(null);
+
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+
+      toast({
+        title: 'NF Cancelada e Reemitida com Sucesso!',
+        description: `A NF Nº ${oldNum} foi cancelada e a nova NF Nº ${cleanNewNum} foi emitida e vinculada no mesmo plano.`,
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao reemitir NF',
+        description: err?.message || 'Falha ao reemitir nota fiscal.',
+      });
+    } finally {
+      setIsSubmittingReissue(false);
     }
   };
 
@@ -1673,43 +1907,75 @@ export function OwnerFiscalInvoicesPanel() {
                             className={`text-[10px] font-bold ${
                               isEntrada
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                : r.reissued_as_invoice_number
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
+                                : r.reissue_of_invoice_number
+                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25'
                                 : isCancel
                                 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25'
                                 : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
                             }`}
                           >
-                            {isEntrada ? 'ENTRADA' : isCancel ? 'CANCELADA' : 'FATURADA'}
+                            {isEntrada
+                              ? 'ENTRADA'
+                              : r.reissued_as_invoice_number
+                              ? 'SUBSTITUÍDA'
+                              : r.reissue_of_invoice_number
+                              ? 'REEMISSÃO'
+                              : isCancel
+                              ? 'CANCELADA'
+                              : 'FATURADA'}
                           </Badge>
                         </TableCell>
 
-                        {/* 2. Número da NF & Protocolo SEFAZ */}
+                        {/* 2. Número da NF & Protocolo SEFAZ & Rastreabilidade no Mesmo Plano */}
                         <TableCell className="align-middle">
                           <div className={`font-mono text-xs font-bold ${isCancel ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                             NF {r.invoice_number}
                           </div>
+                          {r.reissued_as_invoice_number && (
+                            <div className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded mt-0.5" title={`Esta NF foi cancelada e substituída pela NF ${r.reissued_as_invoice_number}`}>
+                              <ArrowUpRight className="w-2.5 h-2.5 shrink-0" />
+                              <span>Substituída por NF {r.reissued_as_invoice_number}</span>
+                            </div>
+                          )}
+                          {r.reissue_of_invoice_number && (
+                            <div className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded mt-0.5" title={`Esta NF é a reemissão substituta da NF anterior ${r.reissue_of_invoice_number}`}>
+                              <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                              <span>Reemissão da NF {r.reissue_of_invoice_number}</span>
+                            </div>
+                          )}
                           {r.sefaz_protocol ? (
                             <div
-                              className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate max-w-[130px]"
+                              className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate max-w-[130px] mt-0.5"
                               title={`Protocolo SEFAZ: ${r.sefaz_protocol}`}
                             >
                               Prot: {r.sefaz_protocol}
                             </div>
                           ) : (
-                            <div className="text-[10px] text-muted-foreground truncate max-w-[130px]">
-                              {r.cancellation_reason || r.notes || '—'}
-                            </div>
+                            !r.reissued_as_invoice_number && !r.reissue_of_invoice_number && (
+                              <div className="text-[10px] text-muted-foreground truncate max-w-[130px]">
+                                {r.cancellation_reason || r.notes || '—'}
+                              </div>
+                            )
                           )}
                         </TableCell>
 
-                        {/* 3. Data da Operação nesta Semana */}
+                        {/* 3. Data da Operação nesta Semana (Mesmo Plano) */}
                         <TableCell className="text-xs align-middle">
-                          <span className={`font-semibold ${isCancel ? 'text-muted-foreground' : 'text-foreground'}`}>
-                            {formatFiscalDate(r.event_date)}
-                          </span>
-                          {isCancel && r.issue_date && r.issue_date !== r.event_date && (
-                            <div className="text-[10px] text-muted-foreground">
-                              Emis: {formatFiscalDate(r.issue_date)}
+                          {isCancel ? (
+                            <div>
+                              <div className="font-semibold text-rose-600 dark:text-rose-400">
+                                Canc: {formatFiscalDate(r.event_date)}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                Emis: {formatFiscalDate(r.issue_date || r.event_date)}
+                              </div>
                             </div>
+                          ) : (
+                            <span className="font-semibold text-foreground">
+                              {formatFiscalDate(r.event_date || r.issue_date)}
+                            </span>
                           )}
                         </TableCell>
 
@@ -1819,6 +2085,18 @@ export function OwnerFiscalInvoicesPanel() {
                                   >
                                     <Pencil className="w-3 h-3" />
                                     Editar
+                                  </Button>
+                                )}
+                                {canModifyNf && canCancel && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleOpenReissue(r)}
+                                    className="h-6 text-[10px] px-2 rounded-lg text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 gap-1 font-semibold"
+                                    title="Cancelar esta NF e reemitir uma nova nota fiscal substituta no mesmo plano"
+                                  >
+                                    <RotateCcw className="w-3 h-3" />
+                                    Reemitir
                                   </Button>
                                 )}
                                 {canModifyNf && canCancel && (
@@ -2205,9 +2483,23 @@ export function OwnerFiscalInvoicesPanel() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" size="sm" onClick={() => setInvoiceToCancel(null)} disabled={isSubmittingCancel} className="rounded-xl">
               Voltar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const target = invoiceToCancel;
+                setInvoiceToCancel(null);
+                handleOpenReissue(target);
+              }}
+              disabled={isSubmittingCancel}
+              className="font-bold rounded-xl gap-1.5 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10"
+            >
+              <RotateCcw className="w-4 h-4 text-blue-500" />
+              Cancelar & Reemitir Nova NF
             </Button>
             <Button variant="destructive" size="sm" onClick={handleConfirmCancellation} disabled={isSubmittingCancel} className="font-bold rounded-xl gap-1.5">
               {isSubmittingCancel ? (
@@ -2216,7 +2508,187 @@ export function OwnerFiscalInvoicesPanel() {
                   Cancelando...
                 </>
               ) : (
-                'Sim, Confirmar Cancelamento'
+                'Sim, Apenas Cancelar'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =================================================================== */}
+      {/* MODAL 2.1: CANCELAR & REEMITIR NOVA NF (SUBSTITUIÇÃO NO MESMO PLANO) */}
+      {/* =================================================================== */}
+      <Dialog open={!!invoiceToReissue} onOpenChange={(open) => !open && setInvoiceToReissue(null)}>
+        <DialogContent className="max-w-lg rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <RotateCcw className="w-5 h-5 text-blue-500" />
+              Cancelar & Reemitir Nota Fiscal
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              A NF original será cancelada e substituída por uma nova Nota Fiscal no mesmo plano contábil, mantendo a rastreabilidade total.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Bloco 1: NF Anterior a ser Cancelada */}
+            <div className="p-3.5 rounded-xl bg-rose-500/5 border border-rose-500/20 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-rose-600 dark:text-rose-400 uppercase text-[10px] tracking-wider">
+                  NF Original (A ser Cancelada)
+                </span>
+                <span className="font-mono font-bold text-foreground">
+                  NF {invoiceToReissue?.invoice_number}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Destinatário:</span>
+                <span className="font-semibold text-foreground truncate max-w-[200px]">{invoiceToReissue?.party_name}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Valor:</span>
+                <span className="font-mono font-bold text-foreground">{formatCurrencyBRL(invoiceToReissue?.total_value || 0)}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Concessionária:</span>
+                <span className="font-semibold text-foreground">{formatStoreShortName(invoiceToReissue?.store_name || invoiceToReissue?.store_id)}</span>
+              </div>
+            </div>
+
+            {/* Bloco 2: Dados da Nova NF Substituta */}
+            <div className="space-y-3 pt-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-semibold">Novo Nº da Nota Fiscal *</Label>
+                  <Input
+                    className="text-xs font-mono font-bold rounded-xl mt-1 h-9"
+                    placeholder="Ex: 000.001.391"
+                    value={reissueNewNumber}
+                    onChange={(e) => setReissueNewNumber(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold">Data da Nova Emissão</Label>
+                  <Input
+                    type="date"
+                    className="text-xs rounded-xl mt-1 h-9"
+                    value={reissueNewDate}
+                    onChange={(e) => setReissueNewDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-semibold">Data do Cancelamento</Label>
+                  <Input
+                    type="date"
+                    className="text-xs rounded-xl mt-1 h-9"
+                    value={reissueCancelDate}
+                    onChange={(e) => setReissueCancelDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold">Protocolo SEFAZ (Opcional)</Label>
+                  <Input
+                    className="text-xs font-mono rounded-xl mt-1 h-9"
+                    placeholder="Ex: 131260000000000"
+                    value={reissueProtocol}
+                    onChange={(e) => setReissueProtocol(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Motivo da Reemissão</Label>
+                <Input
+                  className="text-xs rounded-xl mt-1 h-9"
+                  placeholder="Ex: Correção de dados cadastrais / substituição de NF"
+                  value={reissueReason}
+                  onChange={(e) => setReissueReason(e.target.value)}
+                />
+              </div>
+
+              {/* Upload de anexo opcional para a nova NF */}
+              <div>
+                <Label className="text-xs font-semibold">Anexo Oficial da Nova NF (Opcional)</Label>
+                <input
+                  ref={reissueFileInputRef}
+                  type="file"
+                  accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,.xml"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setReissueIsReadingFile(true);
+                      try {
+                        const dataUrl = await readFileAsDataUrl(file);
+                        const mimeType = file.type || (file.name.endsWith('.xml') ? 'text/xml' : 'application/pdf');
+                        setReissueAttachment({
+                          name: file.name,
+                          url: dataUrl,
+                          size: file.size,
+                          type: mimeType,
+                        });
+                      } catch (err: any) {
+                        toast({ variant: 'destructive', title: 'Erro ao ler arquivo', description: err?.message });
+                      } finally {
+                        setReissueIsReadingFile(false);
+                      }
+                    }
+                  }}
+                />
+                {!reissueAttachment ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => reissueFileInputRef.current?.click()}
+                    disabled={reissueIsReadingFile}
+                    className="w-full mt-1 border-dashed rounded-xl h-8 text-xs gap-1.5 text-primary hover:bg-primary/5"
+                  >
+                    {reissueIsReadingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    Anexar PDF / XML da Nova NF
+                  </Button>
+                ) : (
+                  <div className="flex items-center justify-between p-2 mt-1 rounded-xl border bg-muted/30 text-xs">
+                    <span className="truncate font-semibold">{reissueAttachment.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setReissueAttachment(null)}
+                      className="h-6 text-[10px] text-destructive hover:bg-destructive/10 px-2"
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setInvoiceToReissue(null)} disabled={isSubmittingReissue} className="rounded-xl">
+              Voltar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmCancelAndReissue}
+              disabled={isSubmittingReissue || !reissueNewNumber.trim()}
+              className="font-bold rounded-xl gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isSubmittingReissue ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-4 h-4" />
+                  Confirmar Cancelamento & Reemitir
+                </>
               )}
             </Button>
           </DialogFooter>

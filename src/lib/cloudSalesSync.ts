@@ -52,11 +52,13 @@ export interface RegisteredInvoice {
   attachment_type?: string;
   created_at: string;
   created_by?: string;
-  // Cancelamento
+  // Cancelamento & Reemissão
   cancellation_date?: string;
   cancellation_reason?: string;
   cancellation_type?: 'estorno' | 'credito' | 'devolucao';
   sefaz_protocol?: string;
+  reissued_as_invoice_number?: string; // Número da nova NF que substituiu esta
+  reissue_of_invoice_number?: string;  // Número da NF anterior que deu origem a esta reemissão
 }
 
 export interface CloudSyncState {

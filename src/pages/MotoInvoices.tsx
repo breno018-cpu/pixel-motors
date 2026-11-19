@@ -21,6 +21,9 @@ import {
   Loader2,
   Pencil,
   MoreHorizontal,
+  RotateCcw,
+  Sparkles,
+  ArrowUpRight,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -138,6 +141,16 @@ export default function MotoInvoices() {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelType, setCancelType] = useState<'estorno' | 'credito' | 'devolucao'>('estorno');
   const [cancelProtocol, setCancelProtocol] = useState('');
+
+  // Estados de Cancelamento & Reemissão (Substituição no mesmo plano)
+  const [reissueDialogOpen, setReissueDialogOpen] = useState(false);
+  const [selectedInvoiceToReissue, setSelectedInvoiceToReissue] = useState<Invoice | null>(null);
+  const [reissueNewNumber, setReissueNewNumber] = useState('');
+  const [reissueNewDate, setReissueNewDate] = useState(getLocalTodayDateString());
+  const [reissueCancelDate, setReissueCancelDate] = useState(getLocalTodayDateString());
+  const [reissueProtocol, setReissueProtocol] = useState('');
+  const [reissueReason, setReissueReason] = useState('Cancelada para reemissão (Substituição de NF)');
+  const [isSubmittingReissue, setIsSubmittingReissue] = useState(false);
 
   // Estado da Venda Selecionada para preenchimento semi-manual
   const [selectedSaleId, setSelectedSaleId] = useState<string>('');
@@ -663,6 +676,118 @@ export default function MotoInvoices() {
     }
   };
 
+  // Inicia o fluxo de cancelamento e reemissão direta
+  const handleStartReissue = (inv: Invoice) => {
+    setSelectedInvoiceToReissue(inv);
+    const rawNum = inv.invoice_number.replace(/\D/g, '');
+    let suggested = '';
+    if (rawNum) {
+      const nextVal = parseInt(rawNum, 10) + 1;
+      suggested = String(nextVal).padStart(rawNum.length, '0');
+    }
+    setReissueNewNumber(suggested || '');
+    setReissueNewDate(getLocalTodayDateString());
+    setReissueCancelDate(getLocalTodayDateString());
+    setReissueProtocol('');
+    setReissueReason('Cancelada para reemissão (Substituição de NF)');
+    setReissueDialogOpen(true);
+  };
+
+  // Confirma cancelamento da antiga e emite a nova vinculada no mesmo plano
+  const handleConfirmCancelAndReissue = async () => {
+    if (!selectedInvoiceToReissue || !reissueNewNumber.trim()) {
+      toast({ variant: 'destructive', title: 'Informe o número da nova Nota Fiscal.' });
+      return;
+    }
+
+    const cleanNewNum = reissueNewNumber.trim();
+    const target = selectedInvoiceToReissue;
+    const oldNum = target.invoice_number;
+    const effectiveCancelDate = reissueCancelDate || getLocalTodayDateString();
+    const effectiveNewDate = reissueNewDate || getLocalTodayDateString();
+    const effectiveReason = reissueReason.trim() || `Cancelada para reemissão (Substituída pela NF ${cleanNewNum})`;
+
+    setIsSubmittingReissue(true);
+    try {
+      // 1. Cancela a NF anterior
+      await cancelInvoiceMutation.mutateAsync({
+        id: target.id,
+        cancellation_date: effectiveCancelDate,
+        cancellation_reason: effectiveReason,
+        cancellation_type: 'estorno',
+        sefaz_protocol: reissueProtocol.trim() || undefined,
+      });
+
+      // 2. Emite a nova NF vinculada
+      const newRecordId = `inv-reissue-${Date.now()}`;
+      await cloudSaveInvoice({
+        id: newRecordId,
+        invoice_number: cleanNewNum,
+        series: target.series || '1',
+        access_key: target.access_key || undefined,
+        issue_date: effectiveNewDate,
+        store_id: target.store_id || STORE_DIVINOPOLIS_UUID,
+        customer_name: target.customer_name,
+        customer_document: target.customer_document || '',
+        customer_phone: target.customer_phone || undefined,
+        customer_email: target.customer_email || undefined,
+        customer_address: target.customer_address || undefined,
+        vehicle_model: target.items?.[0]?.description || 'Motocicleta Shineray',
+        vehicle_chassis: target.items?.[0]?.chassis || '',
+        total_value: Number(target.total) || 0,
+        status: 'emitida',
+        fiscal_type: 'emissao',
+        contract_number: target.contract_number || undefined,
+        sale_id: target.sale_id || undefined,
+        reissue_of_invoice_number: oldNum,
+        sefaz_protocol: reissueProtocol.trim() || undefined,
+        notes: `Reemissão substituta da NF ${oldNum}`,
+        created_at: new Date().toISOString(),
+      });
+
+      // Atualiza também a antiga para registrar reissued_as_invoice_number
+      await cloudSaveInvoice({
+        id: target.id,
+        invoice_number: oldNum,
+        issue_date: target.issue_date,
+        store_id: target.store_id || STORE_DIVINOPOLIS_UUID,
+        customer_name: target.customer_name,
+        customer_document: target.customer_document || '',
+        vehicle_model: target.items?.[0]?.description || 'Motocicleta Shineray',
+        vehicle_chassis: target.items?.[0]?.chassis || '',
+        total_value: Number(target.total) || 0,
+        status: 'cancelada',
+        cancellation_date: effectiveCancelDate,
+        cancellation_reason: effectiveReason,
+        reissued_as_invoice_number: cleanNewNum,
+        notes: `Substituída pela NF ${cleanNewNum}`,
+        created_at: target.created_at,
+      });
+
+      setReissueDialogOpen(false);
+      setSelectedInvoiceToReissue(null);
+      setReissueNewNumber('');
+      setReissueProtocol('');
+      setReissueReason('');
+
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
+
+      toast({
+        title: 'NF Cancelada e Reemitida com Sucesso!',
+        description: `A NF Nº ${oldNum} foi cancelada e a nova NF Nº ${cleanNewNum} foi emitida e vinculada no mesmo plano.`,
+      });
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao reemitir NF',
+        description: e?.message || 'Tente novamente.',
+      });
+    } finally {
+      setIsSubmittingReissue(false);
+    }
+  };
+
   // Confirmação de exclusão permanente da NF
   const handleConfirmDelete = async () => {
     if (!selectedInvoiceToDelete) return;
@@ -972,8 +1097,21 @@ export default function MotoInvoices() {
                               <span>NF {inv.invoice_number}</span>
                               <Pencil className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </div>
+                            {inv.reissued_as_invoice_number && (
+                              <div className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded mt-0.5">
+                                <ArrowUpRight className="w-2.5 h-2.5 shrink-0" />
+                                <span>Substituída por NF {inv.reissued_as_invoice_number}</span>
+                              </div>
+                            )}
+                            {inv.reissue_of_invoice_number && (
+                              <div className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded mt-0.5">
+                                <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                <span>Reemissão da NF {inv.reissue_of_invoice_number}</span>
+                              </div>
+                            )}
                             <div className="text-[11px] text-muted-foreground truncate">
                               {inv.series ? `Série ${inv.series}` : 'Série 1'} • {formatFiscalDate(inv.issue_date)}
+                              {inv.status === 'cancelada' && inv.cancellation_date && ` • Canc: ${formatFiscalDate(inv.cancellation_date)}`}
                             </div>
                           </button>
                         ) : (
@@ -981,8 +1119,21 @@ export default function MotoInvoices() {
                             <div className="font-mono font-bold text-sm text-foreground truncate">
                               NF {inv.invoice_number}
                             </div>
+                            {inv.reissued_as_invoice_number && (
+                              <div className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded mt-0.5">
+                                <ArrowUpRight className="w-2.5 h-2.5 shrink-0" />
+                                <span>Substituída por NF {inv.reissued_as_invoice_number}</span>
+                              </div>
+                            )}
+                            {inv.reissue_of_invoice_number && (
+                              <div className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded mt-0.5">
+                                <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                <span>Reemissão da NF {inv.reissue_of_invoice_number}</span>
+                              </div>
+                            )}
                             <div className="text-[11px] text-muted-foreground truncate">
                               {inv.series ? `Série ${inv.series}` : 'Série 1'} • {formatFiscalDate(inv.issue_date)}
+                              {inv.status === 'cancelada' && inv.cancellation_date && ` • Canc: ${formatFiscalDate(inv.cancellation_date)}`}
                             </div>
                           </div>
                         )}
@@ -1039,7 +1190,17 @@ export default function MotoInvoices() {
                           )}
                         </div>
                         <div className="mt-0.5">
-                          {inv.status === 'cancelada' ? (
+                          {inv.reissued_as_invoice_number ? (
+                            <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[9px] font-bold px-1.5 py-0 gap-1">
+                              <RotateCcw className="w-2.5 h-2.5" />
+                              Substituída
+                            </Badge>
+                          ) : inv.reissue_of_invoice_number ? (
+                            <Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/25 text-[9px] font-bold px-1.5 py-0 gap-1">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              Reemissão
+                            </Badge>
+                          ) : inv.status === 'cancelada' ? (
                             <Badge variant="destructive" className="text-[9px] font-bold px-1.5 py-0">
                               Cancelada
                             </Badge>
@@ -1144,6 +1305,13 @@ export default function MotoInvoices() {
                               {canModifyNf && inv.status !== 'cancelada' && (
                                 <>
                                   <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleStartReissue(inv)}
+                                    className="gap-2 text-blue-600 focus:text-blue-600 cursor-pointer"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span>Cancelar & Reemitir</span>
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => {
                                       setSelectedInvoiceToCancel(inv);
@@ -1741,9 +1909,22 @@ export default function MotoInvoices() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
               Voltar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const target = selectedInvoiceToCancel;
+                setCancelDialogOpen(false);
+                if (target) handleStartReissue(target);
+              }}
+              className="text-blue-600 border-blue-500/30 hover:bg-blue-500/10 gap-1.5 font-semibold"
+            >
+              <RotateCcw className="w-4 h-4 text-blue-500" />
+              Cancelar & Reemitir
             </Button>
             <Button
               variant="destructive"
@@ -1758,6 +1939,111 @@ export default function MotoInvoices() {
                 </>
               ) : (
                 'Confirmar Cancelamento'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO: CANCELAMENTO & REEMISSÃO NO MESMO PLANO */}
+      <Dialog open={reissueDialogOpen} onOpenChange={setReissueDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <RotateCcw className="w-5 h-5 text-blue-500" /> Cancelar & Reemitir Nota Fiscal
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              A NF original será cancelada e substituída por uma nova NF emitida no mesmo plano contábil.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedInvoiceToReissue && (
+            <div className="space-y-3.5 text-xs py-1">
+              <div className="bg-rose-500/5 p-3 rounded-xl space-y-1 border border-rose-500/20">
+                <div className="flex justify-between font-semibold">
+                  <span className="text-rose-600 font-bold uppercase text-[10px]">NF Original a Cancelar:</span>
+                  <span className="font-mono font-bold">NF {selectedInvoiceToReissue.invoice_number}</span>
+                </div>
+                <div className="text-muted-foreground">Cliente: {selectedInvoiceToReissue.customer_name}</div>
+                <div className="text-muted-foreground font-mono font-bold text-foreground">
+                  Valor: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(selectedInvoiceToReissue.total) || 0)}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-medium">Novo Nº da Nota Fiscal *</Label>
+                  <Input
+                    className="h-9 mt-1 font-mono font-bold text-xs"
+                    placeholder="Ex: 10453"
+                    value={reissueNewNumber}
+                    onChange={(e) => setReissueNewNumber(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium">Data da Nova Emissão *</Label>
+                  <Input
+                    type="date"
+                    className="h-9 mt-1 text-xs"
+                    value={reissueNewDate}
+                    onChange={(e) => setReissueNewDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-medium">Data do Cancelamento *</Label>
+                  <Input
+                    type="date"
+                    className="h-9 mt-1 text-xs"
+                    value={reissueCancelDate}
+                    onChange={(e) => setReissueCancelDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium">Protocolo SEFAZ (opcional)</Label>
+                  <Input
+                    className="h-9 mt-1 font-mono text-xs"
+                    placeholder="Ex: 131260000..."
+                    value={reissueProtocol}
+                    onChange={(e) => setReissueProtocol(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium">Motivo da Reemissão</Label>
+                <Input
+                  className="h-9 mt-1 text-xs"
+                  placeholder="Ex: Correção cadastral e substituição de NF"
+                  value={reissueReason}
+                  onChange={(e) => setReissueReason(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setReissueDialogOpen(false)} disabled={isSubmittingReissue}>
+              Voltar
+            </Button>
+            <Button
+              onClick={handleConfirmCancelAndReissue}
+              disabled={isSubmittingReissue || !reissueNewNumber.trim()}
+              className="gap-1.5 font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isSubmittingReissue ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-4 h-4" />
+                  Confirmar Cancelamento & Reemitir
+                </>
               )}
             </Button>
           </DialogFooter>

@@ -225,8 +225,30 @@ export function StoreFiscalControlPanel() {
         }
       }
 
+      // Unificação garantida no mesmo plano: agrupa emissão e cancelamento por número de NF
+      const unifiedMap = new Map<string, FiscalInvoiceRecord>();
+      combined.forEach((rec) => {
+        const key = `${rec.store_id || ''}-${rec.invoice_number}-${rec.fiscal_type === 'entrada' ? 'in' : 'out'}`;
+        if (!unifiedMap.has(key)) {
+          unifiedMap.set(key, rec);
+        } else {
+          const prev = unifiedMap.get(key)!;
+          const isCancel = prev.fiscal_type === 'cancelamento' || rec.fiscal_type === 'cancelamento' || prev.status === 'cancelada' || rec.status === 'cancelada';
+          unifiedMap.set(key, {
+            ...prev,
+            ...rec,
+            fiscal_type: isCancel ? 'cancelamento' : prev.fiscal_type,
+            status: isCancel ? 'cancelada' : prev.status,
+            issue_date: prev.issue_date || rec.issue_date,
+            entry_or_cancel_date: isCancel ? (rec.entry_or_cancel_date || prev.entry_or_cancel_date) : prev.entry_or_cancel_date,
+            cancellation_reason: rec.cancellation_reason || prev.cancellation_reason,
+            sefaz_protocol: rec.sefaz_protocol || prev.sefaz_protocol,
+          });
+        }
+      });
+
       // Ordenar por data decrescente
-      return combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      return Array.from(unifiedMap.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     },
   });
 
