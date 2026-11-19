@@ -71,8 +71,11 @@ export interface CombinedFiscalRecord {
   store_id: string;
   store_name: string;
   party_name: string;
+  party_doc?: string;
   issue_date: string;
   event_date: string; // Data da entrada, da emissão ou do cancelamento naquela semana
+  original_issue_date?: string;
+  cancellation_date?: string;
   total_value: number;
   status: string;
   cancellation_reason?: string;
@@ -113,7 +116,7 @@ export function computeInvoiceLifecycle(
   allRecords: CombinedFiscalRecord[]
 ): InvoiceLifecycleData {
   const isCancelled = r.fiscal_type === 'cancelamento' || r.status === 'cancelada';
-  const originalIssueDate = r.issue_date || r.event_date;
+  const originalIssueDate = r.original_issue_date || r.issue_date || r.event_date;
 
   // Se esta NF foi cancelada e substituída por outra (Reissue Parent)
   const reissuedAsNumber = r.reissued_as_invoice_number;
@@ -143,8 +146,8 @@ export function computeInvoiceLifecycle(
       (p) => p.invoice_number === reissuedFromNumber && (p.store_id === r.store_id || !p.store_id || !r.store_id)
     );
     if (parent) {
-      reissuedFromDate = parent.issue_date || parent.event_date;
-      reissuedFromCancellationDate = parent.event_date;
+      reissuedFromDate = parent.original_issue_date || parent.issue_date || parent.event_date;
+      reissuedFromCancellationDate = parent.cancellation_date || parent.event_date;
     }
   }
 
@@ -152,13 +155,19 @@ export function computeInvoiceLifecycle(
   const isReissueChild = Boolean(reissuedFromNumber);
   const hasReissue = isReissueParent || isReissueChild;
 
+  const effectiveOrigDate = isReissueChild
+    ? (r.original_issue_date || reissuedFromDate || originalIssueDate)
+    : originalIssueDate;
+
+  const effectiveCancDate = r.cancellation_date || (isCancelled ? (r.event_date || r.issue_date) : (reissuedFromCancellationDate || r.event_date));
+
   return {
     originalNumber: isReissueChild && reissuedFromNumber ? reissuedFromNumber : r.invoice_number,
-    originalIssueDate: isReissueChild && reissuedFromDate ? reissuedFromDate : originalIssueDate,
+    originalIssueDate: effectiveOrigDate,
     originalValue: r.total_value,
-    isCancelled: isCancelled || isReissueParent,
-    cancellationDate: isCancelled ? (r.event_date || r.issue_date) : (reissuedFromCancellationDate || r.event_date),
-    cancellationReason: r.cancellation_reason || (isReissueParent ? 'Cancelada para substituição e reemissão de nova NF' : undefined),
+    isCancelled: isCancelled || isReissueParent || Boolean(isReissueChild && effectiveCancDate),
+    cancellationDate: effectiveCancDate,
+    cancellationReason: r.cancellation_reason || (isReissueParent ? 'Cancelada para substituição e reemissão de nova NF' : (isReissueChild ? 'Cancelada para reemissão (Substituição de NF)' : undefined)),
     sefazProtocol: r.sefaz_protocol,
     cancellationType: r.cancellation_type,
     hasReissue,
@@ -951,7 +960,7 @@ export function OwnerFiscalInvoicesPanel() {
       }
     });
 
-    // Unificação rigorosa: agrupa no MESMO PLANO por número de NF (elimina qualquer duplicata visual)
+    // 1. Unificação inicial: agrupa emissão e cancelamento pelo mesmo número de NF
     const unifiedMap = new Map<string, CombinedFiscalRecord>();
     recordsList.forEach((r) => {
       const key = `${r.store_id || ''}-${r.invoice_number}-${r.fiscal_type === 'entrada' ? 'in' : 'out'}`;
@@ -969,6 +978,8 @@ export function OwnerFiscalInvoicesPanel() {
           fiscal_type: isCancelled ? 'cancelamento' : prev.fiscal_type,
           status: isCancelled ? 'cancelada' : prev.status,
           issue_date: prev.issue_date || r.issue_date,
+          original_issue_date: prev.original_issue_date || r.original_issue_date || prev.issue_date || r.issue_date,
+          cancellation_date: isCancelled ? (prev.cancellation_date || r.cancellation_date || (prev.cancellation_reason ? prev.event_date : r.event_date)) : undefined,
           event_date: isCancelled ? (prev.cancellation_reason ? prev.event_date : r.event_date) : (prev.event_date || r.event_date),
           cancellation_reason: prev.cancellation_reason || r.cancellation_reason,
           cancellation_type: prev.cancellation_type || r.cancellation_type,
@@ -981,7 +992,68 @@ export function OwnerFiscalInvoicesPanel() {
       }
     });
 
-    return Array.from(unifiedMap.values()).sort(
+    const unifiedList = Array.from(unifiedMap.values());
+
+    // 2. CONSOLIDAÇÃO E DEDUPLICAÇÃO DE SUBSTITUIÇÃO (MANTÉM APENAS UMA CÓPIA)
+    // Se a NF antiga foi cancelada e substituída por outra (ou se a nova foi reemitida a partir da antiga),
+    // funde ambas na NF ativa / atualizada e remove a cópia antiga do plano.
+    const supersededNumbers = new Set<string>();
+
+    unifiedList.forEach((r) => {
+      if (r.reissue_of_invoice_number) {
+        supersededNumbers.add(r.reissue_of_invoice_number);
+      }
+      if (r.reissued_as_invoice_number) {
+        // Se a nova NF também já existe na lista, a antiga é descartada como cópia secundária
+        const childExists = unifiedList.some(
+          (c) => c.invoice_number === r.reissued_as_invoice_number && (c.store_id === r.store_id || !c.store_id || !r.store_id)
+        );
+        if (childExists) {
+          supersededNumbers.add(r.invoice_number);
+        }
+      }
+    });
+
+    const consolidatedRecords = unifiedList
+      .filter((r) => !supersededNumbers.has(r.invoice_number))
+      .map((r) => {
+        // Se r aponta para uma NF anterior que foi substituída, incorpora os dados históricos da antiga
+        if (r.reissue_of_invoice_number) {
+          const oldParent = unifiedList.find(
+            (p) => p.invoice_number === r.reissue_of_invoice_number && (p.store_id === r.store_id || !p.store_id || !r.store_id)
+          );
+          if (oldParent) {
+            return {
+              ...r,
+              original_issue_date: oldParent.original_issue_date || oldParent.issue_date,
+              cancellation_date: r.cancellation_date || oldParent.cancellation_date || oldParent.event_date,
+              cancellation_reason: r.cancellation_reason || oldParent.cancellation_reason || 'Cancelada para reemissão (Substituição de NF)',
+              cancellation_type: r.cancellation_type || oldParent.cancellation_type,
+              sefaz_protocol: r.sefaz_protocol || oldParent.sefaz_protocol,
+              attachment_url: r.attachment_url || oldParent.attachment_url,
+              attachment_name: r.attachment_name || oldParent.attachment_name,
+            };
+          }
+        }
+        // Se r tem reissued_as_invoice_number mas o filho não existia separadamente,
+        // transforma r diretamente na nova NF para manter apenas 1 cópia ativa
+        if (r.reissued_as_invoice_number) {
+          return {
+            ...r,
+            reissue_of_invoice_number: r.invoice_number,
+            original_issue_date: r.original_issue_date || r.issue_date,
+            cancellation_date: r.cancellation_date || r.event_date,
+            cancellation_reason: r.cancellation_reason || 'Cancelada para reemissão (Substituição de NF)',
+            invoice_number: r.reissued_as_invoice_number,
+            reissued_as_invoice_number: undefined,
+            status: 'emitida',
+            fiscal_type: 'emissao' as const,
+          };
+        }
+        return r;
+      });
+
+    return consolidatedRecords.sort(
       (a, b) => new Date(b.event_date || b.issue_date).getTime() - new Date(a.event_date || a.issue_date).getTime()
     );
   }, [invoices, stores]);
@@ -1468,72 +1540,39 @@ export function OwnerFiscalInvoicesPanel() {
       const raw = localStorage.getItem(storageKey);
       let list = raw ? JSON.parse(raw) : [];
 
-      // 1. Atualiza a NF anterior marcando o cancelamento e a substituição
-      let foundOld = false;
-      list = list.map((item: any) => {
-        if (item.invoice_number === oldNum) {
-          foundOld = true;
-          return {
-            ...item,
-            fiscal_type: 'cancelamento',
-            status: 'cancelada',
-            cancellation_date: effectiveCancelDate,
-            entry_or_cancel_date: effectiveCancelDate,
-            cancellation_reason: effectiveReason,
-            reissued_as_invoice_number: cleanNewNum,
-            notes: (item.notes || '') + ` | Substituída pela NF ${cleanNewNum}`,
-          };
-        }
-        return item;
-      });
-
-      if (!foundOld) {
-        list.push({
-          id: invoiceToReissue.rawInvoiceId || `canc-${oldNum}-${Date.now()}`,
-          invoice_number: oldNum,
-          fiscal_type: 'cancelamento',
-          store_id: invoiceToReissue.store_id,
-          store_name: invoiceToReissue.store_name,
-          issue_date: invoiceToReissue.issue_date,
-          entry_or_cancel_date: effectiveCancelDate,
-          party_name: invoiceToReissue.party_name,
-          total_value: invoiceToReissue.total_value,
-          status: 'cancelada',
-          cancellation_reason: effectiveReason,
-          reissued_as_invoice_number: cleanNewNum,
-          notes: `Substituída pela NF ${cleanNewNum}`,
-          created_at: new Date().toISOString(),
-        });
-      }
-
-      // 2. Cria a nova NF substituta no mesmo plano
-      const newRecordId = `inv-reissue-${Date.now()}`;
-      const newRecord = {
-        id: newRecordId,
+      // Substitui a NF anterior pela nova NF reemitida com o histórico completo preservado
+      // Mantém estritamente UMA ÚNICA NOTA no sistema (elimina a duplicata da NF anterior)
+      const unifiedReissuedRecord: CombinedFiscalRecord = {
+        id: invoiceToReissue.rawInvoiceId || `inv-reissue-${Date.now()}`,
         invoice_number: cleanNewNum,
         fiscal_type: 'emissao',
         store_id: invoiceToReissue.store_id,
         store_name: invoiceToReissue.store_name,
         issue_date: effectiveNewDate,
-        entry_or_cancel_date: effectiveNewDate,
+        original_issue_date: invoiceToReissue.original_issue_date || invoiceToReissue.issue_date,
+        event_date: effectiveNewDate,
         party_name: invoiceToReissue.party_name,
+        party_doc: invoiceToReissue.party_doc,
         total_value: invoiceToReissue.total_value,
         status: 'emitida',
         reissue_of_invoice_number: oldNum,
-        sefaz_protocol: reissueProtocol.trim() || undefined,
-        notes: `Reemissão e substituição da NF ${oldNum}`,
-        attachment_url: reissueAttachment?.url || undefined,
-        attachment_name: reissueAttachment?.name || undefined,
-        attachment_size: reissueAttachment?.size || undefined,
-        attachment_type: reissueAttachment?.type || undefined,
-        created_at: new Date().toISOString(),
+        cancellation_date: effectiveCancelDate,
+        cancellation_reason: effectiveReason,
+        cancellation_type: 'estorno',
+        sefaz_protocol: reissueProtocol.trim() || invoiceToReissue.sefaz_protocol || undefined,
+        notes: `Reemissão substituta da NF ${oldNum}`,
+        attachment_url: reissueAttachment?.url || invoiceToReissue.attachment_url || undefined,
+        attachment_name: reissueAttachment?.name || invoiceToReissue.attachment_name || undefined,
+        attachment_size: reissueAttachment?.size || invoiceToReissue.attachment_size || undefined,
+        attachment_type: reissueAttachment?.type || invoiceToReissue.attachment_type || undefined,
+        rawInvoiceId: invoiceToReissue.rawInvoiceId,
       };
 
-      // Remove conflito com novo número se houver e adiciona
-      list = list.filter((item: any) => item.invoice_number !== cleanNewNum);
-      list.unshift(newRecord);
+      // Remove tanto a NF antiga quanto qualquer duplicata do novo número, mantendo apenas 1 registro único
+      list = list.filter((item: any) => item.invoice_number !== oldNum && item.invoice_number !== cleanNewNum);
+      list.unshift(unifiedReissuedRecord);
 
-      // Garante deduplicação de números
+      // Garante deduplicação rigorosa de números
       const seen = new Set<string>();
       list = list.filter((item: any) => {
         const key = `${item.store_id || ''}-${item.invoice_number}-${item.fiscal_type === 'entrada' ? 'in' : 'out'}`;
@@ -1544,16 +1583,34 @@ export function OwnerFiscalInvoicesPanel() {
 
       safeSaveToLocalStorage(storageKey, list);
 
-      // 3. Atualiza na nuvem
+      // 3. Atualiza na nuvem in-place mantendo apenas 1 registro único da operação
       if (invoiceToReissue.rawInvoiceId && !invoiceToReissue.rawInvoiceId.startsWith('loc-')) {
         void cloudSaveInvoice({
           id: invoiceToReissue.rawInvoiceId,
-          invoice_number: oldNum,
-          status: 'cancelada',
+          invoice_number: cleanNewNum,
+          reissue_of_invoice_number: oldNum,
+          original_issue_date: invoiceToReissue.original_issue_date || invoiceToReissue.issue_date,
+          issue_date: effectiveNewDate,
           cancellation_date: effectiveCancelDate,
           cancellation_reason: effectiveReason,
-          reissued_as_invoice_number: cleanNewNum,
-          notes: `Substituída pela NF ${cleanNewNum}`,
+          cancellation_type: 'estorno',
+          store_id: invoiceToReissue.store_id,
+          store_name: invoiceToReissue.store_name,
+          party_name: invoiceToReissue.party_name,
+          customer_name: invoiceToReissue.party_name,
+          customer_document: invoiceToReissue.party_doc || '',
+          vehicle_model: 'Motocicleta Shineray',
+          vehicle_chassis: '',
+          total_value: invoiceToReissue.total_value,
+          status: 'emitida',
+          fiscal_type: 'emissao',
+          sefaz_protocol: reissueProtocol.trim() || invoiceToReissue.sefaz_protocol || undefined,
+          notes: `Reemissão e substituição da NF ${oldNum}`,
+          attachment_url: reissueAttachment?.url || invoiceToReissue.attachment_url,
+          attachment_name: reissueAttachment?.name || invoiceToReissue.attachment_name,
+          attachment_size: reissueAttachment?.size || invoiceToReissue.attachment_size,
+          attachment_type: reissueAttachment?.type || invoiceToReissue.attachment_type,
+          created_at: new Date().toISOString(),
         });
       }
 

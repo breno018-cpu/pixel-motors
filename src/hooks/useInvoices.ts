@@ -56,6 +56,7 @@ export interface Invoice {
   cancellation_type?: 'estorno' | 'credito' | 'devolucao' | null;
   sefaz_protocol?: string | null;
   cancelled_by?: string | null;
+  original_issue_date?: string | null;
   reissued_as_invoice_number?: string | null;
   reissue_of_invoice_number?: string | null;
   store?: { id: string; name: string; cnpj?: string | null; address?: string | null; city?: string | null; state?: string | null } | null;
@@ -208,6 +209,7 @@ export function useInvoices() {
           attachment_size: r.attachment_size || null,
           attachment_type: r.attachment_type || null,
           created_at: r.created_at,
+          original_issue_date: (r as any).original_issue_date || r.issue_date || null,
           cancellation_date: r.cancellation_date || null,
           cancellation_reason: r.cancellation_reason || null,
           cancellation_type: r.cancellation_type || null,
@@ -243,6 +245,7 @@ export function useInvoices() {
             ...inv,
             series: itemObj.series || inv.series || '1',
             access_key: itemObj.access_key || inv.access_key || null,
+            original_issue_date: itemObj.original_issue_date || inv.original_issue_date || inv.issue_date || null,
             cancellation_date: itemObj.cancellation_date || inv.cancellation_date || (inv.status === 'cancelada' ? inv.updated_at?.slice(0, 10) : null),
             cancellation_reason: itemObj.cancellation_reason || inv.cancellation_reason || inv.notes || null,
             cancellation_type: itemObj.cancellation_type || inv.cancellation_type || 'estorno',
@@ -257,7 +260,7 @@ export function useInvoices() {
           };
         });
 
-      // Unificação garantida no mesmo plano: agrupa emissão e cancelamento sob a mesma NF
+      // 1. Unificação inicial: agrupa emissão e cancelamento pelo mesmo número de NF
       const combined = [...mappedCloud, ...mappedDb];
       const unifiedMap = new Map<string, Invoice>();
       combined.forEach((inv) => {
@@ -272,6 +275,7 @@ export function useInvoices() {
             ...inv,
             status: isCancel ? 'cancelada' : prev.status,
             issue_date: prev.issue_date || inv.issue_date,
+            original_issue_date: prev.original_issue_date || inv.original_issue_date || prev.issue_date || inv.issue_date,
             cancellation_date: isCancel ? (prev.cancellation_date || inv.cancellation_date) : null,
             cancellation_reason: prev.cancellation_reason || inv.cancellation_reason,
             reissued_as_invoice_number: prev.reissued_as_invoice_number || inv.reissued_as_invoice_number,
@@ -280,7 +284,58 @@ export function useInvoices() {
         }
       });
 
-      return Array.from(unifiedMap.values());
+      const initialList = Array.from(unifiedMap.values());
+
+      // 2. CONSOLIDAÇÃO DE SUBSTITUIÇÃO (MANTÉM APENAS UMA CÓPIA)
+      // Se houver uma NF antiga substituída e uma NF nova reemitida, consolida na nova e elimina a duplicata
+      const supersededSet = new Set<string>();
+      initialList.forEach((inv) => {
+        if (inv.reissue_of_invoice_number) {
+          supersededSet.add(inv.reissue_of_invoice_number);
+        }
+        if (inv.reissued_as_invoice_number) {
+          const childExists = initialList.some(
+            (c) => c.invoice_number === inv.reissued_as_invoice_number && (c.store_id === inv.store_id || !c.store_id || !inv.store_id)
+          );
+          if (childExists) {
+            supersededSet.add(inv.invoice_number);
+          }
+        }
+      });
+
+      const finalList = initialList
+        .filter((inv) => !supersededSet.has(inv.invoice_number))
+        .map((inv) => {
+          if (inv.reissue_of_invoice_number) {
+            const oldParent = initialList.find(
+              (p) => p.invoice_number === inv.reissue_of_invoice_number && (p.store_id === inv.store_id || !p.store_id || !inv.store_id)
+            );
+            if (oldParent) {
+              return {
+                ...inv,
+                original_issue_date: oldParent.original_issue_date || oldParent.issue_date,
+                cancellation_date: inv.cancellation_date || oldParent.cancellation_date,
+                cancellation_reason: inv.cancellation_reason || oldParent.cancellation_reason || 'Cancelada para reemissão (Substituição de NF)',
+                cancellation_type: inv.cancellation_type || oldParent.cancellation_type,
+                attachment_url: inv.attachment_url || oldParent.attachment_url,
+                attachment_name: inv.attachment_name || oldParent.attachment_name,
+              };
+            }
+          }
+          if (inv.reissued_as_invoice_number) {
+            return {
+              ...inv,
+              reissue_of_invoice_number: inv.invoice_number,
+              original_issue_date: inv.original_issue_date || inv.issue_date,
+              invoice_number: inv.reissued_as_invoice_number,
+              reissued_as_invoice_number: null,
+              status: 'emitida' as const,
+            };
+          }
+          return inv;
+        });
+
+      return finalList;
     },
   });
 }

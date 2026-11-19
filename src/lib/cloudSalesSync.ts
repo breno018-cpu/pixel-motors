@@ -53,6 +53,7 @@ export interface RegisteredInvoice {
   created_at: string;
   created_by?: string;
   // Cancelamento & Reemissão
+  original_issue_date?: string;
   cancellation_date?: string;
   cancellation_reason?: string;
   cancellation_type?: 'estorno' | 'credito' | 'devolucao';
@@ -744,6 +745,26 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
     const raw = localStorage.getItem(LOCAL_INVOICES_KEY);
     if (raw) localInvs = JSON.parse(raw);
 
+    // Se é uma reemissão substituta, remove a NF anterior de todas as listas locais (mantém apenas 1 cópia única)
+    if (readyInvoice.reissue_of_invoice_number) {
+      localInvs = localInvs.filter(
+        (item) => item.invoice_number !== readyInvoice.reissue_of_invoice_number
+      );
+      // Também limpa do armazenamento de NFs da Diretoria
+      try {
+        const ownerRaw = localStorage.getItem('dealflow_store_fiscal_invoices_v1');
+        if (ownerRaw) {
+          const ownerList = JSON.parse(ownerRaw);
+          if (Array.isArray(ownerList)) {
+            const cleanOwner = ownerList.filter(
+              (item: any) => item.invoice_number !== readyInvoice.reissue_of_invoice_number
+            );
+            safeSaveToLocalStorage('dealflow_store_fiscal_invoices_v1', cleanOwner);
+          }
+        }
+      } catch {}
+    }
+
     const existingIdx = localInvs.findIndex(
       (item) => item.id === readyInvoice.id || (item.invoice_number === readyInvoice.invoice_number && item.store_id === readyInvoice.store_id)
     );
@@ -831,15 +852,20 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
         },
       };
 
-      const idx = old.findIndex(
+      let baseOld = old;
+      if (readyInvoice.reissue_of_invoice_number) {
+        baseOld = old.filter((x) => x.invoice_number !== readyInvoice.reissue_of_invoice_number);
+      }
+
+      const idx = baseOld.findIndex(
         (x) => x.id === readyInvoice.id || (x.invoice_number === readyInvoice.invoice_number && x.store_id === readyInvoice.store_id)
       );
       if (idx >= 0) {
-        const copy = [...old];
+        const copy = [...baseOld];
         copy[idx] = { ...copy[idx], ...mappedInv };
         return copy;
       }
-      return [mappedInv, ...old];
+      return [mappedInv, ...baseOld];
     });
 
     // Notifica componentes imediatamente
@@ -873,7 +899,13 @@ export async function cloudSaveInvoice(inv: RegisteredInvoice): Promise<boolean>
       }
     }
 
-    const currentInvoices = currentState.registered_invoices || [];
+    let currentInvoices = currentState.registered_invoices || [];
+    if (readyInvoice.reissue_of_invoice_number) {
+      currentInvoices = currentInvoices.filter(
+        (item) => item.invoice_number !== readyInvoice.reissue_of_invoice_number
+      );
+      void supabase.from('invoices').delete().eq('invoice_number', readyInvoice.reissue_of_invoice_number);
+    }
     const existingIdx = currentInvoices.findIndex(
       (item) => item.id === readyInvoice.id || (item.invoice_number === readyInvoice.invoice_number && item.store_id === readyInvoice.store_id)
     );

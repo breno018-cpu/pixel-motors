@@ -710,23 +710,15 @@ export default function MotoInvoices() {
 
     setIsSubmittingReissue(true);
     try {
-      // 1. Cancela a NF anterior
-      await cancelInvoiceMutation.mutateAsync({
-        id: target.id,
-        cancellation_date: effectiveCancelDate,
-        cancellation_reason: effectiveReason,
-        cancellation_type: 'estorno',
-        sefaz_protocol: reissueProtocol.trim() || undefined,
-      });
-
-      // 2. Emite a nova NF vinculada
-      const newRecordId = `inv-reissue-${Date.now()}`;
+      // Atualiza a nota fiscal existente in-place com o novo número e o histórico completo
+      // Mantém estritamente UMA ÚNICA NOTA FISCAL (sem duplicar ou gerar 2 cópias da mesma operação)
       await cloudSaveInvoice({
-        id: newRecordId,
+        id: target.id,
         invoice_number: cleanNewNum,
         series: target.series || '1',
         access_key: target.access_key || undefined,
         issue_date: effectiveNewDate,
+        original_issue_date: (target as any).original_issue_date || target.issue_date,
         store_id: target.store_id || STORE_DIVINOPOLIS_UUID,
         customer_name: target.customer_name,
         customer_document: target.customer_document || '',
@@ -741,28 +733,16 @@ export default function MotoInvoices() {
         contract_number: target.contract_number || undefined,
         sale_id: target.sale_id || undefined,
         reissue_of_invoice_number: oldNum,
-        sefaz_protocol: reissueProtocol.trim() || undefined,
-        notes: `Reemissão substituta da NF ${oldNum}`,
-        created_at: new Date().toISOString(),
-      });
-
-      // Atualiza também a antiga para registrar reissued_as_invoice_number
-      await cloudSaveInvoice({
-        id: target.id,
-        invoice_number: oldNum,
-        issue_date: target.issue_date,
-        store_id: target.store_id || STORE_DIVINOPOLIS_UUID,
-        customer_name: target.customer_name,
-        customer_document: target.customer_document || '',
-        vehicle_model: target.items?.[0]?.description || 'Motocicleta Shineray',
-        vehicle_chassis: target.items?.[0]?.chassis || '',
-        total_value: Number(target.total) || 0,
-        status: 'cancelada',
         cancellation_date: effectiveCancelDate,
         cancellation_reason: effectiveReason,
-        reissued_as_invoice_number: cleanNewNum,
-        notes: `Substituída pela NF ${cleanNewNum}`,
-        created_at: target.created_at,
+        cancellation_type: 'estorno',
+        sefaz_protocol: reissueProtocol.trim() || target.sefaz_protocol || undefined,
+        notes: `Reemissão substituta da NF ${oldNum}`,
+        attachment_url: target.attachment_url || undefined,
+        attachment_name: target.attachment_name || undefined,
+        attachment_size: target.attachment_size || undefined,
+        attachment_type: target.attachment_type || undefined,
+        created_at: target.created_at || new Date().toISOString(),
       });
 
       setReissueDialogOpen(false);
