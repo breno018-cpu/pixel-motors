@@ -104,10 +104,8 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
   );
   const storeId = resolved.storeId;
   const storeName = resolved.storeName;
-  const isMoc =
-    storeId === 'store-montesclaros' ||
-    storeId === 'e8254a81-d669-464b-9806-457ba25ce7f0' ||
-    (storeName || '').toLowerCase().includes('montes');
+  const prefix = getContractPrefix(storeId, storeName);
+  const isMoc = prefix === 'MOC';
   
   let createdAt = new Date().toISOString();
   if (r.data) {
@@ -131,7 +129,7 @@ function sheetRowToContract(r: SheetRowV9, employeesList?: any[]): Contract {
 
   return {
     id: r.id || `sheet-${r.qt}`,
-    contract_number: `${isMoc ? 'MOC' : 'DIV'}-${r.qt || '00'}`,
+    contract_number: `${prefix}-${r.qt || '00'}`,
     vehicle_id: (r as any).vehicle_id || `veh-${r.id || r.qt}`,
     reseller_id: (r as any).reseller_id || null,
     store_id: storeId,
