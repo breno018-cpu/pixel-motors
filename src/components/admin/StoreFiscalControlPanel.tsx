@@ -31,6 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { formatFiscalDate, getLocalTodayDateString } from '@/lib/fiscalDates';
 import { safeSaveToLocalStorage } from '@/lib/invoiceAttachmentStorage';
+import { formatStoreShortName } from '@/lib/storeResolution';
 import { 
   Dialog, 
   DialogContent, 
@@ -770,7 +771,7 @@ export function StoreFiscalControlPanel() {
               <SelectItem value="all">Todas as Lojas</SelectItem>
               {stores.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.name}
+                  {formatStoreShortName(s.name)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -818,7 +819,7 @@ export function StoreFiscalControlPanel() {
               {/* Visualização Mobile: Cards Touch Verticais */}
               <div className="md:hidden divide-y divide-border/60 p-2 space-y-2">
                 {filteredRecords.map((rec) => {
-                  const storeName = stores.find(s => s.id === rec.store_id)?.name || 'Matriz';
+                  const storeName = formatStoreShortName(stores.find(s => s.id === rec.store_id)?.name);
                   const isEntrada = rec.fiscal_type === 'entrada';
 
                   return (
@@ -940,7 +941,7 @@ export function StoreFiscalControlPanel() {
                   </TableHeader>
                   <TableBody>
                     {filteredRecords.map((rec) => {
-                      const storeName = stores.find(s => s.id === rec.store_id)?.name || 'Matriz';
+                      const storeName = formatStoreShortName(stores.find(s => s.id === rec.store_id)?.name);
                       const isEntrada = rec.fiscal_type === 'entrada';
 
                       return (
@@ -1094,7 +1095,7 @@ export function StoreFiscalControlPanel() {
                 <SelectContent>
                   {stores.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name}
+                      {formatStoreShortName(s.name)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1245,7 +1246,7 @@ export function StoreFiscalControlPanel() {
                 <SelectContent>
                   {stores.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name}
+                      {formatStoreShortName(s.name)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1382,7 +1383,7 @@ export function StoreFiscalControlPanel() {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground font-medium">Unidade / Loja:</span>
                   <span className="font-bold text-foreground">
-                    {stores.find(s => s.id === selectedRecord.store_id)?.name || 'Matriz'}
+                    {formatStoreShortName(stores.find(s => s.id === selectedRecord.store_id)?.name)}
                   </span>
                 </div>
 

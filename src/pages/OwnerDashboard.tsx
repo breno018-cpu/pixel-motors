@@ -157,9 +157,10 @@ export default function OwnerDashboard() {
     return sales.filter((item) => {
       // 1. Filtro de Loja
       if (storeFilter !== 'all') {
-        const isMoc = isMontesClarosStore(item);
-        if (storeFilter === 'divinopolis' && isMoc) return false;
-        if (storeFilter === 'montesclaros' && !isMoc) return false;
+        const storeDisp = getStoreDisplayName(item).toLowerCase();
+        if (storeFilter === 'divinopolis' && storeDisp !== 'divinópolis') return false;
+        if (storeFilter === 'montesclaros' && storeDisp !== 'montes claros') return false;
+        if (storeFilter === 'multimarcas' && storeDisp !== 'multimarcas') return false;
       }
 
       // 2. Busca por texto
@@ -656,9 +657,10 @@ export default function OwnerDashboard() {
                   <SelectValue placeholder="Concessionária" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as Concessionárias</SelectItem>
-                  <SelectItem value="montesclaros">Montes Claros (MOC)</SelectItem>
-                  <SelectItem value="divinopolis">Divinópolis (DIV)</SelectItem>
+                  <SelectItem value="all">Todas as Lojas</SelectItem>
+                  <SelectItem value="montesclaros">Montes Claros</SelectItem>
+                  <SelectItem value="divinopolis">Divinópolis</SelectItem>
+                  <SelectItem value="multimarcas">Multimarcas</SelectItem>
                 </SelectContent>
               </Select>
 

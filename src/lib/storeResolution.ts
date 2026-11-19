@@ -123,6 +123,59 @@ export function getContractPrefix(
 }
 
 /**
+ * Abrevia nomes extensos de concessionárias removendo tudo que se repete
+ * ("SHINERAY", "GRUPO L1MA MOTORS", "L1MA MOTORS", "CONCESSIONÁRIA").
+ * Exemplos:
+ * - "SHINERAY GRUPO L1MA MOTORS MONTES CLAROS" -> "Montes Claros"
+ * - "SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS" -> "Divinópolis"
+ * - "L1MA MOTORS MULTIMARCAS" -> "Multimarcas"
+ */
+export function formatStoreShortName(storeNameOrId?: string | null): string {
+  if (!storeNameOrId) return 'Divinópolis';
+  const clean = String(storeNameOrId).trim();
+  const lower = clean.toLowerCase();
+
+  // 1. Multimarcas
+  if (
+    lower === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+    lower === 'store-multimarcas' ||
+    lower.includes('multimarcas') ||
+    lower.includes('multi marcas') ||
+    lower.includes('seminovos')
+  ) {
+    return 'Multimarcas';
+  }
+
+  // 2. Montes Claros
+  if (
+    lower === STORE_MONTESCLAROS_UUID ||
+    lower === 'store-montesclaros' ||
+    lower.includes('montes') ||
+    lower.includes('moc')
+  ) {
+    return 'Montes Claros';
+  }
+
+  // 3. Divinópolis
+  if (
+    lower === STORE_DIVINOPOLIS_UUID ||
+    lower === 'store-divinopolis' ||
+    lower.includes('divin') ||
+    lower.includes('matriz')
+  ) {
+    return 'Divinópolis';
+  }
+
+  // Caso seja outro nome/formato, remove palavras repetitivas
+  return clean
+    .replace(/^shineray\s+/i, '')
+    .replace(/^grupo\s+l1ma\s+motors\s+/i, '')
+    .replace(/^l1ma\s+motors\s+/i, '')
+    .replace(/^concession[áa]ria\s+/i, '')
+    .trim() || clean;
+}
+
+/**
  * Verifica de forma definitiva e à prova de falhas de caixa (case-insensitive)
  * se uma venda, linha de planilha ou registro pertence à concessionária de Montes Claros.
  */
@@ -199,8 +252,18 @@ export function isMontesClarosStore(storeOrSale?: {
 /**
  * Retorna o nome amigável e canônico da concessionária ('Montes Claros' | 'Divinópolis')
  */
-export function getStoreDisplayName(storeOrSale?: any): 'Montes Claros' | 'Divinópolis' {
-  return isMontesClarosStore(storeOrSale) ? 'Montes Claros' : 'Divinópolis';
+export function getStoreDisplayName(storeOrSale?: any): 'Multimarcas' | 'Montes Claros' | 'Divinópolis' {
+  const short = formatStoreShortName(
+    storeOrSale?.store_name ||
+    storeOrSale?.name ||
+    storeOrSale?.store_id ||
+    storeOrSale?.store?.name ||
+    storeOrSale?.store?.id ||
+    storeOrSale
+  );
+  if (short === 'Multimarcas') return 'Multimarcas';
+  if (short === 'Montes Claros') return 'Montes Claros';
+  return 'Divinópolis';
 }
 
 export interface ResolvedStore {

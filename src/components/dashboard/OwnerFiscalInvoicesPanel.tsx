@@ -42,7 +42,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useInvoices, useCancelInvoice, useUpsertInvoice, useDeleteInvoice, Invoice } from '@/hooks/useInvoices';
-import { useStores, STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/hooks/useStores';
+import { useStores } from '@/hooks/useStores';
+import {
+  STORE_DIVINOPOLIS_UUID,
+  STORE_MONTESCLAROS_UUID,
+  STORE_MONTESCLAROS_MULTIMARCAS_UUID,
+  formatStoreShortName,
+} from '@/lib/storeResolution';
 import { useToast } from '@/hooks/use-toast';
 import { exportToXLSX } from '@/lib/export';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
@@ -87,7 +93,16 @@ export const WEEKS_CONFIG = [
 export function normalizeStoreId(storeId?: string | null): string {
   if (!storeId) return STORE_DIVINOPOLIS_UUID;
   const s = String(storeId).toLowerCase();
-  if (s.includes('montes') || s === STORE_MONTESCLAROS_UUID) {
+  if (
+    s === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+    s === 'store-multimarcas' ||
+    s.includes('multimarcas') ||
+    s.includes('multi marcas') ||
+    s.includes('seminovos')
+  ) {
+    return STORE_MONTESCLAROS_MULTIMARCAS_UUID;
+  }
+  if (s.includes('montes') || s === STORE_MONTESCLAROS_UUID || s === 'store-montesclaros' || s.includes('moc')) {
     return STORE_MONTESCLAROS_UUID;
   }
   return STORE_DIVINOPOLIS_UUID;
@@ -860,10 +875,11 @@ export function OwnerFiscalInvoicesPanel() {
       // 1. Filtro de Loja
       if (storeFilter !== 'all') {
         const normFilter = normalizeStoreId(storeFilter);
-        const normRec = normalizeStoreId(rec.store_id);
+        const normRec = normalizeStoreId(rec.store_id || rec.store_name);
         const matchesStore =
           normRec === normFilter ||
-          (normFilter === STORE_MONTESCLAROS_UUID && rec.store_name.toLowerCase().includes('montes')) ||
+          (normFilter === STORE_MONTESCLAROS_MULTIMARCAS_UUID && rec.store_name.toLowerCase().includes('multimarcas')) ||
+          (normFilter === STORE_MONTESCLAROS_UUID && rec.store_name.toLowerCase().includes('montes') && !rec.store_name.toLowerCase().includes('multimarcas')) ||
           (normFilter === STORE_DIVINOPOLIS_UUID && rec.store_name.toLowerCase().includes('divin'));
         if (!matchesStore) return false;
       }
@@ -1080,13 +1096,13 @@ export function OwnerFiscalInvoicesPanel() {
     }
   };
 
-  // Ação: Cancelar NF (Gera evento de cancelamento na data selecionada sem apagar a emissão original)
+  // Ação: Cancelar NF (Apenas confirmação direta sem questionários ou campos obrigatórios)
   const handleConfirmCancellation = async () => {
     if (!invoiceToCancel) return;
-    if (!cancellationReason.trim()) {
-      toast({ variant: 'destructive', title: 'Informe o motivo do cancelamento da NF' });
-      return;
-    }
+
+    const effectiveCancelDate = cancellationDate || getLocalTodayDateString();
+    const effectiveType = cancellationType || 'estorno';
+    const effectiveReason = cancellationReason.trim() || 'Cancelamento confirmado pela diretoria';
 
     setIsSubmittingCancel(true);
     try {
@@ -1100,9 +1116,9 @@ export function OwnerFiscalInvoicesPanel() {
           return {
             ...item,
             status: 'cancelada_posteriormente',
-            cancellation_date: cancellationDate,
-            cancellation_type: cancellationType,
-            cancellation_reason: cancellationReason.trim(),
+            cancellation_date: effectiveCancelDate,
+            cancellation_type: effectiveType,
+            cancellation_reason: effectiveReason,
           };
         }
         return item;
@@ -1115,14 +1131,14 @@ export function OwnerFiscalInvoicesPanel() {
         fiscal_type: 'cancelamento',
         store_id: invoiceToCancel.store_id,
         issue_date: invoiceToCancel.issue_date,
-        entry_or_cancel_date: cancellationDate,
+        entry_or_cancel_date: effectiveCancelDate,
         party_name: invoiceToCancel.party_name,
         total_value: invoiceToCancel.total_value,
         status: 'cancelada',
-        cancellation_reason: cancellationReason.trim(),
-        cancellation_type: cancellationType,
+        cancellation_reason: effectiveReason,
+        cancellation_type: effectiveType,
         sefaz_protocol: cancellationProtocol.trim() || invoiceToCancel.sefaz_protocol || '',
-        notes: `Cancelamento de NF emitida em ${new Date(invoiceToCancel.issue_date).toLocaleDateString('pt-BR')} com ${cancellationType === 'estorno' ? 'Estorno Financeiro' : 'Crédito na Fábrica'}. Motivo: ${cancellationReason.trim()}`,
+        notes: `Cancelamento de NF Nº ${invoiceToCancel.invoice_number} confirmado pela diretoria.`,
         created_at: new Date().toISOString(),
       };
 
@@ -1131,6 +1147,7 @@ export function OwnerFiscalInvoicesPanel() {
 
       // Resposta instantânea (0ms): fecha modal e notifica UI imediatamente
       const cancelledTotal = invoiceToCancel.total_value;
+      const num = invoiceToCancel.invoice_number;
       const rawInvId = invoiceToCancel.rawInvoiceId;
       setInvoiceToCancel(null);
       setCancellationReason('');
@@ -1140,16 +1157,16 @@ export function OwnerFiscalInvoicesPanel() {
 
       toast({
         title: 'NF Cancelada com Sucesso!',
-        description: `Cancelamento homologado na data ${new Date(cancellationDate).toLocaleDateString('pt-BR')}. O valor de ${formatCurrencyBRL(cancelledTotal)} constará como ${cancellationType === 'estorno' ? 'Estorno Financeiro' : 'Crédito Fiscal'} na semana correspondente.`,
+        description: `Cancelamento da NF Nº ${num} (${formatCurrencyBRL(cancelledTotal)}) confirmado com sucesso.`,
       });
 
       // Se tiver vínculo com o Supabase, chama a mutation em segundo plano
       if (rawInvId && !rawInvId.startsWith('loc-')) {
         void cancelInvoiceMutation.mutateAsync({
           id: rawInvId,
-          cancellation_date: cancellationDate,
-          cancellation_reason: cancellationReason.trim(),
-          cancellation_type: cancellationType,
+          cancellation_date: effectiveCancelDate,
+          cancellation_reason: effectiveReason,
+          cancellation_type: effectiveType,
           sefaz_protocol: cancellationProtocol.trim(),
         });
       }
@@ -1408,9 +1425,10 @@ export function OwnerFiscalInvoicesPanel() {
                 <SelectValue placeholder="Concessionária" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as Concessionárias</SelectItem>
-                <SelectItem value={STORE_MONTESCLAROS_UUID}>Montes Claros (Matriz)</SelectItem>
-                <SelectItem value={STORE_DIVINOPOLIS_UUID}>Divinópolis (Filial)</SelectItem>
+                <SelectItem value="all">Todas as Lojas</SelectItem>
+                <SelectItem value={STORE_MONTESCLAROS_UUID}>Montes Claros</SelectItem>
+                <SelectItem value={STORE_DIVINOPOLIS_UUID}>Divinópolis</SelectItem>
+                <SelectItem value={STORE_MONTESCLAROS_MULTIMARCAS_UUID}>Multimarcas</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1637,8 +1655,8 @@ export function OwnerFiscalInvoicesPanel() {
 
                         {/* 4. Concessionária */}
                         <TableCell className="text-xs font-medium align-middle">
-                          <span className="truncate block max-w-[110px]" title={r.store_name}>
-                            {r.store_name.replace('Concessionária ', '')}
+                          <span className="truncate block font-semibold text-foreground text-xs" title={r.store_name}>
+                            {formatStoreShortName(r.store_name || r.store_id)}
                           </span>
                         </TableCell>
 
@@ -1950,8 +1968,9 @@ export function OwnerFiscalInvoicesPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={STORE_MONTESCLAROS_UUID}>Concessionária Montes Claros (Matriz)</SelectItem>
-                    <SelectItem value={STORE_DIVINOPOLIS_UUID}>Concessionária Divinópolis (Filial)</SelectItem>
+                    <SelectItem value={STORE_MONTESCLAROS_UUID}>Montes Claros</SelectItem>
+                    <SelectItem value={STORE_DIVINOPOLIS_UUID}>Divinópolis</SelectItem>
+                    <SelectItem value={STORE_MONTESCLAROS_MULTIMARCAS_UUID}>Multimarcas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2051,85 +2070,54 @@ export function OwnerFiscalInvoicesPanel() {
       </Dialog>
 
       {/* =================================================================== */}
-      {/* MODAL 2: CANCELAR NF (COM SELEÇÃO DE DATA, ESTORNO OU CRÉDITO)       */}
+      {/* MODAL 2: CANCELAR NF (CONFIRMAÇÃO DIRETA SEM FORMULÁRIO)            */}
       {/* =================================================================== */}
       <Dialog open={!!invoiceToCancel} onOpenChange={(open) => !open && setInvoiceToCancel(null)}>
         <DialogContent className="max-w-md rounded-2xl p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2 text-destructive">
               <XCircle className="w-5 h-5 text-destructive" />
-              Cancelar Nota Fiscal #{invoiceToCancel?.invoice_number}
+              Confirmar Cancelamento da NF Nº {invoiceToCancel?.invoice_number}?
             </DialogTitle>
             <DialogDescription className="text-xs">
-              O cancelamento não apaga a NF original emitida em {invoiceToCancel ? formatFiscalDate(invoiceToCancel.issue_date) : ''}. Ele registra a operação de cancelamento na semana indicada para controle de estorno ou crédito fiscal do dono.
+              Deseja realmente cancelar esta Nota Fiscal? A operação será registrada imediatamente no controle fiscal da diretoria.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            <div className="p-3 rounded-xl bg-muted/40 border text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Valor da NF:</span>
-                <strong className="font-mono text-foreground">{formatCurrencyBRL(invoiceToCancel?.total_value || 0)}</strong>
+          <div className="space-y-2 py-3">
+            <div className="p-3.5 rounded-xl bg-muted/40 border text-xs space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Nota Fiscal:</span>
+                <strong className="font-mono text-foreground font-bold">Nº {invoiceToCancel?.invoice_number}</strong>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Cliente / Destinatário:</span>
-                <span className="font-semibold text-foreground">{invoiceToCancel?.party_name}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Valor Total:</span>
+                <strong className="font-mono text-destructive text-sm font-bold">
+                  {formatCurrencyBRL(invoiceToCancel?.total_value || 0)}
+                </strong>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Data da Emissão Original:</span>
-                <span className="font-mono">{invoiceToCancel ? formatFiscalDate(invoiceToCancel.issue_date) : ''}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Destinatário:</span>
+                <span className="font-semibold text-foreground truncate max-w-[200px]" title={invoiceToCancel?.party_name}>
+                  {invoiceToCancel?.party_name}
+                </span>
               </div>
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold">Data do Cancelamento (Semana de Apuração)</Label>
-              <Input
-                type="date"
-                className="h-9 text-xs rounded-xl mt-1"
-                value={cancellationDate}
-                onChange={(e) => setCancellationDate(e.target.value)}
-              />
-              <span className="text-[10px] text-muted-foreground mt-0.5 block">
-                Esta data define em qual semana o dono receberá o estorno ou crédito fiscal.
-              </span>
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold">Tratamento Financeiro do Dono</Label>
-              <Select value={cancellationType} onValueChange={(val: any) => setCancellationType(val)}>
-                <SelectTrigger className="h-9 text-xs font-semibold rounded-xl mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="estorno">Estorno Financeiro a Receber (Devolução de Dinheiro)</SelectItem>
-                  <SelectItem value="credito">Crédito Fiscal na Fábrica (Abatimento em Compras)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold">Motivo do Cancelamento</Label>
-              <Textarea
-                className="text-xs rounded-xl mt-1 resize-none"
-                rows={2}
-                placeholder="Ex: Financiamento recusado na vistoria de entrega, desistência do cliente..."
-                value={cancellationReason}
-                onChange={(e) => setCancellationReason(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold">Protocolo SEFAZ de Cancelamento (Opcional)</Label>
-              <Input
-                className="h-9 text-xs font-mono rounded-xl mt-1"
-                placeholder="Ex: 312611009999001"
-                value={cancellationProtocol}
-                onChange={(e) => setCancellationProtocol(e.target.value)}
-              />
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Loja:</span>
+                <span className="font-semibold text-foreground">
+                  {formatStoreShortName(invoiceToCancel?.store_name || invoiceToCancel?.store_id)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Data de Emissão:</span>
+                <span className="font-mono text-muted-foreground">
+                  {invoiceToCancel ? formatFiscalDate(invoiceToCancel.issue_date) : ''}
+                </span>
+              </div>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" size="sm" onClick={() => setInvoiceToCancel(null)} disabled={isSubmittingCancel} className="rounded-xl">
               Voltar
             </Button>
@@ -2140,7 +2128,7 @@ export function OwnerFiscalInvoicesPanel() {
                   Cancelando...
                 </>
               ) : (
-                'Confirmar Cancelamento da NF'
+                'Sim, Confirmar Cancelamento'
               )}
             </Button>
           </DialogFooter>
@@ -2334,8 +2322,9 @@ export function OwnerFiscalInvoicesPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={STORE_MONTESCLAROS_UUID}>Concessionária Montes Claros (MOC)</SelectItem>
-                    <SelectItem value={STORE_DIVINOPOLIS_UUID}>Concessionária Divinópolis (DIV)</SelectItem>
+                    <SelectItem value={STORE_MONTESCLAROS_UUID}>Montes Claros (MOC)</SelectItem>
+                    <SelectItem value={STORE_DIVINOPOLIS_UUID}>Divinópolis (DIV)</SelectItem>
+                    <SelectItem value={STORE_MONTESCLAROS_MULTIMARCAS_UUID}>Multimarcas (MLT)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

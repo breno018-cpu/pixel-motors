@@ -64,7 +64,7 @@ import {
 } from '@/lib/secondCopyPdfs';
 import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { resolveContractFinancialData } from '@/lib/contractDataResolver';
-import { getStoreFromDatabase, getContractPrefix } from '@/lib/storeResolution';
+import { getStoreFromDatabase, getContractPrefix, formatStoreShortName } from '@/lib/storeResolution';
 import { downloadInvoiceRequestPng } from '@/lib/invoiceRequestPng';
 import { ReceiptAttachmentManager } from '@/components/sales/ReceiptAttachmentManager';
 import { SaleReceiptsModal } from '@/components/sales/SaleReceiptsModal';
@@ -905,7 +905,7 @@ export function SaleManageModal({
                     <SelectContent>
                       {stores.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
-                          {s.name} ({s.city})
+                          {formatStoreShortName(s.name)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1395,7 +1395,7 @@ export function SaleManageModal({
                 </div>
 
                 <div className="text-xs text-muted-foreground">
-                  Loja: <strong>{currentStore?.storeName || 'Divinópolis'}</strong>
+                  Loja: <strong>{formatStoreShortName(currentStore?.storeName) || 'Divinópolis'}</strong>
                 </div>
               </div>
 

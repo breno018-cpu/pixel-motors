@@ -21,7 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useStores } from '@/hooks/useStores';
 import { useResellers } from '@/hooks/useResellers';
 import { useEmployees } from '@/hooks/useEmployees';
-import { resolveSaleStore, isMatchingStore, STORE_MONTESCLAROS_UUID, getContractPrefix } from '@/lib/storeResolution';
+import { resolveSaleStore, isMatchingStore, STORE_MONTESCLAROS_UUID, getContractPrefix, formatStoreShortName } from '@/lib/storeResolution';
 import { getCleanSellerOptions, resolveSellerDisplayName, isValidSellerName, matchesSellerFilter } from '@/lib/sellerSanitizer';
 import { useAuth } from '@/contexts/AuthContext';
 import { isUserSellerRestricted, filterSalesBySellerScope } from '@/lib/salesScope';
@@ -67,15 +67,7 @@ function formatCPFDisplay(cpf: string) {
 }
 
 export function formatShortStoreName(storeName?: string | null): string {
-  if (!storeName) return '-';
-  const s = storeName.toUpperCase();
-  if (s.includes('MONTES CLAROS') && s.includes('SHINERAY')) return 'Montes Claros';
-  if (s.includes('DIVINOPOLIS')) return 'Divinópolis';
-  if (s.includes('MULTIMARCAS')) return 'Multimarcas';
-  return storeName
-    .replace(/SHINERAY GRUPO L1MA MOTORS /gi, '')
-    .replace(/Concessionária /gi, '')
-    .trim();
+  return formatStoreShortName(storeName);
 }
 
 export function getSaleChassis(sale: any): string {
@@ -837,7 +829,7 @@ export default function Sales() {
                     .filter((s) => s.is_active !== false)
                     .map((s) => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.name}
+                        {formatStoreShortName(s.name)}
                       </SelectItem>
                     ))}
                 </SelectContent>
@@ -1143,7 +1135,7 @@ export default function Sales() {
                   {/* Rodapé: Loja/Vendedor + Data + Preço */}
                   <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/40 text-[11px]">
                     <div className="flex items-center gap-1 text-muted-foreground truncate">
-                      <span className="truncate">{sale.store?.name?.replace('Concessionária ', '') || 'Loja'}</span>
+                      <span className="truncate">{formatStoreShortName(sale.store?.name) || 'Loja'}</span>
                       <span>•</span>
                       <span className="truncate">{resolveSellerDisplayName((sale as any).operator?.full_name || (sale as any).external_data?.seller_name || (sale as any).external_data?.operator_name || (sale as any).vendedor || (sale as any).created_by, employees) || 'Vendedor'}</span>
                       <span>•</span>

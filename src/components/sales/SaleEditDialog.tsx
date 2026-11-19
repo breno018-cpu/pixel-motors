@@ -28,6 +28,7 @@ import { useActiveTemplates } from '@/hooks/useContractTemplates';
 import { useStores } from '@/hooks/useStores';
 import {
   getContractPrefix,
+  formatStoreShortName,
   STORE_DIVINOPOLIS_UUID,
   STORE_MONTESCLAROS_UUID,
   STORE_MONTESCLAROS_MULTIMARCAS_UUID,
@@ -422,14 +423,14 @@ export function SaleEditDialog({ sale, open, onOpenChange, reviewMode = false }:
                   {stores.length > 0 ? (
                     stores.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.name} ({s.city || 'MG'})
+                        {formatStoreShortName(s.name)}
                       </SelectItem>
                     ))
                   ) : (
                     <>
-                      <SelectItem value={STORE_DIVINOPOLIS_UUID}>SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS</SelectItem>
-                      <SelectItem value={STORE_MONTESCLAROS_UUID}>SHINERAY GRUPO L1MA MOTORS MONTES CLAROS</SelectItem>
-                      <SelectItem value={STORE_MONTESCLAROS_MULTIMARCAS_UUID}>L1MA MOTORS MULTIMARCAS</SelectItem>
+                      <SelectItem value={STORE_MONTESCLAROS_UUID}>Montes Claros</SelectItem>
+                      <SelectItem value={STORE_DIVINOPOLIS_UUID}>Divinópolis</SelectItem>
+                      <SelectItem value={STORE_MONTESCLAROS_MULTIMARCAS_UUID}>Multimarcas</SelectItem>
                     </>
                   )}
                 </SelectContent>
