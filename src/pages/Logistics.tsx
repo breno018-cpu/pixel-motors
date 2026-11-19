@@ -28,6 +28,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { GlassView } from '@/components/ui/GlassView';
 import { getLiveSheetRows, formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { buildLogisticsDeliveries, DeliveryRecord, DeliveryStatus } from '@/lib/logisticsStorage';
+import { useStores } from '@/hooks/useStores';
+import { formatStoreShortName } from '@/lib/storeResolution';
 import { DeliveryManageModal } from '@/components/logistics/DeliveryManageModal';
 import { AuthorizedEntryDeliveryTermModal } from '@/components/logistics/AuthorizedEntryDeliveryTermModal';
 import { FreightCalculatorDialog } from '@/components/logistics/FreightCalculatorDialog';
@@ -38,6 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Logistics() {
+  const { data: stores = [] } = useStores();
   const { toast } = useToast();
   const { profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -279,8 +282,13 @@ export default function Logistics() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all" className="text-xs">Todos os Polos</SelectItem>
-                <SelectItem value="store-divinopolis" className="text-xs">Polo Divinópolis</SelectItem>
-                <SelectItem value="store-montesclaros" className="text-xs">Polo Montes Claros</SelectItem>
+                {stores
+                  .filter((s) => s.is_active !== false)
+                  .map((s) => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs">
+                      Polo {formatStoreShortName(s.name)}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
 

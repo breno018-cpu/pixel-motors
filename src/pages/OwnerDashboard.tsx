@@ -207,19 +207,24 @@ export default function OwnerDashboard() {
 
   // Contadores e Totais Financeiros por Concessionária
   const { dealershipCounts, dealershipFinancials } = useMemo(() => {
-    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
-    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const counts: Record<string, number> = { all: 0 };
+    const financials: Record<string, number> = { all: 0 };
 
     sales.forEach((s) => {
+      const sId = s.store_id || s.loja_slug;
       const k = resolveStoreToKey(s.loja_slug || s.store_id || s.loja_cidade || s.loja_nome);
-      counts.all++;
-      if (k !== 'all') {
-        counts[k]++;
-      }
       const val = Number(s.valor) || 0;
-      financials.all += val;
-      if (k !== 'all') {
-        financials[k] += val;
+
+      counts.all = (counts.all || 0) + 1;
+      financials.all = (financials.all || 0) + val;
+
+      if (k && k !== 'all') {
+        counts[k] = (counts[k] || 0) + 1;
+        financials[k] = (financials[k] || 0) + val;
+      }
+      if (sId && sId !== k) {
+        counts[sId] = (counts[sId] || 0) + 1;
+        financials[sId] = (financials[sId] || 0) + val;
       }
     });
 
@@ -730,9 +735,13 @@ export default function OwnerDashboard() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as Lojas</SelectItem>
-                  <SelectItem value="montesclaros">Montes Claros</SelectItem>
-                  <SelectItem value="divinopolis">Divinópolis</SelectItem>
-                  <SelectItem value="multimarcas">Multimarcas</SelectItem>
+                  {stores
+                    .filter((s) => s.is_active !== false)
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {formatStoreShortName(s.name)}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
 
@@ -1104,8 +1113,13 @@ export default function OwnerDashboard() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todas as Concessionárias</SelectItem>
-                      <SelectItem value="montesclaros">Pátio Montes Claros</SelectItem>
-                      <SelectItem value="divinopolis">Pátio Divinópolis</SelectItem>
+                      {stores
+                        .filter((s) => s.is_active !== false)
+                        .map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            Pátio {formatStoreShortName(s.name)}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
 

@@ -135,6 +135,8 @@ export function saveStoreToCache(storeUpdate: Partial<Store> & { id: string }) {
     }
 
     localStorage.setItem(STORES_LOCAL_CACHE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('dealflow:stores-updated'));
   } catch (err) {
     console.warn('Erro ao salvar loja no cache local:', err);
   }
@@ -188,6 +190,12 @@ export function useStores() {
           .order('name');
         if (!error && data && data.length > 0) {
           rawData = data as Store[];
+          // Sincroniza o cache local com as lojas vindas da base remota
+          try {
+            for (const s of rawData) {
+              saveStoreToCache(s);
+            }
+          } catch {}
         }
       } catch (err) {
         console.warn('Falha na consulta remota de stores:', err);

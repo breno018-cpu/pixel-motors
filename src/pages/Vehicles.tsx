@@ -305,20 +305,25 @@ export default function Vehicles() {
 
   // Contadores e Totais Financeiros por Concessionária para Estoque Ativo
   const { dealershipCounts, dealershipFinancials } = useMemo(() => {
-    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
-    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const counts: Record<string, number> = { all: 0 };
+    const financials: Record<string, number> = { all: 0 };
 
     (vehicles || []).forEach((v) => {
       if (v.status === 'vendido') return;
-      const key = resolveStoreToKey(v.store_id);
-      counts.all++;
-      if (key !== 'all') {
-        counts[key]++;
-      }
+      const sId = v.store_id;
+      const key = resolveStoreToKey(sId);
       const val = Number(v.sale_price) || 0;
-      financials.all += val;
-      if (key !== 'all') {
-        financials[key] += val;
+
+      counts.all = (counts.all || 0) + 1;
+      financials.all = (financials.all || 0) + val;
+
+      if (key && key !== 'all') {
+        counts[key] = (counts[key] || 0) + 1;
+        financials[key] = (financials[key] || 0) + val;
+      }
+      if (sId && sId !== key) {
+        counts[sId] = (counts[sId] || 0) + 1;
+        financials[sId] = (financials[sId] || 0) + val;
       }
     });
 
@@ -330,8 +335,7 @@ export default function Vehicles() {
     return (vehicles || []).filter((vehicle) => {
       let matchesStore = true;
       if (dealershipScope.activeScope !== 'all') {
-        const vKey = resolveStoreToKey(vehicle.store_id);
-        matchesStore = vKey === dealershipScope.activeScope;
+        matchesStore = dealershipScope.matchesScope(vehicle.store_id);
       } else {
         matchesStore = isMatchingStore(vehicle.store_id, storeFilter);
       }
@@ -866,10 +870,7 @@ export default function Vehicles() {
               activeScope={dealershipScope.activeScope}
               onChange={(scope) => {
                 dealershipScope.setActiveScope(scope);
-                if (scope === 'all') handleStoreChange('all');
-                else if (scope === 'divinopolis') handleStoreChange(STORE_DIVINOPOLIS_UUID);
-                else if (scope === 'montesclaros') handleStoreChange(STORE_MONTESCLAROS_UUID);
-                else if (scope === 'multimarcas') handleStoreChange(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
+                handleStoreChange(scope);
               }}
               counts={dealershipCounts}
               financials={dealershipFinancials}

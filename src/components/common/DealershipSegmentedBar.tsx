@@ -6,20 +6,24 @@ import {
   DealershipMeta,
 } from '@/contexts/DealershipScopeContext';
 import { cn } from '@/lib/utils';
-import { Layers, Building2, Store, Sparkles } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 
 interface DealershipSegmentedBarProps {
   value?: DealershipKey;
+  activeScope?: DealershipKey; // Alias compatível
   onChange?: (scope: DealershipKey) => void;
-  counts?: Partial<Record<DealershipKey, number>>;
-  financials?: Partial<Record<DealershipKey, number>>;
+  counts?: Partial<Record<string, number>>;
+  financials?: Partial<Record<string, number>>;
   variant?: 'pills' | 'tabs' | 'header';
   className?: string;
   showAllOption?: boolean;
+  showCounts?: boolean;
+  showTotals?: boolean;
 }
 
 export function DealershipSegmentedBar({
   value,
+  activeScope,
   onChange,
   counts,
   financials,
@@ -28,12 +32,14 @@ export function DealershipSegmentedBar({
   showAllOption = true,
 }: DealershipSegmentedBarProps) {
   const scopeCtx = useDealershipScope();
-  const currentScope = value !== undefined ? value : scopeCtx.activeScope;
+  const rawScope = value !== undefined ? value : (activeScope !== undefined ? activeScope : scopeCtx.activeScope);
+  const currentScope = (rawScope || 'all').toLowerCase().trim();
   const setScope = onChange || scopeCtx.setActiveScope;
 
-  const items = Object.values(DEALERSHIPS_CONFIG).filter(
-    (item) => showAllOption || item.key !== 'all'
-  );
+  const items = (scopeCtx.dealershipsList && scopeCtx.dealershipsList.length > 0
+    ? scopeCtx.dealershipsList
+    : Object.values(DEALERSHIPS_CONFIG)
+  ).filter((item) => showAllOption || item.key !== 'all');
 
   const formatBrlShort = (val: number) => {
     if (val >= 1000000) return `R$ ${(val / 1000000).toFixed(1)}M`;
@@ -46,31 +52,36 @@ export function DealershipSegmentedBar({
     return (
       <div
         className={cn(
-          'inline-flex items-center gap-1 p-1 rounded-xl bg-card/90 border border-border/80 shadow-xs backdrop-blur-md',
+          'inline-flex items-center gap-1 p-1 rounded-xl bg-card/90 border border-border/80 shadow-xs backdrop-blur-md overflow-x-auto max-w-full',
           className
         )}
       >
         {items.map((item) => {
-          const isSelected = currentScope === item.key;
+          const isSelected =
+            currentScope === item.key.toLowerCase() ||
+            currentScope === item.id.toLowerCase() ||
+            (item.legacyKey && currentScope === item.legacyKey.toLowerCase());
           const Icon = item.icon;
 
           return (
             <button
               key={item.key}
               type="button"
-              onClick={() => setScope(item.key)}
+              onClick={() => setScope(item.id !== 'all' ? item.id : 'all')}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all select-none',
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all select-none shrink-0',
                 isSelected
                   ? cn(
                       'shadow-xs font-bold',
                       item.key === 'all'
                         ? 'bg-primary text-primary-foreground'
-                        : item.key === 'divinopolis'
+                        : item.legacyKey === 'divinopolis'
                         ? 'bg-emerald-600 text-white'
-                        : item.key === 'montesclaros'
+                        : item.legacyKey === 'montesclaros'
                         ? 'bg-blue-600 text-white'
-                        : 'bg-purple-600 text-white'
+                        : item.legacyKey === 'multimarcas'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-primary text-primary-foreground'
                     )
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
               )}
@@ -101,16 +112,25 @@ export function DealershipSegmentedBar({
 
       <div className="flex items-center gap-1.5 flex-wrap flex-1">
         {items.map((item) => {
-          const isSelected = currentScope === item.key;
+          const isSelected =
+            currentScope === item.key.toLowerCase() ||
+            currentScope === item.id.toLowerCase() ||
+            (item.legacyKey && currentScope === item.legacyKey.toLowerCase());
           const Icon = item.icon;
-          const count = counts ? counts[item.key] : undefined;
-          const financial = financials ? financials[item.key] : undefined;
+
+          // Suporta contagem por id da loja, key ou legacyKey
+          const count = counts
+            ? (counts[item.key] ?? counts[item.id] ?? (item.legacyKey ? counts[item.legacyKey] : undefined))
+            : undefined;
+          const financial = financials
+            ? (financials[item.key] ?? financials[item.id] ?? (item.legacyKey ? financials[item.legacyKey] : undefined))
+            : undefined;
 
           return (
             <button
               key={item.key}
               type="button"
-              onClick={() => setScope(item.key)}
+              onClick={() => setScope(item.id !== 'all' ? item.id : 'all')}
               className={cn(
                 'relative flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs select-none',
                 isSelected
@@ -118,11 +138,13 @@ export function DealershipSegmentedBar({
                       'ring-2 ring-offset-1 font-bold shadow-xs',
                       item.key === 'all'
                         ? 'bg-primary/10 text-primary border-primary/40 ring-primary/30'
-                        : item.key === 'divinopolis'
+                        : item.legacyKey === 'divinopolis'
                         ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/40 ring-emerald-500/30'
-                        : item.key === 'montesclaros'
+                        : item.legacyKey === 'montesclaros'
                         ? 'bg-blue-500/15 text-blue-800 dark:text-blue-300 border-blue-500/40 ring-blue-500/30'
-                        : 'bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/40 ring-purple-500/30'
+                        : item.legacyKey === 'multimarcas'
+                        ? 'bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/40 ring-purple-500/30'
+                        : cn(item.badgeClass, item.borderClass, item.bgLightClass, 'ring-primary/30')
                     )
                   : 'bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/80'
               )}

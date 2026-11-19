@@ -79,15 +79,16 @@ export function isMatchingStore(vehicleStoreId: string | null | undefined, filte
 }
 
 /**
- * Retorna o prefixo oficial do contrato ('MLT', 'MOC' ou 'DIV') de acordo com a loja.
+ * Retorna o prefixo oficial do contrato ('MLT', 'MOC', 'DIV' ou dinâmico para novas filiais) de acordo com a loja.
  * - L1MA MOTORS MULTIMARCAS: 'MLT'
  * - SHINERAY MONTES CLAROS: 'MOC'
  * - SHINERAY DIVINÓPOLIS (Matriz): 'DIV'
+ * - OUTRAS CONCESSIONÁRIAS: Sigla gerada dinamicamente (ex: Patos de Minas -> 'PTM')
  */
 export function getContractPrefix(
   storeId?: string | null,
   storeName?: string | null
-): 'MLT' | 'MOC' | 'DIV' {
+): string {
   const sId = (storeId || '').toLowerCase().trim();
   const sName = (storeName || '').toLowerCase().trim();
 
@@ -118,8 +119,32 @@ export function getContractPrefix(
     return 'MOC';
   }
 
-  // 3. Divinópolis (Padrão)
-  return 'DIV';
+  // 3. Divinópolis
+  if (
+    sId === STORE_DIVINOPOLIS_UUID.toLowerCase() ||
+    sId === 'store-divinopolis' ||
+    sId.includes('divin') ||
+    sId.includes('matriz') ||
+    sName.includes('divin') ||
+    sName.includes('matriz')
+  ) {
+    return 'DIV';
+  }
+
+  // 4. Nova Concessionária Dinâmica (ex: Patos de Minas -> PTM)
+  const shortName = formatStoreShortName(storeName || storeId);
+  const words = shortName.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').trim().split(/\s+/).filter(w => !['de', 'da', 'do', 'e'].includes(w.toLowerCase()));
+  if (words.length >= 3) {
+    return (words[0][0] + words[1][0] + words[2][0]).toUpperCase();
+  }
+  if (words.length === 2) {
+    return (words[0].slice(0, 2) + words[1][0]).toUpperCase();
+  }
+  if (words.length === 1 && words[0].length >= 3) {
+    return words[0].slice(0, 3).toUpperCase();
+  }
+
+  return 'CON';
 }
 
 /**
@@ -128,6 +153,7 @@ export function getContractPrefix(
  * Exemplos:
  * - "SHINERAY GRUPO L1MA MOTORS MONTES CLAROS" -> "Montes Claros"
  * - "SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS" -> "Divinópolis"
+ * - "SHINERAY GRUPO L1MA MOTORS PATOS DE MINAS" -> "Patos de Minas"
  * - "L1MA MOTORS MULTIMARCAS" -> "Multimarcas"
  */
 export function formatStoreShortName(storeNameOrId?: string | null): string {
@@ -164,6 +190,22 @@ export function formatStoreShortName(storeNameOrId?: string | null): string {
     lower.includes('matriz')
   ) {
     return 'Divinópolis';
+  }
+
+  // 4. Se for UUID de outra loja adicionada, consulta o cache persistente
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean)) {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('dealflow_custom_stores_v1') : null;
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list)) {
+          const match = list.find((s) => s.id === clean);
+          if (match && match.name) {
+            return formatStoreShortName(match.name);
+          }
+        }
+      }
+    } catch {}
   }
 
   // Caso seja outro nome/formato, remove palavras repetitivas
@@ -406,20 +448,63 @@ export function getStoreFromDatabase(
           (found.id || '').toLowerCase() === STORE_MONTESCLAROS_UUID ||
           (found.id || '').toLowerCase() === 'store-montesclaros');
       return {
-        storeId: isMulti ? STORE_MONTESCLAROS_MULTIMARCAS_UUID : isMontes ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
-        storeName: found.name || (isMulti ? 'L1MA MOTORS MULTIMARCAS' : isMontes ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS' : 'SHINERAY GRUPO L1MA MOTORS DIVINOPOLIS'),
-        city: found.city || (isMontes || isMulti ? 'Montes Claros' : 'Divinópolis'),
+        storeId: isMulti ? STORE_MONTESCLAROS_MULTIMARCAS_UUID : isMontes ? STORE_MONTESCLAROS_UUID : (found.id || cleanRef),
+        storeName: found.name || (isMulti ? 'L1MA MOTORS MULTIMARCAS' : isMontes ? 'SHINERAY GRUPO L1MA MOTORS MONTES CLAROS' : found.name || 'Concessionária'),
+        city: found.city || (isMontes || isMulti ? 'Montes Claros' : 'Minas Gerais'),
         state: found.state || 'MG',
-        cnpj: found.cnpj || (isMontes || isMulti ? '18.456.789/0002-82' : '18.456.789/0001-01'),
-        address: found.address || (isMulti ? 'AV. JOÃO XXIII N°990 B. EDGAR PEREIRA, Montes Claros/MG' : isMontes ? 'AV. JOAO XXIII, Nº 990, Montes Claros/MG' : 'RUA ESPIRITO SANTOS 307, VIA BELO HORIZONTE, Divinópolis/MG'),
-        phone: found.phone || (isMontes || isMulti ? '(38) 99938-1522' : '(37) 99843-9319'),
-        email: found.email || (isMulti ? 'multimarcas@pixelmotors.com.br' : isMontes ? 'ADMBRENO@INDEX.COM' : 'shineraydivinopolisoficial@gmail.com'),
+        cnpj: found.cnpj || (isMontes || isMulti ? '18.456.789/0002-82' : found.cnpj || null),
+        address: found.address || null,
+        phone: found.phone || null,
+        email: found.email || null,
       };
     }
   }
 
+  // Consulta cache local persistente para filiais adicionadas dinamicamente
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('dealflow_custom_stores_v1') : null;
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list) && list.length > 0) {
+        const found = list.find((s) => {
+          const sId = (s.id || '').toLowerCase();
+          const sName = (s.name || '').toLowerCase();
+          const sCity = (s.city || '').toLowerCase();
+          return (
+            sId === cleanRef ||
+            sName === cleanRef ||
+            (cleanRef && (sName.includes(cleanRef) || cleanRef.includes(sName))) ||
+            (cleanRef && (sCity.includes(cleanRef) || cleanRef.includes(sCity)))
+          );
+        });
+        if (found) {
+          return {
+            storeId: found.id || cleanRef,
+            storeName: found.name || 'Concessionária',
+            city: found.city || 'Minas Gerais',
+            state: found.state || 'MG',
+            cnpj: found.cnpj || null,
+            address: found.address || null,
+            phone: found.phone || null,
+            email: found.email || null,
+          };
+        }
+      }
+    }
+  } catch {}
+
   if (storeIdOrRef && OFFICIAL_STORES[storeIdOrRef]) {
     return OFFICIAL_STORES[storeIdOrRef];
+  }
+
+  // Se for UUID válido de nova filial, preserva o ID e resolve o nome amigável
+  if (storeIdOrRef && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeIdOrRef)) {
+    return {
+      storeId: storeIdOrRef,
+      storeName: formatStoreShortName(storeIdOrRef),
+      city: 'Minas Gerais',
+      state: 'MG',
+    };
   }
 
   return OFFICIAL_STORES['store-divinopolis'];
@@ -539,6 +624,14 @@ export function resolveSaleStore(
     return OFFICIAL_STORES[explicitStoreId];
   }
 
+  // Se a venda possui uma loja explícita registrada (banco / cache / objeto store)
+  if (explicitStoreId) {
+    const dbResolved = getStoreFromDatabase(explicitStoreId);
+    if (dbResolved && dbResolved.storeId && dbResolved.storeId !== STORE_DIVINOPOLIS_UUID) {
+      return dbResolved;
+    }
+  }
+
   // 2. Prioridade 2: Lotação do Vendedor no cadastro de colaboradores (employees) ou mapeamento canônico
   const sellerRaw = String(
     saleOrContract.vendedor ||
@@ -617,6 +710,16 @@ export function resolveSaleStore(
     }
   }
 
-  // 5. Padrão contábil: Concessionária Divinópolis
+  // 5. Se o objeto de venda carrega id/nome de concessionária válido
+  if (saleOrContract.store?.id || saleOrContract.store?.name) {
+    return {
+      storeId: saleOrContract.store?.id || toValidStoreUuid(saleOrContract.store?.name),
+      storeName: saleOrContract.store?.name || 'Concessionária',
+      city: saleOrContract.store?.city || 'Minas Gerais',
+      state: 'MG',
+    };
+  }
+
+  // Padrão contábil: Concessionária Divinópolis
   return OFFICIAL_STORES['store-divinopolis'];
 }

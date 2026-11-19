@@ -214,9 +214,9 @@ export const WEEKS_CONFIG = [
 
 export function normalizeStoreId(storeId?: string | null): string {
   if (!storeId) return STORE_DIVINOPOLIS_UUID;
-  const s = String(storeId).toLowerCase();
+  const s = String(storeId).toLowerCase().trim();
   if (
-    s === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
+    s === STORE_MONTESCLAROS_MULTIMARCAS_UUID.toLowerCase() ||
     s === 'store-multimarcas' ||
     s.includes('multimarcas') ||
     s.includes('multi marcas') ||
@@ -224,10 +224,13 @@ export function normalizeStoreId(storeId?: string | null): string {
   ) {
     return STORE_MONTESCLAROS_MULTIMARCAS_UUID;
   }
-  if (s.includes('montes') || s === STORE_MONTESCLAROS_UUID || s === 'store-montesclaros' || s.includes('moc')) {
+  if (s.includes('montes') || s === STORE_MONTESCLAROS_UUID.toLowerCase() || s === 'store-montesclaros' || s.includes('moc')) {
     return STORE_MONTESCLAROS_UUID;
   }
-  return STORE_DIVINOPOLIS_UUID;
+  if (s.includes('divin') || s === STORE_DIVINOPOLIS_UUID.toLowerCase() || s === 'store-divinopolis' || s.includes('matriz')) {
+    return STORE_DIVINOPOLIS_UUID;
+  }
+  return storeId;
 }
 
 export function cleanFakeFiscalInvoices(): void {
@@ -1124,19 +1127,24 @@ export function OwnerFiscalInvoicesPanel() {
 
   // Contadores e Totais Financeiros por Concessionária (Grupo L1MA Motors)
   const { dealershipCounts, dealershipFinancials } = useMemo(() => {
-    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
-    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const counts: Record<string, number> = { all: 0 };
+    const financials: Record<string, number> = { all: 0 };
 
     allFiscalRecords.forEach((r) => {
-      const key = resolveStoreToKey(r.store_id || r.store_name);
-      counts.all++;
-      if (key !== 'all') {
-        counts[key]++;
-      }
+      const sId = r.store_id;
+      const key = resolveStoreToKey(sId || r.store_name);
       const val = Number(r.total_value) || 0;
-      financials.all += val;
-      if (key !== 'all') {
-        financials[key] += val;
+
+      counts.all = (counts.all || 0) + 1;
+      financials.all = (financials.all || 0) + val;
+
+      if (key && key !== 'all') {
+        counts[key] = (counts[key] || 0) + 1;
+        financials[key] = (financials[key] || 0) + val;
+      }
+      if (sId && sId !== key) {
+        counts[sId] = (counts[sId] || 0) + 1;
+        financials[sId] = (financials[sId] || 0) + val;
       }
     });
 
@@ -1148,16 +1156,14 @@ export function OwnerFiscalInvoicesPanel() {
     return allFiscalRecords.filter((rec) => {
       // 1. Filtro de Concessionária (Escopo Global e Local)
       if (dealershipScope.activeScope !== 'all') {
-        const recKey = resolveStoreToKey(rec.store_id || rec.store_name);
-        if (recKey !== dealershipScope.activeScope) return false;
+        const matches = dealershipScope.matchesScope(rec.store_id || rec.store_name);
+        if (!matches) return false;
       } else if (storeFilter !== 'all') {
         const normFilter = normalizeStoreId(storeFilter);
         const normRec = normalizeStoreId(rec.store_id || rec.store_name);
         const matchesStore =
           normRec === normFilter ||
-          (normFilter === STORE_MONTESCLAROS_MULTIMARCAS_UUID && rec.store_name.toLowerCase().includes('multimarcas')) ||
-          (normFilter === STORE_MONTESCLAROS_UUID && rec.store_name.toLowerCase().includes('montes') && !rec.store_name.toLowerCase().includes('multimarcas')) ||
-          (normFilter === STORE_DIVINOPOLIS_UUID && rec.store_name.toLowerCase().includes('divin'));
+          isMatchingStore(rec.store_id || rec.store_name, storeFilter);
         if (!matchesStore) return false;
       }
 
@@ -1875,10 +1881,7 @@ export function OwnerFiscalInvoicesPanel() {
           activeScope={dealershipScope.activeScope}
           onChange={(scope) => {
             dealershipScope.setActiveScope(scope);
-            if (scope === 'all') setStoreFilter('all');
-            else if (scope === 'divinopolis') setStoreFilter(STORE_DIVINOPOLIS_UUID);
-            else if (scope === 'montesclaros') setStoreFilter(STORE_MONTESCLAROS_UUID);
-            else if (scope === 'multimarcas') setStoreFilter(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
+            setStoreFilter(scope);
           }}
           counts={dealershipCounts}
           financials={dealershipFinancials}
@@ -1988,10 +1991,7 @@ export function OwnerFiscalInvoicesPanel() {
               value={storeFilter}
               onValueChange={(val) => {
                 setStoreFilter(val);
-                if (val === 'all') dealershipScope.setActiveScope('all');
-                else if (val === STORE_DIVINOPOLIS_UUID) dealershipScope.setActiveScope('divinopolis');
-                else if (val === STORE_MONTESCLAROS_UUID) dealershipScope.setActiveScope('montesclaros');
-                else if (val === STORE_MONTESCLAROS_MULTIMARCAS_UUID) dealershipScope.setActiveScope('multimarcas');
+                dealershipScope.setActiveScope(val);
               }}
             >
               <SelectTrigger className="h-8 text-xs rounded-xl mt-1">
@@ -1999,9 +1999,13 @@ export function OwnerFiscalInvoicesPanel() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Lojas</SelectItem>
-                <SelectItem value={STORE_MONTESCLAROS_UUID}>Montes Claros</SelectItem>
-                <SelectItem value={STORE_DIVINOPOLIS_UUID}>Divinópolis</SelectItem>
-                <SelectItem value={STORE_MONTESCLAROS_MULTIMARCAS_UUID}>Multimarcas</SelectItem>
+                {stores
+                  .filter((s) => s.is_active !== false)
+                  .map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {formatStoreShortName(s.name)}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -3114,9 +3118,13 @@ export function OwnerFiscalInvoicesPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={STORE_MONTESCLAROS_UUID}>Montes Claros</SelectItem>
-                    <SelectItem value={STORE_DIVINOPOLIS_UUID}>Divinópolis</SelectItem>
-                    <SelectItem value={STORE_MONTESCLAROS_MULTIMARCAS_UUID}>Multimarcas</SelectItem>
+                    {stores
+                      .filter((s) => s.is_active !== false)
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {formatStoreShortName(s.name)} ({s.city})
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -3713,9 +3721,13 @@ export function OwnerFiscalInvoicesPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={STORE_MONTESCLAROS_UUID}>Montes Claros (MOC)</SelectItem>
-                    <SelectItem value={STORE_DIVINOPOLIS_UUID}>Divinópolis (DIV)</SelectItem>
-                    <SelectItem value={STORE_MONTESCLAROS_MULTIMARCAS_UUID}>Multimarcas (MLT)</SelectItem>
+                    {stores
+                      .filter((s) => s.is_active !== false)
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {formatStoreShortName(s.name)} ({getContractPrefix(s.id, s.name)})
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

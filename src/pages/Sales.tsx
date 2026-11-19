@@ -602,10 +602,10 @@ export default function Sales() {
 
       // 2. Filtro de Concessionária (Escopo Global e Local)
       if (dealershipScope.activeScope !== 'all') {
-        const saleScope = resolveStoreToKey(sale.store_id || sale.store?.id || sale.store?.name);
-        if (saleScope !== dealershipScope.activeScope) return false;
+        const matches = dealershipScope.matchesScope(sale.store_id || sale.store?.id || sale.store?.name);
+        if (!matches) return false;
       } else if (storeFilter !== 'all') {
-        const matchesStore = isMatchingStore(sale.store_id, storeFilter);
+        const matchesStore = isMatchingStore(sale.store_id || sale.store?.id, storeFilter);
         if (!matchesStore) return false;
       }
 
@@ -631,23 +631,28 @@ export default function Sales() {
 
   // Contadores e Totais Financeiros por Concessionária (Grupo L1MA Motors)
   const { dealershipCounts, dealershipFinancials } = useMemo(() => {
-    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
-    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const counts: Record<string, number> = { all: 0 };
+    const financials: Record<string, number> = { all: 0 };
 
     allSales.forEach((sale) => {
       if (periodFilter !== 'all' && (sale as any).review_status !== 'questionada') {
         if (!isDateInPeriod(sale.signed_at || sale.created_at)) return;
       }
 
-      const key = resolveStoreToKey(sale.store_id || sale.store?.id || sale.store?.name);
-      counts.all++;
-      if (key !== 'all') {
-        counts[key]++;
-      }
+      const sId = sale.store_id || sale.store?.id;
+      const key = resolveStoreToKey(sId || sale.store?.name);
       const val = Number(sale.sale_price) || 0;
-      financials.all += val;
-      if (key !== 'all') {
-        financials[key] += val;
+
+      counts.all = (counts.all || 0) + 1;
+      financials.all = (financials.all || 0) + val;
+
+      if (key && key !== 'all') {
+        counts[key] = (counts[key] || 0) + 1;
+        financials[key] = (financials[key] || 0) + val;
+      }
+      if (sId && sId !== key) {
+        counts[sId] = (counts[sId] || 0) + 1;
+        financials[sId] = (financials[sId] || 0) + val;
       }
     });
 
@@ -854,10 +859,7 @@ export default function Sales() {
                 activeScope={dealershipScope.activeScope}
                 onChange={(scope) => {
                   dealershipScope.setActiveScope(scope);
-                  if (scope === 'all') setStoreFilter('all');
-                  else if (scope === 'divinopolis') setStoreFilter(STORE_DIVINOPOLIS_UUID);
-                  else if (scope === 'montesclaros') setStoreFilter(STORE_MONTESCLAROS_UUID);
-                  else if (scope === 'multimarcas') setStoreFilter(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
+                  setStoreFilter(scope);
                 }}
                 counts={dealershipCounts}
                 financials={dealershipFinancials}
@@ -909,10 +911,7 @@ export default function Sales() {
                 value={storeFilter}
                 onValueChange={(val) => {
                   setStoreFilter(val);
-                  if (val === 'all') dealershipScope.setActiveScope('all');
-                  else if (val === STORE_DIVINOPOLIS_UUID) dealershipScope.setActiveScope('divinopolis');
-                  else if (val === STORE_MONTESCLAROS_UUID) dealershipScope.setActiveScope('montesclaros');
-                  else if (val === STORE_MONTESCLAROS_MULTIMARCAS_UUID) dealershipScope.setActiveScope('multimarcas');
+                  dealershipScope.setActiveScope(val);
 
                   if (val !== 'all' && resellerFilter !== 'all') {
                     setResellerFilter('all');

@@ -160,8 +160,9 @@ export function CreateSaleModal({
   }, [sellerStore, user, profile]);
 
   const initialStoreUuid = useMemo(() => {
+    if (sellerStore?.storeId) return sellerStore.storeId;
     return isDirectMocUser ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID;
-  }, [isDirectMocUser]);
+  }, [sellerStore, isDirectMocUser]);
 
   const resolvedDefaultSeller = useMemo(() => {
     const cleanEmail = (user?.email || '').toLowerCase();
@@ -409,19 +410,7 @@ export function CreateSaleModal({
         else if (paymentMethodCategory === 'financiamento_100') setFinVal(pStr);
       }
       if (found.store_id && !isRestrictedSeller) {
-        if (
-          found.store_id === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
-          found.store_id === 'store-multimarcas' ||
-          found.store_id.toLowerCase().includes('multimarcas')
-        ) {
-          setStoreId(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
-        } else {
-          const isMoc =
-            found.store_id === 'store-montesclaros' ||
-            found.store_id === STORE_MONTESCLAROS_UUID ||
-            found.store_id.toLowerCase().includes('montes');
-          setStoreId(isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID);
-        }
+        setStoreId(found.store_id);
       }
     }
   };
@@ -1341,19 +1330,7 @@ export function CreateSaleModal({
                             setVehicleSource('inventory');
                           }
                           if (veh.store_id && !isRestrictedSeller) {
-                            if (
-                              veh.store_id === STORE_MONTESCLAROS_MULTIMARCAS_UUID ||
-                              veh.store_id === 'store-multimarcas' ||
-                              veh.store_id.toLowerCase().includes('multimarcas')
-                            ) {
-                              setStoreId(STORE_MONTESCLAROS_MULTIMARCAS_UUID);
-                            } else {
-                              const isMoc =
-                                veh.store_id === 'store-montesclaros' ||
-                                veh.store_id === STORE_MONTESCLAROS_UUID ||
-                                veh.store_id.toLowerCase().includes('montes');
-                              setStoreId(isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID);
-                            }
+                            setStoreId(veh.store_id);
                           }
                         }}
                         filterStoreId={storeId}

@@ -270,19 +270,24 @@ export default function MotoInvoices() {
 
   // Contadores e Totais Financeiros por Concessionária
   const { dealershipCounts, dealershipFinancials } = useMemo(() => {
-    const counts = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
-    const financials = { all: 0, divinopolis: 0, montesclaros: 0, multimarcas: 0 };
+    const counts: Record<string, number> = { all: 0 };
+    const financials: Record<string, number> = { all: 0 };
 
     invoices.forEach((inv) => {
-      const key = resolveStoreToKey(inv.store_id || inv.store?.id || inv.store?.name);
-      counts.all++;
-      if (key !== 'all') {
-        counts[key]++;
-      }
+      const sId = inv.store_id || inv.store?.id;
+      const key = resolveStoreToKey(sId || inv.store?.name);
       const val = Number(inv.total_value) || 0;
-      financials.all += val;
-      if (key !== 'all') {
-        financials[key] += val;
+
+      counts.all = (counts.all || 0) + 1;
+      financials.all = (financials.all || 0) + val;
+
+      if (key && key !== 'all') {
+        counts[key] = (counts[key] || 0) + 1;
+        financials[key] = (financials[key] || 0) + val;
+      }
+      if (sId && sId !== key) {
+        counts[sId] = (counts[sId] || 0) + 1;
+        financials[sId] = (financials[sId] || 0) + val;
       }
     });
 
@@ -293,10 +298,9 @@ export default function MotoInvoices() {
   const motoInvoices = useMemo(() => {
     if (dealershipScope.activeScope === 'all') return invoices;
     return invoices.filter((inv) => {
-      const k = resolveStoreToKey(inv.store_id || inv.store?.id || inv.store?.name);
-      return k === dealershipScope.activeScope;
+      return dealershipScope.matchesScope(inv.store_id || inv.store?.id || inv.store?.name);
     });
-  }, [invoices, dealershipScope.activeScope]);
+  }, [invoices, dealershipScope]);
 
   // Handler: Seleciona loja e reseta venda vinculada
   const handleStoreChange = (storeId: string) => {
