@@ -716,6 +716,7 @@ export function CreateSaleModal({
       } catch {}
 
       // 2. Insere no Supabase Contracts em segundo plano
+      let contractPayload: any = null;
       try {
         const isUuid = (val: any): boolean =>
           typeof val === 'string' &&
@@ -755,7 +756,7 @@ export function CreateSaleModal({
           ? finalFinInstallmentVal 
           : (cardValNum > 0 && cardInstallments > 1 ? finalCardInstallmentVal : null);
 
-        const contractPayload: any = {
+        contractPayload = {
           id: saleUuid,
           contract_number: contractNumber,
           buyer_name: buyerName.trim(),
@@ -924,7 +925,7 @@ export function CreateSaleModal({
       const emitSaleContract = async () => {
         try {
           const fullContractData = {
-            ...contractPayload,
+            ...(contractPayload || {}),
             id: saleUuid,
             contract_number: contractNumber,
             vehicleBrand: 'SHINERAY',
@@ -933,10 +934,10 @@ export function CreateSaleModal({
             vehicleColor: vehicleColor,
             vehicleChassis: vehicleChassis,
             salePrice: totalValNum,
-            downPayment: contractPayload.down_payment,
-            paymentMethod: contractPayload.payment_method,
-            installments: contractPayload.installments,
-            installmentValue: contractPayload.installment_value,
+            downPayment: contractPayload?.down_payment,
+            paymentMethod: contractPayload?.payment_method,
+            installments: contractPayload?.installments,
+            installmentValue: contractPayload?.installment_value,
             template_id: templateId || null,
           };
           await downloadOriginalContract(fullContractData);

@@ -50,7 +50,7 @@ import { useStores } from '@/hooks/useStores';
 import { useEmployees } from '@/hooks/useEmployees';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { exportToXLSX } from '@/lib/export';
-import { isMontesClarosStore, getStoreDisplayName } from '@/lib/storeResolution';
+import { isMontesClarosStore, getStoreDisplayName, formatStoreShortName } from '@/lib/storeResolution';
 import {
   useDealershipScope,
   DealershipBadge,

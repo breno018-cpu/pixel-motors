@@ -52,6 +52,8 @@ import {
   STORE_MONTESCLAROS_UUID,
   STORE_MONTESCLAROS_MULTIMARCAS_UUID,
   formatStoreShortName,
+  isMatchingStore,
+  getContractPrefix,
 } from '@/lib/storeResolution';
 import {
   useDealershipScope,

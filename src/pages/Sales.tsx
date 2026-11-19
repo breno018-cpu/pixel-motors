@@ -3,7 +3,7 @@ import {
   Search, ShoppingCart, Calendar, Store, User, Car, Bike, Plus,
   TrendingUp, DollarSign, Clock, CheckCircle, AlertCircle, FileText,
   ImageDown, CheckCircle2, ArrowRight, Paperclip, FileSpreadsheet,
-  Printer, Pencil, Copy, Check, FileCheck2, Eye
+  Printer, Pencil, Copy, Check, FileCheck2, Eye, XCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
