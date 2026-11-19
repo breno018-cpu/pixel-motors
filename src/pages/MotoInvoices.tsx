@@ -24,6 +24,7 @@ import {
   RotateCcw,
   Sparkles,
   ArrowUpRight,
+  ArrowRight,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -1109,9 +1110,26 @@ export default function MotoInvoices() {
                                 <span>Reemissão da NF {inv.reissue_of_invoice_number}</span>
                               </div>
                             )}
-                            <div className="text-[11px] text-muted-foreground truncate">
-                              {inv.series ? `Série ${inv.series}` : 'Série 1'} • {formatFiscalDate(inv.issue_date)}
-                              {inv.status === 'cancelada' && inv.cancellation_date && ` • Canc: ${formatFiscalDate(inv.cancellation_date)}`}
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px]">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                                🟢 Emis: {formatFiscalDate(inv.issue_date)}
+                              </span>
+                              {inv.status === 'cancelada' && inv.cancellation_date && (
+                                <>
+                                  <ArrowRight className="w-2.5 h-2.5 text-muted-foreground/60 shrink-0" />
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 font-bold border border-rose-500/20" title={inv.cancellation_reason || 'Cancelamento fiscal'}>
+                                    🔴 Canc: {formatFiscalDate(inv.cancellation_date)}
+                                  </span>
+                                </>
+                              )}
+                              {inv.reissued_as_invoice_number && (
+                                <>
+                                  <ArrowRight className="w-2.5 h-2.5 text-muted-foreground/60 shrink-0" />
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 font-black border border-blue-500/25">
+                                    🔵 Nova NF: {inv.reissued_as_invoice_number}
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </button>
                         ) : (
@@ -1131,9 +1149,26 @@ export default function MotoInvoices() {
                                 <span>Reemissão da NF {inv.reissue_of_invoice_number}</span>
                               </div>
                             )}
-                            <div className="text-[11px] text-muted-foreground truncate">
-                              {inv.series ? `Série ${inv.series}` : 'Série 1'} • {formatFiscalDate(inv.issue_date)}
-                              {inv.status === 'cancelada' && inv.cancellation_date && ` • Canc: ${formatFiscalDate(inv.cancellation_date)}`}
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px]">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                                🟢 Emis: {formatFiscalDate(inv.issue_date)}
+                              </span>
+                              {inv.status === 'cancelada' && inv.cancellation_date && (
+                                <>
+                                  <ArrowRight className="w-2.5 h-2.5 text-muted-foreground/60 shrink-0" />
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 font-bold border border-rose-500/20" title={inv.cancellation_reason || 'Cancelamento fiscal'}>
+                                    🔴 Canc: {formatFiscalDate(inv.cancellation_date)}
+                                  </span>
+                                </>
+                              )}
+                              {inv.reissued_as_invoice_number && (
+                                <>
+                                  <ArrowRight className="w-2.5 h-2.5 text-muted-foreground/60 shrink-0" />
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 font-black border border-blue-500/25">
+                                    🔵 Nova NF: {inv.reissued_as_invoice_number}
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
                         )}

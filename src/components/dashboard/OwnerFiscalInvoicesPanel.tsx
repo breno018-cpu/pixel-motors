@@ -25,6 +25,9 @@ import {
   ExternalLink,
   FileText,
   Trash2,
+  ArrowRight,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -83,6 +86,91 @@ export interface CombinedFiscalRecord {
   attachment_name?: string;
   attachment_type?: string;
   attachment_size?: number;
+}
+
+export interface InvoiceLifecycleData {
+  originalNumber: string;
+  originalIssueDate: string;
+  originalValue: number;
+  isCancelled: boolean;
+  cancellationDate?: string;
+  cancellationReason?: string;
+  sefazProtocol?: string;
+  cancellationType?: string;
+  hasReissue: boolean;
+  isReissueChild: boolean;
+  isReissueParent: boolean;
+  reissuedAsNumber?: string;
+  reissuedAsDate?: string;
+  reissuedAsStatus?: string;
+  reissuedFromNumber?: string;
+  reissuedFromDate?: string;
+  reissuedFromCancellationDate?: string;
+}
+
+export function computeInvoiceLifecycle(
+  r: CombinedFiscalRecord,
+  allRecords: CombinedFiscalRecord[]
+): InvoiceLifecycleData {
+  const isCancelled = r.fiscal_type === 'cancelamento' || r.status === 'cancelada';
+  const originalIssueDate = r.issue_date || r.event_date;
+
+  // Se esta NF foi cancelada e substituída por outra (Reissue Parent)
+  const reissuedAsNumber = r.reissued_as_invoice_number;
+  let reissuedAsDate: string | undefined = undefined;
+  let reissuedAsStatus: string | undefined = undefined;
+
+  if (reissuedAsNumber) {
+    const child = allRecords.find(
+      (c) => c.invoice_number === reissuedAsNumber && (c.store_id === r.store_id || !c.store_id || !r.store_id)
+    );
+    if (child) {
+      reissuedAsDate = child.issue_date || child.event_date;
+      reissuedAsStatus = child.status === 'cancelada' ? 'Cancelada' : 'Faturada / Ativa';
+    } else {
+      reissuedAsDate = r.event_date || r.issue_date;
+      reissuedAsStatus = 'Faturada / Ativa';
+    }
+  }
+
+  // Se esta NF É a reemissão gerada a partir de uma NF anterior (Reissue Child)
+  const reissuedFromNumber = r.reissue_of_invoice_number;
+  let reissuedFromDate: string | undefined = undefined;
+  let reissuedFromCancellationDate: string | undefined = undefined;
+
+  if (reissuedFromNumber) {
+    const parent = allRecords.find(
+      (p) => p.invoice_number === reissuedFromNumber && (p.store_id === r.store_id || !p.store_id || !r.store_id)
+    );
+    if (parent) {
+      reissuedFromDate = parent.issue_date || parent.event_date;
+      reissuedFromCancellationDate = parent.event_date;
+    }
+  }
+
+  const isReissueParent = Boolean(reissuedAsNumber);
+  const isReissueChild = Boolean(reissuedFromNumber);
+  const hasReissue = isReissueParent || isReissueChild;
+
+  return {
+    originalNumber: isReissueChild && reissuedFromNumber ? reissuedFromNumber : r.invoice_number,
+    originalIssueDate: isReissueChild && reissuedFromDate ? reissuedFromDate : originalIssueDate,
+    originalValue: r.total_value,
+    isCancelled: isCancelled || isReissueParent,
+    cancellationDate: isCancelled ? (r.event_date || r.issue_date) : (reissuedFromCancellationDate || r.event_date),
+    cancellationReason: r.cancellation_reason || (isReissueParent ? 'Cancelada para substituição e reemissão de nova NF' : undefined),
+    sefazProtocol: r.sefaz_protocol,
+    cancellationType: r.cancellation_type,
+    hasReissue,
+    isReissueChild,
+    isReissueParent,
+    reissuedAsNumber: isReissueChild ? r.invoice_number : reissuedAsNumber,
+    reissuedAsDate: isReissueChild ? (r.issue_date || r.event_date) : reissuedAsDate,
+    reissuedAsStatus: isReissueChild ? (r.status === 'cancelada' ? 'Cancelada' : 'Faturada / Ativa') : reissuedAsStatus,
+    reissuedFromNumber,
+    reissuedFromDate,
+    reissuedFromCancellationDate,
+  };
 }
 
 export const WEEKS_CONFIG = [
@@ -158,6 +246,8 @@ export function OwnerFiscalInvoicesPanel() {
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [selectedLifecycleRecord, setSelectedLifecycleRecord] = useState<CombinedFiscalRecord | null>(null);
 
   // Modais de Controle
   const [isNewInvoiceModalOpen, setIsNewInvoiceModalOpen] = useState(false);
@@ -948,8 +1038,16 @@ export function OwnerFiscalInvoicesPanel() {
       }
 
       // 2. Filtro de Tipo
-      if (typeFilter !== 'all' && rec.fiscal_type !== typeFilter) {
-        return false;
+      if (typeFilter !== 'all') {
+        if (typeFilter === 'reissue') {
+          if (!rec.reissued_as_invoice_number && !rec.reissue_of_invoice_number) return false;
+        } else if (typeFilter === 'cancel_only') {
+          if ((rec.fiscal_type !== 'cancelamento' && rec.status !== 'cancelada') || rec.reissued_as_invoice_number) return false;
+        } else if (typeFilter === 'emissao') {
+          if (rec.fiscal_type !== 'emissao' && rec.status !== 'autorizada') return false;
+        } else if (rec.fiscal_type !== typeFilter) {
+          return false;
+        }
       }
 
       // 3. Filtro de Semana (O Coração da Regra)
@@ -979,6 +1077,34 @@ export function OwnerFiscalInvoicesPanel() {
       return true;
     });
   }, [allFiscalRecords, storeFilter, weekFilter, typeFilter, searchTerm]);
+
+  // Contadores para os Botões de Grupo de Formatos
+  const lifecycleCounts = useMemo(() => {
+    let reissued = 0;
+    let active = 0;
+    let cancelledOnly = 0;
+    let entradas = 0;
+
+    allFiscalRecords.forEach((r) => {
+      if (r.fiscal_type === 'entrada') {
+        entradas++;
+      } else if (r.reissued_as_invoice_number || r.reissue_of_invoice_number) {
+        reissued++;
+      } else if (r.fiscal_type === 'cancelamento' || r.status === 'cancelada') {
+        cancelledOnly++;
+      } else {
+        active++;
+      }
+    });
+
+    return {
+      total: allFiscalRecords.length,
+      reissued,
+      active,
+      cancelledOnly,
+      entradas,
+    };
+  }, [allFiscalRecords]);
 
   // Métricas do Dono calculadas sobre a SEMANA selecionada
   const metrics = useMemo(() => {
@@ -1843,84 +1969,519 @@ export function OwnerFiscalInvoicesPanel() {
         </Card>
       </div>
 
-      {/* 4. Tabela Executiva Detalhada da Semana */}
+      {/* 4. Painel Executivo: Grupo de Formatos da NF & Tabela Detalhada */}
       <Card className="rounded-2xl border shadow-xs bg-card overflow-hidden">
         <CardHeader className="p-4 border-b bg-muted/20">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <ReceiptText className="w-4 h-4 text-primary" />
-                Operações Fiscais da {currentWeekLabel}
+                Controle Fiscal por Grupo de Formatos — {currentWeekLabel}
               </CardTitle>
               <CardDescription className="text-xs">
-                {filteredRecords.length} lançamentos fiscais apurados com data de operação nesta semana.
+                Acompanhe com clareza o ciclo completo da NF: quando foi emitida, quando foi cancelada e quando foi gerada outra NF.
               </CardDescription>
             </div>
-            <Badge variant="outline" className="text-xs font-mono font-bold self-start sm:self-center">
-              {weekFilter === 'all' ? 'Mês Completo' : weekFilter.replace('_', ' ').toUpperCase()}
-            </Badge>
+
+            <div className="flex items-center gap-2 self-start sm:self-center">
+              <Badge variant="outline" className="text-xs font-mono font-bold">
+                {weekFilter === 'all' ? 'Mês Completo' : weekFilter.replace('_', ' ').toUpperCase()}
+              </Badge>
+
+              {/* Seletor de Modo de Visualização */}
+              <div className="flex items-center bg-background rounded-xl p-0.5 border shadow-2xs">
+                <Button
+                  size="sm"
+                  variant={viewMode === 'cards' ? 'default' : 'ghost'}
+                  onClick={() => setViewMode('cards')}
+                  className="h-7 text-xs font-bold gap-1.5 px-2.5 rounded-lg"
+                  title="Visualizar em Grupo de Formatos (Cards com linha do tempo de 3 etapas)"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Grupo de Formatos</span>
+                  <span className="sm:hidden">Cards</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
+                  onClick={() => setViewMode('table')}
+                  className="h-7 text-xs font-bold gap-1.5 px-2.5 rounded-lg"
+                  title="Visualizar em Tabela Executiva compacta"
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Tabela</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Filtros Rápidos por Grupo de Formatos */}
+          <div className="flex items-center gap-1.5 pt-3 overflow-x-auto no-scrollbar">
+            <Button
+              size="sm"
+              variant={typeFilter === 'all' ? 'default' : 'outline'}
+              onClick={() => setTypeFilter('all')}
+              className="h-7 text-[11px] font-bold px-2.5 rounded-lg shrink-0 gap-1.5"
+            >
+              <span>Todas as NFs</span>
+              <Badge variant="secondary" className="px-1 py-0 h-4 text-[9px] font-mono">
+                {allFiscalRecords.length}
+              </Badge>
+            </Button>
+
+            <Button
+              size="sm"
+              variant={typeFilter === 'reissue' ? 'default' : 'outline'}
+              onClick={() => setTypeFilter(typeFilter === 'reissue' ? 'all' : 'reissue')}
+              className={cn(
+                "h-7 text-[11px] font-bold px-2.5 rounded-lg shrink-0 gap-1.5 transition-colors",
+                typeFilter === 'reissue'
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "border-blue-500/30 text-blue-700 dark:text-blue-400 hover:bg-blue-500/10"
+              )}
+            >
+              <RotateCcw className="w-3 h-3 text-blue-500" />
+              <span>Canceladas & Reemitidas (Substituições)</span>
+              <Badge variant="secondary" className="px-1 py-0 h-4 text-[9px] font-mono bg-blue-500/20 text-blue-700 dark:text-blue-300">
+                {lifecycleCounts.reissued}
+              </Badge>
+            </Button>
+
+            <Button
+              size="sm"
+              variant={typeFilter === 'emissao' ? 'default' : 'outline'}
+              onClick={() => setTypeFilter(typeFilter === 'emissao' ? 'all' : 'emissao')}
+              className={cn(
+                "h-7 text-[11px] font-bold px-2.5 rounded-lg shrink-0 gap-1.5 transition-colors",
+                typeFilter === 'emissao'
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : "border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+              )}
+            >
+              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+              <span>Faturadas Ativas</span>
+              <Badge variant="secondary" className="px-1 py-0 h-4 text-[9px] font-mono bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                {lifecycleCounts.active}
+              </Badge>
+            </Button>
+
+            <Button
+              size="sm"
+              variant={typeFilter === 'cancel_only' ? 'default' : 'outline'}
+              onClick={() => setTypeFilter(typeFilter === 'cancel_only' ? 'all' : 'cancel_only')}
+              className={cn(
+                "h-7 text-[11px] font-bold px-2.5 rounded-lg shrink-0 gap-1.5 transition-colors",
+                typeFilter === 'cancel_only'
+                  ? "bg-rose-600 hover:bg-rose-700 text-white"
+                  : "border-rose-500/30 text-rose-700 dark:text-rose-400 hover:bg-rose-500/10"
+              )}
+            >
+              <XCircle className="w-3 h-3 text-rose-500" />
+              <span>Canceladas (Estornos)</span>
+              <Badge variant="secondary" className="px-1 py-0 h-4 text-[9px] font-mono bg-rose-500/20 text-rose-700 dark:text-rose-300">
+                {lifecycleCounts.cancelledOnly}
+              </Badge>
+            </Button>
+
+            <Button
+              size="sm"
+              variant={typeFilter === 'entrada' ? 'default' : 'outline'}
+              onClick={() => setTypeFilter(typeFilter === 'entrada' ? 'all' : 'entrada')}
+              className={cn(
+                "h-7 text-[11px] font-bold px-2.5 rounded-lg shrink-0 gap-1.5 transition-colors",
+                typeFilter === 'entrada'
+                  ? "bg-sky-600 hover:bg-sky-700 text-white"
+                  : "border-sky-500/30 text-sky-700 dark:text-sky-400 hover:bg-sky-500/10"
+              )}
+            >
+              <Truck className="w-3 h-3 text-sky-500" />
+              <span>Entradas de Fábrica</span>
+              <Badge variant="secondary" className="px-1 py-0 h-4 text-[9px] font-mono bg-sky-500/20 text-sky-700 dark:text-sky-300">
+                {lifecycleCounts.entradas}
+              </Badge>
+            </Button>
           </div>
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="w-full max-h-[580px] overflow-y-auto">
-            <Table className="w-full">
-              <TableHeader className="sticky top-0 bg-background z-10 shadow-xs">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[110px] text-xs">Operação</TableHead>
-                  <TableHead className="w-[140px] text-xs">NF / Protocolo SEFAZ</TableHead>
-                  <TableHead className="w-[95px] text-xs">Data (Sem.)</TableHead>
-                  <TableHead className="w-[120px] text-xs">Concessionária</TableHead>
-                  <TableHead className="min-w-[140px] text-xs">Fornecedor / Cliente</TableHead>
-                  <TableHead className="w-[110px] text-xs text-right">Valor Total</TableHead>
-                  <TableHead className="w-[105px] text-xs text-center">Anexo NF</TableHead>
-                  <TableHead className="w-[160px] text-xs text-center">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-xs text-muted-foreground">
-                      Carregando dados fiscais da semana...
-                    </TableCell>
+          {isLoading ? (
+            <div className="text-center py-12 text-xs text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-primary" />
+              Carregando dados fiscais da semana...
+            </div>
+          ) : filteredRecords.length === 0 ? (
+            <div className="text-center py-12 text-xs text-muted-foreground space-y-2">
+              <ReceiptText className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+              <p>Nenhuma operação de NF encontrada para os filtros selecionados.</p>
+              {typeFilter !== 'all' && (
+                <Button size="sm" variant="ghost" onClick={() => setTypeFilter('all')} className="text-xs text-primary font-semibold">
+                  Limpar filtro de formatos
+                </Button>
+              )}
+            </div>
+          ) : viewMode === 'cards' ? (
+            /* ================================================================= */
+            /* 1. VISUALIZAÇÃO POR GRUPO DE FORMATOS (CARDS COM CICLO COMPLETO)   */
+            /* ================================================================= */
+            <div className="p-4 space-y-4 max-h-[640px] overflow-y-auto">
+              {filteredRecords.map((r) => {
+                const lifecycle = computeInvoiceLifecycle(r, allFiscalRecords);
+                const isEntrada = r.fiscal_type === 'entrada';
+                const isCancel = lifecycle.isCancelled;
+                const canCancel = r.fiscal_type === 'emissao' && r.status !== 'cancelada_posteriormente';
+
+                return (
+                  <div
+                    key={r.id}
+                    className={cn(
+                      "rounded-2xl border p-4 transition-all shadow-xs space-y-3.5 bg-card/90",
+                      lifecycle.hasReissue
+                        ? "border-blue-500/30 bg-blue-500/[0.02]"
+                        : isCancel
+                        ? "border-rose-500/30 bg-rose-500/[0.02]"
+                        : isEntrada
+                        ? "border-emerald-500/30 bg-emerald-500/[0.02]"
+                        : "border-border/80 hover:border-primary/40"
+                    )}
+                  >
+                    {/* Topo do Card: Loja, Badges, Destinatário, Valor e Ações */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted text-[10.5px] font-bold text-foreground border border-border/60">
+                            <Building2 className="w-3 h-3 mr-1 text-primary shrink-0" />
+                            {formatStoreShortName(r.store_name || r.store_id)}
+                          </span>
+
+                          <Badge
+                            className={cn(
+                              "text-[10px] font-bold py-0.5 px-2",
+                              isEntrada
+                                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25"
+                                : lifecycle.isReissueParent
+                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                                : lifecycle.isReissueChild
+                                ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30"
+                                : isCancel
+                                ? "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30"
+                                : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/25"
+                            )}
+                          >
+                            {isEntrada
+                              ? 'ENTRADA DE FÁBRICA'
+                              : lifecycle.isReissueParent
+                              ? 'SUBSTITUÍDA (REEMITIDA)'
+                              : lifecycle.isReissueChild
+                              ? 'NOVA NF (REEMISSÃO)'
+                              : isCancel
+                              ? 'CANCELADA (ESTORNO)'
+                              : 'FATURADA (REGULAR)'}
+                          </Badge>
+
+                          <span className="text-xs font-mono font-bold text-foreground">
+                            NF nº {r.invoice_number}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="font-semibold text-foreground truncate max-w-[280px]" title={r.party_name}>
+                            {r.party_name}
+                          </span>
+                          {r.party_doc && (
+                            <span className="text-[11px] font-mono text-muted-foreground">
+                              • Doc: {r.party_doc}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Lado Direito: Valor Total e Botões Rápidos */}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                        <div className="text-right">
+                          <div className={cn(
+                            "font-display font-black text-sm sm:text-base font-mono",
+                            isCancel && !lifecycle.hasReissue ? "line-through text-muted-foreground" : "text-foreground"
+                          )}>
+                            {formatCurrencyBRL(r.total_value)}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground block">
+                            {isCancel && !lifecycle.hasReissue ? 'Valor Estornado' : 'Valor Total NF'}
+                          </span>
+                        </div>
+
+                        {/* Ações do Card */}
+                        <div className="flex items-center gap-1">
+                          {/* Anexo Ver/Baixar */}
+                          {r.attachment_url ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenAttachment(r)}
+                              className="h-7 text-[10.5px] px-2 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 font-bold"
+                              title="Visualizar anexo oficial da NF"
+                            >
+                              <Eye className="w-3 h-3" />
+                              Ver NF
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setQuickAttachRecord(r);
+                                setQuickAttachFile(null);
+                                setQuickAttachDialogOpen(true);
+                              }}
+                              className="h-7 text-[10.5px] px-2 border-dashed border-primary/40 text-primary hover:bg-primary/10 gap-1 font-bold"
+                              title="Anexar arquivo oficial da NF"
+                            >
+                              <Upload className="w-3 h-3" />
+                              Anexar
+                            </Button>
+                          )}
+
+                          {/* Reemitir Nova NF */}
+                          {canModifyNf && canCancel && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenReissue(r)}
+                              className="h-7 text-[10.5px] px-2 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 gap-1 font-bold"
+                              title="Cancelar e gerar nova NF substituta no mesmo plano"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Reemitir
+                            </Button>
+                          )}
+
+                          {/* Cancelar NF Direto */}
+                          {canModifyNf && canCancel && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setInvoiceToCancel(r);
+                                setCancellationDate(getLocalTodayDateString());
+                                setCancellationType('estorno');
+                                setCancellationReason('');
+                                setCancellationProtocol(r.sefaz_protocol || '');
+                              }}
+                              className="h-7 text-[10.5px] px-2 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 font-bold"
+                              title="Cancelar Nota Fiscal"
+                            >
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Cancelar
+                            </Button>
+                          )}
+
+                          {/* Reativar se cancelada */}
+                          {canModifyNf && isCancel && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReactivateInvoice(r)}
+                              className="h-7 text-[10.5px] px-2 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 font-bold"
+                              title="Reativar esta Nota Fiscal"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Reativar
+                            </Button>
+                          )}
+
+                          {canModifyNf && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEdit(r)}
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              title="Editar dados da NF"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          )}
+
+                          {canModifyNf && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setInvoiceToDelete(r)}
+                              className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                              title="Excluir NF permanentemente"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* GRUPO DE FORMATOS VISUAL (O CICLO COMPLETO EM 3 MOMENTOS) */}
+                    <div className="space-y-1.5">
+                      <div className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-primary" />
+                        <span>Ciclo de Vida da Operação Fiscal (Grupo de Formatos)</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                        {/* FORMATO 1: QUANDO FOI EMITIDA */}
+                        <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/25 space-y-1.5 relative">
+                          <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 font-bold text-xs">
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              1. NOTA EMITIDA
+                            </span>
+                            <span className="font-mono text-[11px] bg-emerald-500/15 px-1.5 py-0.2 rounded font-black">
+                              NF {lifecycle.originalNumber}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-foreground font-semibold flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span>Emitida em: <strong>{formatFiscalDate(lifecycle.originalIssueDate)}</strong></span>
+                          </div>
+
+                          <div className="text-[11px] text-muted-foreground flex items-center justify-between pt-0.5">
+                            <span>Valor: {formatCurrencyBRL(lifecycle.originalValue)}</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
+                              {isEntrada ? 'Remessa Fábrica' : 'Série 1 Oficial'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* FORMATO 2: QUANDO FOI CANCELADA */}
+                        {lifecycle.isCancelled ? (
+                          <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/25 space-y-1.5 relative">
+                            <div className="flex items-center justify-between text-rose-700 dark:text-rose-400 font-bold text-xs">
+                              <span className="flex items-center gap-1.5">
+                                <XCircle className="w-3.5 h-3.5" />
+                                2. NOTA CANCELADA
+                              </span>
+                              <span className="text-[9.5px] font-bold uppercase bg-rose-500/15 px-1.5 py-0.2 rounded text-rose-700 dark:text-rose-300">
+                                Homologado
+                              </span>
+                            </div>
+
+                            <div className="text-xs text-rose-700 dark:text-rose-300 font-semibold flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-rose-500 shrink-0" />
+                              <span>Cancelada em: <strong>{formatFiscalDate(lifecycle.cancellationDate)}</strong></span>
+                            </div>
+
+                            <div className="text-[10.5px] text-muted-foreground truncate" title={lifecycle.cancellationReason || 'Cancelamento fiscal homologado'}>
+                              Motivo: <strong>{lifecycle.cancellationReason || 'Cancelamento fiscal homologado'}</strong>
+                            </div>
+
+                            {lifecycle.sefazProtocol && (
+                              <div className="text-[9.5px] font-mono text-muted-foreground truncate" title={`Protocolo SEFAZ: ${lifecycle.sefazProtocol}`}>
+                                Prot SEFAZ: {lifecycle.sefazProtocol}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-3 rounded-xl bg-muted/30 border border-border/50 flex flex-col justify-center items-center text-center p-3 space-y-1">
+                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Sem Cancelamento
+                            </span>
+                            <p className="text-[10.5px] text-muted-foreground">
+                              Nota regular e ativa no faturamento oficial da SEFAZ
+                            </p>
+                          </div>
+                        )}
+
+                        {/* FORMATO 3: QUANDO FOI GERADA OUTRA NF (REEMISSÃO) */}
+                        {lifecycle.hasReissue ? (
+                          <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/25 space-y-1.5 relative">
+                            <div className="flex items-center justify-between text-blue-700 dark:text-blue-400 font-bold text-xs">
+                              <span className="flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                3. NOVA NF GERADA
+                              </span>
+                              <span className="font-mono text-[11px] font-black bg-blue-500/15 text-blue-700 dark:text-blue-300 px-1.5 py-0.2 rounded">
+                                NF {lifecycle.reissuedAsNumber || lifecycle.originalNumber}
+                              </span>
+                            </div>
+
+                            <div className="text-xs text-blue-700 dark:text-blue-300 font-semibold flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-blue-500 shrink-0" />
+                              <span>Gerada em: <strong>{formatFiscalDate(lifecycle.reissuedAsDate || lifecycle.originalIssueDate)}</strong></span>
+                            </div>
+
+                            <div className="text-[10.5px] text-muted-foreground flex items-center justify-between pt-0.5">
+                              <span>Status: <strong className="text-blue-600 dark:text-blue-400">{lifecycle.reissuedAsStatus || 'Ativa / Faturada'}</strong></span>
+                              <Badge variant="outline" className="text-[9px] font-bold border-blue-500/40 text-blue-600 dark:text-blue-300">
+                                Substituta
+                              </Badge>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3 rounded-xl bg-muted/30 border border-border/50 flex flex-col justify-center items-center text-center p-3 space-y-1">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              {lifecycle.isCancelled ? 'Sem Reemissão (Estorno)' : 'Operação Finalizada'}
+                            </span>
+                            <p className="text-[10.5px] text-muted-foreground">
+                              {lifecycle.isCancelled
+                                ? 'Valor financeiro estornado contabilmente'
+                                : 'Venda definitiva e quitada com NF original'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* ================================================================= */
+            /* 2. VISUALIZAÇÃO POR TABELA EXECUTIVA COM FORMATOS INTEGRADOS      */
+            /* ================================================================= */
+            <div className="w-full max-h-[580px] overflow-y-auto">
+              <Table className="w-full">
+                <TableHeader className="sticky top-0 bg-background z-10 shadow-xs">
+                  <TableRow className="hover:bg-transparent text-xs">
+                    <TableHead className="w-[110px]">Operação</TableHead>
+                    <TableHead className="w-[130px]">NF / Doc</TableHead>
+                    <TableHead className="min-w-[280px]">Grupo de Formatos (Ciclo: Emissão ➔ Cancelamento ➔ Nova NF)</TableHead>
+                    <TableHead className="w-[110px]">Loja</TableHead>
+                    <TableHead className="w-[140px]">Destinatário</TableHead>
+                    <TableHead className="w-[105px] text-right">Valor Total</TableHead>
+                    <TableHead className="w-[90px] text-center">Anexo</TableHead>
+                    <TableHead className="w-[150px] text-center">Ações</TableHead>
                   </TableRow>
-                ) : filteredRecords.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
-                      Nenhuma operação de NF registrada para {currentWeekLabel}.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredRecords.map((r) => {
+                </TableHeader>
+                <TableBody>
+                  {filteredRecords.map((r) => {
+                    const lifecycle = computeInvoiceLifecycle(r, allFiscalRecords);
                     const isEntrada = r.fiscal_type === 'entrada';
-                    const isCancel = r.fiscal_type === 'cancelamento';
+                    const isCancel = lifecycle.isCancelled;
                     const canCancel = r.fiscal_type === 'emissao' && r.status !== 'cancelada_posteriormente';
 
                     return (
                       <TableRow
                         key={r.id}
-                        className={isCancel ? 'bg-rose-500/[0.03] dark:bg-rose-500/[0.05] opacity-80 hover:opacity-100 transition-opacity' : 'hover:bg-muted/40'}
+                        className={isCancel ? 'bg-rose-500/[0.03] dark:bg-rose-500/[0.05] hover:bg-muted/40' : 'hover:bg-muted/40'}
                       >
                         {/* 1. Tipo de Operação */}
                         <TableCell className="align-middle">
                           <Badge
-                            className={`text-[10px] font-bold ${
+                            className={cn(
+                              "text-[10px] font-bold py-0.5 px-1.5 whitespace-nowrap",
                               isEntrada
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                                : r.reissued_as_invoice_number
+                                : lifecycle.isReissueParent
                                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
-                                : r.reissue_of_invoice_number
+                                : lifecycle.isReissueChild
                                 ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25'
                                 : isCancel
                                 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25'
-                                : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
-                            }`}
+                                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                            )}
                           >
                             {isEntrada
                               ? 'ENTRADA'
-                              : r.reissued_as_invoice_number
+                              : lifecycle.isReissueParent
                               ? 'SUBSTITUÍDA'
-                              : r.reissue_of_invoice_number
+                              : lifecycle.isReissueChild
                               ? 'REEMISSÃO'
                               : isCancel
                               ? 'CANCELADA'
@@ -1928,55 +2489,53 @@ export function OwnerFiscalInvoicesPanel() {
                           </Badge>
                         </TableCell>
 
-                        {/* 2. Número da NF & Protocolo SEFAZ & Rastreabilidade no Mesmo Plano */}
+                        {/* 2. Número da NF & Protocolo */}
                         <TableCell className="align-middle">
-                          <div className={`font-mono text-xs font-bold ${isCancel ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                          <div className={cn("font-mono text-xs font-bold", isCancel && !lifecycle.hasReissue ? "line-through text-muted-foreground" : "text-foreground")}>
                             NF {r.invoice_number}
                           </div>
-                          {r.reissued_as_invoice_number && (
-                            <div className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded mt-0.5" title={`Esta NF foi cancelada e substituída pela NF ${r.reissued_as_invoice_number}`}>
-                              <ArrowUpRight className="w-2.5 h-2.5 shrink-0" />
-                              <span>Substituída por NF {r.reissued_as_invoice_number}</span>
-                            </div>
-                          )}
-                          {r.reissue_of_invoice_number && (
-                            <div className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded mt-0.5" title={`Esta NF é a reemissão substituta da NF anterior ${r.reissue_of_invoice_number}`}>
-                              <Sparkles className="w-2.5 h-2.5 shrink-0" />
-                              <span>Reemissão da NF {r.reissue_of_invoice_number}</span>
-                            </div>
-                          )}
-                          {r.sefaz_protocol ? (
-                            <div
-                              className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate max-w-[130px] mt-0.5"
-                              title={`Protocolo SEFAZ: ${r.sefaz_protocol}`}
-                            >
+                          {r.sefaz_protocol && (
+                            <div className="text-[9.5px] font-mono text-muted-foreground truncate max-w-[120px]" title={`Prot: ${r.sefaz_protocol}`}>
                               Prot: {r.sefaz_protocol}
                             </div>
-                          ) : (
-                            !r.reissued_as_invoice_number && !r.reissue_of_invoice_number && (
-                              <div className="text-[10px] text-muted-foreground truncate max-w-[130px]">
-                                {r.cancellation_reason || r.notes || '—'}
-                              </div>
-                            )
                           )}
                         </TableCell>
 
-                        {/* 3. Data da Operação nesta Semana (Mesmo Plano) */}
-                        <TableCell className="text-xs align-middle">
-                          {isCancel ? (
-                            <div>
-                              <div className="font-semibold text-rose-600 dark:text-rose-400">
-                                Canc: {formatFiscalDate(r.event_date)}
-                              </div>
-                              <div className="text-[10px] text-muted-foreground">
-                                Emis: {formatFiscalDate(r.issue_date || r.event_date)}
-                              </div>
+                        {/* 3. GRUPO DE FORMATOS INTEGRADO NA LINHA (LINHA DO TEMPO) */}
+                        <TableCell className="align-middle">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {/* Momento 1: Emitida */}
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 text-[10px] font-bold whitespace-nowrap" title={`Emitida em ${formatFiscalDate(lifecycle.originalIssueDate)}`}>
+                              <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+                              <span>Emis: {formatFiscalDate(lifecycle.originalIssueDate)}</span>
                             </div>
-                          ) : (
-                            <span className="font-semibold text-foreground">
-                              {formatFiscalDate(r.event_date || r.issue_date)}
-                            </span>
-                          )}
+
+                            {/* Seta */}
+                            {lifecycle.isCancelled && (
+                              <ArrowRight className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                            )}
+
+                            {/* Momento 2: Cancelada */}
+                            {lifecycle.isCancelled && (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/25 text-[10px] font-bold whitespace-nowrap" title={`Cancelada em ${formatFiscalDate(lifecycle.cancellationDate)} • Motivo: ${lifecycle.cancellationReason || 'Cancelamento fiscal'}`}>
+                                <XCircle className="w-2.5 h-2.5 shrink-0" />
+                                <span>Canc: {formatFiscalDate(lifecycle.cancellationDate)}</span>
+                              </div>
+                            )}
+
+                            {/* Seta */}
+                            {lifecycle.hasReissue && (
+                              <ArrowRight className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                            )}
+
+                            {/* Momento 3: Nova NF Gerada */}
+                            {lifecycle.hasReissue && (
+                              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/25 text-[10px] font-bold whitespace-nowrap" title={`Nova NF ${lifecycle.reissuedAsNumber} gerada em ${formatFiscalDate(lifecycle.reissuedAsDate || lifecycle.originalIssueDate)}`}>
+                                <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                <span>Nova NF {lifecycle.reissuedAsNumber}: {formatFiscalDate(lifecycle.reissuedAsDate || lifecycle.originalIssueDate)}</span>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
 
                         {/* 4. Concessionária */}
@@ -1988,14 +2547,14 @@ export function OwnerFiscalInvoicesPanel() {
 
                         {/* 5. Fornecedor / Destinatário */}
                         <TableCell className="text-xs align-middle">
-                          <span className="truncate block max-w-[160px] font-medium text-foreground" title={r.party_name}>
+                          <span className="truncate block max-w-[140px] font-medium text-foreground" title={r.party_name}>
                             {r.party_name}
                           </span>
                         </TableCell>
 
                         {/* 6. Valor Total */}
                         <TableCell className="text-xs text-right font-bold font-mono align-middle">
-                          <span className={isCancel ? 'line-through text-muted-foreground' : 'text-foreground'}>
+                          <span className={isCancel && !lifecycle.hasReissue ? 'line-through text-muted-foreground' : 'text-foreground'}>
                             {formatCurrencyBRL(r.total_value)}
                           </span>
                         </TableCell>
@@ -2003,27 +2562,16 @@ export function OwnerFiscalInvoicesPanel() {
                         {/* 7. Anexo Oficial da NF */}
                         <TableCell className="text-center align-middle">
                           {r.attachment_url ? (
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleOpenAttachment(r)}
-                                className="h-6 text-[10px] px-2 rounded-lg text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 font-semibold"
-                                title="Visualizar arquivo oficial desta NF"
-                              >
-                                <Eye className="w-3 h-3" />
-                                Ver NF
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDownloadAttachment(r)}
-                                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                                title="Baixar arquivo oficial da NF"
-                              >
-                                <Download className="w-3 h-3" />
-                              </Button>
-                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenAttachment(r)}
+                              className="h-6 text-[10px] px-2 rounded-lg text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 font-semibold"
+                              title="Visualizar arquivo oficial desta NF"
+                            >
+                              <Eye className="w-3 h-3" />
+                              Ver NF
+                            </Button>
                           ) : (
                             <Button
                               variant="outline"
@@ -2045,7 +2593,19 @@ export function OwnerFiscalInvoicesPanel() {
                         {/* 8. Ações */}
                         <TableCell className="text-center align-middle">
                           <div className="flex items-center justify-center gap-1">
-                            {/* Ações para NF Cancelada: Reativar e Excluir */}
+                            {canModifyNf && canCancel && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenReissue(r)}
+                                className="h-6 text-[10px] px-2 rounded-lg text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 gap-1 font-semibold"
+                                title="Cancelar esta NF e reemitir uma nova nota fiscal substituta no mesmo plano"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                                Reemitir
+                              </Button>
+                            )}
+
                             {isCancel ? (
                               <>
                                 {canModifyNf && (
@@ -2054,7 +2614,7 @@ export function OwnerFiscalInvoicesPanel() {
                                     size="sm"
                                     onClick={() => handleReactivateInvoice(r)}
                                     className="h-6 text-[10px] px-2 rounded-lg text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 gap-1 font-semibold"
-                                    title="Reativar esta Nota Fiscal (voltar status para emitida)"
+                                    title="Reativar esta Nota Fiscal"
                                   >
                                     <RotateCcw className="w-3 h-3" />
                                     Reativar
@@ -2091,18 +2651,6 @@ export function OwnerFiscalInvoicesPanel() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleOpenReissue(r)}
-                                    className="h-6 text-[10px] px-2 rounded-lg text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 gap-1 font-semibold"
-                                    title="Cancelar esta NF e reemitir uma nova nota fiscal substituta no mesmo plano"
-                                  >
-                                    <RotateCcw className="w-3 h-3" />
-                                    Reemitir
-                                  </Button>
-                                )}
-                                {canModifyNf && canCancel && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
                                     onClick={() => {
                                       setInvoiceToCancel(r);
                                       setCancellationDate(getLocalTodayDateString());
@@ -2129,20 +2677,17 @@ export function OwnerFiscalInvoicesPanel() {
                                     Excluir
                                   </Button>
                                 )}
-                                {!canModifyNf && (
-                                  <span className="text-muted-foreground text-[10px]">Conferido</span>
-                                )}
                               </>
                             )}
                           </div>
                         </TableCell>
                       </TableRow>
                     );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
