@@ -352,6 +352,7 @@ export function OwnerFiscalInvoicesPanel() {
   const [editInvoiceNumber, setEditInvoiceNumber] = useState('');
   const [editStoreId, setEditStoreId] = useState(STORE_MONTESCLAROS_UUID);
   const [editEventDate, setEditEventDate] = useState(getLocalTodayDateString());
+  const [editCancellationDate, setEditCancellationDate] = useState('');
   const [editPartyName, setEditPartyName] = useState('');
   const [editTotalValue, setEditTotalValue] = useState('');
   const [editSefazProtocol, setEditSefazProtocol] = useState('');
@@ -686,6 +687,7 @@ export function OwnerFiscalInvoicesPanel() {
     setEditInvoiceNumber(r.invoice_number);
     setEditStoreId(normalizeStoreId(r.store_id));
     setEditEventDate(r.event_date || r.issue_date || getLocalTodayDateString());
+    setEditCancellationDate(r.cancellation_date || (r.status === 'cancelada' || r.fiscal_type === 'cancelamento' ? (r.event_date || r.issue_date) : ''));
     setEditPartyName(r.party_name || '');
     setEditTotalValue(r.total_value ? formatBrlNumber(r.total_value) : '');
     setEditSefazProtocol(r.sefaz_protocol || '');
@@ -755,6 +757,7 @@ export function OwnerFiscalInvoicesPanel() {
             store_id: normalizeStoreId(editStoreId),
             issue_date: editEventDate,
             entry_or_cancel_date: editEventDate,
+            cancellation_date: editCancellationDate.trim() || item.cancellation_date || undefined,
             party_name: editPartyName.trim(),
             total_value: val,
             total: val,
@@ -782,6 +785,7 @@ export function OwnerFiscalInvoicesPanel() {
         fiscal_type: editingRecord.fiscal_type,
         issue_date: editEventDate,
         entry_or_cancel_date: editEventDate,
+        cancellation_date: editCancellationDate.trim() || editingRecord.cancellation_date || undefined,
         store_id: resolvedStoreId,
         store_name: storeName,
         customer_name: editPartyName.trim(),
@@ -887,8 +891,12 @@ export function OwnerFiscalInvoicesPanel() {
           store_name: storeName,
           party_name: inv.customer_name || 'Consumidor Final',
           issue_date: issueDate,
+          original_issue_date: (inv as any).original_issue_date || issueDate,
           event_date: cancelDate,
+          cancellation_date: cancelDate,
           total_value: Number(inv.total) || 0,
+          original_value: (inv as any).original_value || Number(inv.total) || 0,
+          value_difference: (inv as any).value_difference || 0,
           status: 'cancelada',
           cancellation_reason: inv.cancellation_reason || inv.notes || 'Cancelamento registrado',
           cancellation_type: inv.cancellation_type || 'estorno',
@@ -912,8 +920,14 @@ export function OwnerFiscalInvoicesPanel() {
           store_name: storeName,
           party_name: inv.customer_name || 'Consumidor Final',
           issue_date: issueDate,
+          original_issue_date: (inv as any).original_issue_date || issueDate,
           event_date: issueDate,
+          cancellation_date: inv.cancellation_date || undefined,
+          cancellation_reason: inv.cancellation_reason || undefined,
+          cancellation_type: inv.cancellation_type || undefined,
           total_value: Number(inv.total) || 0,
+          original_value: (inv as any).original_value || Number(inv.total) || 0,
+          value_difference: (inv as any).value_difference || 0,
           status: 'emitida',
           sefaz_protocol: inv.sefaz_protocol || '',
           reissued_as_invoice_number: reissuedAs,
@@ -935,7 +949,7 @@ export function OwnerFiscalInvoicesPanel() {
       const isCancel = loc.fiscal_type === 'cancelamento' || loc.status === 'cancelada';
 
       const issueDate = loc.issue_date || loc.entry_or_cancel_date || loc.created_at?.slice(0, 10) || '';
-      const eventDate = loc.entry_or_cancel_date || loc.issue_date || loc.created_at?.slice(0, 10) || '';
+      const eventDate = loc.entry_or_cancel_date || loc.event_date || loc.issue_date || loc.created_at?.slice(0, 10) || '';
       const reissuedAs = loc.reissued_as_invoice_number || (loc.notes || '').match(/Substituída pela NF\s*([0-9.]+)/i)?.[1];
       const reissueOf = loc.reissue_of_invoice_number || (loc.notes || '').match(/Reemissão.*NF\s*([0-9.]+)/i)?.[1];
 
@@ -957,6 +971,12 @@ export function OwnerFiscalInvoicesPanel() {
           store_id: loc.store_id || existing.store_id,
           store_name: storeName || existing.store_name,
           party_name: loc.party_name || existing.party_name,
+          issue_date: loc.issue_date || existing.issue_date,
+          original_issue_date: loc.original_issue_date || existing.original_issue_date,
+          event_date: isCancel ? (loc.cancellation_date || eventDate) : (existing.event_date || eventDate),
+          cancellation_date: loc.cancellation_date || (isCancel ? eventDate : undefined) || existing.cancellation_date,
+          original_value: loc.original_value !== undefined ? loc.original_value : existing.original_value,
+          value_difference: loc.value_difference !== undefined ? loc.value_difference : existing.value_difference,
           sefaz_protocol: loc.sefaz_protocol || existing.sefaz_protocol,
           reissued_as_invoice_number: reissuedAs || existing.reissued_as_invoice_number,
           reissue_of_invoice_number: reissueOf || existing.reissue_of_invoice_number,
@@ -975,8 +995,12 @@ export function OwnerFiscalInvoicesPanel() {
           store_name: storeName,
           party_name: loc.party_name || (isEntrada ? 'Shineray do Brasil S.A.' : 'Consumidor Final'),
           issue_date: issueDate,
+          original_issue_date: loc.original_issue_date || issueDate,
           event_date: eventDate,
+          cancellation_date: loc.cancellation_date || (isCancel ? eventDate : undefined),
           total_value: Number(loc.total_value) || 0,
+          original_value: loc.original_value !== undefined ? loc.original_value : Number(loc.total_value) || 0,
+          value_difference: loc.value_difference || 0,
           status: loc.status || (isCancel ? 'cancelada' : 'conferido'),
           cancellation_reason: loc.cancellation_reason || loc.notes || '',
           cancellation_type: loc.cancellation_type || 'estorno',
@@ -2426,9 +2450,9 @@ export function OwnerFiscalInvoicesPanel() {
                               size="sm"
                               onClick={() => {
                                 setInvoiceToCancel(r);
-                                setCancellationDate(getLocalTodayDateString());
+                                setCancellationDate(r.cancellation_date || (r.status === 'cancelada' ? (r.event_date || r.issue_date) : getLocalTodayDateString()));
                                 setCancellationType('estorno');
-                                setCancellationReason('');
+                                setCancellationReason(r.cancellation_reason || '');
                                 setCancellationProtocol(r.sefaz_protocol || '');
                               }}
                               className="h-7 text-[10.5px] px-2 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 font-bold"
@@ -2894,9 +2918,9 @@ export function OwnerFiscalInvoicesPanel() {
                                     size="sm"
                                     onClick={() => {
                                       setInvoiceToCancel(r);
-                                      setCancellationDate(getLocalTodayDateString());
+                                      setCancellationDate(r.cancellation_date || (r.status === 'cancelada' ? (r.event_date || r.issue_date) : getLocalTodayDateString()));
                                       setCancellationType('estorno');
-                                      setCancellationReason('');
+                                      setCancellationReason(r.cancellation_reason || '');
                                       setCancellationProtocol(r.sefaz_protocol || '');
                                     }}
                                     className="h-6 text-[10px] px-2 rounded-lg text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
@@ -2936,7 +2960,7 @@ export function OwnerFiscalInvoicesPanel() {
       {/* MODAL 1: LANÇAR / REGISTRAR NOVA NF COM AUTO-LEITURA E ANEXO         */}
       {/* =================================================================== */}
       <Dialog open={isNewInvoiceModalOpen} onOpenChange={setIsNewInvoiceModalOpen}>
-        <DialogContent className="max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl p-6">
+        <DialogContent className="w-[95vw] sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <ReceiptText className="w-5 h-5 text-primary" />
@@ -3226,21 +3250,21 @@ export function OwnerFiscalInvoicesPanel() {
       </Dialog>
 
       {/* =================================================================== */}
-      {/* MODAL 2: CANCELAR NF (CONFIRMAÇÃO DIRETA SEM FORMULÁRIO)            */}
+      {/* MODAL 2: CANCELAR NF (CONFIRMAÇÃO DIRETA COM DATA EDITÁVEL)         */}
       {/* =================================================================== */}
       <Dialog open={!!invoiceToCancel} onOpenChange={(open) => !open && setInvoiceToCancel(null)}>
-        <DialogContent className="max-w-md rounded-2xl p-6">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
+          <DialogHeader className="space-y-1.5 text-left">
             <DialogTitle className="text-base font-bold flex items-center gap-2 text-destructive">
-              <XCircle className="w-5 h-5 text-destructive" />
+              <XCircle className="w-5 h-5 text-destructive shrink-0" />
               Confirmar Cancelamento da NF Nº {invoiceToCancel?.invoice_number}?
             </DialogTitle>
-            <DialogDescription className="text-xs">
-              Deseja realmente cancelar esta Nota Fiscal? A operação será registrada imediatamente no controle fiscal da diretoria.
+            <DialogDescription className="text-xs text-muted-foreground">
+              A nota fiscal será cancelada no controle da diretoria. Você pode definir a data exata do cancelamento abaixo.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 py-3">
+          <div className="space-y-3 py-2">
             <div className="p-3.5 rounded-xl bg-muted/40 border text-xs space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Nota Fiscal:</span>
@@ -3271,35 +3295,64 @@ export function OwnerFiscalInvoicesPanel() {
                 </span>
               </div>
             </div>
+
+            {/* Campo Livre de Data de Cancelamento */}
+            <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
+                <Calendar className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                Data do Cancelamento *
+              </Label>
+              <Input
+                type="date"
+                className="h-9 text-xs rounded-xl font-medium bg-background border-rose-500/30"
+                value={cancellationDate}
+                onChange={(e) => setCancellationDate(e.target.value)}
+              />
+              <span className="text-[10.5px] text-muted-foreground block">
+                Altere livremente a data do cancelamento caso tenha ocorrido em data anterior ou específica.
+              </span>
+            </div>
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" size="sm" onClick={() => setInvoiceToCancel(null)} disabled={isSubmittingCancel} className="rounded-xl">
-              Voltar
-            </Button>
+          <DialogFooter className="flex flex-col gap-2 w-full pt-1 sm:space-x-0">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const target = invoiceToCancel;
-                setInvoiceToCancel(null);
-                handleOpenReissue(target);
-              }}
+              variant="destructive"
+              size="default"
+              onClick={handleConfirmCancellation}
               disabled={isSubmittingCancel}
-              className="font-bold rounded-xl gap-1.5 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10"
+              className="w-full font-bold rounded-xl gap-1.5 shadow-sm h-9"
             >
-              <RotateCcw className="w-4 h-4 text-blue-500" />
-              Cancelar & Reemitir Nova NF
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleConfirmCancellation} disabled={isSubmittingCancel} className="font-bold rounded-xl gap-1.5">
               {isSubmittingCancel ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Cancelando...
                 </>
               ) : (
-                'Sim, Apenas Cancelar'
+                'Sim, Confirmar Cancelamento da NF'
               )}
+            </Button>
+            <Button
+              variant="outline"
+              size="default"
+              onClick={() => {
+                const target = invoiceToCancel;
+                setInvoiceToCancel(null);
+                handleOpenReissue(target);
+              }}
+              disabled={isSubmittingCancel}
+              className="w-full font-bold rounded-xl gap-1.5 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 h-9"
+            >
+              <RotateCcw className="w-4 h-4 text-blue-500 shrink-0" />
+              Cancelar & Reemitir Nova NF
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setInvoiceToCancel(null)}
+              disabled={isSubmittingCancel}
+              className="w-full text-xs text-muted-foreground rounded-xl h-8"
+            >
+              Voltar / Fechar sem Alterar
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3309,7 +3362,7 @@ export function OwnerFiscalInvoicesPanel() {
       {/* MODAL 2.1: CANCELAR & REEMITIR NOVA NF (SUBSTITUIÇÃO NO MESMO PLANO) */}
       {/* =================================================================== */}
       <Dialog open={!!invoiceToReissue} onOpenChange={(open) => !open && setInvoiceToReissue(null)}>
-        <DialogContent className="max-w-lg rounded-2xl p-6">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2 text-blue-600 dark:text-blue-400">
               <RotateCcw className="w-5 h-5 text-blue-500" />
@@ -3540,7 +3593,7 @@ export function OwnerFiscalInvoicesPanel() {
       {/* MODAL: CONFIRMAÇÃO DE EXCLUSÃO DEFINITIVA DA NF                    */}
       {/* =================================================================== */}
       <Dialog open={Boolean(invoiceToDelete)} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
-        <DialogContent className="max-w-md rounded-2xl p-6">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2 text-rose-600">
               <Trash2 className="w-5 h-5 text-rose-600" />
@@ -3615,7 +3668,7 @@ export function OwnerFiscalInvoicesPanel() {
       {/* MODAL 3: EDIÇÃO DE NF NO PAINEL DIRETOR                             */}
       {/* =================================================================== */}
       <Dialog open={Boolean(editingRecord)} onOpenChange={(v) => { if (!v) setEditingRecord(null); }}>
-        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl p-6">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Pencil className="w-5 h-5 text-primary" />
@@ -3776,6 +3829,24 @@ export function OwnerFiscalInvoicesPanel() {
               />
             </div>
 
+            {(editingRecord?.fiscal_type === 'cancelamento' || editingRecord?.status === 'cancelada' || editingRecord?.reissue_of_invoice_number || editingRecord?.cancellation_date || editCancellationDate) && (
+              <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-1">
+                <Label className="text-xs font-semibold flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
+                  <Calendar className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  Data do Cancelamento
+                </Label>
+                <Input
+                  type="date"
+                  className="h-9 text-xs rounded-xl font-medium bg-background border-rose-500/30"
+                  value={editCancellationDate}
+                  onChange={(e) => setEditCancellationDate(e.target.value)}
+                />
+                <span className="text-[10px] text-muted-foreground block">
+                  Permite alterar livremente a data em que o cancelamento desta NF ocorreu.
+                </span>
+              </div>
+            )}
+
             <div>
               <Label className="text-xs font-semibold">Observações Fiscais</Label>
               <Textarea
@@ -3819,7 +3890,7 @@ export function OwnerFiscalInvoicesPanel() {
           setQuickAttachFile(null);
         }
       }}>
-        <DialogContent className="max-w-md rounded-2xl p-6">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-2">
               <Upload className="w-5 h-5 text-primary" />

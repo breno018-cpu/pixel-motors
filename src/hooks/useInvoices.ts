@@ -282,7 +282,7 @@ export function useInvoices() {
             status: isCancel ? 'cancelada' : prev.status,
             issue_date: prev.issue_date || inv.issue_date,
             original_issue_date: prev.original_issue_date || inv.original_issue_date || prev.issue_date || inv.issue_date,
-            cancellation_date: isCancel ? (prev.cancellation_date || inv.cancellation_date) : null,
+            cancellation_date: inv.cancellation_date || prev.cancellation_date || (isCancel ? (prev.updated_at?.slice(0, 10) || inv.updated_at?.slice(0, 10)) : null),
             cancellation_reason: prev.cancellation_reason || inv.cancellation_reason,
             reissued_as_invoice_number: prev.reissued_as_invoice_number || inv.reissued_as_invoice_number,
             reissue_of_invoice_number: prev.reissue_of_invoice_number || inv.reissue_of_invoice_number,
@@ -360,6 +360,9 @@ export function useCancelInvoice() {
             return {
               ...inv,
               status: 'cancelada' as const,
+              cancellation_date: cancellation_date,
+              cancellation_reason: cancellation_reason,
+              cancellation_type: cancellation_type,
               notes: `[CANCELADA em ${cancellation_date} - ${cancellation_type.toUpperCase()}: ${cancellation_reason}]`,
               sefaz_protocol: sefaz_protocol || inv.sefaz_protocol,
             };

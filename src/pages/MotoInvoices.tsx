@@ -1934,10 +1934,10 @@ export default function MotoInvoices() {
 
       {/* DIÁLOGO: CANCELAMENTO CONTÁBIL DE NF */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <XCircle className="w-5 h-5" /> Cancelar Nota Fiscal
+            <DialogTitle className="flex items-center gap-2 text-destructive font-bold text-base">
+              <XCircle className="w-5 h-5 shrink-0" /> Cancelar Nota Fiscal
             </DialogTitle>
             <DialogDescription className="text-xs">
               O cancelamento contábil preserva o histórico fiscal e registra se o cancelamento gerou estorno financeiro ou crédito de fábrica.
@@ -1986,7 +1986,7 @@ export default function MotoInvoices() {
                 <Label className="text-xs font-medium">Data do Cancelamento *</Label>
                 <Input
                   type="date"
-                  className="h-9 mt-1 text-xs"
+                  className="h-9 mt-1 text-xs font-medium"
                   value={cancelDate}
                   onChange={(e) => setCancelDate(e.target.value)}
                 />
@@ -2005,7 +2005,7 @@ export default function MotoInvoices() {
               <div>
                 <Label className="text-xs font-medium">Motivo do Cancelamento *</Label>
                 <Textarea
-                  rows={3}
+                  rows={2}
                   className="mt-1 text-xs"
                   placeholder="Descreva detalhadamente a justificativa fiscal do cancelamento..."
                   value={cancelReason}
@@ -2015,9 +2015,21 @@ export default function MotoInvoices() {
             </div>
           )}
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
-              Voltar
+          <DialogFooter className="flex flex-col gap-2 w-full pt-2 sm:space-x-0">
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancel}
+              disabled={cancelInvoiceMutation.isPending}
+              className="w-full gap-1.5 font-bold rounded-xl h-9 shadow-sm"
+            >
+              {cancelInvoiceMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cancelando...
+                </>
+              ) : (
+                'Confirmar Cancelamento da NF'
+              )}
             </Button>
             <Button
               type="button"
@@ -2027,25 +2039,17 @@ export default function MotoInvoices() {
                 setCancelDialogOpen(false);
                 if (target) handleStartReissue(target);
               }}
-              className="text-blue-600 border-blue-500/30 hover:bg-blue-500/10 gap-1.5 font-semibold"
+              className="w-full text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 gap-1.5 font-bold rounded-xl h-9"
             >
-              <RotateCcw className="w-4 h-4 text-blue-500" />
-              Cancelar & Reemitir
+              <RotateCcw className="w-4 h-4 text-blue-500 shrink-0" />
+              Cancelar & Reemitir Nova NF
             </Button>
             <Button
-              variant="destructive"
-              onClick={handleConfirmCancel}
-              disabled={cancelInvoiceMutation.isPending}
-              className="gap-1.5 font-semibold"
+              variant="ghost"
+              onClick={() => setCancelDialogOpen(false)}
+              className="w-full text-xs text-muted-foreground rounded-xl h-8"
             >
-              {cancelInvoiceMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Cancelando...
-                </>
-              ) : (
-                'Confirmar Cancelamento'
-              )}
+              Voltar / Não Cancelar
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2053,7 +2057,7 @@ export default function MotoInvoices() {
 
       {/* DIÁLOGO: CANCELAMENTO & REEMISSÃO NO MESMO PLANO */}
       <Dialog open={reissueDialogOpen} onOpenChange={setReissueDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
               <RotateCcw className="w-5 h-5 text-blue-500" /> Cancelar & Reemitir Nota Fiscal
@@ -2406,7 +2410,7 @@ export default function MotoInvoices() {
 
       {/* DIÁLOGO: CONFIRMAÇÃO DE EXCLUSÃO DE NOTA FISCAL */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="max-w-md rounded-2xl p-6">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-600 font-bold">
               <Trash2 className="w-5 h-5 text-rose-600" />
