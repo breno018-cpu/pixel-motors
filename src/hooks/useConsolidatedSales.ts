@@ -200,8 +200,10 @@ export function useConsolidatedSales() {
     });
 
     // 2. Processa contratos gerados na plataforma
+    // CORREÇÃO: contratos do DB já são filtrados por is_deleted=false na query (useContracts).
+    // NÃO aplicamos isDeletedItem aqui — o localStorage pode conter IDs desatualizados
+    // que escondem contratos legítimos (bug raiz das vendas da Halanna/Mariana desaparecendo).
     (contracts || []).forEach((c) => {
-      if (isDeletedItem(c.id, c.contract_number)) return;
       if (c.id && (c.id.startsWith('sheet-') || c.id.startsWith('row-v9-'))) {
         return;
       }

@@ -5,6 +5,7 @@ import { INITIAL_USER_BACKUP_CSV, parseBackupCsv, SheetRowV9 } from '@/lib/deale
 import { resolveSaleStore, getContractPrefix } from '@/lib/storeResolution';
 import { resolveSellerDisplayName, isValidSellerName } from '@/lib/sellerSanitizer';
 import { fetchCloudSyncState, GLOBAL_SYNC_CONTRACT_NUMBER, initCloudSalesRealtime } from '@/lib/cloudSalesSync';
+import { DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
 import officialContractsSeed from '@/data/officialContractsSeed.json';
 
 export interface ContractVehicle {
@@ -95,7 +96,7 @@ export function getMonthlySheetRows(): SheetRowV9[] {
 
 export function normalizeContractKey(num: string | null | undefined): string {
   if (!num) return '';
-  const clean = String(num).toUpperCase().replace(/^[A-Z]{2,4}-/, '').replace(/[^A-Z0-9]/g, '');
+  const clean = String(num).toUpperCase().replace(/[^A-Z0-9]/g, '');
   return clean.replace(/^0+/, '') || clean;
 }
 
@@ -244,7 +245,7 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
   let dbContracts: Contract[] = [];
   try {
     await ensureSupabaseSession();
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('contracts')
       .select(`
         *,
@@ -253,6 +254,7 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
         reseller:resellers(id, full_name)
       `)
       .neq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER)
+      .eq('is_deleted', false)
       .order('created_at', { ascending: false });
 
     if (data && Array.isArray(data)) {
@@ -348,7 +350,6 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
       const ch = normalizeChassisKey(ext.chassis || sc.vehicle?.chassis);
       if (ch && seenChassis.has(ch)) return false;
       const bKey = (sc.buyer_name || '').toUpperCase().trim();
-      if (bKey && seenBuyers.has(bKey)) return false;
       return true;
     });
 
@@ -398,7 +399,9 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
     return c;
   };
 
-  const finalDb = hydratedDb.filter((c) => !isDeleted(c)).map(applyStatusOverrides);
+  // O banco é a autoridade: contratos reais só somem via is_deleted (soft delete, já filtrado na query).
+  // A lista negra legada (deleted_ids) vale apenas para linhas da planilha antiga e do seed.
+  const finalDb = hydratedDb.map(applyStatusOverrides);
   const finalSheet = fromSheet.filter((c) => !isDeleted(c)).map(applyStatusOverrides);
   const finalSeed = fromSeed.filter((c) => !isDeleted(c)).map(applyStatusOverrides);
 

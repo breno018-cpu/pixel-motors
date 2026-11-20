@@ -1,0 +1,10 @@
+﻿BEGIN;
+SELECT set_config('t.uid',(SELECT id::text FROM auth.users WHERE email='shineraymoch@user.com'),true);
+SELECT set_config('request.jwt.claims', json_build_object('sub',current_setting('t.uid'),'role','authenticated')::text, true);
+CREATE TEMP TABLE res(teste text, n int); GRANT ALL ON res TO authenticated;
+SET LOCAL ROLE authenticated;
+INSERT INTO res SELECT 'contratos_visiveis_halanna', count(*) FROM contracts WHERE contract_number<>'DEALFLOW_GLOBAL_SYNC';
+INSERT INTO res SELECT 'vendas_halanna_visiveis', count(*) FROM contracts WHERE external_data->>'seller_name' ILIKE 'halana%';
+INSERT INTO res SELECT 'lista_negra_restante', jsonb_array_length(clause_variables->'deleted_ids') FROM contracts WHERE contract_number='DEALFLOW_GLOBAL_SYNC';
+SELECT * FROM res;
+ROLLBACK;

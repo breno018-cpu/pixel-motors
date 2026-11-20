@@ -63,7 +63,7 @@ import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { downloadContractPDF } from '@/lib/contractPdf';
 import { downloadVehicleDeliveryTermPDF } from '@/lib/secondCopyPdfs';
 import { markVehicleAsSold } from '@/hooks/useVehicles';
-import { cloudDeleteSale, cloudCancelSale } from '@/lib/cloudSalesSync';
+import { cloudDeleteSale, cloudCancelSale, cloudSaveSheetRows, fetchCloudSyncState } from '@/lib/cloudSalesSync';
 
 interface Sale {
   id: string;
@@ -275,22 +275,57 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
       const selectedOp = operators.find((o) => o.id === selectedOperator);
       const opName = selectedOp?.full_name || selectedOperator;
 
-      const { error } = await supabase
+      if (!selectedOperator) throw new Error('Selecione um operador.');
+
+      // Relê os dados atuais para não sobrescrever alterações feitas por outro usuário
+      const { data: current, error: readErr } = await (supabase as any)
+        .from('contracts')
+        .select('external_data, created_by')
+        .eq('id', sale.id)
+        .maybeSingle();
+      if (readErr) throw readErr;
+      if (!current) throw new Error('Venda não encontrada ou sem permissão para alterá-la.');
+
+      const { data: updated, error } = await (supabase as any)
         .from('contracts')
         .update({
-          created_by: selectedOperator || null,
+          created_by: selectedOperator,
           external_data: {
-            ...((sale.external_data as any) || {}),
+            ...(current.external_data || {}),
             vendedor: opName,
+            seller_name: opName,
             operator_name: opName,
           },
-        } as any)
-        .eq('id', sale.id);
+        })
+        .eq('id', sale.id)
+        .select('id');
 
-      if (error) {
-        console.warn('Erro ao atualizar operador no Supabase:', error);
+      // Só confirma se o banco realmente gravou (RLS pode bloquear sem erro, retornando 0 linhas)
+      if (error) throw error;
+      if (!updated || updated.length === 0) {
+        throw new Error('O banco não aceitou a alteração (sem permissão para esta venda).');
       }
-      logActivity('editar', 'venda', sale.id, { operador: opName });
+
+      // Mantém a planilha em nuvem coerente com o novo vendedor
+      try {
+        const state = await fetchCloudSyncState();
+        const rows = (state.sheet_rows || []).filter(
+          (r: any) => r.id === sale.id,
+        );
+        if (rows.length > 0) {
+          await cloudSaveSheetRows(
+            rows.map((r: any) => ({ ...r, vendedor: opName })) as any,
+          );
+        }
+      } catch (e) {
+        console.error('[changeOperator] Falha ao atualizar planilha:', e);
+      }
+
+      await logActivity('editar', 'venda', sale.id, {
+        operador_anterior: current.created_by,
+        operador_novo: selectedOperator,
+        operador_nome: opName,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
@@ -299,8 +334,8 @@ export function SaleActionsMenu({ sale, vehicleName, storeName, resellerName }: 
       toast({ title: 'Operador alterado', description: 'O operador da venda foi atualizado com sucesso.' });
       setOperatorDialogOpen(false);
     },
-    onError: () => {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Erro ao alterar operador.' });
+    onError: (err: any) => {
+      toast({ variant: 'destructive', title: 'Erro ao alterar operador', description: err?.message || 'Não foi possível alterar o operador.' });
     },
   });
 

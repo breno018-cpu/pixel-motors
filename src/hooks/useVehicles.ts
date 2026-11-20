@@ -384,9 +384,10 @@ export function useVehicles() {
       // 2. Tenta sincronização remota com o Supabase
       try {
         await ensureSupabaseSession();
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('vehicles')
           .select('*')
+          .eq('is_deleted', false)
           .order('created_at', { ascending: false });
 
         if (!error && Array.isArray(data)) {

@@ -94,32 +94,21 @@ export function useDeleteVehicle() {
       // 3. Executa exclusão no Supabase com tolerância a constraints
       try {
         await ensureSupabaseSession();
+        const { data: u } = await supabase.auth.getUser();
         const { error } = await supabase
           .from('vehicles')
-          .delete()
+          .update({
+            is_deleted: true,
+            deleted_at: new Date().toISOString(),
+            deleted_by: u.user?.id ?? null,
+            deletion_reason: 'Exclusão pelo usuário',
+          } as any)
           .eq('id', id);
-
-        if (error) {
-          if (error.message.includes('violates foreign key')) {
-            // Se possui contrato ou venda registrada, arquiva de forma limpa para não travar
-            const { error: archErr } = await supabase
-              .from('vehicles')
-              .update({ status: 'vendido', notes: '[ARQUIVADO/EXCLUÍDO]' } as any)
-              .eq('id', id);
-            if (archErr) throw error;
-          } else {
-            throw error;
-          }
-        }
-
-        // Audita assincronamente sem travar a requisição
+        if (error) throw error;
         void logActivity('excluir', 'veiculo', id);
       } catch (err: any) {
-        if (!err?.message?.includes('violates foreign key')) {
-          console.warn('[useDeleteVehicle] Erro na exclusão remota do veículo:', err);
-        } else {
-          throw err;
-        }
+        console.error('[useDeleteVehicle] Falha no soft delete:', err);
+        throw err;
       }
     },
     onSuccess: () => {

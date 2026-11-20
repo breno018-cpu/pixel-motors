@@ -6,6 +6,9 @@ import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/hooks/useStor
 import { saveAttachmentToIdb, safeSaveToLocalStorage, cleanLocalStorageBloat } from '@/lib/invoiceAttachmentStorage';
 
 export const GLOBAL_SYNC_CONTRACT_NUMBER = 'DEALFLOW_GLOBAL_SYNC';
+const isUuid = (val: any): boolean =>
+  typeof val === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 export const LOCAL_DELETED_KEY = 'dealflow_deleted_contract_ids';
 export const LOCAL_CANCELLED_KEY = 'dealflow_cancelled_contract_ids';
 export const LOCAL_INVOICES_KEY = 'dealflow_registered_invoices_v1';
@@ -294,8 +297,9 @@ async function initializeCloudSyncRecord(): Promise<CloudSyncState> {
  * Salva as linhas da planilha oficial diretamente no Supabase em tempo real.
  * Todos os dispositivos (gerentes, vendedores, donos) receberão esta versão atualizada.
  */
-export async function cloudSaveSheetRows(rows: SheetRowV9[]): Promise<boolean> {
+export async function cloudSaveSheetRows(inputRows: SheetRowV9[]): Promise<boolean> {
   try {
+    let rows = inputRows;
     // 1. Atualiza imediatamente cache local do navegador corrente
     localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(rows));
 
@@ -308,7 +312,7 @@ export async function cloudSaveSheetRows(rows: SheetRowV9[]): Promise<boolean> {
 
     const { data: currentMaster } = await supabase
       .from('contracts')
-      .select('external_data')
+      .select('external_data, clause_variables')
       .eq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER)
       .maybeSingle();
 
@@ -316,6 +320,22 @@ export async function cloudSaveSheetRows(rows: SheetRowV9[]): Promise<boolean> {
     const remoteInvoices: RegisteredInvoice[] = Array.isArray(masterExt.registered_invoices) ? masterExt.registered_invoices : [];
 
     const mergedInvoices = remoteInvoices.length > 0 ? remoteInvoices : localInvoices;
+
+    // MESCLA por ID: nunca apaga linhas remotas ausentes no array local (evita perda por escrita concorrente)
+    const remoteRows: SheetRowV9[] = Array.isArray(masterExt.sheet_rows) ? masterExt.sheet_rows : [];
+    const deletedSet = new Set<string>(
+      Array.isArray((currentMaster as any)?.clause_variables?.deleted_ids)
+        ? (currentMaster as any).clause_variables.deleted_ids.map(String)
+        : [],
+    );
+    const rowKey = (r: SheetRowV9) => String((r as any).id || `qt-${r.qt}-${r.chassi}`);
+    const mergedMap = new Map<string, SheetRowV9>();
+    remoteRows.forEach((r) => {
+      if (!deletedSet.has(String((r as any).id))) mergedMap.set(rowKey(r), r);
+    });
+    rows.forEach((r) => mergedMap.set(rowKey(r), r));
+    rows = Array.from(mergedMap.values());
+    localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(rows));
 
     // 3. Salva na nuvem (Supabase) preservando registered_invoices
     const { error } = await supabase
@@ -402,8 +422,8 @@ export async function cloudDeleteSale(params: {
       const matchNum = numToDel && (r.qt === numToDel || `DIV-${r.qt}` === numToDel || `MOC-${r.qt}` === numToDel);
       const matchQt = cleanQt && String(r.qt).padStart(2, '0') === cleanQt.padStart(2, '0');
       const matchCh = cleanCh && cleanCh.length >= 6 && r.chassi && String(r.chassi).toUpperCase() === cleanCh;
-      const matchBuyer = cleanBuyer && cleanBuyer.length >= 5 && r.cliente && String(r.cliente).toUpperCase().includes(cleanBuyer.slice(0, 5));
-      return !(matchId || matchNum || matchQt || matchCh || matchBuyer);
+      // Sem correspondência por nome (causava exclusão em massa de clientes com nomes parecidos)
+      return !(matchId || matchNum || matchQt || matchCh);
     });
 
     localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(filteredRows));
@@ -434,14 +454,21 @@ export async function cloudDeleteSale(params: {
   // 2. Se for contrato com UUID no Supabase, tenta delete direto ou marca como excluído
   if (idToDel && isUuid(idToDel)) {
     try {
-      const { error: delErr } = await supabase.from('contracts').delete().eq('id', idToDel);
-      if (delErr) {
-        await supabase
-          .from('contracts')
-          .update({ status: 'cancelado', notes: '[REGISTRO_EXCLUIDO]' })
-          .eq('id', idToDel);
-      }
-    } catch {}
+      const { data: u } = await supabase.auth.getUser();
+      const { error: delErr } = await supabase
+        .from('contracts')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          deleted_by: u.user?.id ?? null,
+          deletion_reason: 'Exclusão pelo usuário',
+          status: 'cancelado',
+        } as any)
+        .eq('id', idToDel);
+      if (delErr) console.error('[cloudDeleteSale] Falha no soft delete:', delErr.message);
+    } catch (e) {
+      console.error('[cloudDeleteSale] Erro no soft delete:', e);
+    }
   }
 
   // 3. Retorna veículo ao estoque
@@ -1077,7 +1104,7 @@ export async function cloudCancelInvoice(
 
     const { data: existingMaster } = await supabase
       .from('contracts')
-      .select('external_data')
+      .select('external_data, clause_variables')
       .eq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER)
       .maybeSingle();
 
@@ -1129,7 +1156,7 @@ export async function cloudDeleteInvoice(id: string): Promise<boolean> {
 
     const { data: existingMaster } = await supabase
       .from('contracts')
-      .select('external_data')
+      .select('external_data, clause_variables')
       .eq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER)
       .maybeSingle();
 

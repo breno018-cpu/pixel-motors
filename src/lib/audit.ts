@@ -35,15 +35,16 @@ export async function logActivity(
 ) {
   try {
     const { data: auth } = await supabase.auth.getUser();
-    await supabase.from('activity_logs').insert({
+    const { error } = await supabase.from('activity_logs').insert({
       user_id: auth.user?.id ?? null,
       action,
       entity_type: entityType,
       entity_id: entityId ?? null,
       details: (details ?? {}) as never,
     });
-  } catch {
-    /* silencioso */
+    if (error) console.error('[audit] Falha ao gravar log de auditoria:', error.message);
+  } catch (e) {
+    console.error('[audit] Erro inesperado na auditoria:', e);
   }
 }
 
