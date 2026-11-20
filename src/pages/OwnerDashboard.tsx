@@ -53,6 +53,7 @@ import { useEmployees } from '@/hooks/useEmployees';
 import { formatCurrencyBRL } from '@/lib/dealershipSheetParser';
 import { exportToXLSX } from '@/lib/export';
 import { isMontesClarosStore, getStoreDisplayName, formatStoreShortName } from '@/lib/storeResolution';
+import { resolveSellerDisplayName } from '@/lib/sellerSanitizer';
 import {
   useDealershipScope,
   DealershipBadge,
