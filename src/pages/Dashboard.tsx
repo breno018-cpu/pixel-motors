@@ -506,10 +506,26 @@ export default function Dashboard() {
 
     const rawConsolidated = Array.from(salesMap.values());
 
-    // Para todos os cargos de vendedor, o dashboard deve exibir estritamente o dashboard da sua loja
+    // Regra de privacidade: vendedores visualizam APENAS as próprias vendas.
+    // Dados gerais da loja ficam restritos a cargos a partir de gerente (gerente / admin).
     if (isSellerRole) {
-      return rawConsolidated.filter((s) =>
-        isMatchingStore(s.store_id || s.raw_store_id, sellerStore.storeId)
+      return filterSalesBySellerScope(
+        rawConsolidated,
+        {
+          userId: user?.id,
+          profileId: profile?.id,
+          fullName: profile?.full_name,
+          email: user?.email,
+          roles,
+          isAdmin,
+          isManager,
+          hasElevatedAccess,
+          isSeller,
+          isSellerPlus,
+          isExternalSeller,
+          dataScope,
+        },
+        employees
       );
     }
 
@@ -519,7 +535,16 @@ export default function Dashboard() {
     contracts,
     employees,
     isSellerRole,
-    sellerStore.storeId,
+    user,
+    profile,
+    roles,
+    isAdmin,
+    isManager,
+    hasElevatedAccess,
+    isSeller,
+    isSellerPlus,
+    isExternalSeller,
+    dataScope,
   ]);
 
   // =========================================================================
@@ -655,6 +680,27 @@ export default function Dashboard() {
       return true;
     });
 
+    if (isSellerRole) {
+      return filterSalesBySellerScope(
+        raw,
+        {
+          userId: user?.id,
+          profileId: profile?.id,
+          fullName: profile?.full_name,
+          email: user?.email,
+          roles,
+          isAdmin,
+          isManager,
+          hasElevatedAccess,
+          isSeller,
+          isSellerPlus,
+          isExternalSeller,
+          dataScope,
+        },
+        employees
+      );
+    }
+
     return raw;
   }, [
     contracts,
@@ -662,6 +708,17 @@ export default function Dashboard() {
     effectiveStore,
     sellerFilter,
     employees,
+    isSellerRole,
+    user,
+    profile,
+    roles,
+    isAdmin,
+    isManager,
+    hasElevatedAccess,
+    isSeller,
+    isSellerPlus,
+    isExternalSeller,
+    dataScope,
   ]);
 
   // =========================================================================
@@ -707,7 +764,7 @@ export default function Dashboard() {
       metaMotos = 10;
     }
 
-    if (sellerFilter !== 'all') {
+    if (isSellerRole || sellerFilter !== 'all') {
       metaFaturamento = 140000;
       metaMotos = 8;
     }
@@ -734,7 +791,7 @@ export default function Dashboard() {
       progressoMetaValor,
       progressoMetaMotos,
     };
-  }, [filteredSales, effectiveStore, sellerFilter]);
+  }, [filteredSales, effectiveStore, sellerFilter, isSellerRole]);
 
   // 1. Dados para o Gráfico de Evolução Diária e Ritmo
   const timelineChartData = useMemo(() => {
@@ -1028,17 +1085,17 @@ export default function Dashboard() {
     <div className="space-y-6 w-full min-w-0 pb-12 animate-fade-in">
       {/* 1. CABEÇALHO PADRONIZADO */}
       <PageHeader
-        title={isSellerRole ? `Painel de Vendas · ${sellerStore.storeName}` : "Painel de Vendas"}
+        title={isSellerRole ? "Meu Painel de Vendas" : "Painel de Vendas"}
         description={
           isSellerRole
-            ? `Acompanhamento comercial, metas, faturamento e estoque exclusivo da sua concessionária (${sellerStore.storeName}).`
+            ? `Acompanhamento exclusivo das suas vendas, metas individuais, financiamentos e entregas (${profile?.full_name || 'Vendedor'}).`
             : "Acompanhamento de vendas, faturamento e estoque das lojas de Montes Claros e Divinópolis."
         }
         badge={
           isSellerRole ? (
             <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-primary mr-1.5 inline-block" />
-              {sellerStore.storeName}
+              Minhas Vendas
             </Badge>
           ) : (
             <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 shrink-0">
@@ -1067,16 +1124,16 @@ export default function Dashboard() {
           glassEffectStyle="regular"
           className="flex flex-wrap items-center gap-2 p-2 rounded-2xl border border-white/20 dark:border-white/10 shadow-sm w-full min-w-0"
         >
-          {/* Seletor de Concessionária: Para vendedores, bloqueia estritamente na sua loja */}
+          {/* Seletor de Concessionária: Para vendedores, exibe apenas seu escopo individual */}
           {isSellerRole ? (
             <div
               className="flex items-center gap-1.5 h-9 px-3 text-xs btn-glass font-bold rounded-xl border border-primary/30 bg-primary/10 text-primary truncate shrink-0"
-              title={`Dashboard exclusivo da sua concessionária: ${sellerStore.storeName}`}
+              title={`Exibindo apenas as suas vendas (${profile?.full_name || 'Vendedor'})`}
             >
-              <Store className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="truncate max-w-[150px] sm:max-w-[200px]">{sellerStore.storeName}</span>
+              <Users className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span className="truncate max-w-[150px] sm:max-w-[200px]">{profile?.full_name || 'Vendedor'}</span>
               <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/20 text-primary shrink-0 ml-1">
-                Sua Loja
+                Minhas Vendas
               </span>
             </div>
           ) : (
@@ -1136,23 +1193,25 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Vendedor (Organizado e Filtrado pela Concessionária) */}
-          <Select value={sellerFilter} onValueChange={setSellerFilter}>
-            <SelectTrigger className="w-full sm:w-[165px] h-9 text-xs btn-glass font-semibold rounded-xl border truncate">
-              <Users className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
-              <SelectValue placeholder="Vendedor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                {storeFilter === 'all' ? 'Toda a Equipe Comercial' : 'Equipe da Concessionária'}
-              </SelectItem>
-              {availableSellers.map((v) => (
-                <SelectItem key={v.name} value={v.name}>
-                  {v.name} {storeFilter === 'all' ? `(${v.storeLabel})` : ''}
+          {/* Vendedor (Apenas para Gerente / Admin) */}
+          {!isSellerRole && (
+            <Select value={sellerFilter} onValueChange={setSellerFilter}>
+              <SelectTrigger className="w-full sm:w-[165px] h-9 text-xs btn-glass font-semibold rounded-xl border truncate">
+                <Users className="w-3.5 h-3.5 mr-1.5 text-primary shrink-0" />
+                <SelectValue placeholder="Vendedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {storeFilter === 'all' ? 'Toda a Equipe Comercial' : 'Equipe da Concessionária'}
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                {availableSellers.map((v) => (
+                  <SelectItem key={v.name} value={v.name}>
+                    {v.name} {storeFilter === 'all' ? `(${v.storeLabel})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {/* Tipo de Veículo */}
           <Select value={vehicleTypeFilter} onValueChange={(v: any) => setVehicleTypeFilter(v)}>
@@ -1231,7 +1290,7 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Faturamento Total
+              {isSellerRole ? 'Meu Faturamento' : 'Faturamento Total'}
             </span>
             <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
               <DollarSign className="w-4 h-4" />
@@ -1245,7 +1304,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold mt-1">
               <TrendingUp className="w-3.5 h-3.5 text-primary" />
               <span>
-                {metrics.totalVendas} vendas no período selecionado
+                {metrics.totalVendas} {metrics.totalVendas === 1 ? 'venda' : 'vendas'} no período selecionado
               </span>
             </div>
           </div>
@@ -1253,7 +1312,7 @@ export default function Dashboard() {
           {/* Barra de Meta Comercial */}
           <div className="mt-4 pt-3 border-t border-border/40 space-y-1.5">
             <div className="flex justify-between text-[11px] font-semibold text-muted-foreground">
-              <span>Meta da Loja ({formatCurrencyBRL(metrics.metaFaturamento)})</span>
+              <span>{isSellerRole ? 'Meta Individual' : 'Meta da Loja'} ({formatCurrencyBRL(metrics.metaFaturamento)})</span>
               <span className="font-bold text-foreground">{metrics.progressoMetaValor}%</span>
             </div>
             <Progress value={metrics.progressoMetaValor} className="h-1.5 bg-muted/60" />
@@ -1269,7 +1328,7 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Motos Vendidas
+              {isSellerRole ? 'Minhas Motos Vendidas' : 'Motos Vendidas'}
             </span>
             <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
               <Bike className="w-4 h-4" />
@@ -1519,25 +1578,27 @@ export default function Dashboard() {
           </div>
 
           {/* Seção 2: Destaques Comerciais em Cards Reais */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="p-4 rounded-2xl border bg-gradient-to-br from-primary/5 via-card to-card flex items-start gap-3">
-              <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <Flame className="w-4 h-4" />
+          <div className={`grid grid-cols-1 ${isSellerRole ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-3`}>
+            {!isSellerRole && (
+              <div className="p-4 rounded-2xl border bg-gradient-to-br from-primary/5 via-card to-card flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Flame className="w-4 h-4" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-bold text-foreground">Liderança de Vendas</h4>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    {sellerRankings[0] ? (
+                      <>
+                        <strong className="text-foreground">{sellerRankings[0].name}</strong> lidera o placar com{' '}
+                        {sellerRankings[0].count} {sellerRankings[0].count === 1 ? 'veículo' : 'veículos'} ({formatCurrencyBRL(sellerRankings[0].faturamento)}).
+                      </>
+                    ) : (
+                      'Nenhuma venda registrada no período selecionado.'
+                    )}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-foreground">Liderança de Vendas</h4>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  {sellerRankings[0] ? (
-                    <>
-                      <strong className="text-foreground">{sellerRankings[0].name}</strong> lidera o placar com{' '}
-                      {sellerRankings[0].count} {sellerRankings[0].count === 1 ? 'veículo' : 'veículos'} ({formatCurrencyBRL(sellerRankings[0].faturamento)}).
-                    </>
-                  ) : (
-                    'Nenhuma venda registrada no período selecionado.'
-                  )}
-                </p>
-              </div>
-            </div>
+            )}
 
             <div className="p-4 rounded-2xl border bg-gradient-to-br from-emerald-500/5 via-card to-card flex items-start gap-3">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -1571,10 +1632,11 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Seção 3: Equipe de Consultores & Bancos F&I lado a lado */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Card Ranking de Consultores */}
-            <Card className="rounded-3xl border shadow-sm">
+          {/* Seção 3: Equipe de Consultores (Gerente/Admin) & Bancos F&I */}
+          <div className={`grid grid-cols-1 ${isSellerRole ? '' : 'lg:grid-cols-2'} gap-4`}>
+            {/* Card Ranking de Consultores — apenas Gerente / Admin */}
+            {!isSellerRole && (
+              <Card className="rounded-3xl border shadow-sm">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -1628,6 +1690,7 @@ export default function Dashboard() {
                 })}
               </CardContent>
             </Card>
+            )}
 
             {/* Card Bancos & Financiamentos */}
             <Card className="rounded-3xl border shadow-sm">
@@ -1678,8 +1741,9 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Seção 4: Resumo de Estoque & Pátio */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Seção 4: Resumo de Estoque & Pátio (Dados gerais da loja — apenas Gerente / Admin) */}
+          {!isSellerRole && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="p-4 rounded-2xl border bg-card space-y-1">
               <span className="text-[10px] font-bold uppercase text-muted-foreground">
                 Total no Pátio
@@ -1728,6 +1792,7 @@ export default function Dashboard() {
               </span>
             </div>
           </div>
+          )}
 
           {/* Seção 5: Atlas de Entregas por Município de MG (Mapa Oficial) */}
           <div className="pt-2">

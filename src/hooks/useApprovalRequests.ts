@@ -46,6 +46,8 @@ function saveLocalApprovals(list: ApprovalRequest[]) {
   }
 }
 
+let approvalTableUnavailable = false;
+
 export function useApprovalRequests() {
   const { user, profile, isAdmin, isManager, isSeller } = useAuth();
   const queryClient = useQueryClient();
@@ -55,6 +57,9 @@ export function useApprovalRequests() {
   const query = useQuery<ApprovalRequest[]>({
     queryKey: ['approval-requests'],
     queryFn: async () => {
+      if (approvalTableUnavailable) {
+        return getLocalApprovals();
+      }
       try {
         const { data, error } = await (supabase as any)
           .from('approval_requests')
@@ -65,12 +70,15 @@ export function useApprovalRequests() {
           saveLocalApprovals(data);
           return data as ApprovalRequest[];
         }
+        if (error && (error.code === 'PGRST205' || error.code === '42P01' || (error as any).status === 404)) {
+          approvalTableUnavailable = true;
+        }
       } catch {
         // fallback to local
       }
       return getLocalApprovals();
     },
-    refetchInterval: 10_000, // Atualiza a cada 10s para alertas rápidos
+    refetchInterval: () => (approvalTableUnavailable ? false : 10_000), // Evita spam de 404 se tabela não existir
   });
 
   const list = query.data || [];

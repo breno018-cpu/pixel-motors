@@ -470,10 +470,12 @@ export default function Sales() {
       return c;
     };
 
-    const baseList = [...fromContracts, ...fromSheet];
-    const rawConsolidated = baseList
-      .filter((c) => !isDeleted(c))
-      .map(applyStatusOverrides);
+    // O banco é a autoridade: contratos reais já vêm filtrados por is_deleted=false na query.
+    // A lista negra local vale apenas para linhas da planilha antiga.
+    const rawConsolidated = [
+      ...fromContracts,
+      ...fromSheet.filter((c) => !isDeleted(c)),
+    ].map(applyStatusOverrides);
 
     if (isRestrictedSeller) {
       return filterSalesBySellerScope(

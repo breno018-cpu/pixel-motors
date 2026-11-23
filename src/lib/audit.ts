@@ -34,9 +34,11 @@ export async function logActivity(
   details?: Record<string, unknown>,
 ) {
   try {
-    const { data: auth } = await supabase.auth.getUser();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData?.session?.user?.id;
+    if (!uid) return; // Evita 401/42501 quando não há sessão JWT ativa
     const { error } = await supabase.from('activity_logs').insert({
-      user_id: auth.user?.id ?? null,
+      user_id: uid,
       action,
       entity_type: entityType,
       entity_id: entityId ?? null,
