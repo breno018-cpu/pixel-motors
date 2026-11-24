@@ -37,6 +37,7 @@ import {
   ArrowLeftRight,
   XCircle,
   Percent,
+  FileText,
 } from 'lucide-react';
 import {
   Dialog,
@@ -1422,117 +1423,45 @@ export default function OwnerDashboard() {
         </TabsContent>
 
         {/* =================================================================== */}
-        {/* ABA 5: VENDEDORES & COMISSÕES                                       */}
+        {/* ABA 5: VENDEDORES & COMISSÕES — EM PRODUÇÃO                         */}
         {/* =================================================================== */}
         <TabsContent value="vendedores" className="space-y-6 mt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total de Comissões a Pagar</span>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
-                  {formatCurrencyBRL(totalCommissionsToPay)}
-                </div>
-                <p className="text-[11px] text-muted-foreground">Acumulado apurado no período para a equipe de vendas</p>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Consultores Ativos</span>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
-                  {sellerPerformance.length} consultores
-                </div>
-                <p className="text-[11px] text-muted-foreground">Com vendas registradas no período selecionado</p>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ticket Médio por Consultor</span>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
-                  {formatCurrencyBRL(executiveMetrics.avgTicket)}
-                </div>
-                <p className="text-[11px] text-muted-foreground">Média geral por operação faturada</p>
-              </CardContent>
-            </Card>
+          <div className="rounded-2xl border border-dashed border-amber-400/50 bg-amber-50/40 dark:bg-amber-950/20 p-10 flex flex-col items-center justify-center gap-4 text-center min-h-[320px]">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center text-amber-500">
+              <Trophy className="w-8 h-8" />
+            </div>
+            <div className="space-y-1.5 max-w-md">
+              <h3 className="text-base font-black text-foreground tracking-tight">Módulo em Desenvolvimento</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                O painel de <strong className="text-foreground">Vendedores & Comissões</strong> está sendo desenvolvido e será disponibilizado em breve com ranking completo, cálculo automático de comissões e metas individuais.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-400/30">
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">Em Produção • Em Breve</span>
+            </div>
           </div>
-
-          <Card className="rounded-2xl border shadow-xs overflow-hidden bg-card">
-            <CardHeader className="p-4 border-b bg-muted/20">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-primary" />
-                Desempenho Comercial &amp; Comissões Apuradas
-              </CardTitle>
-              <CardDescription className="text-[11px]">
-                Ranking da equipe comercial por volume faturado e comissão apurada.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader className="bg-muted/30 border-b">
-                  <TableRow>
-                    <TableHead className="w-16 text-[10px] font-bold uppercase tracking-wider">Posição</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Vendedor / Consultor</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase tracking-wider">Concessionária</TableHead>
-                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Motos</TableHead>
-                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Faturamento</TableHead>
-                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Ticket Médio</TableHead>
-                    <TableHead className="text-center text-[10px] font-bold uppercase tracking-wider">Comissão %</TableHead>
-                    <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Comissão Total (R$)</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sellerPerformance.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">
-                        Nenhum vendedor pontuou no período selecionado.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    sellerPerformance.map((seller, idx) => (
-                      <TableRow key={idx} className="hover:bg-muted/20 border-b border-border/40">
-                        <TableCell>
-                          <span
-                            className={`w-6 h-6 rounded-lg font-mono text-[11px] font-black flex items-center justify-center shrink-0 ${
-                              idx === 0
-                                ? 'bg-amber-500/20 text-amber-600 border border-amber-500/30'
-                                : idx === 1
-                                ? 'bg-slate-300/30 text-slate-700 dark:text-slate-300 border border-slate-400/30'
-                                : idx === 2
-                                ? 'bg-amber-700/20 text-amber-800 dark:text-amber-500 border border-amber-700/30'
-                                : 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            #{idx + 1}
-                          </span>
-                        </TableCell>
-                        <TableCell className="font-bold text-xs text-foreground">{seller.name}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{seller.store}</TableCell>
-                        <TableCell className="text-center font-bold font-mono text-xs">{seller.count} un.</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-xs text-foreground">{formatCurrencyBRL(seller.revenue)}</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-muted-foreground">{formatCurrencyBRL(seller.avgTicket)}</TableCell>
-                        <TableCell className="text-center font-mono text-xs">
-                          <span className="font-mono text-[11px] text-muted-foreground font-semibold">
-                            {seller.commissionRate.toFixed(1)}%
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-bold text-xs text-emerald-600 dark:text-emerald-400">
-                          {formatCurrencyBRL(seller.commissionTotal)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* =================================================================== */}
-        {/* ABA 6: AUDITORIA DE COMPROVANTES DE CADA VENDA                      */}
+        {/* ABA 6: COMPROVANTES DE VENDA — EM PRODUÇÃO                          */}
         {/* =================================================================== */}
         <TabsContent value="comprovantes" className="space-y-6 mt-0">
-          <ExecutiveSalesReceiptsAuditor sales={filteredSales} />
+          <div className="rounded-2xl border border-dashed border-amber-400/50 bg-amber-50/40 dark:bg-amber-950/20 p-10 flex flex-col items-center justify-center gap-4 text-center min-h-[320px]">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-400/30 flex items-center justify-center text-amber-500">
+              <FileText className="w-8 h-8" />
+            </div>
+            <div className="space-y-1.5 max-w-md">
+              <h3 className="text-base font-black text-foreground tracking-tight">Módulo em Desenvolvimento</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                A auditoria de <strong className="text-foreground">Comprovantes de Venda</strong> está sendo desenvolvida. Em breve será possível visualizar, validar e exportar comprovantes de cada operação diretamente por aqui.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-400/30">
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">Em Produção • Em Breve</span>
+            </div>
+          </div>
         </TabsContent>
 
         {/* =================================================================== */}

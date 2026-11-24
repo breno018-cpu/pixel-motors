@@ -837,40 +837,7 @@ export default function Sales() {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Seletor Executivo de Concessionária */}
-          {!isRestrictedSeller && (
-            <div className="p-3.5 rounded-2xl bg-card border shadow-xs space-y-2.5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Store className="w-4 h-4 text-primary shrink-0" />
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
-                      Divisão por Concessionária • Grupo L1MA Motors
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">
-                      Filtre as vendas por unidade física ou visualize o resultado consolidado do grupo.
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 bg-muted/40 px-2.5 py-1 rounded-xl border border-border/50">
-                  <span className="text-[10.5px] font-medium text-muted-foreground">Filtro Ativo:</span>
-                  <DealershipBadge />
-                </div>
-              </div>
-              <DealershipSegmentedBar
-                variant="pills"
-                activeScope={dealershipScope.activeScope}
-                onChange={(scope) => {
-                  dealershipScope.setActiveScope(scope);
-                  setStoreFilter(scope);
-                }}
-                counts={dealershipCounts}
-                financials={dealershipFinancials}
-                showCounts
-                showTotals
-              />
-            </div>
-          )}
+          {/* Filtro de loja via Select na FilterBar abaixo */}
 
           {/* Filters */}
           <FilterBar>
