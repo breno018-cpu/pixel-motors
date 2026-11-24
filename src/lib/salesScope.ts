@@ -247,6 +247,7 @@ export function getUserSalesIdentity(
   }
 
   // Tenta achar o colaborador associado na tabela employees
+
   const linkedEmp = (employees || []).find((emp) => {
     if (emp.profile_id && auth.userId && emp.profile_id.toLowerCase() === auth.userId.toLowerCase()) {
       return true;
