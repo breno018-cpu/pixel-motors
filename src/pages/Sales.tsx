@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { 
   Search, ShoppingCart, Calendar, Store, User, Car, Bike, Plus,
-  TrendingUp, DollarSign, Clock, CheckCircle, AlertCircle, FileText,
+  TrendingUp, DollarSign, Clock, CheckCircle, AlertCircle, AlertTriangle, FileText,
   ImageDown, CheckCircle2, ArrowRight, Paperclip, FileSpreadsheet,
   Printer, Pencil, Copy, Check, FileCheck2, Eye, XCircle
 } from 'lucide-react';
@@ -270,6 +270,8 @@ export default function Sales() {
   const { data: employees = [] } = useEmployees();
   const {
     user,
+    session,
+    signOut,
     profile,
     roles,
     isAdmin,
@@ -708,6 +710,29 @@ export default function Sales() {
 
   return (
     <div className="space-y-6 pb-12">
+      {/* ALERTA DE SESSÃO LOCAL SEM JWT SUPABASE */}
+      {!session && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Sessão em modo local (desconectada do banco de dados em nuvem)</p>
+              <p className="text-[11px] opacity-90">
+                Você está vendo apenas dados antigos em cache local. Clique em <strong>Reconectar</strong> e entre com seu e-mail e senha cadastrados no Supabase para ver todas as vendas atualizadas do banco em tempo real.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => signOut()}
+            className="h-8 text-xs font-bold border-amber-500/40 hover:bg-amber-500/20 shrink-0"
+          >
+            Reconectar ao Banco
+          </Button>
+        </div>
+      )}
+
       {/* CABEÇALHO PADRONIZADO */}
       <PageHeader
         title="Vendas"

@@ -155,34 +155,33 @@ export async function fetchCloudSyncState(): Promise<CloudSyncState> {
         const localSheet: SheetRowV9[] = rawSheet ? JSON.parse(rawSheet) : [];
         if (sheet_rows && sheet_rows.length > 0) {
           const rowMap = new Map<string, SheetRowV9>();
-          sheet_rows.forEach((r) => {
-            if (r.id) rowMap.set(r.id, r);
-            if (r.qt) rowMap.set(`qt::${String(r.qt).replace(/^[A-Z]+-/, '')}`, r);
+          sheet_rows.forEach((r, idx) => {
+            const key = r.id ? String(r.id) : `row-${r.month_key || ''}-${r.qt || idx}-${r.chassi || idx}`;
+            rowMap.set(key, r);
           });
 
           // Apenas adiciona registros se forem explicitamente marcados como pendentes offline
           localSheet.forEach((lr) => {
             if ((lr as any).is_offline_pending) {
-              const qtKey = lr.qt ? `qt::${String(lr.qt).replace(/^[A-Z]+-/, '')}` : '';
-              const existing = (lr.id ? rowMap.get(lr.id) : undefined) || (qtKey ? rowMap.get(qtKey) : undefined);
-              if (!existing) {
-                rowMap.set(lr.id || `local-${Math.random()}`, lr);
+              const key = lr.id ? String(lr.id) : `local-${lr.month_key || ''}-${lr.qt || ''}-${lr.chassi || Math.random()}`;
+              if (!rowMap.has(key)) {
+                rowMap.set(key, lr);
               }
             }
           });
 
-          const seenRowIds = new Set<string>();
-          mergedSheetRows = Array.from(rowMap.values()).filter((r) => {
-            const uniqueKey = r.id || `qt-${r.qt}`;
-            if (seenRowIds.has(uniqueKey)) return false;
-            seenRowIds.add(uniqueKey);
-            return true;
-          });
+          mergedSheetRows = Array.from(rowMap.values());
         } else if (localSheet.length > 0) {
           mergedSheetRows = localSheet;
         }
         if (mergedSheetRows && mergedSheetRows.length > 0) {
-          localStorage.setItem(SHEET_STORAGE_KEY_V9, JSON.stringify(mergedSheetRows));
+          const nextJson = JSON.stringify(mergedSheetRows);
+          if (nextJson !== rawSheet) {
+            localStorage.setItem(SHEET_STORAGE_KEY_V9, nextJson);
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('dealflow:sheet-updated'));
+            }
+          }
         }
       } catch (mergeErr) {
         console.warn('[cloudSalesSync] Aviso ao mesclar dados locais com remotos:', mergeErr);
@@ -198,7 +197,14 @@ export async function fetchCloudSyncState(): Promise<CloudSyncState> {
       };
     }
 
-    // Registro ainda não existe no Supabase -> inicializa agora
+    // Se não há sessão JWT ativa no Supabase, RLS oculta o registro mestre -> usa fallback local sem sobrescrever com seed antigo
+    const activeSession = await ensureSupabaseSession();
+    if (!activeSession) {
+      console.warn('[cloudSalesSync] Sem sessão autenticada no Supabase (modo fallback local). Usando cache local.');
+      return getLocalSyncFallback();
+    }
+
+    // Registro realmente não existe no Supabase -> inicializa agora
     return await initializeCloudSyncRecord();
   } catch (err: any) {
     console.warn('[cloudSalesSync] Falha na consulta de sincronização:', err?.message);
