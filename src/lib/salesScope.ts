@@ -376,8 +376,11 @@ export function validateSellerSalesAccess(
     .map((s) => String(s).trim());
 
   // FATOR 2: Desqualificação Negativa Incondicional
-  // Constrói a lista de TODOS os outros colaboradores do sistema (DEFAULT_OFFICIAL_USERS + employees)
+  // Constrói a lista de TODOS os outros vendedores do sistema (exclui admins/gerentes/dono para que
+  // vendas lançadas ou editadas pela diretoria em nome de um vendedor não bloqueiem o vendedor titular)
   const otherUsers = DEFAULT_OFFICIAL_USERS.filter((u) => {
+    if (isMasterUser(u.full_name, u.email, u.id)) return false;
+    if (u.role === 'admin' || u.role === 'gerente' || u.role === 'dono_loja') return false;
     const uEmail = (u.email || '').toLowerCase().trim();
     const uId = u.id.toLowerCase().trim();
     return !myIds.has(uEmail) && !myIds.has(uId);
@@ -400,6 +403,8 @@ export function validateSellerSalesAccess(
   });
 
   (employees || []).forEach((emp) => {
+    if (isMasterUser(emp.full_name, emp.email, emp.profile_id || emp.id)) return;
+    if ((emp as any).role === 'admin' || (emp as any).role === 'gerente' || (emp as any).role === 'dono_loja') return;
     const eEmail = (emp.email || '').toLowerCase().trim();
     const eId = (emp.id || '').toLowerCase().trim();
     const eProfId = (emp.profile_id || '').toLowerCase().trim();
@@ -423,9 +428,14 @@ export function validateSellerSalesAccess(
   }
 
   // 2B: Se algum nome da venda pertencer a outro vendedor -> BLOQUEADO IMEDIATAMENTE
+  const myNamesArr = Array.from(myNames);
   for (const sName of saleSellerNames) {
+    const matchesMe =
+      (auth.fullName && isSellerNameMatch(sName, auth.fullName)) ||
+      myNamesArr.some((mn) => isSellerNameMatch(sName, mn));
+    if (matchesMe) continue;
     for (const oName of otherKnownNames) {
-      if (isSellerNameMatch(sName, oName) && !isSellerNameMatch(sName, auth.fullName || '')) {
+      if (isSellerNameMatch(sName, oName)) {
         return {
           allowed: false,
           factor: 'F2_DISQUALIFIED_OTHER_SELLER',
