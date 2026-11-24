@@ -295,9 +295,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profileData) {
         nextProfile = profileData as Profile;
         setProfile(nextProfile);
-        if (profileData.must_change_password) {
-          setMustChangePassword(true);
-        }
+        setMustChangePassword(Boolean(profileData.must_change_password));
       } else {
         // Tenta buscar no storage local de custom_users
         let foundCustom: any = null;
@@ -485,6 +483,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUserStore(nextStore);
       } else {
+        setUserStore(null);
         // Ensure seller system roles have 'vehicles.create' in DB role_permissions for RLS
         void (async () => {
           try {
