@@ -153,7 +153,7 @@ export default function Dashboard() {
         dataScope,
       })
     );
-  }, [isAdmin, isManager, hasElevatedAccess, isSeller, isSellerPlus, isExternalSeller, roles, user, profile, dataScope]);
+  }, [isAdmin, isManager, hasElevatedAccess, isStoreOwner, isSeller, isSellerPlus, isExternalSeller, roles, user, profile, dataScope]);
 
   // Concessionária oficial de lotação do vendedor
   const sellerStore = useMemo(() => {
@@ -202,13 +202,17 @@ export default function Dashboard() {
     }
     return 'all';
   });
+  const [storeFilterManual, setStoreFilterManual] = useState(false);
 
-  // Para qualquer cargo de vendedor, a loja deve ser SEMPRE a sua concessionária
+  // Para qualquer cargo de vendedor, a loja deve ser SEMPRE a sua concessionária.
+  // Para Dono do Grupo / Gerente / Admin, garante visão consolidada ('all') até escolha manual.
   useEffect(() => {
     if (isSellerRole && sellerStore.storeId && storeFilter !== sellerStore.storeId) {
       setStoreFilter(sellerStore.storeId);
+    } else if (!isSellerRole && !storeFilterManual && storeFilter !== 'all') {
+      setStoreFilter('all');
     }
-  }, [isSellerRole, sellerStore.storeId, storeFilter]);
+  }, [isSellerRole, sellerStore.storeId, storeFilter, storeFilterManual]);
 
   // Loja efetiva utilizada para todos os cálculos do Dashboard
   const effectiveStore = useMemo(() => {
@@ -573,6 +577,7 @@ export default function Dashboard() {
       setStoreFilter(sellerStore.storeId);
       return;
     }
+    setStoreFilterManual(true);
     setStoreFilter(newStore);
     if (newStore !== 'all' && sellerFilter !== 'all') {
       const sellerStillInStore = allSellersList.some(
@@ -1254,19 +1259,20 @@ export default function Dashboard() {
               <span className="hidden sm:inline">Exportar</span>
             </Button>
 
-            {/* Atalho Planilha Oficial (Apenas Administração) */}
+            {/* Atalho Cockpit / Planilha Oficial */}
+            {(isAdmin || auth.roles.includes('gerente') || isStoreOwner || auth.roles.includes('dono_loja')) && (
+              <Button
+                size="sm"
+                onClick={() => navigate('/owner-dashboard')}
+                className="h-9 px-3 text-xs gap-1.5 font-bold bg-gradient-to-r from-amber-600 via-amber-500 to-indigo-600 hover:from-amber-700 hover:to-indigo-700 text-white shadow-sm shadow-amber-500/20 rounded-xl"
+                title="Abrir Centro de Comando do Dono do Grupo (Visão 360°)"
+              >
+                <Crown className="w-3.5 h-3.5 text-amber-200" />
+                <span className="hidden xs:inline">Painel do Dono</span>
+              </Button>
+            )}
             {(isAdmin || auth.roles.includes('gerente')) && (
               <>
-                <Button
-                  size="sm"
-                  onClick={() => navigate('/owner-dashboard')}
-                  className="h-9 px-3 text-xs gap-1.5 font-bold bg-gradient-to-r from-amber-600 via-amber-500 to-indigo-600 hover:from-amber-700 hover:to-indigo-700 text-white shadow-sm shadow-amber-500/20 rounded-xl"
-                  title="Abrir Centro de Comando do Dono da Loja (Visão 360°)"
-                >
-                  <Crown className="w-3.5 h-3.5 text-amber-200" />
-                  <span className="hidden xs:inline">Painel do Dono</span>
-                </Button>
-
                 <Button
                   size="sm"
                   onClick={() => navigate('/spreadsheets')}

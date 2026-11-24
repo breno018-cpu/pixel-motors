@@ -18,7 +18,7 @@ import {
   syncCredentialsFromSupabase,
 } from '@/lib/userService';
 import { isMatchingStore, STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/lib/storeResolution';
-import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
+import { ensureSupabaseSession, invalidateDealflowQueries } from '@/lib/supabaseAuthHelper';
 
 type AppRole = 'admin' | 'gerente' | 'dono_loja' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'coordenador_logistica' | 'motorista' | 'visualizador';
 
@@ -266,6 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const activeUserIdRef = useRef<string | null>(initialCache.current?.userId ?? null);
   const hasLoadedUserDataRef = useRef<boolean>(Boolean(initialCache.current));
   const inFlightUserIdRef = useRef<string | null>(null);
+  const inFlightPromiseRef = useRef<Promise<void> | null>(null);
 
   const startSessionTimer = useCallback(() => {
     if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
@@ -282,9 +283,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchUserData = useCallback(async (userId: string) => {
-    if (inFlightUserIdRef.current === userId) return;
+    if (inFlightUserIdRef.current === userId && inFlightPromiseRef.current) {
+      return inFlightPromiseRef.current;
+    }
     inFlightUserIdRef.current = userId;
 
+    const task = (async () => {
     try {
       const [{ data: profileData }, { data: rolesData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
@@ -518,10 +522,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } finally {
       inFlightUserIdRef.current = null;
+      inFlightPromiseRef.current = null;
       activeUserIdRef.current = userId;
       hasLoadedUserDataRef.current = true;
       setIsDataReady(true);
+      setIsLoading(false);
+      invalidateDealflowQueries();
     }
+    })();
+
+    inFlightPromiseRef.current = task;
+    return task;
   }, []);
 
   useEffect(() => {
@@ -714,66 +725,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPass });
           if (!error && data?.user) {
             setUser(data.user);
-            const fullName = data.user.user_metadata?.full_name;
-            const userEmail = data.user.email || cleanEmail;
-            const isMasterSupabase = isMasterUser(fullName, userEmail, data.user.id);
-            const initialRoles: AppRole[] = isMasterSupabase ? ['admin', 'gerente'] : ['vendedor'];
-            const initialScope: DataScope = isMasterSupabase ? 'all' : 'own';
-            const initialPerms = isMasterSupabase ? ['*'] : SELLER_DEFAULT_PERMS;
-
-            setRoles(initialRoles);
-            setPermissions(initialPerms);
-            setDataScope(initialScope);
-            setIsLoading(false);
-            setIsDataReady(true);
-            const cleanEmailLogin = userEmail.toLowerCase().trim();
-            const cleanFullNameLogin = (fullName || '').toLowerCase().trim();
-            const ovLogin = getUserOverride(data.user.id) || getUserOverride(cleanEmailLogin);
-
-            let initialStore: UserStore;
-            if (ovLogin?.store_id) {
-              const isMocOv = isMatchingStore(ovLogin.store_id, STORE_MONTESCLAROS_UUID);
-              initialStore = isMocOv
-                ? { id: STORE_MONTESCLAROS_UUID, name: 'Concessionária Montes Claros' }
-                : { id: STORE_DIVINOPOLIS_UUID, name: 'Concessionária Divinópolis' };
-            } else {
-              const isMocLogin =
-                cleanEmailLogin.includes('moc') ||
-                cleanEmailLogin.includes('montesclaros') ||
-                cleanFullNameLogin.includes('mariana') ||
-                cleanFullNameLogin.includes('halana') ||
-                cleanFullNameLogin.includes('sabrina') ||
-                cleanFullNameLogin.includes('natan');
-
-              initialStore = isMocLogin
-                ? { id: STORE_MONTESCLAROS_UUID, name: 'Concessionária Montes Claros' }
-                : { id: STORE_DIVINOPOLIS_UUID, name: 'Concessionária Divinópolis' };
-            }
-
-            const mustDefine = !userAlreadyHasDefinedPassword && !isMasterSupabase;
-            setMustChangePassword(mustDefine);
-
-            writeAuthCache({
-              userId: data.user.id,
-              profile: {
-                id: data.user.id,
-                full_name: fullName || (isMasterSupabase ? 'Administrador' : 'Vendedor'),
-                email: userEmail,
-                phone: null,
-                avatar_url: null,
-                must_change_password: mustDefine,
-              },
-              roles: initialRoles,
-              userStore: initialStore,
-              permissions: initialPerms,
-              dataScope: initialScope,
-              customRoleName: null,
-              hasCustomRole: false,
-            });
+            if (data.session) setSession(data.session);
             localStorage.removeItem('df_explicit_signout');
             sessionStorage.removeItem('df_explicit_signout');
             localStorage.setItem(GLOBAL_FORCE_LOGOUT_KEY, new Date().toISOString());
+
+            // Aguarda carregar cargo, escopo e loja reais do Supabase antes de liberar a tela
+            // (evita sobrescrever dono_loja com 'vendedor' temporário ou gravar cache incorreto)
             await fetchUserData(data.user.id);
+            invalidateDealflowQueries();
 
             return { error: null };
           }

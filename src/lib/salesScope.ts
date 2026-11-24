@@ -332,8 +332,8 @@ export function validateSellerSalesAccess(
     return { allowed: true, factor: 'F1_ELEVATED', reason: 'Privilégio administrativo / gerencial aprovado' };
   }
   const roles = auth.roles || [];
-  if (roles.includes('admin') || roles.includes('gerente')) {
-    return { allowed: true, factor: 'F1_ELEVATED', reason: 'Cargo corporativo elevado aprovado' };
+  if (roles.includes('admin') || roles.includes('gerente') || roles.includes('dono_loja')) {
+    return { allowed: true, reason: 'Cargo corporativo elevado aprovado', factor: 'F1_ELEVATED' };
   }
 
   // Se o usuário não possui credenciais mínimas para autenticação de titularidade
