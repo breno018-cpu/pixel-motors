@@ -228,6 +228,10 @@ export function getUserSalesIdentity(
 
   addNameTokens(auth.fullName);
 
+  // Normaliza e-mail e nome ANTES de qualquer uso (evita ReferenceError TDZ)
+  const userEmailNorm = (auth.email || '').toLowerCase().trim();
+  const userNameNorm = normalizeName(auth.fullName);
+
   // Mapeamento específico para Halana / Halanna para evitar desencontro de nomes
   if (
     userEmailNorm.includes('halan') ||
@@ -243,9 +247,6 @@ export function getUserSalesIdentity(
   }
 
   // Tenta achar o colaborador associado na tabela employees
-  const userEmailNorm = (auth.email || '').toLowerCase().trim();
-  const userNameNorm = normalizeName(auth.fullName);
-
   const linkedEmp = (employees || []).find((emp) => {
     if (emp.profile_id && auth.userId && emp.profile_id.toLowerCase() === auth.userId.toLowerCase()) {
       return true;
