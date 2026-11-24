@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
+﻿import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { DataScope } from '@/lib/permissions';
@@ -320,7 +320,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let nextHasCustomRole = false;
       let nextCustomRoleName: string | null = null;
       let nextDataScope: DataScope =
-        userRoles.includes('admin') || userRoles.includes('gerente') ? 'all' : 'own';
+        userRoles.includes('admin') || userRoles.includes('gerente') || userRoles.includes('dono_loja') ? 'all' : 'own';
       let nextPermissions: string[] =
         userRoles.includes('admin') || userRoles.includes('gerente') ? ['*'] : [];
 
@@ -960,7 +960,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 5. Autentica e inicia a sessão
       const isMasterUserFlag = isMasterUser(matchedUser.full_name, matchedUser.email, matchedUser.id);
       const roleName: AppRole = (matchedUser.role as AppRole) || (isMasterUserFlag ? 'admin' : 'vendedor');
-      const isElevated = isMasterUserFlag || roleName === 'admin' || roleName === 'gerente';
+      const isElevated = isMasterUserFlag || roleName === 'admin' || roleName === 'gerente' || roleName === 'dono_loja';
       const currentScope: DataScope = isElevated ? 'all' : 'own';
       const currentPerms = isElevated ? ['*'] : SELLER_DEFAULT_PERMS;
 

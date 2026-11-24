@@ -37,7 +37,7 @@ import { createUserAccount, resetUserPassword, deleteUserAccount, permanentDelet
 const userSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(200),
   email: z.string().email('E-mail inválido'),
-  role: z.enum(['admin', 'gerente', 'revendedor', 'vendedor', 'vendedor_plus', 'vendedor_externo', 'visualizador']),
+  role: z.enum(['admin', 'gerente', 'dono_loja', 'revendedor', 'vendedor', 'vendedor_plus', 'vendedor_externo', 'visualizador']),
   store_id: z.string().optional(),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional().or(z.literal('')),
 });

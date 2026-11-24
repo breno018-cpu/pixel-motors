@@ -10,7 +10,7 @@ import { Lock } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'gerente' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'visualizador';
+  requiredRole?: 'admin' | 'gerente' | 'dono_loja' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'visualizador';
   permission?: string;
   allowedRoles?: Array<'admin' | 'gerente' | 'dono_loja' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'visualizador'>;
 }
