@@ -629,8 +629,9 @@ export default function Dashboard() {
       // 1. Filtro de Período e Competência Contábil Rigoroso (Unificado)
       if (!isDateInPeriod(s.date)) return false;
 
-      // 2. Filtro rigoroso de loja
-      if (effectiveStore !== 'all') {
+      // 2. Filtro rigoroso de loja (para vendedores, consolidatedSales já contém apenas suas próprias vendas —
+      // não filtramos por effectiveStore para não ocultar vendas do próprio vendedor feitas em Multimarcas)
+      if (!isSellerRole && effectiveStore !== 'all') {
         if (!isMatchingStore(s.store_id || s.raw_store_id, effectiveStore)) return false;
       }
 
@@ -646,7 +647,7 @@ export default function Dashboard() {
 
       return true;
     });
-  }, [consolidatedSales, isDateInPeriod, effectiveStore, sellerFilter, vehicleTypeFilter, employees]);
+  }, [consolidatedSales, isDateInPeriod, effectiveStore, sellerFilter, vehicleTypeFilter, employees, isSellerRole]);
 
   // Contratos Filtrados pelo Contexto de Período, Loja e Vendedor
   const filteredContracts = useMemo(() => {
@@ -664,8 +665,8 @@ export default function Dashboard() {
       const contractDate = c.signed_at || c.created_at || ext.sale_date || ext.data;
       if (!isDateInPeriod(contractDate)) return false;
 
-      // 2. Filtro de Loja
-      if (effectiveStore !== 'all') {
+      // 2. Filtro de Loja (para vendedores, filteredContracts já aplica filterSalesBySellerScope abaixo)
+      if (!isSellerRole && effectiveStore !== 'all') {
         const resolved = resolveSaleStore(
           {
             store_id: c.store_id,
