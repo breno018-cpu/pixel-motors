@@ -117,6 +117,7 @@ export default function Dashboard() {
     isSeller,
     isSellerPlus,
     isExternalSeller,
+    isStoreOwner,
     dataScope,
     userStore,
   } = auth;
@@ -544,6 +545,7 @@ export default function Dashboard() {
     isSeller,
     isSellerPlus,
     isExternalSeller,
+    isStoreOwner,
     dataScope,
   ]);
 
@@ -718,6 +720,7 @@ export default function Dashboard() {
     isSeller,
     isSellerPlus,
     isExternalSeller,
+    isStoreOwner,
     dataScope,
   ]);
 
