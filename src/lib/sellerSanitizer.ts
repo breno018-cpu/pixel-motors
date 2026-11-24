@@ -1,4 +1,4 @@
-import { DEFAULT_OFFICIAL_USERS, STORE_UUIDS } from '@/lib/userService';
+import { DEFAULT_OFFICIAL_USERS, STORE_UUIDS, isUserDeleted } from '@/lib/userService';
 import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID, STORE_MONTESCLAROS_MULTIMARCAS_UUID, isMatchingStore, SELLER_TO_STORE_MAP } from '@/lib/storeResolution';
 import { normalizeName, isSellerNameMatch } from '@/lib/salesScope';
 
@@ -168,7 +168,7 @@ export interface CleanSellerOption {
  * NUNCA insere UUIDs, códigos numéricos ou placeholders genéricos.
  */
 export function getCleanSellerOptions(params: {
-  employees?: Array<{ id?: string; profile_id?: string | null; full_name?: string; store_id?: string | null; is_active?: boolean; role?: string }>;
+  employees?: Array<{ id?: string; profile_id?: string | null; full_name?: string; email?: string | null; store_id?: string | null; is_active?: boolean; role?: string; notes?: string | null }>;
   allSales?: Array<any>;
   storeFilter?: string;
   isRestrictedSeller?: boolean;
@@ -176,7 +176,6 @@ export function getCleanSellerOptions(params: {
 }): CleanSellerOption[] {
   const {
     employees = [],
-    allSales = [],
     storeFilter = 'all',
     isRestrictedSeller = false,
     currentUserFullName = null,
@@ -187,7 +186,7 @@ export function getCleanSellerOptions(params: {
     return [{ id: myName, name: myName, storeId: 'all', storeLabel: 'Minhas Vendas' }];
   }
 
-  const map = new Map<string, CleanSellerOption>();
+  const options: CleanSellerOption[] = [];
 
   const addOption = (fullName: string, storeIdOrSlug?: string | null) => {
     const cleanName = fullName.trim();
@@ -232,10 +231,15 @@ export function getCleanSellerOptions(params: {
         : resolvedStoreId === STORE_MONTESCLAROS_UUID
         ? 'Montes Claros'
         : 'Divinópolis';
-    const key = cleanName.toLowerCase();
 
-    if (!map.has(key)) {
-      map.set(key, {
+    // Deduplica por nome canônico (evita "Mariana" + "Mariana Sabino", "Halana" + "Halanna", etc.)
+    const alreadyExists = options.some(
+      (opt) =>
+        opt.name.toLowerCase() === cleanName.toLowerCase() ||
+        isSellerNameMatch(opt.name, cleanName)
+    );
+    if (!alreadyExists) {
+      options.push({
         id: cleanName,
         name: cleanName,
         storeId: resolvedStoreId,
@@ -244,30 +248,30 @@ export function getCleanSellerOptions(params: {
     }
   };
 
-  // 1. Colaboradores cadastrados no banco de dados (employees)
-  employees.forEach((emp) => {
-    if (emp.is_active !== false && emp.full_name) {
-      addOption(emp.full_name, emp.store_id);
-    }
+  // 1. Estritamente colaboradores ATIVOS cadastrados no banco de dados (employees)
+  const activeDbEmployees = employees.filter((emp) => {
+    if (!emp.full_name || emp.is_active === false) return false;
+    const notes = (emp.notes || '').toUpperCase();
+    if (notes.includes('[STATUS: DEMITIDO]') || notes.includes('[STATUS: SUSPENSO]')) return false;
+    if (emp.role === 'dono_loja' || emp.role === 'mecanico') return false;
+    if (isUserDeleted(emp.id || '', emp.email || '')) return false;
+    return true;
   });
 
-  // 2. Colaboradores oficiais do sistema (DEFAULT_OFFICIAL_USERS)
-  DEFAULT_OFFICIAL_USERS.forEach((u) => {
-    if (u.is_active !== false && u.full_name) {
-      addOption(u.full_name, u.store_id);
-    }
-  });
+  if (activeDbEmployees.length > 0) {
+    activeDbEmployees.forEach((emp) => {
+      addOption(emp.full_name!, emp.store_id);
+    });
+  } else {
+    // Fallback apenas enquanto a tabela employees não carregou
+    DEFAULT_OFFICIAL_USERS.forEach((u) => {
+      if (u.is_active !== false && u.full_name && !isUserDeleted(u.id, u.email)) {
+        addOption(u.full_name, u.store_id);
+      }
+    });
+  }
 
-  // 3. Vendedores das vendas consolidadas — somente se passarem na validação estrita
-  allSales.forEach((s: any) => {
-    const raw = s.operator?.full_name || s.vendedor || s.seller_name || s.external_data?.seller_name;
-    const resolved = resolveSellerDisplayName(raw, employees);
-    if (resolved && isValidSellerName(resolved)) {
-      addOption(resolved, s.store_id || s.raw_store_id);
-    }
-  });
-
-  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  return options.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
