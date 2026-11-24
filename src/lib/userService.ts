@@ -151,6 +151,28 @@ export function isMasterUser(name?: string | null, email?: string | null, id?: s
   return false;
 }
 
+/**
+ * Resolve o cargo efetivo do usuário:
+ * - Apenas Breno e João Vitor podem possuir cargos administrativos ('admin' / 'gerente').
+ * - Qualquer usuário pode possuir o cargo 'dono_loja' (Dono do Grupo — todas as lojas).
+ * - Demais usuários recebem o fallback ('vendedor', ou 'mecanico' quando aplicável).
+ */
+export function resolveEffectiveRole(
+  requestedRole?: string | null,
+  name?: string | null,
+  email?: string | null,
+  id?: string | null,
+  fallback: string = 'vendedor'
+): string {
+  const role = (requestedRole || '').trim();
+  if (isMasterUser(name, email, id)) {
+    return role || 'admin';
+  }
+  if (role === 'dono_loja') return 'dono_loja';
+  if (role === 'mecanico') return 'mecanico';
+  return fallback;
+}
+
 export function resolveStoreUuid(storeId?: string | null): string {
   if (!storeId || storeId === 'none' || storeId === 'all') return STORE_UUIDS['store-divinopolis'];
   const clean = storeId.toLowerCase().trim();
@@ -316,7 +338,7 @@ export async function syncCredentialsFromSupabase(): Promise<void> {
         const existingIdx = customUsers.findIndex(
           (u) => (u.email && u.email.toLowerCase().trim() === email) || u.id === id || (profileId && u.id === profileId)
         );
-        const resolvedRole = isMasterUser(emp.full_name, emp.email, emp.id) ? (emp.role || 'admin') : 'vendedor';
+        const resolvedRole = resolveEffectiveRole(emp.role, emp.full_name, emp.email, emp.id, 'vendedor');
         const userObj: UserWithRole = {
           id: emp.profile_id || emp.id,
           email: emp.email || '',
@@ -794,7 +816,7 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
     }
 
     const assignedRole = roleMap.get(p.id) || (emp?.role as any) || 'vendedor';
-    const effectiveRole = isMasterUser(p.full_name, p.email, p.id) ? assignedRole : 'vendedor';
+    const effectiveRole = resolveEffectiveRole(assignedRole, p.full_name, p.email, p.id, 'vendedor');
 
     const officialUser = DEFAULT_OFFICIAL_USERS.find(
       (u) =>
@@ -861,9 +883,7 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
       }
 
       const assignedRole = e.role || 'vendedor';
-      const effectiveRole = isMasterUser(e.full_name, e.email, e.id)
-        ? assignedRole
-        : (assignedRole === 'mecanico' ? 'mecanico' : 'vendedor');
+      const effectiveRole = resolveEffectiveRole(assignedRole, e.full_name, e.email, e.id, 'vendedor');
 
       userMap.set(emailKey, {
         id: e.profile_id || e.id,
@@ -896,9 +916,13 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
     const ov = overrides[idKey] || overrides[emailKey];
     const rawStoreId = ov?.store_id || cu.store_id || existing?.store_id;
     const { storeId: resolvedStoreId, storeName: resolvedStoreName } = resolveStoreDetails(rawStoreId, cu.email, cu.full_name || existing?.full_name);
-    const effectiveRole = isMasterUser(cu.full_name || existing?.full_name, cu.email, cu.id || existing?.id)
-      ? (cu.role || existing?.role || 'vendedor')
-      : 'vendedor';
+    const effectiveRole = resolveEffectiveRole(
+      cu.role || existing?.role || 'vendedor',
+      cu.full_name || existing?.full_name,
+      cu.email,
+      cu.id || existing?.id,
+      'vendedor'
+    );
 
     if (!existing) {
       userMap.set(emailKey, {
@@ -936,8 +960,11 @@ export async function fetchConsolidatedUsers(storesList?: any[]): Promise<UserWi
       if (ov.status_reason) user.status_reason = ov.status_reason;
       if (ov.temp_password) user.temp_password = ov.temp_password;
       if (ov.role) {
-        user.role = isMasterUser(user.full_name, user.email, user.id) ? ov.role : 'vendedor';
+        user.role = resolveEffectiveRole(ov.role, user.full_name, user.email, user.id, 'vendedor');
       }
+    }
+    if (user.role === 'dono_loja') {
+      user.store_name = 'Todas as Lojas (Grupo)';
     }
   }
 
@@ -1034,9 +1061,8 @@ export async function createUserAccount(data: CreateUserData): Promise<CreateUse
   removeUserOverride(newUserId);
 
   // REGRA DE OURO: Apenas Breno e João Vitor podem possuir cargos administrativos (admin / gerente).
-  // Todos os demais usuários recebem estritamente o cargo de 'vendedor'.
-  const isMaster = isMasterUser(cleanName, cleanEmail, newUserId);
-  const effectiveRole = isMaster ? (data.role || 'admin') : 'vendedor';
+  // Qualquer usuário pode receber 'dono_loja' (Dono do Grupo — todas as lojas) ou 'vendedor'.
+  const effectiveRole = resolveEffectiveRole(data.role, cleanName, cleanEmail, newUserId, 'vendedor');
 
   // 3. Se temos usuário no auth, atualiza profiles e user_roles (somente colunas válidas)
   if (authProfileCreated) {
@@ -1380,8 +1406,7 @@ export async function updateUserAccount(
 
   const isAccountActive = data.is_active ?? (data.user_status === 'ATIVO');
   const validStoreId = data.store_id && data.store_id !== 'none' ? resolveStoreUuid(data.store_id) : null;
-  const isMaster = isMasterUser(data.full_name, data.email, userId);
-  const targetRole = isMaster ? (data.role || 'vendedor') : 'vendedor';
+  const targetRole = resolveEffectiveRole(data.role, data.full_name, data.email, userId, 'vendedor');
 
   // 1. Atualiza profiles (apenas colunas existentes)
   try {

@@ -107,6 +107,19 @@ const DEFAULT_ACTIVE_ADMIN: CachedUserData = {
   hasCustomRole: false,
 };
 
+const LEGACY: Record<string, string[]> = {
+  admin: ['*'],
+  gerente: ['*'],
+  vendedor: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.logistics','page.settings','sales.create','sales.edit','sales.delete','vehicles.create','vehicles.edit','logistics.calculate_freight'],
+  vendedor_plus: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.logistics','page.settings','sales.create','sales.edit','sales.delete','vehicles.create','vehicles.edit','logistics.calculate_freight'],
+  vendedor_externo: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.logistics','page.settings','sales.create','sales.edit','sales.delete','vehicles.create','vehicles.edit','logistics.calculate_freight'],
+  coordenador_logistica: ['page.dashboard','page.vehicles','page.sales','page.inspections','page.logistics','page.settings','logistics.view_routes','logistics.manage_methods','logistics.dispatch','logistics.fleet_audit','logistics.calculate_freight'],
+  motorista: ['page.dashboard','page.vehicles','page.inspections','page.logistics','page.settings','logistics.view_routes','logistics.driver_orders','logistics.delivery_checklist','logistics.calculate_freight'],
+  revendedor: ['page.dashboard','page.vehicles','page.inspections','page.settings'],
+  visualizador: ['page.dashboard','page.vehicles','page.inspections','page.settings'],
+  dono_loja: ['page.dashboard','page.owner_dashboard','page.vehicles','page.sales','page.settings','sales.create','sales.edit','vehicles.create','vehicles.edit','logistics.calculate_freight'],
+};
+
 function readAuthCache(): CachedUserData | null {
   try {
     if (!localStorage.getItem(GLOBAL_FORCE_LOGOUT_KEY)) {
@@ -129,11 +142,19 @@ function readAuthCache(): CachedUserData | null {
       return null;
     }
 
-    // Sanitização de segurança: Se o usuário em cache não for Breno ou João Vitor nem possuir cargo elevado, restringe ao escopo 'own'
+    // Sanitização de segurança: Se o usuário em cache não for Breno ou João Vitor nem possuir cargo elevado, restringe ao escopo adequado
     const isMaster = isMasterUser(parsed.profile?.full_name, parsed.profile?.email, parsed.userId);
     const hasAdminOrManager = (parsed.roles || []).some((r) => r === 'admin' || r === 'gerente');
+    const hasGroupOwner = (parsed.roles || []).includes('dono_loja');
 
-    if (!isMaster && !hasAdminOrManager) {
+    if (!isMaster && !hasAdminOrManager && hasGroupOwner) {
+      parsed.roles = ['dono_loja'];
+      parsed.dataScope = 'all';
+      parsed.userStore = null;
+      parsed.permissions = [...LEGACY.dono_loja];
+      parsed.hasCustomRole = false;
+      parsed.customRoleName = null;
+    } else if (!isMaster && !hasAdminOrManager) {
       if (!parsed.roles || parsed.roles.length === 0) {
         parsed.roles = ['vendedor'];
       }
@@ -143,6 +164,7 @@ function readAuthCache(): CachedUserData | null {
         'page.vehicles',
         'page.inspections',
         'page.sales',
+        'page.logistics',
         'page.settings',
         'sales.create',
         'sales.edit',
@@ -302,11 +324,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let userRoles: AppRole[] = (rolesData ?? []).map((r: any) => r.role as AppRole);
 
       // REGRA MASTER: Apenas Breno e João Vitor podem possuir cargos administrativos (admin / gerente).
-      // Todos os demais usuários da concessionária têm estritamente o cargo de 'vendedor'.
+      // Qualquer usuário pode possuir o cargo 'dono_loja' (Dono do Grupo — todas as lojas).
       const isMaster = isMasterUser(nextProfile?.full_name, nextProfile?.email, userId);
 
       if (!isMaster) {
-        userRoles = ['vendedor'];
+        const cleanEmailForRole = (nextProfile?.email || '').toLowerCase().trim();
+        const ovRole = getUserOverride(userId)?.role || (cleanEmailForRole ? getUserOverride(cleanEmailForRole)?.role : undefined);
+        const nonMasterRoles = userRoles.filter((r) => r !== 'admin' && r !== 'gerente');
+        if (ovRole === 'dono_loja' || nonMasterRoles.includes('dono_loja')) {
+          userRoles = ['dono_loja'];
+        } else {
+          userRoles = nonMasterRoles.length > 0 ? nonMasterRoles : ['vendedor'];
+        }
       } else if (!userRoles || userRoles.length === 0) {
         const cleanEmail = (nextProfile?.email || '').toLowerCase();
         const cleanName = (nextProfile?.full_name || '').toLowerCase();
@@ -322,7 +351,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let nextDataScope: DataScope =
         userRoles.includes('admin') || userRoles.includes('gerente') || userRoles.includes('dono_loja') ? 'all' : 'own';
       let nextPermissions: string[] =
-        userRoles.includes('admin') || userRoles.includes('gerente') ? ['*'] : [];
+        userRoles.includes('admin') || userRoles.includes('gerente')
+          ? ['*']
+          : userRoles.includes('dono_loja')
+          ? [...LEGACY.dono_loja]
+          : [];
 
       const customIds: string[] = (rolesData ?? [])
         .map((r: any) => r.custom_role_id)
@@ -388,7 +421,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPermissions(nextPermissions);
 
       let nextStore: UserStore | null = null;
-      if (!userRoles.includes('admin')) {
+      if (!userRoles.includes('admin') && !userRoles.includes('dono_loja')) {
         const storeData = (empRes?.data as any)?.stores || (resellerRes?.data as any)?.stores || storeRes?.data;
         const explicitStoreId = empRes?.data?.store_id || resellerRes?.data?.store_id || (storeRes?.data as any)?.id;
 
@@ -502,9 +535,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isCachedMaster = cached && isMasterUser(cached.profile?.full_name, cached.profile?.email, cached.userId);
       const isCachedSeller = cached && !isCachedMaster;
 
-      // Se um vendedor está ativo no DealFlow e o Supabase usa a credencial técnica de dados (admbreno),
-      // MANTÉM estritamente a identidade e permissões do VENDEDOR!
+      // Se um usuário não-master (vendedor ou dono do grupo) está ativo no DealFlow e o Supabase usa a credencial técnica de dados (admbreno),
+      // MANTÉM estritamente a identidade e permissões do usuário em cache!
       if (isCachedSeller && (nextUser?.email === 'admbreno@index.com' || nextUser?.id !== cached.userId)) {
+        const cachedIsGroupOwner = (cached.roles || []).includes('dono_loja');
         const defaultUser = {
           id: cached.userId,
           email: cached.profile?.email || 'vendedor@concessionaria.com.br',
@@ -515,10 +549,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } as unknown as User;
         setUser(defaultUser);
         setProfile(cached.profile);
-        setRoles(['vendedor']);
-        setUserStore(cached.userStore);
-        setPermissions(cached.permissions);
-        setDataScope('own');
+        setRoles(cachedIsGroupOwner ? ['dono_loja'] : ['vendedor']);
+        setUserStore(cachedIsGroupOwner ? null : cached.userStore);
+        setPermissions(cachedIsGroupOwner ? [...LEGACY.dono_loja] : cached.permissions);
+        setDataScope(cachedIsGroupOwner ? 'all' : 'own');
         setCustomRoleName(null);
         setHasCustomRole(false);
         setIsDataReady(true);
@@ -655,6 +689,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         'page.vehicles',
         'page.inspections',
         'page.sales',
+        'page.logistics',
         'page.settings',
         'page.moto_invoices',
         'sales.create',
@@ -864,12 +899,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               (profData.full_name || '').toLowerCase().includes('natan') ||
               (profData.full_name || '').toLowerCase().includes('sabrina');
 
+            let resolvedProfRole: AppRole = isMasterUser(profData.full_name, profData.email, profData.id) ? 'admin' : 'vendedor';
+            try {
+              const { data: urData } = await (supabase as any)
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', profData.id)
+                .maybeSingle();
+              if (urData?.role === 'dono_loja') {
+                resolvedProfRole = 'dono_loja';
+              }
+            } catch {}
+            const ovProf = getUserOverride(profData.id) || getUserOverride(profData.email);
+            if (ovProf?.role === 'dono_loja') {
+              resolvedProfRole = 'dono_loja';
+            }
+
             matchedUser = {
               id: profData.id,
               email: profData.email,
               full_name: profData.full_name,
-              role: isMasterUser(profData.full_name, profData.email, profData.id) ? 'admin' : 'vendedor',
-              store_id: isMocUser ? 'e8254a81-d669-464b-9806-457ba25ce7f0' : 'ccf8e097-09d7-4305-8077-5c16fc8b5634',
+              role: resolvedProfRole,
+              store_id: resolvedProfRole === 'dono_loja'
+                ? undefined
+                : (isMocUser ? 'e8254a81-d669-464b-9806-457ba25ce7f0' : 'ccf8e097-09d7-4305-8077-5c16fc8b5634'),
               temp_password: '',
             };
           }
@@ -960,9 +1013,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 5. Autentica e inicia a sessão
       const isMasterUserFlag = isMasterUser(matchedUser.full_name, matchedUser.email, matchedUser.id);
       const roleName: AppRole = (matchedUser.role as AppRole) || (isMasterUserFlag ? 'admin' : 'vendedor');
-      const isElevated = isMasterUserFlag || roleName === 'admin' || roleName === 'gerente' || roleName === 'dono_loja';
-      const currentScope: DataScope = isElevated ? 'all' : 'own';
-      const currentPerms = isElevated ? ['*'] : SELLER_DEFAULT_PERMS;
+      const isElevated = isMasterUserFlag || roleName === 'admin' || roleName === 'gerente';
+      const isGroupOwner = !isElevated && roleName === 'dono_loja';
+      const currentScope: DataScope = (isElevated || isGroupOwner) ? 'all' : 'own';
+      const currentPerms = isElevated ? ['*'] : isGroupOwner ? [...LEGACY.dono_loja] : SELLER_DEFAULT_PERMS;
 
       const sId = (matchedUser.store_id || '').toLowerCase().trim();
       const cleanEmailMatched = (matchedUser.email || '').toLowerCase().trim();
@@ -980,10 +1034,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cleanNameMatched.includes('sabrina') ||
         cleanNameMatched.includes('natan');
 
-      const storeObj = {
-        id: isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
-        name: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
-      };
+      const storeObj: UserStore | null = isGroupOwner
+        ? null
+        : {
+            id: isMoc ? STORE_MONTESCLAROS_UUID : STORE_DIVINOPOLIS_UUID,
+            name: isMoc ? 'Concessionária Montes Claros' : 'Concessionária Divinópolis',
+          };
 
       const customUser = {
         id: matchedUser.id,
@@ -1166,11 +1222,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isExternalSeller = !hasElevatedAccess && roles.includes('vendedor_externo');
   const isDriver = !hasElevatedAccess && roles.includes('motorista');
   const isLogistics = !hasElevatedAccess && (roles.includes('coordenador_logistica') || isDriver);
-  const isSeller = !hasElevatedAccess;
+  const isSeller = !hasElevatedAccess && !isStoreOwner;
   const usePerms = hasCustomRole && !hasElevatedAccess;
   const can = (permission: string) => {
     if (hasElevatedAccess) return true;
-    if (permission === 'page.inspections' || permission === 'page.sales') return true;
+    if (isStoreOwner) {
+      return usePerms ? permissions.includes(permission) : legacyCan(roles, permission);
+    }
+    if (permission === 'page.inspections' || permission === 'page.sales' || permission === 'page.logistics') return true;
     if (permission.startsWith('logistics.calculate')) return true;
     if (isSeller && (
       permission === 'sales.create' ||
@@ -1183,9 +1242,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isLogistics && permission.startsWith('logistics.')) return true;
     return usePerms ? permissions.includes(permission) : legacyCan(roles, permission);
   };
-  const canCreateSales = hasElevatedAccess || isSeller || can('sales.create');
-  const canRegisterVehicles = hasElevatedAccess || isSeller || can('vehicles.create');
-  const canViewMargins = hasElevatedAccess;
+  const canCreateSales = hasElevatedAccess || isStoreOwner || isSeller || can('sales.create');
+  const canRegisterVehicles = hasElevatedAccess || isStoreOwner || isSeller || can('vehicles.create');
+  const canViewMargins = hasElevatedAccess || isStoreOwner;
 
   return (
     <AuthContext.Provider
@@ -1200,19 +1259,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
-const LEGACY: Record<string, string[]> = {
-  admin: ['*'],
-  gerente: ['*'],
-  vendedor: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','sales.delete','vehicles.create','vehicles.edit','logistics.calculate_freight'],
-  vendedor_plus: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','sales.delete','vehicles.create','vehicles.edit','logistics.calculate_freight'],
-  vendedor_externo: ['page.dashboard','page.vehicles','page.inspections','page.sales','page.settings','sales.create','sales.edit','sales.delete','vehicles.create','vehicles.edit','logistics.calculate_freight'],
-  coordenador_logistica: ['page.dashboard','page.vehicles','page.sales','page.inspections','page.settings','logistics.view_routes','logistics.manage_methods','logistics.dispatch','logistics.fleet_audit','logistics.calculate_freight'],
-  motorista: ['page.dashboard','page.vehicles','page.inspections','page.settings','logistics.view_routes','logistics.driver_orders','logistics.delivery_checklist','logistics.calculate_freight'],
-  revendedor: ['page.dashboard','page.vehicles','page.inspections','page.settings'],
-  visualizador: ['page.dashboard','page.vehicles','page.inspections','page.settings'],
-  dono_loja: ['page.dashboard','page.owner_dashboard','page.vehicles','page.inspections','page.sales','page.settings','page.reports','sales.create','sales.edit','vehicles.create','vehicles.edit','logistics.calculate_freight'],
-};
 
 function legacyCan(roles: string[], permission: string) {
   return roles.some((r) => {

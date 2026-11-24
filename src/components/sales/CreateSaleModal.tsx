@@ -57,7 +57,7 @@ import { useActiveTemplates } from '@/hooks/useContractTemplates';
 import { downloadOriginalContract } from '@/lib/originalContractExport';
 import { useDateFilter } from '@/contexts/DateFilterContext';
 import { getMonthlySheetRows, useContracts } from '@/hooks/useContracts';
-import { cloudSaveSheetRows } from '@/lib/cloudSalesSync';
+import { cloudSaveSheetRows, persistContractToSupabase } from '@/lib/cloudSalesSync';
 import { cn } from '@/lib/utils';
 import { AddressFormFields } from './AddressFormFields';
 import { type AddressData, INITIAL_ADDRESS } from '@/lib/cepService';
@@ -585,6 +585,8 @@ export function CreateSaleModal({
           cleanSeller.includes('mariana') ||
           cleanSeller.includes('sabrina') ||
           cleanSeller.includes('halana') ||
+          cleanSeller.includes('halanna') ||
+          cleanSeller.includes('natan') ||
           cleanSeller.includes('moc') ||
           (buyerCity || '').toUpperCase().includes('MONTES CLAROS'));
 
@@ -768,6 +770,7 @@ export function CreateSaleModal({
           installments: effectiveInstallments,
           installment_value: effectiveInstallmentValue,
           status: saleType,
+          signed_at: saleType === 'concluido' ? `${effectiveSaleDate}T12:00:00.000Z` : null,
           template_id: templateId || null,
           payment_method: PAYMENT_METHOD_OPTIONS.find(p => p.value === paymentMethodCategory)?.label || (finValNum > 0 ? `Financiamento (${selectedBank || 'Banco'})` : (cardInstallments > 1 ? `Cartão de Crédito (${cardInstallments}x)` : 'À Vista')),
           financing_bank: finValNum > 0 ? selectedBank : null,
@@ -910,11 +913,17 @@ export function CreateSaleModal({
         contractPayload.vehicle_id = finalVehicleId || null;
 
         if (contractPayload.store_id) {
-          const { error: insErr } = await (supabase as any).from('contracts').insert([contractPayload]);
-          if (insErr) {
-            console.warn('[CreateSaleModal] Erro ao inserir contrato no Supabase:', insErr);
+          const persistResult = await persistContractToSupabase(contractPayload);
+          if (!persistResult.ok) {
+            console.error('[CreateSaleModal] Falha ao persistir contrato no Supabase:', persistResult.error);
+            toast({
+              variant: 'destructive',
+              title: 'Atenção: falha ao sincronizar no banco de dados',
+              description: `A venda ${persistResult.contractNumber} foi salva localmente, mas o banco retornou: ${persistResult.error}. Verifique sua conexão/sessão.`,
+            });
           } else {
-            console.log('[CreateSaleModal] Contrato persistido com sucesso no Supabase!');
+            contractPayload.contract_number = persistResult.contractNumber;
+            console.log('[CreateSaleModal] Contrato persistido com sucesso no Supabase:', persistResult.contractNumber);
           }
         }
       } catch (err) {

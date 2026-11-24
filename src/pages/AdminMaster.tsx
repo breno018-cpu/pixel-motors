@@ -91,6 +91,7 @@ interface UserWithRole {
 const ROLE_LABELS: Record<string, { label: string; badge: string }> = {
   admin: { label: 'Administrador Master', badge: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' },
   gerente: { label: 'Gerente Geral', badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' },
+  dono_loja: { label: 'Dono do Grupo', badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
   vendedor_plus: { label: 'Vendedor Senior (Plus)', badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' },
   vendedor: { label: 'Vendedor Interno', badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
   vendedor_externo: { label: 'Vendedor Externo', badge: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' },
@@ -474,6 +475,7 @@ export default function AdminMaster() {
                   <option value="all">Todos os Cargos</option>
                   <option value="admin">Administrador Master</option>
                   <option value="gerente">Gerente Geral</option>
+                  <option value="dono_loja">Dono do Grupo</option>
                   <option value="vendedor_plus">Vendedor Senior (Plus)</option>
                   <option value="vendedor">Vendedor Interno</option>
                   <option value="vendedor_externo">Vendedor Externo</option>

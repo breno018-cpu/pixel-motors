@@ -79,10 +79,13 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
   useEffect(() => {
     if (user && open) {
       const isMaster = isMasterUser(user.full_name, user.email, user.id);
+      const initialRole = isMaster
+        ? user.role
+        : (user.role === 'dono_loja' ? 'dono_loja' : 'vendedor');
       form.reset({
         full_name: user.full_name,
         email: user.email,
-        role: (isMaster ? user.role : 'vendedor') as EditFormData['role'],
+        role: initialRole as EditFormData['role'],
         store_id: user.store_id || '',
         user_status: user.user_status || 'ATIVO',
         status_reason: user.status_reason || '',
@@ -157,24 +160,27 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
               return (
                 <FormItem>
                   <FormLabel>Cargo *</FormLabel>
-                  <Select onValueChange={field.onChange} value={isMaster ? field.value : 'vendedor'} disabled={!isMaster}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger className="h-9"><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
                       {isMaster ? (
                         <>
                           <SelectItem value="admin">Administrador Master</SelectItem>
-                          <SelectItem value="dono_loja">Dono da Loja</SelectItem>
                           <SelectItem value="gerente">Gerente Geral</SelectItem>
+                          <SelectItem value="dono_loja">Dono do Grupo (Todas as Lojas)</SelectItem>
                           <SelectItem value="vendedor">Vendedor</SelectItem>
                         </>
                       ) : (
-                        <SelectItem value="vendedor">Vendedor</SelectItem>
+                        <>
+                          <SelectItem value="dono_loja">Dono do Grupo (Todas as Lojas)</SelectItem>
+                          <SelectItem value="vendedor">Vendedor</SelectItem>
+                        </>
                       )}
                     </SelectContent>
                   </Select>
                   {!isMaster && (
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      Apenas Breno e João Vitor possuem permissão administrativa no sistema.
+                      Dono do Grupo tem acesso a todas as lojas (Dashboard, Cockpit, Vendas e Estoque).
                     </p>
                   )}
                   <FormMessage />
@@ -196,21 +202,30 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
               <p className="text-xs text-muted-foreground">Quando escolhido, as permissões desse cargo passam a valer.</p>
             </div>
 
-            <FormField control={form.control} name="store_id" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Concessionária</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Selecionar loja" /></SelectTrigger></FormControl>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {stores?.filter(s => s.is_active).map((store) => (
-                      <SelectItem key={store.id} value={store.id}>{store.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )} />
+            <FormField control={form.control} name="store_id" render={({ field }) => {
+              const isGroupOwner = form.watch('role') === 'dono_loja';
+              return (
+                <FormItem>
+                  <FormLabel>Concessionária</FormLabel>
+                  {isGroupOwner ? (
+                    <div className="h-9 px-3 rounded-md border border-blue-500/30 bg-blue-500/5 text-blue-700 dark:text-blue-300 text-xs font-medium flex items-center">
+                      Todas as Lojas (Grupo Completo)
+                    </div>
+                  ) : (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Selecionar loja" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {stores?.filter(s => s.is_active).map((store) => (
+                          <SelectItem key={store.id} value={store.id}>{store.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              );
+            }} />
 
             {/* SITUAÇÃO / STATUS DO COLABORADOR */}
             <div className="rounded-xl border border-border/80 bg-muted/30 p-3.5 space-y-3">

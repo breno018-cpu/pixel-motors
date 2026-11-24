@@ -71,6 +71,7 @@ import {
   type PaymentMethodsData,
 } from '@/components/sales/PaymentMethodsSelector';
 import { SheetRowV9 } from '@/lib/dealershipSheetParser';
+import { persistContractToSupabase } from '@/lib/cloudSalesSync';
 
 interface CompleteSaleModalProps {
   open: boolean;
@@ -748,9 +749,21 @@ export function CompleteSaleModal({
 
       try {
         if (selectedPreSaleId && isUuid(selectedPreSaleId)) {
-          await supabase.from('contracts').update(payload).eq('id', selectedPreSaleId);
+          const { error: updErr } = await supabase
+            .from('contracts')
+            .update({ ...payload, signed_at: payload.signed_at || new Date().toISOString() })
+            .eq('id', selectedPreSaleId);
+          if (updErr) {
+            console.error('[CompleteSaleModal] Erro ao atualizar contrato no Supabase:', updErr);
+            toast({
+              variant: 'destructive',
+              title: 'Atenção: erro ao salvar conclusão no banco',
+              description: updErr.message || 'Tente novamente ou verifique sua sessão.',
+            });
+          }
         } else {
           payload.contract_number = `CTR-${Date.now().toString().slice(-6)}`;
+          payload.signed_at = payload.signed_at || new Date().toISOString();
           if (user?.id && isUuid(user.id)) payload.created_by = user.id;
 
           // Se não encontrou veículo selecionado, busca por chassi se houver
@@ -794,9 +807,16 @@ export function CompleteSaleModal({
           }
 
           payload.vehicle_id = finalVehicleId;
-          const { error: insErr } = await supabase.from('contracts').insert(payload);
-          if (insErr) {
-            console.warn('[CompleteSaleModal] Erro ao inserir contrato no Supabase:', insErr);
+          const persistResult = await persistContractToSupabase(payload);
+          if (!persistResult.ok) {
+            console.error('[CompleteSaleModal] Erro ao inserir contrato no Supabase:', persistResult.error);
+            toast({
+              variant: 'destructive',
+              title: 'Atenção: falha ao sincronizar no banco de dados',
+              description: `Contrato ${persistResult.contractNumber} salvo localmente, mas o banco retornou: ${persistResult.error}.`,
+            });
+          } else {
+            payload.contract_number = persistResult.contractNumber;
           }
         }
 

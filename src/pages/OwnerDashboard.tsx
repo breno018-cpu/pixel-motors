@@ -133,10 +133,10 @@ interface ModelStockGroup {
 
 export default function OwnerDashboard() {
   const navigate = useNavigate();
-  const { isAdmin, isManager, hasElevatedAccess } = useAuth();
+  const { isAdmin, isManager, isStoreOwner, hasElevatedAccess, roles } = useAuth();
   const dealershipScope = useDealershipScope();
 
-  if (!hasElevatedAccess && !isAdmin && !isManager) {
+  if (!hasElevatedAccess && !isAdmin && !isManager && !isStoreOwner && !roles.includes('dono_loja')) {
     return <Navigate to="/" replace />;
   }
 

@@ -207,6 +207,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
   const roleLabels: Record<string, { label: string; class: string }> = {
     admin: { label: 'Administrador', class: 'bg-destructive/10 text-destructive border-destructive/20' },
     gerente: { label: 'Gerente', class: 'bg-primary/10 text-primary border-primary/20' },
+    dono_loja: { label: 'Dono do Grupo', class: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
     revendedor: { label: 'Revendedor', class: 'bg-warning/10 text-warning border-warning/20' },
     vendedor: { label: 'Vendedor', class: 'bg-accent/60 text-accent-foreground border-accent' },
     vendedor_plus: { label: 'Vendedor +', class: 'bg-primary/10 text-primary border-primary/20' },
@@ -275,7 +276,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                           <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Selecionar cargo" /></SelectTrigger></FormControl>
                           <SelectContent>
                             <SelectItem value="vendedor">Vendedor (Padrão)</SelectItem>
-                            <SelectItem value="dono_loja">Dono da Loja</SelectItem>
+                            <SelectItem value="dono_loja">Dono do Grupo (Todas as Lojas)</SelectItem>
                             <SelectItem value="gerente">Gerente (Apenas João Vitor)</SelectItem>
                             <SelectItem value="admin">Administrador Master (Apenas Breno)</SelectItem>
                           </SelectContent>
@@ -283,20 +284,29 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="store_id" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Loja</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Selecionar loja" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            {stores?.filter(s => s.is_active).map((store) => (
-                              <SelectItem key={store.id} value={store.id}>{store.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    <FormField control={form.control} name="store_id" render={({ field }) => {
+                      const isGroupOwner = form.watch('role') === 'dono_loja';
+                      return (
+                        <FormItem>
+                          <FormLabel>Loja</FormLabel>
+                          {isGroupOwner ? (
+                            <div className="h-9 px-3 rounded-md border border-blue-500/30 bg-blue-500/5 text-blue-700 dark:text-blue-300 text-xs font-medium flex items-center">
+                              Todas as Lojas (Grupo Completo)
+                            </div>
+                          ) : (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Selecionar loja" /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                {stores?.filter(s => s.is_active).map((store) => (
+                                  <SelectItem key={store.id} value={store.id}>{store.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }} />
                   </div>
                   <FormField control={form.control} name="password" render={({ field }) => (
                     <FormItem>
@@ -361,7 +371,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                     <TableCell>
                       {isMasterUser(user.full_name, user.email, user.id) ? (
                         <Select value={user.role} onValueChange={(value) => updateRoleMutation.mutate({ userId: user.id, role: value })}>
-                          <SelectTrigger className="h-7 w-32 text-xs">
+                          <SelectTrigger className="h-7 w-36 text-xs">
                             <Badge variant="outline" className={roleLabels[user.role]?.class || roleLabels.visualizador.class}>
                               {roleLabels[user.role]?.label || user.role}
                             </Badge>
@@ -369,19 +379,20 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                           <SelectContent>
                             <SelectItem value="admin">Administrador</SelectItem>
                             <SelectItem value="gerente">Gerente</SelectItem>
+                            <SelectItem value="dono_loja">Dono do Grupo</SelectItem>
                             <SelectItem value="vendedor">Vendedor</SelectItem>
                           </SelectContent>
                         </Select>
                       ) : (
-                        <Badge variant="outline" className={roleLabels.vendedor.class}>
-                          Vendedor
+                        <Badge variant="outline" className={roleLabels[user.role]?.class || roleLabels.vendedor.class}>
+                          {roleLabels[user.role]?.label || 'Vendedor'}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <Store className="w-3.5 h-3.5" />
-                        {user.store_name || 'Sem loja'}
+                        {user.role === 'dono_loja' ? 'Todas as Lojas (Grupo)' : (user.store_name || 'Sem loja')}
                       </div>
                     </TableCell>
                     <TableCell>

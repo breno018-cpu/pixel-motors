@@ -4,6 +4,7 @@ import { SheetRowV9, convertContractsSeedToSheetRows, SHEET_STORAGE_KEY_V9 } fro
 import { getLocalTodayDateString, normalizeDateToYMD, formatFiscalDate } from '@/lib/fiscalDates';
 import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/hooks/useStores';
 import { saveAttachmentToIdb, safeSaveToLocalStorage, cleanLocalStorageBloat } from '@/lib/invoiceAttachmentStorage';
+import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 
 export const GLOBAL_SYNC_CONTRACT_NUMBER = 'DEALFLOW_GLOBAL_SYNC';
 const isUuid = (val: any): boolean =>
@@ -363,11 +364,87 @@ export async function cloudSaveSheetRows(inputRows: SheetRowV9[]): Promise<boole
     queryClient.invalidateQueries({ queryKey: ['contracts'] });
     queryClient.invalidateQueries({ queryKey: ['contract-stats'] });
 
-    return true;
+    return !error;
   } catch (err: any) {
     console.error('[cloudSalesSync] Erro ao salvar linhas da planilha:', err?.message);
     return false;
   }
+}
+
+/**
+ * Persiste um novo contrato na tabela `public.contracts` do Supabase com retentativa automática:
+ * - Garante `buyer_cpf` preenchido e `signed_at` definido para vendas concluídas.
+ * - Resolve automaticamente colisões de `contract_number` (código 23505) gerando sufixo único.
+ * - Retenta sem `template_id` opcional em caso de FK inválida (código 23503).
+ * - Retorna sucesso real (`ok: true`) somente quando o Postgres confirma a gravação.
+ */
+export async function persistContractToSupabase(
+  rawPayload: Record<string, any>
+): Promise<{ ok: boolean; contractNumber: string; error?: string }> {
+  await ensureSupabaseSession();
+
+  const basePayload: Record<string, any> = {
+    ...rawPayload,
+    buyer_cpf: String(rawPayload.buyer_cpf || '').trim() || '00000000000',
+  };
+
+  if (basePayload.status === 'concluido' && !basePayload.signed_at) {
+    const extDate = basePayload.external_data?.sale_date;
+    if (typeof extDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(extDate)) {
+      basePayload.signed_at = `${extDate}T12:00:00.000Z`;
+    } else {
+      basePayload.signed_at = new Date().toISOString();
+    }
+  }
+
+  let attemptPayload = { ...basePayload };
+  const baseContractNumber = String(attemptPayload.contract_number || `CTR-${Date.now().toString().slice(-6)}`);
+
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const { data, error } = await (supabase as any)
+      .from('contracts')
+      .insert([attemptPayload])
+      .select('id, contract_number')
+      .single();
+
+    if (!error && data?.id) {
+      return { ok: true, contractNumber: data.contract_number || attemptPayload.contract_number };
+    }
+
+    const code = error?.code || '';
+    const msg = error?.message || '';
+
+    // Colisão de contract_number (UNIQUE constraint) -> gera sufixo único e retenta
+    if (code === '23505' || msg.includes('contracts_contract_number_key')) {
+      const suffix = Math.random().toString(36).substring(2, 5).toUpperCase();
+      attemptPayload = {
+        ...attemptPayload,
+        contract_number: `${baseContractNumber}-${suffix}`,
+      };
+      continue;
+    }
+
+    // FK inválida em campo opcional (ex: template_id) -> limpa e retenta
+    if (code === '23503' && msg.includes('template_id') && attemptPayload.template_id) {
+      attemptPayload = {
+        ...attemptPayload,
+        template_id: null,
+      };
+      continue;
+    }
+
+    return {
+      ok: false,
+      contractNumber: attemptPayload.contract_number || baseContractNumber,
+      error: msg || code || 'Falha desconhecida ao gravar no banco de dados',
+    };
+  }
+
+  return {
+    ok: false,
+    contractNumber: attemptPayload.contract_number || baseContractNumber,
+    error: 'Número máximo de tentativas excedido ao salvar contrato no banco de dados',
+  };
 }
 
 /**

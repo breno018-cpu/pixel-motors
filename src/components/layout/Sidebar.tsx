@@ -125,7 +125,7 @@ export function Sidebar() {
   const getRoleBadge = () => {
     if (roles.includes('admin')) return { label: 'Admin', color: 'bg-sidebar-primary/20 text-sidebar-primary' };
     if (roles.includes('gerente')) return { label: 'Gerente', color: 'bg-success/20 text-success' };
-    if (roles.includes('dono_loja')) return { label: 'Dono da Loja', color: 'bg-blue-500/20 text-blue-600' };
+    if (roles.includes('dono_loja')) return { label: 'Dono do Grupo', color: 'bg-blue-500/20 text-blue-600' };
     if (roles.includes('vendedor_plus')) return { label: 'Vendedor +', color: 'bg-warning/20 text-warning' };
     if (roles.includes('vendedor_externo')) return { label: 'Vendedor ++', color: 'bg-warning/20 text-warning' };
     if (roles.includes('vendedor')) return { label: 'Vendedor', color: 'bg-warning/20 text-warning' };

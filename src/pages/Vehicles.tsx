@@ -182,7 +182,8 @@ export default function Vehicles() {
         const raw = localStorage.getItem('df_auth_user_cache_v1') || sessionStorage.getItem('df_auth_user_cache_v1');
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (parsed?.userStore?.id) {
+          const isGroupOwner = Array.isArray(parsed?.roles) && parsed.roles.includes('dono_loja');
+          if (!isGroupOwner && parsed?.userStore?.id) {
             return parsed.userStore.id;
           }
         }
@@ -233,22 +234,31 @@ export default function Vehicles() {
   const { data: models } = useVehicleModels();
   const {
     isAdmin,
+    isStoreOwner,
+    roles,
     hasElevatedAccess,
     canRegisterVehicles,
     canCreateSales,
     canViewMargins,
     userStore,
   } = useAuth();
+  const isGroupOwnerRole = isStoreOwner || roles.includes('dono_loja');
   const { toast } = useToast();
   const confirm = useConfirm();
   const dealershipScope = useDealershipScope();
 
   // Regra de ouro: cada funcionário vê PRIMEIRO o estoque da sua respectiva loja por padrão.
-  // Se o usuário alternar manualmente ou houver parâmetro na URL (?store=), respeita a escolha do usuário.
+  // Dono do Grupo (dono_loja) vê TODAS as lojas por padrão.
   const userManuallyChangedStoreRef = useRef(false);
   useEffect(() => {
     if (searchParams.get('store')) {
       userManuallyChangedStoreRef.current = true;
+      return;
+    }
+    if (isGroupOwnerRole) {
+      if (!userManuallyChangedStoreRef.current && storeFilter !== 'all') {
+        setStoreFilter('all');
+      }
       return;
     }
     if (!userManuallyChangedStoreRef.current && userStore?.id) {
@@ -256,7 +266,7 @@ export default function Vehicles() {
         setStoreFilter(userStore.id);
       }
     }
-  }, [userStore?.id, searchParams]);
+  }, [userStore?.id, searchParams, isGroupOwnerRole]);
 
   const handleStoreChange = (newStoreId: string) => {
     userManuallyChangedStoreRef.current = true;
