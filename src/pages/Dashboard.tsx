@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import {
   Store,
   Users,
@@ -129,7 +129,7 @@ export default function Dashboard() {
 
   // Identificação universal para todos os cargos de vendedor
   const isSellerRole = useMemo(() => {
-    if (isAdmin || isManager || hasElevatedAccess) return false;
+    if (isAdmin || isManager || hasElevatedAccess || isStoreOwner || roles.includes('dono_loja')) return false;
     return (
       isSeller ||
       isSellerPlus ||

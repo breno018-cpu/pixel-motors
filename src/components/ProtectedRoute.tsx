@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChangePasswordDialog } from '@/components/auth/ChangePasswordDialog';
@@ -12,7 +12,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: 'admin' | 'gerente' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'visualizador';
   permission?: string;
-  allowedRoles?: Array<'admin' | 'gerente' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'visualizador'>;
+  allowedRoles?: Array<'admin' | 'gerente' | 'dono_loja' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'visualizador'>;
 }
 
 export function ProtectedRoute({ children, requiredRole, allowedRoles, permission }: ProtectedRouteProps) {

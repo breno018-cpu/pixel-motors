@@ -43,7 +43,7 @@ export function isUserSellerRestricted(auth: UserAuthScopeContext): boolean {
     return false;
   }
   const roles = auth.roles || [];
-  if (roles.includes('admin') || roles.includes('gerente')) {
+  if (roles.includes('admin') || roles.includes('gerente') || roles.includes('dono_loja')) {
     return false;
   }
   return true;

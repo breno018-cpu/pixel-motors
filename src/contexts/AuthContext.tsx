@@ -20,7 +20,7 @@ import {
 import { isMatchingStore, STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/lib/storeResolution';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 
-type AppRole = 'admin' | 'gerente' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'coordenador_logistica' | 'motorista' | 'visualizador';
+type AppRole = 'admin' | 'gerente' | 'dono_loja' | 'revendedor' | 'vendedor' | 'vendedor_plus' | 'vendedor_externo' | 'coordenador_logistica' | 'motorista' | 'visualizador';
 
 interface Profile {
   id: string;
@@ -186,6 +186,7 @@ interface AuthContextType {
   isManager: boolean;
   isSeller: boolean;
   isSellerPlus: boolean;
+  isStoreOwner: boolean;
   isExternalSeller: boolean;
   isLogistics: boolean;
   isDriver: boolean;
@@ -1160,6 +1161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = Boolean(isBreno);
   const isManager = Boolean(isJoao);
   const hasElevatedAccess = Boolean(isBreno || isJoao);
+  const isStoreOwner = !hasElevatedAccess && roles.includes('dono_loja');
   const isSellerPlus = !hasElevatedAccess && roles.includes('vendedor_plus');
   const isExternalSeller = !hasElevatedAccess && roles.includes('vendedor_externo');
   const isDriver = !hasElevatedAccess && roles.includes('motorista');
@@ -1189,7 +1191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user, session, profile, roles, userStore, isLoading, isDataReady,
-        isAdmin, isManager, isSeller, isSellerPlus, isExternalSeller, isLogistics, isDriver, hasElevatedAccess, canCreateSales, canRegisterVehicles, mustChangePassword,
+        isAdmin, isManager, isSeller, isSellerPlus, isStoreOwner, isExternalSeller, isLogistics, isDriver, hasElevatedAccess, canCreateSales, canRegisterVehicles, mustChangePassword,
         permissions, dataScope, customRoleName, hasCustomRole, can, canViewMargins,
         signIn, signInWithMasterKey, signOut, clearMustChangePassword,
       }}
@@ -1209,6 +1211,7 @@ const LEGACY: Record<string, string[]> = {
   motorista: ['page.dashboard','page.vehicles','page.inspections','page.settings','logistics.view_routes','logistics.driver_orders','logistics.delivery_checklist','logistics.calculate_freight'],
   revendedor: ['page.dashboard','page.vehicles','page.inspections','page.settings'],
   visualizador: ['page.dashboard','page.vehicles','page.inspections','page.settings'],
+  dono_loja: ['page.dashboard','page.owner_dashboard','page.vehicles','page.inspections','page.sales','page.settings','page.reports','sales.create','sales.edit','vehicles.create','vehicles.edit','logistics.calculate_freight'],
 };
 
 function legacyCan(roles: string[], permission: string) {

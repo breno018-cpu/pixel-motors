@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -275,6 +275,7 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
                           <FormControl><SelectTrigger className="h-9"><SelectValue placeholder="Selecionar cargo" /></SelectTrigger></FormControl>
                           <SelectContent>
                             <SelectItem value="vendedor">Vendedor (Padrão)</SelectItem>
+                            <SelectItem value="dono_loja">Dono da Loja</SelectItem>
                             <SelectItem value="gerente">Gerente (Apenas João Vitor)</SelectItem>
                             <SelectItem value="admin">Administrador Master (Apenas Breno)</SelectItem>
                           </SelectContent>

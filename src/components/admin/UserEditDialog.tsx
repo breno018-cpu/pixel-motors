@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useCustomRoles } from '@/hooks/useCustomRoles';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -24,7 +24,7 @@ import { updateUserAccount, isMasterUser } from '@/lib/userService';
 const editSchema = z.object({
   full_name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(200),
   email: z.string().email('E-mail inválido'),
-  role: z.enum(['admin', 'gerente', 'revendedor', 'vendedor', 'vendedor_plus', 'vendedor_externo', 'visualizador']),
+  role: z.enum(['admin', 'gerente', 'dono_loja', 'revendedor', 'vendedor', 'vendedor_plus', 'vendedor_externo', 'visualizador']),
   store_id: z.string().optional(),
   user_status: z.enum(['ATIVO', 'SUSPENSO', 'DEMITIDO']).default('ATIVO'),
   status_reason: z.string().optional(),
@@ -163,6 +163,7 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
                       {isMaster ? (
                         <>
                           <SelectItem value="admin">Administrador Master</SelectItem>
+                          <SelectItem value="dono_loja">Dono da Loja</SelectItem>
                           <SelectItem value="gerente">Gerente Geral</SelectItem>
                           <SelectItem value="vendedor">Vendedor</SelectItem>
                         </>
