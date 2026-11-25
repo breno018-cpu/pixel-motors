@@ -5,7 +5,7 @@ import {
   ShoppingCart, 
   ShieldCheck, 
   Menu,
-  FileText
+  Truck
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -53,10 +53,10 @@ export function MobileBottomNav({ onOpenMenu }: MobileBottomNavProps) {
         ]
       : [
           {
-            label: 'Contratos',
-            icon: FileText,
-            path: '/contracts',
-            isActive: currentPath.startsWith('/contracts'),
+            label: 'Logística',
+            icon: Truck,
+            path: '/logistics',
+            isActive: currentPath.startsWith('/logistics'),
           },
         ]),
   ];
