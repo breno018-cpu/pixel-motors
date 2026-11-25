@@ -27,7 +27,8 @@ import {
   DollarSign,
   ReceiptText,
   Truck,
-  Store
+  Store,
+  ScanBarcode
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -77,6 +78,7 @@ import { FinancialDREPanel } from '@/components/finance/FinancialDREPanel';
 import { StoreFiscalControlPanel } from '@/components/admin/StoreFiscalControlPanel';
 import { FleetManager } from '@/components/admin/FleetManager';
 import { ResellerControlPanel } from '@/components/dashboard/ResellerControlPanel';
+import { ChassisAuditPanel } from '@/components/admin/ChassisAuditPanel';
 
 interface UserWithRole {
   id: string;
@@ -415,6 +417,12 @@ export default function AdminMaster() {
               <Store className="w-3.5 h-3.5" />
               Revendedores
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="conferir-chassis" className="gap-2 text-xs font-semibold text-red-600 dark:text-red-400">
+                <ScanBarcode className="w-3.5 h-3.5" />
+                Conferir Chassis
+              </TabsTrigger>
+            )}
             <TabsTrigger value="auditoria" className="gap-2 text-xs font-medium">
               <Activity className="w-3.5 h-3.5" />
               Histórico de Ações
@@ -710,6 +718,13 @@ export default function AdminMaster() {
         <TabsContent value="revendedores" className="space-y-4">
           <ResellerControlPanel />
         </TabsContent>
+
+        {/* ABA EXCLUSIVA ADMIN: CONFERÊNCIA DE CHASSIS */}
+        {isAdmin && (
+          <TabsContent value="conferir-chassis" className="space-y-4">
+            <ChassisAuditPanel />
+          </TabsContent>
+        )}
 
         {/* ABA: FROTA DA LOJA & FRETE PRÓPRIO */}
         <TabsContent value="frota" className="space-y-4">
