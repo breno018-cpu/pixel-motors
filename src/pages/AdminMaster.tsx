@@ -26,7 +26,8 @@ import {
   UserCheck,
   DollarSign,
   ReceiptText,
-  Truck
+  Truck,
+  Store
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
