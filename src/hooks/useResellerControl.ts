@@ -91,9 +91,12 @@ export function useResellerControl() {
     queryKey: ['reseller-control-resellers'],
     queryFn: async () => {
       await ensureSupabaseSession();
+      // Revendedores = apenas parceiros/lojas EXTERNAS (nunca vendedores internos com user_id ou partner_type = 'interno')
       const { data, error } = await (supabase as any)
         .from('resellers')
         .select('id, full_name, store_id, cpf, phone, email, commission_rate, is_active, partner_type, created_at')
+        .neq('partner_type', 'interno')
+        .is('user_id', null)
         .order('full_name', { ascending: true });
       if (error) throw error;
       return (data || []) as ResellerRecord[];
@@ -173,7 +176,8 @@ export function useResellerControl() {
           store_id: input.store_id || null,
           commission_rate: input.commission_rate ?? null,
           is_active: true,
-          partner_type: 'revendedor',
+          user_id: null,
+          partner_type: 'parceiro_externo',
         })
         .select()
         .single();

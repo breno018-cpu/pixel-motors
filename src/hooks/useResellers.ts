@@ -30,6 +30,7 @@ export function useResellers() {
         .from('resellers')
         .select('*')
         .neq('partner_type', 'interno')
+        .is('user_id', null)
         .order('full_name');
       
       if (error) throw error;
@@ -45,7 +46,8 @@ export function useResellerStats() {
       const { data, error } = await supabase
         .from('resellers')
         .select('is_active')
-        .neq('partner_type', 'interno');
+        .neq('partner_type', 'interno')
+        .is('user_id', null);
       
       if (error) throw error;
       
