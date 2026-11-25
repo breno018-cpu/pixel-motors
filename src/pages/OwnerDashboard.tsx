@@ -74,6 +74,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import { ResellerControlPanel } from '@/components/dashboard/ResellerControlPanel';
 
 function getCanonicalModelName(rawModel: string | null | undefined): string {
   if (!rawModel) return 'OUTROS MODELOS';
@@ -145,8 +146,8 @@ export default function OwnerDashboard() {
   const { data: stores = [] } = useStores();
   const { data: employees = [] } = useEmployees();
 
-  // Abas Executivas: caixa | nfs | patio | troca-estoque | vendedores | comprovantes | planilha
-  const [activeTab, setActiveTab] = useState<'caixa' | 'nfs' | 'patio' | 'troca-estoque' | 'vendedores' | 'comprovantes' | 'planilha'>('caixa');
+  // Abas Executivas: caixa | nfs | patio | revendedores | troca-estoque | vendedores | comprovantes | planilha
+  const [activeTab, setActiveTab] = useState<'caixa' | 'nfs' | 'patio' | 'revendedores' | 'troca-estoque' | 'vendedores' | 'comprovantes' | 'planilha'>('caixa');
 
   // Filtros Globais do Cockpit
   const [periodPreset, setPeriodPreset] = useState<string>('this_month');
@@ -783,6 +784,14 @@ export default function OwnerDashboard() {
             >
               <Bike className="w-3.5 h-3.5 text-primary shrink-0" />
               <span>Pátio em R$</span>
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="revendedores"
+              className="flex-1 rounded-xl text-xs font-bold gap-1.5 py-2.5 text-blue-600 dark:text-blue-400 data-[state=active]:bg-background data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-xs data-[state=active]:border-blue-500/30 border border-transparent transition-all"
+            >
+              <Store className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>Revendedores</span>
             </TabsTrigger>
 
             <TabsTrigger
@@ -1462,6 +1471,13 @@ export default function OwnerDashboard() {
               <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">Em Produção • Em Breve</span>
             </div>
           </div>
+        </TabsContent>
+
+        {/* =================================================================== */}
+        {/* ABA: CONTROLE DE REVENDEDORES (ESTOQUE, PAGAMENTO, FINANCIAMENTOS)  */}
+        {/* =================================================================== */}
+        <TabsContent value="revendedores" className="space-y-6 mt-0">
+          <ResellerControlPanel />
         </TabsContent>
 
         {/* =================================================================== */}

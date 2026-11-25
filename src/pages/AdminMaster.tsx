@@ -75,6 +75,7 @@ import { ExportDialog } from '@/components/export/ExportDialog';
 import { FinancialDREPanel } from '@/components/finance/FinancialDREPanel';
 import { StoreFiscalControlPanel } from '@/components/admin/StoreFiscalControlPanel';
 import { FleetManager } from '@/components/admin/FleetManager';
+import { ResellerControlPanel } from '@/components/dashboard/ResellerControlPanel';
 
 interface UserWithRole {
   id: string;
@@ -409,6 +410,10 @@ export default function AdminMaster() {
               <ReceiptText className="w-3.5 h-3.5" />
               Entrada &amp; Cancelamento NF
             </TabsTrigger>
+            <TabsTrigger value="revendedores" className="gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400">
+              <Store className="w-3.5 h-3.5" />
+              Revendedores
+            </TabsTrigger>
             <TabsTrigger value="auditoria" className="gap-2 text-xs font-medium">
               <Activity className="w-3.5 h-3.5" />
               Histórico de Ações
@@ -698,6 +703,11 @@ export default function AdminMaster() {
         {/* ABA: CONTROLE FISCAL DE ENTRADA E CANCELAMENTO DE NFS NAS LOJAS */}
         <TabsContent value="nfs-lojas" className="space-y-4">
           <StoreFiscalControlPanel />
+        </TabsContent>
+
+        {/* ABA: CONTROLE DE REVENDEDORES */}
+        <TabsContent value="revendedores" className="space-y-4">
+          <ResellerControlPanel />
         </TabsContent>
 
         {/* ABA: FROTA DA LOJA & FRETE PRÓPRIO */}
