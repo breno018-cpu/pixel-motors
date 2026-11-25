@@ -248,23 +248,31 @@ export default function Vehicles() {
   const dealershipScope = useDealershipScope();
 
   // Regra de ouro: cada funcionário vê PRIMEIRO o estoque da sua respectiva loja por padrão.
-  // Dono do Grupo (dono_loja) vê TODAS as lojas por padrão.
+  // Dono do Grupo (dono_loja) e Admin/Gerente sem loja vinculada veem TODAS as lojas por padrão.
   const userManuallyChangedStoreRef = useRef(false);
   useEffect(() => {
-    if (searchParams.get('store')) {
+    const fromParam = searchParams.get('store');
+    if (fromParam) {
       userManuallyChangedStoreRef.current = true;
-      return;
-    }
-    if (isGroupOwnerRole) {
-      if (!userManuallyChangedStoreRef.current && storeFilter !== 'all') {
-        setStoreFilter('all');
+      setStoreFilter(fromParam);
+      if (dealershipScope.activeScope !== fromParam) {
+        dealershipScope.setActiveScope(fromParam);
       }
       return;
     }
-    if (!userManuallyChangedStoreRef.current && userStore?.id) {
-      if (storeFilter === 'all' || !storeFilter) {
-        setStoreFilter(userStore.id);
-      }
+    if (userManuallyChangedStoreRef.current) return;
+
+    if (isGroupOwnerRole || !userStore?.id) {
+      if (storeFilter !== 'all') setStoreFilter('all');
+      if (dealershipScope.activeScope !== 'all') dealershipScope.setActiveScope('all');
+      return;
+    }
+
+    if (storeFilter !== userStore.id) {
+      setStoreFilter(userStore.id);
+    }
+    if (dealershipScope.activeScope !== userStore.id) {
+      dealershipScope.setActiveScope(userStore.id);
     }
   }, [userStore?.id, searchParams, isGroupOwnerRole]);
 

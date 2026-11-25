@@ -604,17 +604,11 @@ export default function Sales() {
         }
       }
 
-      // 2. Filtro de Concessionária (Escopo Global e Local)
-      // Para vendedores restritos, allSales já contém estritamente suas próprias vendas —
-      // um filtro global residual de outra loja no localStorage não pode ocultar suas próprias vendas.
-      if (!isRestrictedSeller) {
-        if (dealershipScope.activeScope !== 'all') {
-          const matches = dealershipScope.matchesScope(sale.store_id || sale.store?.id || sale.store?.name);
-          if (!matches) return false;
-        } else if (storeFilter !== 'all') {
-          const matchesStore = isMatchingStore(sale.store_id || sale.store?.id, storeFilter);
-          if (!matchesStore) return false;
-        }
+      // 2. Filtro de Concessionária (usa estritamente o filtro visível da tela de Vendas)
+      // Para vendedores restritos, allSales já contém estritamente suas próprias vendas.
+      if (!isRestrictedSeller && storeFilter !== 'all') {
+        const matchesStore = isMatchingStore(sale.store_id || sale.store?.id || sale.store?.name, storeFilter);
+        if (!matchesStore) return false;
       }
 
       // 3. Filtro de Vendedor / Operador
