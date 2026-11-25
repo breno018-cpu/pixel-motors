@@ -152,7 +152,11 @@ function OwnerDashboardContent() {
   const { data: employees = [] } = useEmployees();
 
   // Abas Executivas: caixa | nfs | patio | revendedores | troca-estoque | vendedores | comprovantes | planilha
-  const [activeTab, setActiveTab] = useState<'caixa' | 'nfs' | 'patio' | 'revendedores' | 'troca-estoque' | 'vendedores' | 'comprovantes' | 'planilha'>('caixa');
+  const [activeTab, setActiveTab] = useState<'caixa' | 'nfs' | 'patio' | 'revendedores' | 'troca-estoque' | 'vendedores' | 'comprovantes' | 'planilha'>(() => {
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    const valid = ['caixa', 'nfs', 'patio', 'revendedores', 'troca-estoque', 'vendedores', 'comprovantes', 'planilha'];
+    return (valid.includes(requested || '') ? requested : 'caixa') as any;
+  });
 
   // Filtros Globais do Cockpit
   const [periodPreset, setPeriodPreset] = useState<string>('this_month');

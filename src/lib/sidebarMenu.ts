@@ -51,7 +51,6 @@ export const ALL_MENU_ITEMS: SidebarMenuItem[] = [
   { icon: Landmark, label: 'Financiamentos', path: '/financing', roles: ['admin', 'gerente'], group: 'operacao' },
   { icon: FileText, label: 'Contratos', path: '/contracts', roles: ['admin', 'gerente'], group: 'documentos' },
   { icon: FileText, label: 'Consignações', path: '/consignments', roles: ['admin', 'gerente'], group: 'documentos' },
-  { icon: Bike, label: 'NF de Motos', path: '/moto-invoices', roles: ['admin', 'gerente'], group: 'documentos' },
   { icon: Building2, label: 'Organização', path: '/organization', roles: ['admin', 'gerente'], group: 'gestao' },
   { icon: Wallet, label: 'Folha de Pagamento', path: '/payroll', roles: ['admin', 'gerente'], group: 'gestao' },
   { icon: Megaphone, label: 'Anúncios', path: '/ads', roles: ['admin', 'gerente'], group: 'gestao' },

@@ -184,13 +184,7 @@ const App = () => {
               />
               <Route
                 path="/moto-invoices"
-                element={
-                  <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.moto_invoices">
-                    <MainLayout>
-                      <MotoInvoices />
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
+                element={<Navigate to="/owner-dashboard?tab=nfs" replace />}
               />
               <Route
                 path="/financing"

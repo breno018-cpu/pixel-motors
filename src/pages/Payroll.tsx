@@ -777,7 +777,6 @@ export default function Payroll() {
                   { id: 'COMISSOES_CARGOS', label: 'Comissões por Cargo', icon: Briefcase },
                   { id: 'CONFIG', label: 'Dados da Unidade', icon: Sliders },
                   { id: 'ESPECIAIS', label: 'Férias, 13º e Rescisões', icon: Calendar },
-                  { id: 'INVOICES', label: 'Notas Fiscais', icon: FileText },
                 ] as const
               ).map((tab) => {
                 const Icon = tab.icon;
@@ -1410,13 +1409,7 @@ export default function Payroll() {
       {/* ============================================================ */}
       {/* 4. ABA DE NOTAS FISCAIS */}
       {/* ============================================================ */}
-      {abaPrincipal === 'INVOICES' && (
-        <ErrorBoundary fallbackTitle="Erro ao carregar notas fiscais">
-          <TabTransition skeletonType="table">
-            <InvoicesTab />
-          </TabTransition>
-        </ErrorBoundary>
-      )}
+      {/* Notas Fiscais: centralizadas em Cockpit da Diretoria → Controle de NFs */}
 
       {/* ============================================================ */}
       {/* 5. ABA DE CONFIGURAÇÕES DA CONCESSIONÁRIA, LOGO E COMISSÕES */}
