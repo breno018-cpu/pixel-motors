@@ -298,8 +298,6 @@ function HoleriteModalContent({ dados, onClose }: HoleriteModalProps) {
   const [salvandoEmpresa, setSalvandoEmpresa] = useState(false);
   const holeriteRef = useRef<HTMLDivElement>(null);
 
-  if (!dados) return null;
-
   const {
     empresa: empresaInicial,
     funcionario,

@@ -69,7 +69,12 @@ interface LancamentoVariaveisModalProps {
   onClose: () => void;
 }
 
-export default function LancamentoVariaveisModal({
+export default function LancamentoVariaveisModal(props: LancamentoVariaveisModalProps) {
+  if (!props.funcionario) return null;
+  return <LancamentoVariaveisModalContent {...props} />;
+}
+
+function LancamentoVariaveisModalContent({
   funcionario,
   variaveisIniciais,
   mesReferencia,
@@ -79,8 +84,6 @@ export default function LancamentoVariaveisModal({
   onSalvar,
   onClose,
 }: LancamentoVariaveisModalProps) {
-  if (!funcionario) return null;
-
   const regraDoCargo = empresa?.regrasPorCargo?.[funcionario.cargoId];
 
   const valorPadraoMontagem =

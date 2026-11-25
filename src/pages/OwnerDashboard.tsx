@@ -133,13 +133,18 @@ interface ModelStockGroup {
 }
 
 export default function OwnerDashboard() {
-  const navigate = useNavigate();
   const { isAdmin, isManager, isStoreOwner, hasElevatedAccess, roles } = useAuth();
-  const dealershipScope = useDealershipScope();
 
   if (!hasElevatedAccess && !isAdmin && !isManager && !isStoreOwner && !roles.includes('dono_loja')) {
     return <Navigate to="/" replace />;
   }
+
+  return <OwnerDashboardContent />;
+}
+
+function OwnerDashboardContent() {
+  const navigate = useNavigate();
+  const dealershipScope = useDealershipScope();
 
   const { sales, isRefreshing, refresh } = useConsolidatedSales();
   const { data: vehicles = [] } = useVehicles();
