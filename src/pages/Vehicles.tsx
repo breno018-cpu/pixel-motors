@@ -270,8 +270,19 @@ export default function Vehicles() {
 
   const handleStoreChange = (newStoreId: string) => {
     userManuallyChangedStoreRef.current = true;
-    setStoreFilter(newStoreId);
+    const normalized = newStoreId || 'all';
+    setStoreFilter(normalized);
+    if (dealershipScope.activeScope !== normalized) {
+      dealershipScope.setActiveScope(normalized);
+    }
   };
+
+  // Mantém o filtro local de Estoque sincronizado caso o escopo global mude externamente
+  useEffect(() => {
+    if (dealershipScope.activeScope && dealershipScope.activeScope !== storeFilter && userManuallyChangedStoreRef.current) {
+      setStoreFilter(dealershipScope.activeScope);
+    }
+  }, [dealershipScope.activeScope]);
 
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
@@ -343,12 +354,10 @@ export default function Vehicles() {
   // Lista base de veículos ativos no escopo de concessionária/revendedor (para contadores globais)
   const scopedVehicles = useMemo(() => {
     return (vehicles || []).filter((vehicle) => {
-      let matchesStore = true;
-      if (dealershipScope.activeScope !== 'all') {
-        matchesStore = dealershipScope.matchesScope(vehicle.store_id);
-      } else {
-        matchesStore = isMatchingStore(vehicle.store_id, storeFilter);
-      }
+      const matchesStore =
+        !storeFilter || storeFilter === 'all'
+          ? true
+          : isMatchingStore(vehicle.store_id, storeFilter);
       const matchesReseller =
         resellerFilter === 'all' ||
         (resellerFilter === 'loja'
@@ -358,7 +367,7 @@ export default function Vehicles() {
         typeFilter === 'all' || (vehicle.vehicle_type || 'carro') === typeFilter;
       return matchesStore && matchesReseller && matchesType;
     });
-  }, [vehicles, dealershipScope.activeScope, storeFilter, resellerFilter, typeFilter]);
+  }, [vehicles, storeFilter, resellerFilter, typeFilter]);
 
   const activeInventory = useMemo(
     () => scopedVehicles.filter((v) => v.status !== 'vendido'),
@@ -878,9 +887,8 @@ export default function Vehicles() {
             </div>
             <DealershipSegmentedBar
               variant="pills"
-              activeScope={dealershipScope.activeScope}
+              activeScope={storeFilter}
               onChange={(scope) => {
-                dealershipScope.setActiveScope(scope);
                 handleStoreChange(scope);
               }}
               counts={dealershipCounts}
