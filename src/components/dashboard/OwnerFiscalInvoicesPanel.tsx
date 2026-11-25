@@ -209,10 +209,20 @@ export function computeInvoiceLifecycle(
 export const WEEKS_CONFIG = [
   { key: 'sem_1', label: 'Semana 1', range: '01 a 07 Nov', days: [1, 7] },
   { key: 'sem_2', label: 'Semana 2', range: '08 a 14 Nov', days: [8, 14] },
-  { key: 'sem_3', label: 'Semana 3', range: '15 a 21 Nov', days: [15, 21], isCurrent: true },
-  { key: 'sem_4', label: 'Semana 4', range: '22 a 28 Nov', days: [22, 28] },
+  { key: 'sem_3', label: 'Semana 3', range: '15 a 21 Nov', days: [15, 21] },
+  { key: 'sem_4', label: 'Semana 4', range: '22 a 28 Nov', days: [22, 28], isCurrent: true },
   { key: 'sem_5', label: 'Semana 5', range: '29 a 30 Nov', days: [29, 31] },
 ];
+
+function getWeekKeyForDate(dateStr?: string): string {
+  const day = dateStr ? parseInt(String(dateStr).slice(8, 10), 10) : new Date().getDate();
+  if (!Number.isFinite(day) || day < 1) return 'all';
+  if (day <= 7) return 'sem_1';
+  if (day <= 14) return 'sem_2';
+  if (day <= 21) return 'sem_3';
+  if (day <= 28) return 'sem_4';
+  return 'sem_5';
+}
 
 export function normalizeStoreId(storeId?: string | null): string {
   if (!storeId) return STORE_DIVINOPOLIS_UUID;
@@ -278,8 +288,8 @@ export function OwnerFiscalInvoicesPanel() {
   const deleteInvoiceMutation = useDeleteInvoice();
   const dealershipScope = useDealershipScope();
 
-  // Foco estritamente semanal: por padrão a Semana 3 (atual de 16/11/2026)
-  const [weekFilter, setWeekFilter] = useState<string>('sem_3');
+  // Foco semanal: inicia automaticamente na semana da data atual
+  const [weekFilter, setWeekFilter] = useState<string>(() => getWeekKeyForDate(getLocalTodayDateString()));
   const [storeFilter, setStoreFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -289,7 +299,32 @@ export function OwnerFiscalInvoicesPanel() {
   // Modais de Controle
   const [isNewInvoiceModalOpen, setIsNewInvoiceModalOpen] = useState(false);
   const [invoiceToCancel, setInvoiceToCancel] = useState<CombinedFiscalRecord | null>(null);
+  const [cancelModalMode, setCancelModalMode] = useState<'cancel' | 'reissue'>('cancel');
   const [invoiceToDelete, setInvoiceToDelete] = useState<CombinedFiscalRecord | null>(null);
+
+  const resetNewInvoiceForm = () => {
+    setNewType('entrada');
+    setNewInvoiceNumber('');
+    setNewStoreId(STORE_MONTESCLAROS_UUID);
+    setNewEventDate(getLocalTodayDateString());
+    setNewPartyName('Shineray do Brasil S.A.');
+    setNewTotalValue('');
+    setNewSefazProtocol('');
+    setNewNotes('');
+    setAttachedFile(null);
+    setParsedBannerInfo(null);
+    setIsDragging(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleNewTypeChange = (val: 'entrada' | 'emissao') => {
+    setNewType(val);
+    if (val === 'entrada') {
+      if (!newPartyName.trim()) setNewPartyName('Shineray do Brasil S.A.');
+    } else if (newPartyName.trim() === 'Shineray do Brasil S.A.') {
+      setNewPartyName('');
+    }
+  };
 
   // Formulário de Nova NF (Data padrão sempre hoje, com livre alteração pelo usuário)
   const [newType, setNewType] = useState<'entrada' | 'emissao'>('entrada');
@@ -340,8 +375,9 @@ export function OwnerFiscalInvoicesPanel() {
     type: string;
   } | null>(null);
 
+  const activeCancelOrReissueTarget = invoiceToReissue || invoiceToCancel;
   const reissueParsedNewVal = parseFlexibleCurrency(reissueNewValue) || 0;
-  const reissueOriginalVal = invoiceToReissue?.original_value || invoiceToReissue?.total_value || 0;
+  const reissueOriginalVal = activeCancelOrReissueTarget?.original_value || activeCancelOrReissueTarget?.total_value || 0;
   const reissueDifference = reissueParsedNewVal > 0 ? (reissueParsedNewVal - reissueOriginalVal) : 0;
   const [reissueIsReadingFile, setReissueIsReadingFile] = useState(false);
   const [isSubmittingReissue, setIsSubmittingReissue] = useState(false);
@@ -511,17 +547,16 @@ export function OwnerFiscalInvoicesPanel() {
       });
 
       const parsed = await parseInvoiceFile(file);
-      if (parsed.invoice_number) setEditInvoiceNumber(parsed.invoice_number);
-      if (parsed.sefaz_protocol) setEditSefazProtocol(parsed.sefaz_protocol);
-      if (parsed.customer_name) setEditPartyName(parsed.customer_name);
-      if (parsed.store_id) setEditStoreId(normalizeStoreId(parsed.store_id));
-      if (parsed.issue_date) setEditEventDate(parsed.issue_date);
-      if (parsed.total_value !== undefined && parsed.total_value > 0) {
+      if (parsed.invoice_number && !editInvoiceNumber.trim()) setEditInvoiceNumber(parsed.invoice_number);
+      if (parsed.sefaz_protocol && !editSefazProtocol.trim()) setEditSefazProtocol(parsed.sefaz_protocol);
+      if (parsed.customer_name && !editPartyName.trim()) setEditPartyName(parsed.customer_name);
+      if (parsed.issue_date && !editEventDate) setEditEventDate(parsed.issue_date);
+      if (parsed.total_value !== undefined && parsed.total_value > 0 && !editTotalValue.trim()) {
         setEditTotalValue(formatBrlNumber(parsed.total_value));
       }
       toast({
-        title: 'Arquivo lido e associado!',
-        description: `${file.name} vinculado à NF.`,
+        title: 'Arquivo vinculado à NF',
+        description: `${file.name} anexado com sucesso.`,
       });
     } catch (err) {
       console.warn('Erro ao ler anexo de edição:', err);
@@ -1394,14 +1429,15 @@ export function OwnerFiscalInvoicesPanel() {
       list.unshift(newRecord);
       safeSaveToLocalStorage(storageKey, list);
 
-      // Resposta instantânea (0ms): fecha modal, limpa campos e atualiza UI
+      // Resposta instantânea (0ms): fecha modal, limpa campos e garante visibilidade na semana correta
       setIsNewInvoiceModalOpen(false);
-      setNewInvoiceNumber('');
-      setNewTotalValue('');
-      setNewNotes('');
-      setNewSefazProtocol('');
-      setAttachedFile(null);
-      setParsedBannerInfo(null);
+      if (weekFilter !== 'all') {
+        const targetWeek = getWeekKeyForDate(newEventDate);
+        if (targetWeek && targetWeek !== weekFilter) {
+          setWeekFilter(targetWeek);
+        }
+      }
+      resetNewInvoiceForm();
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('dealflow:invoices-updated'));
 
@@ -1509,7 +1545,7 @@ export function OwnerFiscalInvoicesPanel() {
       const cancelledTotal = invoiceToCancel.total_value;
       const num = invoiceToCancel.invoice_number;
       const rawInvId = invoiceToCancel.rawInvoiceId;
-      setInvoiceToCancel(null);
+      handleCloseCancelOrReissueModal();
       setCancellationReason('');
       setCancellationProtocol('');
       window.dispatchEvent(new Event('storage'));
@@ -1584,9 +1620,8 @@ export function OwnerFiscalInvoicesPanel() {
     }
   };
 
-  // Abertura do Modal de Cancelar & Reemitir (com Livre Alteração de Data e Valor)
-  const handleOpenReissue = (record: CombinedFiscalRecord) => {
-    setInvoiceToReissue(record);
+  // Abertura do Modal Unificado de Cancelar / Reemitir NF
+  const prepareReissueFields = (record: CombinedFiscalRecord) => {
     const rawDigits = record.invoice_number.replace(/\D/g, '');
     let suggested = '';
     if (rawDigits) {
@@ -1601,8 +1636,36 @@ export function OwnerFiscalInvoicesPanel() {
     setReissueNewDate(getLocalTodayDateString());
     setReissueCancelDate(getLocalTodayDateString());
     setReissueProtocol('');
-    setReissueReason(`Cancelada para reemissão (Substituição de NF)`);
+    setReissueReason('Cancelada para reemissão (Substituição de NF)');
     setReissueAttachment(null);
+  };
+
+  const handleOpenCancel = (record: CombinedFiscalRecord) => {
+    setInvoiceToCancel(record);
+    setInvoiceToReissue(record);
+    setCancelModalMode('cancel');
+    setCancellationDate(
+      record.cancellation_date ||
+        (record.status === 'cancelada' ? (record.event_date || record.issue_date) : getLocalTodayDateString())
+    );
+    setCancellationType('estorno');
+    setCancellationReason(record.cancellation_reason || '');
+    setCancellationProtocol(record.sefaz_protocol || '');
+    prepareReissueFields(record);
+  };
+
+  const handleOpenReissue = (record: CombinedFiscalRecord) => {
+    setInvoiceToCancel(record);
+    setInvoiceToReissue(record);
+    setCancelModalMode('reissue');
+    setCancellationDate(getLocalTodayDateString());
+    prepareReissueFields(record);
+  };
+
+  const handleCloseCancelOrReissueModal = () => {
+    setInvoiceToCancel(null);
+    setInvoiceToReissue(null);
+    setCancelModalMode('cancel');
   };
 
   // Confirmação de Cancelamento & Reemissão no Mesmo Plano (com Valor e Data Atualizados)
@@ -1864,7 +1927,10 @@ export function OwnerFiscalInvoicesPanel() {
         <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            onClick={() => setIsNewInvoiceModalOpen(true)}
+            onClick={() => {
+              resetNewInvoiceForm();
+              setIsNewInvoiceModalOpen(true);
+            }}
             className="gap-1.5 font-bold text-xs rounded-xl shadow-xs"
           >
             <Plus className="w-4 h-4" />
@@ -2417,13 +2483,7 @@ export function OwnerFiscalInvoicesPanel() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setInvoiceToCancel(r);
-                                setCancellationDate(r.cancellation_date || (r.status === 'cancelada' ? (r.event_date || r.issue_date) : getLocalTodayDateString()));
-                                setCancellationType('estorno');
-                                setCancellationReason(r.cancellation_reason || '');
-                                setCancellationProtocol(r.sefaz_protocol || '');
-                              }}
+                              onClick={() => handleOpenCancel(r)}
                               className="h-7 text-[10.5px] px-2 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10 font-bold"
                               title="Cancelar Nota Fiscal"
                             >
@@ -2885,13 +2945,7 @@ export function OwnerFiscalInvoicesPanel() {
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => {
-                                      setInvoiceToCancel(r);
-                                      setCancellationDate(r.cancellation_date || (r.status === 'cancelada' ? (r.event_date || r.issue_date) : getLocalTodayDateString()));
-                                      setCancellationType('estorno');
-                                      setCancellationReason(r.cancellation_reason || '');
-                                      setCancellationProtocol(r.sefaz_protocol || '');
-                                    }}
+                                    onClick={() => handleOpenCancel(r)}
                                     className="h-6 text-[10px] px-2 rounded-lg text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
                                     title="Cancelar Nota Fiscal"
                                   >
@@ -2926,22 +2980,67 @@ export function OwnerFiscalInvoicesPanel() {
       </Card>
 
       {/* =================================================================== */}
-      {/* MODAL 1: LANÇAR / REGISTRAR NOVA NF COM AUTO-LEITURA E ANEXO         */}
+      {/* MODAL 1: LANÇAR NOVA NOTA FISCAL                                    */}
       {/* =================================================================== */}
-      <Dialog open={isNewInvoiceModalOpen} onOpenChange={setIsNewInvoiceModalOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
-          <DialogHeader>
+      <Dialog
+        open={isNewInvoiceModalOpen}
+        onOpenChange={(open) => {
+          setIsNewInvoiceModalOpen(open);
+          if (!open) resetNewInvoiceForm();
+        }}
+      >
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl shadow-xl border">
+          <DialogHeader className="px-5 sm:px-6 pt-5 pb-3.5 border-b shrink-0 pr-12 text-left">
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <ReceiptText className="w-5 h-5 text-primary" />
-              Lançar Nota Fiscal no Controle Semanal
+              <ReceiptText className="w-5 h-5 text-primary shrink-0" />
+              Lançar Nota Fiscal
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Importe o XML ou PDF da NF para leitura e preenchimento automático de todos os campos contábeis, ou preencha manualmente.
+              Importe o PDF/XML para preencher automaticamente ou informe os dados abaixo.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            {/* ETAPA 1: IMPORTAÇÃO E ANEXO DO ARQUIVO DA NF COM AUTO-LEITURA */}
+          <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
+            {/* Seletor visual de Tipo de Nota */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground">Tipo da Nota Fiscal</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleNewTypeChange('entrada')}
+                  className={cn(
+                    'flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all',
+                    newType === 'entrada'
+                      ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/30'
+                      : 'border-border bg-card hover:bg-muted/40 text-muted-foreground'
+                  )}
+                >
+                  <Truck className={cn('w-4 h-4 shrink-0', newType === 'entrada' ? 'text-primary' : 'text-muted-foreground')} />
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold leading-tight">Entrada de Fábrica</div>
+                    <div className="text-[10.5px] text-muted-foreground truncate">Remessa / Compra</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNewTypeChange('emissao')}
+                  className={cn(
+                    'flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all',
+                    newType === 'emissao'
+                      ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary/30'
+                      : 'border-border bg-card hover:bg-muted/40 text-muted-foreground'
+                  )}
+                >
+                  <ArrowUpRight className={cn('w-4 h-4 shrink-0', newType === 'emissao' ? 'text-primary' : 'text-muted-foreground')} />
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold leading-tight">Emissão / Venda</div>
+                    <div className="text-[10.5px] text-muted-foreground truncate">Faturamento ao cliente</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Importação opcional de PDF / XML */}
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -2955,59 +3054,10 @@ export function OwnerFiscalInvoicesPanel() {
                 if (file) await processFileAttachment(file);
               }}
               className={cn(
-                "bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-2 border-dashed rounded-xl p-4 space-y-3 transition-all",
-                isDragging ? "border-primary bg-primary/10 scale-[1.01]" : "border-primary/40 hover:border-primary/70"
+                'rounded-xl border border-dashed p-3 transition-all',
+                isDragging ? 'border-primary bg-primary/10' : 'border-border bg-muted/20 hover:border-primary/60'
               )}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-bold text-xs text-primary uppercase tracking-wider">
-                  <Upload className="w-4 h-4" /> 1. Importação da NF (XML ou PDF) — Preenchimento Automático
-                </div>
-                {attachedFile && (
-                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] font-bold">
-                    ✓ Arquivo Anexado & Lido
-                  </Badge>
-                )}
-              </div>
-
-              {parsedBannerInfo && (
-                <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-lg p-2.5 flex items-start gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                  <div className="text-xs space-y-1">
-                    <div className="font-bold text-emerald-800 dark:text-emerald-200">
-                      ✅ Leitura da NF realizada com sucesso! Todos os dados foram auto-preenchidos:
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 text-[11px] font-mono">
-                      {parsedBannerInfo.invoice_number && (
-                        <Badge variant="secondary" className="bg-background text-foreground border">
-                          NF Nº {parsedBannerInfo.invoice_number}
-                        </Badge>
-                      )}
-                      {parsedBannerInfo.sefaz_protocol && (
-                        <Badge variant="secondary" className="bg-background text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold">
-                          Protocolo SEFAZ: {parsedBannerInfo.sefaz_protocol}
-                        </Badge>
-                      )}
-                      {parsedBannerInfo.chassis && (
-                        <Badge variant="secondary" className="bg-background text-foreground border">
-                          Chassi: {parsedBannerInfo.chassis}
-                        </Badge>
-                      )}
-                      {parsedBannerInfo.total_value ? (
-                        <Badge variant="secondary" className="bg-background text-primary border font-bold">
-                          {formatCurrencyBRL(parsedBannerInfo.total_value)}
-                        </Badge>
-                      ) : null}
-                      {parsedBannerInfo.customer_name && (
-                        <Badge variant="secondary" className="bg-background text-muted-foreground border truncate max-w-xs">
-                          {parsedBannerInfo.customer_name}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <input
                 ref={fileInputRef}
                 type="file"
@@ -3017,83 +3067,72 @@ export function OwnerFiscalInvoicesPanel() {
               />
 
               {!attachedFile ? (
-                <div
+                <button
+                  type="button"
                   onClick={() => !isReadingFile && fileInputRef.current?.click()}
-                  className={cn(
-                    "cursor-pointer py-5 px-4 flex flex-col items-center justify-center gap-2 text-center rounded-lg transition-all border-2 border-dashed bg-card/60",
-                    isReadingFile ? "bg-primary/5 border-primary animate-pulse" : "hover:bg-primary/5 hover:border-primary border-border/80"
-                  )}
+                  disabled={isReadingFile}
+                  className="w-full flex items-center justify-between gap-3 text-left"
                 >
-                  <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                    {isReadingFile ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Upload className="w-4 h-4" />
-                    )}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      {isReadingFile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-foreground">
+                        {isReadingFile ? 'Lendo arquivo da NF...' : 'Importar PDF ou XML (opcional)'}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground truncate">
+                        Arraste ou clique para preencher número, data e valor automaticamente
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs font-bold text-foreground">
-                    {isReadingFile
-                      ? 'Lendo dados da NF (XML/PDF) e auto-preenchendo todos os campos...'
-                      : 'Clique ou arraste o arquivo da NF (XML ou PDF) aqui'}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground max-w-md mx-auto">
-                    O sistema extrai automaticamente o Número da NF, Protocolo SEFAZ, Concessionária, Data, Destinatário e Valor Total.
-                  </div>
-                </div>
+                  <Badge variant="outline" className="text-[10px] shrink-0">Selecionar</Badge>
+                </button>
               ) : (
-                <div className="flex items-center justify-between p-2.5 rounded-lg border bg-background text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="font-semibold truncate text-foreground">{attachedFile.name}</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      ({(attachedFile.size / 1024).toFixed(0)} KB)
-                    </span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="font-semibold truncate text-foreground">{attachedFile.name}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                        ({(attachedFile.size / 1024).toFixed(0)} KB)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="h-7 text-[11px] text-primary px-2"
+                      >
+                        Trocar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveAttachment}
+                        className="h-7 text-[11px] text-destructive px-2"
+                      >
+                        Remover
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="h-7 text-[11px] text-primary hover:bg-primary/10 px-2"
-                    >
-                      Trocar Arquivo
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleRemoveAttachment}
-                      className="h-7 text-[11px] text-destructive hover:bg-destructive/10 px-2"
-                    >
-                      Remover
-                    </Button>
-                  </div>
+                  {parsedBannerInfo && (parsedBannerInfo.invoice_number || parsedBannerInfo.total_value) && (
+                    <div className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">
+                        Dados preenchidos automaticamente. Confira os campos abaixo antes de salvar.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* ETAPA 2: CAMPOS FISCAIS (AUTO-PREENCHIDOS OU MANUAIS) */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-semibold">Tipo de Operação</Label>
-                <Select
-                  value={newType}
-                  onValueChange={(val: any) => {
-                    setNewType(val);
-                    if (val === 'entrada' && !newPartyName) setNewPartyName('Shineray do Brasil S.A.');
-                  }}
-                >
-                  <SelectTrigger className="h-9 text-xs rounded-xl mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="entrada">Entrada de Fábrica (Remessa)</SelectItem>
-                    <SelectItem value="emissao">Emissão / Faturamento (Venda)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
+            {/* Campos Principais */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold">Número da NF *</Label>
                 <Input
@@ -3103,11 +3142,27 @@ export function OwnerFiscalInvoicesPanel() {
                   onChange={(e) => setNewInvoiceNumber(e.target.value)}
                 />
               </div>
+
+              <div>
+                <Label className="text-xs font-semibold">Valor Total (R$) *</Label>
+                <Input
+                  className="h-9 text-xs font-mono font-bold rounded-xl mt-1"
+                  placeholder="Ex: 18.990,00"
+                  value={newTotalValue}
+                  onChange={(e) => setNewTotalValue(e.target.value)}
+                  onBlur={() => {
+                    if (newTotalValue.trim()) {
+                      const parsedVal = parseFlexibleCurrency(newTotalValue);
+                      if (parsedVal > 0) setNewTotalValue(formatBrlNumber(parsedVal));
+                    }
+                  }}
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs font-semibold">Concessionária</Label>
+                <Label className="text-xs font-semibold">Concessionária *</Label>
                 <Select value={normalizeStoreId(newStoreId)} onValueChange={setNewStoreId}>
                   <SelectTrigger className="h-9 text-xs rounded-xl mt-1">
                     <SelectValue />
@@ -3125,7 +3180,7 @@ export function OwnerFiscalInvoicesPanel() {
               </div>
 
               <div>
-                <Label className="text-xs font-semibold">Data da Operação (Semana)</Label>
+                <Label className="text-xs font-semibold">Data da Nota *</Label>
                 <Input
                   type="date"
                   className="h-9 text-xs rounded-xl mt-1"
@@ -3135,70 +3190,54 @@ export function OwnerFiscalInvoicesPanel() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-semibold">
-                  {newType === 'entrada' ? 'Montadora / Fornecedor' : 'Nome do Cliente / Comprador'} *
-                </Label>
-                <Input
-                  className="h-9 text-xs rounded-xl mt-1"
-                  placeholder={newType === 'entrada' ? 'Shineray do Brasil S.A.' : 'Nome do Cliente'}
-                  value={newPartyName}
-                  onChange={(e) => setNewPartyName(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs font-semibold">Valor Total da NF (R$) *</Label>
-                <Input
-                  className="h-9 text-xs font-mono font-bold rounded-xl mt-1"
-                  placeholder="Ex: 18.990,00"
-                  value={newTotalValue}
-                  onChange={(e) => setNewTotalValue(e.target.value)}
-                  onBlur={() => {
-                    if (newTotalValue.trim()) {
-                      const parsedVal = parseFlexibleCurrency(newTotalValue);
-                      if (parsedVal > 0) {
-                        setNewTotalValue(formatBrlNumber(parsedVal));
-                      }
-                    }
-                  }}
-                />
-                {parseFlexibleCurrency(newTotalValue) > 0 && (
-                  <span className="text-[10px] text-primary font-bold font-mono mt-0.5 block">
-                    Valor reconhecido: {formatCurrencyBRL(parseFlexibleCurrency(newTotalValue))}
-                  </span>
-                )}
-              </div>
-            </div>
-
             <div>
-              <Label className="text-xs font-semibold">Protocolo SEFAZ de Autorização / Chave de Acesso</Label>
+              <Label className="text-xs font-semibold">
+                {newType === 'entrada' ? 'Montadora / Fornecedor' : 'Cliente / Destinatário'} *
+              </Label>
               <Input
-                className="h-9 text-xs font-mono rounded-xl mt-1"
-                placeholder="Ex: 312611009182399 ou 44 dígitos da chave"
-                value={newSefazProtocol}
-                onChange={(e) => setNewSefazProtocol(e.target.value)}
+                className="h-9 text-xs rounded-xl mt-1"
+                placeholder={newType === 'entrada' ? 'Shineray do Brasil S.A.' : 'Nome completo do cliente'}
+                value={newPartyName}
+                onChange={(e) => setNewPartyName(e.target.value)}
               />
-              <span className="text-[10px] text-muted-foreground mt-0.5 block">
-                Salvo e vinculado permanentemente à NF no banco de dados e nuvem.
-              </span>
             </div>
 
-            <div>
-              <Label className="text-xs font-semibold">Observações / Detalhes dos Veículos</Label>
-              <Textarea
-                className="text-xs rounded-xl mt-1 resize-none"
-                rows={2}
-                placeholder="Ex: Lote com 10 motos SHI 175 EFI..."
-                value={newNotes}
-                onChange={(e) => setNewNotes(e.target.value)}
-              />
+            {/* Campos Complementares */}
+            <div className="pt-2 border-t space-y-3">
+              <div>
+                <Label className="text-xs font-semibold text-muted-foreground">Protocolo SEFAZ / Chave de Acesso (opcional)</Label>
+                <Input
+                  className="h-9 text-xs font-mono rounded-xl mt-1"
+                  placeholder="Ex: 312611009182399"
+                  value={newSefazProtocol}
+                  onChange={(e) => setNewSefazProtocol(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold text-muted-foreground">Observações / Veículos (opcional)</Label>
+                <Textarea
+                  className="text-xs rounded-xl mt-1 resize-none"
+                  rows={2}
+                  placeholder="Ex: Lote com motos SHI 175, chassi..."
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setIsNewInvoiceModalOpen(false)} className="rounded-xl" disabled={isSubmittingInvoice}>
+          <DialogFooter className="px-5 sm:px-6 py-3.5 border-t bg-muted/20 shrink-0 gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsNewInvoiceModalOpen(false);
+                resetNewInvoiceForm();
+              }}
+              className="rounded-xl"
+              disabled={isSubmittingInvoice}
+            >
               Cancelar
             </Button>
             <Button size="sm" onClick={handleCreateInvoice} disabled={isSubmittingInvoice} className="font-bold rounded-xl gap-1.5">
@@ -3210,7 +3249,7 @@ export function OwnerFiscalInvoicesPanel() {
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  Salvar Lançamento da NF
+                  Salvar Nota Fiscal
                 </>
               )}
             </Button>
@@ -3219,341 +3258,306 @@ export function OwnerFiscalInvoicesPanel() {
       </Dialog>
 
       {/* =================================================================== */}
-      {/* MODAL 2: CANCELAR NF (CONFIRMAÇÃO DIRETA COM DATA EDITÁVEL)         */}
+      {/* MODAL 2 (UNIFICADO): CANCELAR OU CANCELAR & REEMITIR NOTA FISCAL    */}
       {/* =================================================================== */}
-      <Dialog open={!!invoiceToCancel} onOpenChange={(open) => !open && setInvoiceToCancel(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
-          <DialogHeader className="space-y-1.5 text-left">
-            <DialogTitle className="text-base font-bold flex items-center gap-2 text-destructive">
-              <XCircle className="w-5 h-5 text-destructive shrink-0" />
-              Confirmar Cancelamento da NF Nº {invoiceToCancel?.invoice_number}?
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              A nota fiscal será cancelada no controle da diretoria. Você pode definir a data exata do cancelamento abaixo.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2">
-            <div className="p-3.5 rounded-xl bg-muted/40 border text-xs space-y-2">
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-muted-foreground shrink-0">Nota Fiscal:</span>
-                <strong className="font-mono text-foreground font-bold text-right truncate">Nº {invoiceToCancel?.invoice_number}</strong>
-              </div>
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-muted-foreground shrink-0">Valor Total:</span>
-                <strong className="font-mono text-destructive text-sm font-bold text-right truncate">
-                  {formatCurrencyBRL(invoiceToCancel?.total_value || 0)}
-                </strong>
-              </div>
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-muted-foreground shrink-0">Destinatário:</span>
-                <span className="font-semibold text-foreground truncate max-w-[240px] text-right" title={invoiceToCancel?.party_name}>
-                  {invoiceToCancel?.party_name}
-                </span>
-              </div>
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-muted-foreground shrink-0">Loja:</span>
-                <span className="font-semibold text-foreground text-right truncate">
-                  {formatStoreShortName(invoiceToCancel?.store_name || invoiceToCancel?.store_id)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center gap-3">
-                <span className="text-muted-foreground shrink-0">Data de Emissão:</span>
-                <span className="font-mono text-muted-foreground text-right truncate">
-                  {invoiceToCancel ? formatFiscalDate(invoiceToCancel.issue_date) : ''}
-                </span>
-              </div>
-            </div>
-
-            {/* Campo Livre de Data de Cancelamento */}
-            <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 space-y-1.5">
-              <Label className="text-xs font-semibold flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
-                <Calendar className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                Data do Cancelamento *
-              </Label>
-              <Input
-                type="date"
-                className="h-9 text-xs rounded-xl font-medium bg-background border-rose-500/30"
-                value={cancellationDate}
-                onChange={(e) => setCancellationDate(e.target.value)}
-              />
-              <span className="text-[10.5px] text-muted-foreground block">
-                Altere livremente a data do cancelamento caso tenha ocorrido em data anterior ou específica.
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 w-full pt-2">
-            <Button
-              variant="destructive"
-              size="default"
-              onClick={handleConfirmCancellation}
-              disabled={isSubmittingCancel}
-              className="w-full font-bold rounded-xl gap-1.5 shadow-sm h-10"
-            >
-              {isSubmittingCancel ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Cancelando...
-                </>
-              ) : (
-                'Sim, Confirmar Cancelamento da NF'
+      <Dialog
+        open={Boolean(activeCancelOrReissueTarget)}
+        onOpenChange={(open) => {
+          if (!open) handleCloseCancelOrReissueModal();
+        }}
+      >
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl shadow-xl border">
+          <DialogHeader className="px-5 sm:px-6 pt-5 pb-3.5 border-b shrink-0 pr-12 text-left">
+            <DialogTitle
+              className={cn(
+                'text-base font-bold flex items-center gap-2',
+                cancelModalMode === 'reissue' ? 'text-blue-600 dark:text-blue-400' : 'text-destructive'
               )}
-            </Button>
-            <Button
-              variant="outline"
-              size="default"
-              onClick={() => {
-                const target = invoiceToCancel;
-                setInvoiceToCancel(null);
-                handleOpenReissue(target);
-              }}
-              disabled={isSubmittingCancel}
-              className="w-full font-bold rounded-xl gap-1.5 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/10 h-10"
             >
-              <RotateCcw className="w-4 h-4 text-blue-500 shrink-0" />
-              Cancelar & Reemitir Nova NF
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setInvoiceToCancel(null)}
-              disabled={isSubmittingCancel}
-              className="w-full text-xs text-muted-foreground rounded-xl h-8"
-            >
-              Voltar / Fechar sem Alterar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* =================================================================== */}
-      {/* MODAL 2.1: CANCELAR & REEMITIR NOVA NF (SUBSTITUIÇÃO NO MESMO PLANO) */}
-      {/* =================================================================== */}
-      <Dialog open={!!invoiceToReissue} onOpenChange={(open) => !open && setInvoiceToReissue(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2 text-blue-600 dark:text-blue-400">
-              <RotateCcw className="w-5 h-5 text-blue-500" />
-              Cancelar & Reemitir Nota Fiscal
+              {cancelModalMode === 'reissue' ? (
+                <RotateCcw className="w-5 h-5 shrink-0" />
+              ) : (
+                <XCircle className="w-5 h-5 shrink-0" />
+              )}
+              {cancelModalMode === 'reissue'
+                ? `Substituir NF Nº ${activeCancelOrReissueTarget?.invoice_number}`
+                : `Cancelar NF Nº ${activeCancelOrReissueTarget?.invoice_number}`}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              A NF original será cancelada e substituída por uma nova Nota Fiscal no mesmo plano contábil, mantendo a rastreabilidade total.
+              {cancelModalMode === 'reissue'
+                ? 'Cancela a nota original e registra a nova NF substituta mantendo o histórico.'
+                : 'Escolha se deseja apenas cancelar esta nota ou já registrar uma nova NF substituta.'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
-            {/* Bloco 1: NF Anterior a ser Cancelada */}
-            <div className="p-3.5 rounded-xl bg-rose-500/5 border border-rose-500/20 text-xs space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-rose-600 dark:text-rose-400 uppercase text-[10px] tracking-wider">
-                  NF Original (A ser Cancelada)
+          <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
+            {/* Resumo compacto da NF alvo */}
+            <div className="p-3 rounded-xl bg-muted/40 border text-xs grid grid-cols-2 gap-x-4 gap-y-1.5">
+              <div>
+                <span className="text-[10.5px] text-muted-foreground block">Nota Original</span>
+                <strong className="font-mono text-foreground">Nº {activeCancelOrReissueTarget?.invoice_number}</strong>
+              </div>
+              <div className="text-right">
+                <span className="text-[10.5px] text-muted-foreground block">Valor Original</span>
+                <strong className="font-mono text-foreground">
+                  {formatCurrencyBRL(activeCancelOrReissueTarget?.total_value || 0)}
+                </strong>
+              </div>
+              <div className="col-span-2 pt-1 border-t border-border/50 flex items-center justify-between gap-2">
+                <span className="text-muted-foreground truncate" title={activeCancelOrReissueTarget?.party_name}>
+                  {activeCancelOrReissueTarget?.party_name}
                 </span>
-                <span className="font-mono font-bold text-foreground">
-                  NF {invoiceToReissue?.invoice_number}
+                <span className="text-[11px] font-medium text-muted-foreground shrink-0">
+                  {formatStoreShortName(activeCancelOrReissueTarget?.store_name || activeCancelOrReissueTarget?.store_id)}
                 </span>
-              </div>
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>Destinatário:</span>
-                <span className="font-semibold text-foreground truncate max-w-[200px]">{invoiceToReissue?.party_name}</span>
-              </div>
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>Valor:</span>
-                <span className="font-mono font-bold text-foreground">{formatCurrencyBRL(invoiceToReissue?.total_value || 0)}</span>
-              </div>
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>Concessionária:</span>
-                <span className="font-semibold text-foreground">{formatStoreShortName(invoiceToReissue?.store_name || invoiceToReissue?.store_id)}</span>
               </div>
             </div>
 
-            {/* Bloco 2: Ajuste e Livre Alteração de Valor da 1ª para a 2ª NF */}
-            <div className="p-3.5 rounded-xl bg-blue-500/5 border border-blue-500/25 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-blue-700 dark:text-blue-300 uppercase text-[10.5px] tracking-wider flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-                  Ajuste de Valor da 2ª NF (Livre Alteração)
-                </span>
-                {reissueDifference !== 0 && (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-[10px] font-bold font-mono",
-                      reissueDifference > 0
-                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-                        : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"
-                    )}
-                  >
-                    {reissueDifference > 0 ? `+${formatCurrencyBRL(reissueDifference)}` : formatCurrencyBRL(reissueDifference)}
-                  </Badge>
+            {/* Seletor de Modo: Apenas Cancelar vs Cancelar e Reemitir */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-muted/60 border">
+              <button
+                type="button"
+                onClick={() => setCancelModalMode('cancel')}
+                className={cn(
+                  'py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all',
+                  cancelModalMode === 'cancel'
+                    ? 'bg-background text-destructive shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
-              </div>
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Apenas Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => setCancelModalMode('reissue')}
+                className={cn(
+                  'py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all',
+                  cancelModalMode === 'reissue'
+                    ? 'bg-background text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Cancelar e Reemitir
+              </button>
+            </div>
 
-              {/* Comparador Visual 1ª NF vs 2ª NF */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-background/80 p-2.5 rounded-lg border border-border/60">
-                  <span className="text-[10px] text-muted-foreground uppercase font-bold block">1ª NF (Original)</span>
-                  <p className="text-sm font-black font-mono text-muted-foreground mt-0.5 line-through">
-                    {formatCurrencyBRL(reissueOriginalVal)}
-                  </p>
+            {cancelModalMode === 'cancel' ? (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs font-semibold">Data do Cancelamento *</Label>
+                  <Input
+                    type="date"
+                    className="h-9 text-xs rounded-xl mt-1"
+                    value={cancellationDate}
+                    onChange={(e) => setCancellationDate(e.target.value)}
+                  />
                 </div>
-                <div className="bg-background/80 p-2.5 rounded-lg border border-blue-500/40 ring-1 ring-blue-500/20">
-                  <span className="text-[10px] text-blue-700 dark:text-blue-300 uppercase font-bold block">2ª NF (Novo Valor) *</span>
-                  <div className="relative mt-0.5">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">R$</span>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Motivo (opcional)</Label>
+                  <Input
+                    className="h-9 text-xs rounded-xl mt-1"
+                    placeholder="Ex: Erro de digitação, desistência..."
+                    value={cancellationReason}
+                    onChange={(e) => setCancellationReason(e.target.value)}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs font-semibold">Novo Nº da NF *</Label>
+                    <Input
+                      className="text-xs font-mono font-bold rounded-xl mt-1 h-9"
+                      placeholder="Ex: 000.001.391"
+                      value={reissueNewNumber}
+                      onChange={(e) => setReissueNewNumber(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold">Novo Valor (R$) *</Label>
+                      {reissueDifference !== 0 && (
+                        <span
+                          className={cn(
+                            'text-[10px] font-bold font-mono',
+                            reissueDifference > 0 ? 'text-emerald-600' : 'text-rose-600'
+                          )}
+                        >
+                          {reissueDifference > 0 ? `+${formatCurrencyBRL(reissueDifference)}` : formatCurrencyBRL(reissueDifference)}
+                        </span>
+                      )}
+                    </div>
                     <Input
                       type="text"
-                      className="text-sm font-black font-mono pl-8 h-8 rounded-md bg-transparent border-blue-500/30"
-                      placeholder="0,00"
+                      className="text-xs font-mono font-bold rounded-xl mt-1 h-9"
+                      placeholder="Ex: 18.990,00"
                       value={reissueNewValue}
-                      onChange={(e) => setReissueNewValue(maskCurrency(e.target.value))}
+                      onChange={(e) => setReissueNewValue(e.target.value)}
+                      onBlur={() => {
+                        if (reissueNewValue.trim()) {
+                          const parsed = parseFlexibleCurrency(reissueNewValue);
+                          if (parsed > 0) setReissueNewValue(formatBrlNumber(parsed));
+                        }
+                      }}
                     />
                   </div>
                 </div>
-              </div>
 
-              <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span>Permite alterar livremente o valor da nova NF (ex: 1ª NF com R$ 11.000,00 ➔ 2ª NF com R$ 14.000,00).</span>
-              </div>
-            </div>
-
-            {/* Bloco 3: Dados da Nova NF Substituta */}
-            <div className="space-y-3 pt-1">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs font-semibold">Novo Nº da Nota Fiscal *</Label>
-                  <Input
-                    className="text-xs font-mono font-bold rounded-xl mt-1 h-9"
-                    placeholder="Ex: 000.001.391"
-                    value={reissueNewNumber}
-                    onChange={(e) => setReissueNewNumber(e.target.value)}
-                    autoFocus
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs font-semibold">Data da Nova Emissão</Label>
+                    <Input
+                      type="date"
+                      className="text-xs rounded-xl mt-1 h-9"
+                      value={reissueNewDate}
+                      onChange={(e) => setReissueNewDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold">Data do Cancelamento</Label>
+                    <Input
+                      type="date"
+                      className="text-xs rounded-xl mt-1 h-9"
+                      value={reissueCancelDate}
+                      onChange={(e) => setReissueCancelDate(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-xs font-semibold">Data da Nova Emissão</Label>
-                  <Input
-                    type="date"
-                    className="text-xs rounded-xl mt-1 h-9"
-                    value={reissueNewDate}
-                    onChange={(e) => setReissueNewDate(e.target.value)}
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs font-semibold">Data do Cancelamento</Label>
-                  <Input
-                    type="date"
-                    className="text-xs rounded-xl mt-1 h-9"
-                    value={reissueCancelDate}
-                    onChange={(e) => setReissueCancelDate(e.target.value)}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs font-semibold text-muted-foreground">Protocolo SEFAZ (opcional)</Label>
+                    <Input
+                      className="text-xs font-mono rounded-xl mt-1 h-9"
+                      placeholder="Ex: 131260000000000"
+                      value={reissueProtocol}
+                      onChange={(e) => setReissueProtocol(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold text-muted-foreground">Motivo</Label>
+                    <Input
+                      className="text-xs rounded-xl mt-1 h-9"
+                      placeholder="Substituição de NF"
+                      value={reissueReason}
+                      onChange={(e) => setReissueReason(e.target.value)}
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <Label className="text-xs font-semibold">Protocolo SEFAZ (Opcional)</Label>
-                  <Input
-                    className="text-xs font-mono rounded-xl mt-1 h-9"
-                    placeholder="Ex: 131260000000000"
-                    value={reissueProtocol}
-                    onChange={(e) => setReissueProtocol(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs font-semibold">Motivo da Reemissão</Label>
-                <Input
-                  className="text-xs rounded-xl mt-1 h-9"
-                  placeholder="Ex: Correção de dados cadastrais / substituição de NF"
-                  value={reissueReason}
-                  onChange={(e) => setReissueReason(e.target.value)}
-                />
-              </div>
-
-              {/* Upload de anexo opcional para a nova NF */}
-              <div>
-                <Label className="text-xs font-semibold">Anexo Oficial da Nova NF (Opcional)</Label>
-                <input
-                  ref={reissueFileInputRef}
-                  type="file"
-                  accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,.xml"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setReissueIsReadingFile(true);
-                      try {
-                        const dataUrl = await readFileAsDataUrl(file);
-                        const mimeType = file.type || (file.name.endsWith('.xml') ? 'text/xml' : 'application/pdf');
-                        setReissueAttachment({
-                          name: file.name,
-                          url: dataUrl,
-                          size: file.size,
-                          type: mimeType,
-                        });
-                      } catch (err: any) {
-                        toast({ variant: 'destructive', title: 'Erro ao ler arquivo', description: err?.message });
-                      } finally {
-                        setReissueIsReadingFile(false);
+                  <Label className="text-xs font-semibold text-muted-foreground">Anexo da Nova NF (opcional)</Label>
+                  <input
+                    ref={reissueFileInputRef}
+                    type="file"
+                    accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,.xml"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setReissueIsReadingFile(true);
+                        try {
+                          const dataUrl = await readFileAsDataUrl(file);
+                          const mimeType = file.type || (file.name.endsWith('.xml') ? 'text/xml' : 'application/pdf');
+                          setReissueAttachment({
+                            name: file.name,
+                            url: dataUrl,
+                            size: file.size,
+                            type: mimeType,
+                          });
+                        } catch (err: any) {
+                          toast({ variant: 'destructive', title: 'Erro ao ler arquivo', description: err?.message });
+                        } finally {
+                          setReissueIsReadingFile(false);
+                        }
                       }
-                    }
-                  }}
-                />
-                {!reissueAttachment ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => reissueFileInputRef.current?.click()}
-                    disabled={reissueIsReadingFile}
-                    className="w-full mt-1 border-dashed rounded-xl h-8 text-xs gap-1.5 text-primary hover:bg-primary/5"
-                  >
-                    {reissueIsReadingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                    Anexar PDF / XML da Nova NF
-                  </Button>
-                ) : (
-                  <div className="flex items-center justify-between p-2 mt-1 rounded-xl border bg-muted/30 text-xs">
-                    <span className="truncate font-semibold">{reissueAttachment.name}</span>
+                      if (reissueFileInputRef.current) reissueFileInputRef.current.value = '';
+                    }}
+                  />
+                  {!reissueAttachment ? (
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => setReissueAttachment(null)}
-                      className="h-6 text-[10px] text-destructive hover:bg-destructive/10 px-2"
+                      onClick={() => reissueFileInputRef.current?.click()}
+                      disabled={reissueIsReadingFile}
+                      className="w-full mt-1 border-dashed rounded-xl h-9 text-xs gap-1.5 text-primary hover:bg-primary/5"
                     >
-                      Remover
+                      {reissueIsReadingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                      Anexar PDF / XML da Nova NF
                     </Button>
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex items-center justify-between p-2 mt-1 rounded-xl border bg-muted/30 text-xs">
+                      <span className="truncate font-semibold">{reissueAttachment.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setReissueAttachment(null)}
+                        className="h-6 text-[10px] text-destructive hover:bg-destructive/10 px-2"
+                      >
+                        Remover
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" size="sm" onClick={() => setInvoiceToReissue(null)} disabled={isSubmittingReissue} className="rounded-xl">
-              Voltar
-            </Button>
+          <DialogFooter className="px-5 sm:px-6 py-3.5 border-t bg-muted/20 shrink-0 gap-2 sm:gap-2">
             <Button
+              variant="outline"
               size="sm"
-              onClick={handleConfirmCancelAndReissue}
-              disabled={isSubmittingReissue || !reissueNewNumber.trim()}
-              className="font-bold rounded-xl gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleCloseCancelOrReissueModal}
+              disabled={isSubmittingCancel || isSubmittingReissue}
+              className="rounded-xl"
             >
-              {isSubmittingReissue ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="w-4 h-4" />
-                  Confirmar Cancelamento & Reemitir
-                </>
-              )}
+              Fechar
             </Button>
+            {cancelModalMode === 'cancel' ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleConfirmCancellation}
+                disabled={isSubmittingCancel}
+                className="font-bold rounded-xl gap-1.5"
+              >
+                {isSubmittingCancel ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Cancelando...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-4 h-4" />
+                    Confirmar Cancelamento
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={handleConfirmCancelAndReissue}
+                disabled={isSubmittingReissue || !reissueNewNumber.trim()}
+                className="font-bold rounded-xl gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isSubmittingReissue ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4" />
+                    Confirmar Substituição
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -3562,45 +3566,47 @@ export function OwnerFiscalInvoicesPanel() {
       {/* MODAL: CONFIRMAÇÃO DE EXCLUSÃO DEFINITIVA DA NF                    */}
       {/* =================================================================== */}
       <Dialog open={Boolean(invoiceToDelete)} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl shadow-xl border">
+          <DialogHeader className="px-5 sm:px-6 pt-5 pb-3.5 border-b shrink-0 pr-12 text-left">
             <DialogTitle className="text-base font-bold flex items-center gap-2 text-rose-600">
-              <Trash2 className="w-5 h-5 text-rose-600" />
-              Excluir Nota Fiscal Nº {invoiceToDelete?.invoice_number}?
+              <Trash2 className="w-5 h-5 text-rose-600 shrink-0" />
+              Excluir NF Nº {invoiceToDelete?.invoice_number}?
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Esta ação excluirá permanentemente esta NF do sistema, da apuração semanal da diretoria e da nuvem. O registro e o anexo serão removidos de forma definitiva.
+              Esta ação remove a NF e seu anexo da apuração da diretoria.
             </DialogDescription>
           </DialogHeader>
 
-          {invoiceToDelete && (
-            <div className="p-3 rounded-xl bg-muted/40 border text-xs space-y-1.5 my-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Valor Total:</span>
-                <strong className="font-mono text-foreground">{formatCurrencyBRL(invoiceToDelete.total_value)}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Cliente / Fornecedor:</span>
-                <span className="font-semibold text-foreground truncate max-w-[200px]">{invoiceToDelete.party_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Concessionária:</span>
-                <span className="text-foreground">{invoiceToDelete.store_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Data da Operação:</span>
-                <span className="font-mono">{formatFiscalDate(invoiceToDelete.event_date)}</span>
-              </div>
-              {invoiceToDelete.sefaz_protocol && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Protocolo SEFAZ:</span>
-                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{invoiceToDelete.sefaz_protocol}</span>
+          <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4">
+            {invoiceToDelete && (
+              <div className="p-3 rounded-xl bg-muted/40 border text-xs space-y-1.5">
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Valor Total:</span>
+                  <strong className="font-mono text-foreground">{formatCurrencyBRL(invoiceToDelete.total_value)}</strong>
                 </div>
-              )}
-            </div>
-          )}
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Cliente / Fornecedor:</span>
+                  <span className="font-semibold text-foreground truncate max-w-[200px] text-right">{invoiceToDelete.party_name}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Concessionária:</span>
+                  <span className="text-foreground text-right">{formatStoreShortName(invoiceToDelete.store_name || invoiceToDelete.store_id)}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Data:</span>
+                  <span className="font-mono">{formatFiscalDate(invoiceToDelete.event_date)}</span>
+                </div>
+                {invoiceToDelete.sefaz_protocol && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-muted-foreground">Protocolo SEFAZ:</span>
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold truncate max-w-[180px]">{invoiceToDelete.sefaz_protocol}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="px-5 sm:px-6 py-3.5 border-t bg-muted/20 shrink-0 gap-2 sm:gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -3625,7 +3631,7 @@ export function OwnerFiscalInvoicesPanel() {
               ) : (
                 <>
                   <Trash2 className="w-4 h-4" />
-                  Sim, Excluir Definitivamente
+                  Confirmar Exclusão
                 </>
               )}
             </Button>
@@ -3637,27 +3643,27 @@ export function OwnerFiscalInvoicesPanel() {
       {/* MODAL 3: EDIÇÃO DE NF NO PAINEL DIRETOR                             */}
       {/* =================================================================== */}
       <Dialog open={Boolean(editingRecord)} onOpenChange={(v) => { if (!v) setEditingRecord(null); }}>
-        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl shadow-xl border">
+          <DialogHeader className="px-5 sm:px-6 pt-5 pb-3.5 border-b shrink-0 pr-12 text-left">
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Pencil className="w-5 h-5 text-primary" />
-              Editar Dados da Nota Fiscal Nº {editInvoiceNumber}
+              <Pencil className="w-5 h-5 text-primary shrink-0" />
+              Editar NF Nº {editInvoiceNumber}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Atualize as informações contábeis, loja, data, cliente, valores, protocolo SEFAZ e anexo desta NF diretamente pelo Painel Diretor.
+              Atualize os dados, valor, loja ou anexo desta Nota Fiscal.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
             {/* Anexo da NF na Edição */}
             <div className="p-3 rounded-xl border bg-muted/20 space-y-2">
               <div className="flex items-center justify-between text-xs font-semibold">
                 <span className="flex items-center gap-1.5 text-primary">
-                  <Paperclip className="w-4 h-4" /> Anexo Oficial da NF
+                  <Paperclip className="w-3.5 h-3.5" /> Anexo da NF
                 </span>
                 {editAttachedFile && (
                   <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
-                    Arquivo Vinculado
+                    Vinculado
                   </Badge>
                 )}
               </div>
@@ -3675,7 +3681,7 @@ export function OwnerFiscalInvoicesPanel() {
               />
 
               {editAttachedFile ? (
-                <div className="flex items-center justify-between p-2 rounded-lg bg-background border text-xs">
+                <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-background border text-xs">
                   <div className="flex items-center gap-2 min-w-0">
                     <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span className="font-medium truncate">{editAttachedFile.name}</span>
@@ -3707,15 +3713,15 @@ export function OwnerFiscalInvoicesPanel() {
                   variant="outline"
                   size="sm"
                   onClick={() => editFileInputRef.current?.click()}
-                  className="w-full text-xs border-dashed gap-1.5 text-primary hover:bg-primary/10"
+                  className="w-full text-xs border-dashed gap-1.5 text-primary hover:bg-primary/10 rounded-xl"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  {editIsReadingFile ? 'Lendo arquivo...' : 'Vincular Arquivo (XML ou PDF)'}
+                  {editIsReadingFile ? 'Lendo arquivo...' : 'Vincular PDF ou XML'}
                 </Button>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold">Número da NF *</Label>
                 <Input
@@ -3727,7 +3733,7 @@ export function OwnerFiscalInvoicesPanel() {
               </div>
 
               <div>
-                <Label className="text-xs font-semibold">Data da Operação / Emissão *</Label>
+                <Label className="text-xs font-semibold">Data da Nota *</Label>
                 <Input
                   type="date"
                   className="h-9 text-xs rounded-xl mt-1"
@@ -3737,7 +3743,7 @@ export function OwnerFiscalInvoicesPanel() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold">Concessionária *</Label>
                 <Select value={normalizeStoreId(editStoreId)} onValueChange={(val) => setEditStoreId(val)}>
@@ -3770,16 +3776,11 @@ export function OwnerFiscalInvoicesPanel() {
                     }
                   }}
                 />
-                {parseFlexibleCurrency(editTotalValue) > 0 && (
-                  <span className="text-[10px] text-primary font-bold font-mono mt-0.5 block">
-                    Valor reconhecido: {formatCurrencyBRL(parseFlexibleCurrency(editTotalValue))}
-                  </span>
-                )}
               </div>
             </div>
 
             <div>
-              <Label className="text-xs font-semibold">Cliente / Fornecedor / Destinatário *</Label>
+              <Label className="text-xs font-semibold">Cliente / Fornecedor *</Label>
               <Input
                 className="h-9 text-xs rounded-xl mt-1"
                 placeholder="Ex: Nome do cliente ou Shineray do Brasil"
@@ -3789,7 +3790,7 @@ export function OwnerFiscalInvoicesPanel() {
             </div>
 
             <div>
-              <Label className="text-xs font-semibold">Protocolo SEFAZ de Autorização / Chave de Acesso</Label>
+              <Label className="text-xs font-semibold text-muted-foreground">Protocolo SEFAZ / Chave de Acesso</Label>
               <Input
                 className="h-9 text-xs font-mono rounded-xl mt-1"
                 placeholder="Ex: 312611000000001"
@@ -3810,14 +3811,11 @@ export function OwnerFiscalInvoicesPanel() {
                   value={editCancellationDate}
                   onChange={(e) => setEditCancellationDate(e.target.value)}
                 />
-                <span className="text-[10px] text-muted-foreground block">
-                  Permite alterar livremente a data em que o cancelamento desta NF ocorreu.
-                </span>
               </div>
             )}
 
             <div>
-              <Label className="text-xs font-semibold">Observações Fiscais</Label>
+              <Label className="text-xs font-semibold text-muted-foreground">Observações</Label>
               <Textarea
                 className="text-xs rounded-xl mt-1 resize-none"
                 rows={2}
@@ -3828,7 +3826,7 @@ export function OwnerFiscalInvoicesPanel() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="px-5 sm:px-6 py-3.5 border-t bg-muted/20 shrink-0 gap-2 sm:gap-2">
             <Button variant="outline" size="sm" onClick={() => setEditingRecord(null)} disabled={isSubmittingEdit} className="rounded-xl">
               Cancelar
             </Button>
@@ -3841,7 +3839,7 @@ export function OwnerFiscalInvoicesPanel() {
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  Salvar Alterações da NF
+                  Salvar Alterações
                 </>
               )}
             </Button>
@@ -3859,18 +3857,18 @@ export function OwnerFiscalInvoicesPanel() {
           setQuickAttachFile(null);
         }
       }}>
-        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-xl border">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl shadow-xl border">
+          <DialogHeader className="px-5 sm:px-6 pt-5 pb-3.5 border-b shrink-0 pr-12 text-left">
             <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Upload className="w-5 h-5 text-primary" />
-              Anexar Arquivo Oficial da NF Nº {quickAttachRecord?.invoice_number}
+              <Upload className="w-5 h-5 text-primary shrink-0" />
+              Anexar Arquivo da NF Nº {quickAttachRecord?.invoice_number}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Vincule o arquivo oficial (PDF ou XML) a esta Nota Fiscal para consulta e auditoria da diretoria.
+              Vincule o PDF, XML ou imagem oficial desta Nota Fiscal.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4">
             <input
               ref={quickAttachFileInputRef}
               type="file"
@@ -3903,25 +3901,21 @@ export function OwnerFiscalInvoicesPanel() {
                 className="cursor-pointer py-8 px-4 flex flex-col items-center justify-center gap-2 text-center rounded-xl transition-all border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 bg-muted/20"
               >
                 <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                  {quickAttachIsReading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Upload className="w-5 h-5" />
-                  )}
+                  {quickAttachIsReading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
                 </div>
                 <div className="text-xs font-bold text-foreground">
-                  {quickAttachIsReading ? 'Lendo arquivo...' : 'Clique para selecionar o PDF ou XML da NF'}
+                  {quickAttachIsReading ? 'Lendo arquivo...' : 'Clique para selecionar o PDF ou XML'}
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  Formatos suportados: PDF, XML ou imagem (máx. 25MB).
+                  PDF, XML ou imagem (máx. 25MB)
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 text-xs">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-xl border bg-muted/20 text-xs">
                 <div className="flex items-center gap-2 min-w-0">
                   <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span className="font-semibold truncate text-foreground">{quickAttachFile.name}</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">
                     ({(quickAttachFile.size / 1024).toFixed(0)} KB)
                   </span>
                 </div>
@@ -3930,7 +3924,7 @@ export function OwnerFiscalInvoicesPanel() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setQuickAttachFile(null)}
-                  className="h-7 text-[11px] text-destructive hover:bg-destructive/10 px-2"
+                  className="h-7 text-[11px] text-destructive hover:bg-destructive/10 px-2 shrink-0"
                 >
                   Remover
                 </Button>
@@ -3938,7 +3932,7 @@ export function OwnerFiscalInvoicesPanel() {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="px-5 sm:px-6 py-3.5 border-t bg-muted/20 shrink-0 gap-2 sm:gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -3966,7 +3960,7 @@ export function OwnerFiscalInvoicesPanel() {
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  Salvar Anexo da NF
+                  Salvar Anexo
                 </>
               )}
             </Button>
@@ -3983,51 +3977,29 @@ export function OwnerFiscalInvoicesPanel() {
           if (!v) setViewingAttachment(null);
         }}
       >
-        <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-6 rounded-2xl">
-          <DialogHeader className="shrink-0">
-            <div className="flex items-center justify-between pr-6">
-              <div>
-                <DialogTitle className="flex items-center gap-2 text-base font-bold">
-                  <FileText className="w-5 h-5 text-primary" />
-                  Arquivo Oficial da Nota Fiscal Nº {viewingAttachment?.invoiceNumber}
-                </DialogTitle>
-                <DialogDescription className="text-xs">
-                  {viewingAttachment?.name} • Cliente / Destinatário: {viewingAttachment?.customerName}
-                </DialogDescription>
-              </div>
-              {viewingAttachment?.url && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = viewingAttachment.url;
-                    a.download = viewingAttachment.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                  }}
-                  className="gap-1.5 text-xs font-semibold rounded-xl"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Baixar Arquivo
-                </Button>
-              )}
-            </div>
+        <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[92vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl shadow-xl border">
+          <DialogHeader className="px-5 sm:px-6 pt-5 pb-3.5 border-b shrink-0 pr-12 text-left">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <FileText className="w-5 h-5 text-primary shrink-0" />
+              Arquivo da NF Nº {viewingAttachment?.invoiceNumber}
+            </DialogTitle>
+            <DialogDescription className="text-xs truncate">
+              {viewingAttachment?.name} • {viewingAttachment?.customerName}
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 min-h-[450px] w-full rounded-xl overflow-hidden border bg-muted/20 my-2 flex items-center justify-center">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 bg-muted/15 flex items-center justify-center min-h-[300px]">
             {viewingAttachment?.type?.includes('pdf') || viewingAttachment?.url.startsWith('data:application/pdf') ? (
               <iframe
                 src={viewingAttachment.url}
-                className="w-full h-[550px] border-none rounded-xl"
+                className="w-full h-[62vh] border rounded-xl bg-background"
                 title={viewingAttachment.name}
               />
             ) : viewingAttachment?.type?.includes('image') || viewingAttachment?.url.startsWith('data:image/') ? (
               <img
                 src={viewingAttachment.url}
                 alt={viewingAttachment.name}
-                className="max-h-[550px] max-w-full object-contain rounded-xl"
+                className="max-h-[62vh] max-w-full object-contain rounded-xl border bg-background"
               />
             ) : viewingAttachment?.name.endsWith('.xml') || viewingAttachment?.type?.includes('xml') ? (
               <div className="p-6 text-center space-y-3">
@@ -4038,55 +4010,42 @@ export function OwnerFiscalInvoicesPanel() {
                 <div className="text-xs text-muted-foreground font-mono">
                   {viewingAttachment?.name}
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = viewingAttachment.url;
-                    a.download = viewingAttachment.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                  }}
-                  className="gap-1.5 font-bold rounded-xl"
-                >
-                  <Download className="w-4 h-4" />
-                  Baixar Arquivo XML Completo
-                </Button>
               </div>
             ) : (
-              <div className="p-6 text-center space-y-3">
+              <div className="p-6 text-center space-y-2">
                 <FileText className="w-12 h-12 text-muted-foreground mx-auto" />
                 <div className="text-sm font-semibold text-foreground">
                   Visualização direta não disponível no navegador.
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    const a = document.createElement('a');
-                    a.href = viewingAttachment?.url || '';
-                    a.download = viewingAttachment?.name || 'arquivo';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                  }}
-                  className="gap-1.5 font-bold rounded-xl"
-                >
-                  <Download className="w-4 h-4" />
-                  Baixar Arquivo
-                </Button>
               </div>
             )}
           </div>
 
-          <DialogFooter className="shrink-0">
+          <DialogFooter className="px-5 sm:px-6 py-3.5 border-t bg-muted/20 shrink-0 gap-2 sm:gap-2">
+            {viewingAttachment?.url && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  const a = document.createElement('a');
+                  a.href = viewingAttachment.url;
+                  a.download = viewingAttachment.name;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                }}
+                className="gap-1.5 text-xs font-bold rounded-xl"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Baixar Arquivo
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setViewingAttachment(null)}
               className="rounded-xl text-xs font-semibold"
             >
-              Fechar Visualizador
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
