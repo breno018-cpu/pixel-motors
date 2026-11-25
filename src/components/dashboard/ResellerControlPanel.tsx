@@ -308,7 +308,15 @@ export function ResellerControlPanel() {
       setResForm({ full_name: '', phone: '', cpf: '', email: '', store_id: '' });
       setNewResellerOpen(false);
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Erro ao cadastrar revendedor', description: e?.message });
+      const raw = String(e?.message || '');
+      const friendly = raw.includes('resellers_cpf_key')
+        ? 'Já existe um revendedor com este CPF/CNPJ.'
+        : raw.toLowerCase().includes('row-level security')
+          ? 'Sem permissão para cadastrar revendedores com este usuário.'
+          : raw.includes('resellers_partner_type_check')
+            ? 'Tipo de parceiro inválido.'
+            : raw;
+      toast({ variant: 'destructive', title: 'Erro ao cadastrar revendedor', description: friendly });
     }
   };
 

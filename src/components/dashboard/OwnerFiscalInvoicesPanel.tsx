@@ -214,6 +214,23 @@ export const WEEKS_CONFIG = [
   { key: 'sem_5', label: 'Semana 5', range: '29 a 30 Nov', days: [29, 31] },
 ];
 
+const HISTORY_PREFIX = '[Hist] ';
+
+/** Retorna as linhas de histórico (cancelamentos/reemissões sucessivas) gravadas nas observações da NF. */
+export function extractHistoryLines(notes?: string | null): string[] {
+  return String(notes || '')
+    .split('\n')
+    .filter((l) => l.startsWith(HISTORY_PREFIX))
+    .map((l) => l.slice(HISTORY_PREFIX.length).trim())
+    .filter(Boolean);
+}
+
+/** Acrescenta uma linha de histórico preservando a observação principal e todo o histórico anterior. */
+export function appendHistoryLine(notes: string | null | undefined, line: string): string {
+  const base = String(notes || '').trimEnd();
+  return `${base}${base ? '\n' : ''}${HISTORY_PREFIX}${line}`;
+}
+
 function getWeekKeyForDate(dateStr?: string): string {
   const day = dateStr ? parseInt(String(dateStr).slice(8, 10), 10) : new Date().getDate();
   if (!Number.isFinite(day) || day < 1) return 'all';
@@ -1505,7 +1522,10 @@ export function OwnerFiscalInvoicesPanel() {
             cancellation_type: effectiveType,
             cancellation_reason: effectiveReason,
             sefaz_protocol: cancellationProtocol.trim() || item.sefaz_protocol || '',
-            notes: item.notes || `Cancelada em ${effectiveCancelDate}`,
+            notes: appendHistoryLine(
+              item.notes,
+              `NF ${invoiceToCancel.invoice_number} cancelada em ${formatFiscalDate(effectiveCancelDate)} (${effectiveReason})`
+            ),
           };
         }
         return item;
@@ -1687,6 +1707,16 @@ export function OwnerFiscalInvoicesPanel() {
     const originalValue = invoiceToReissue.original_value || invoiceToReissue.total_value;
     const valueDifference = effectiveNewValue - originalValue;
 
+    // Preserva TODO o histórico anterior (reemissões sucessivas) e acrescenta esta etapa
+    let reissueNotes = `Reemissão substituta da NF ${oldNum}${valueDifference !== 0 ? ` (Ajuste: ${formatCurrencyBRL(originalValue)} ➔ ${formatCurrencyBRL(effectiveNewValue)})` : ''}`;
+    for (const h of extractHistoryLines(invoiceToReissue.notes)) {
+      reissueNotes = appendHistoryLine(reissueNotes, h);
+    }
+    reissueNotes = appendHistoryLine(
+      reissueNotes,
+      `NF ${oldNum} (${formatCurrencyBRL(invoiceToReissue.total_value)}) cancelada em ${formatFiscalDate(effectiveCancelDate)} → nova NF ${cleanNewNum} (${formatCurrencyBRL(effectiveNewValue)})`
+    );
+
     setIsSubmittingReissue(true);
     try {
       const storageKey = 'dealflow_store_fiscal_invoices_v1';
@@ -1715,7 +1745,7 @@ export function OwnerFiscalInvoicesPanel() {
         cancellation_reason: effectiveReason,
         cancellation_type: 'estorno',
         sefaz_protocol: reissueProtocol.trim() || invoiceToReissue.sefaz_protocol || undefined,
-        notes: `Reemissão substituta da NF ${oldNum}${valueDifference !== 0 ? ` (Ajuste: ${formatCurrencyBRL(originalValue)} ➔ ${formatCurrencyBRL(effectiveNewValue)})` : ''}`,
+        notes: reissueNotes,
         attachment_url: reissueAttachment?.url || invoiceToReissue.attachment_url || undefined,
         attachment_name: reissueAttachment?.name || invoiceToReissue.attachment_name || undefined,
         attachment_size: reissueAttachment?.size || invoiceToReissue.attachment_size || undefined,
@@ -1765,7 +1795,7 @@ export function OwnerFiscalInvoicesPanel() {
         status: 'emitida',
         fiscal_type: 'emissao',
         sefaz_protocol: reissueProtocol.trim() || invoiceToReissue.sefaz_protocol || undefined,
-        notes: `Reemissão e substituição da NF ${oldNum}${valueDifference !== 0 ? ` (Ajuste: ${formatCurrencyBRL(originalValue)} ➔ ${formatCurrencyBRL(effectiveNewValue)})` : ''}`,
+        notes: reissueNotes,
         attachment_url: reissueAttachment?.url || invoiceToReissue.attachment_url,
         attachment_name: reissueAttachment?.name || invoiceToReissue.attachment_name,
         attachment_size: reissueAttachment?.size || invoiceToReissue.attachment_size,
@@ -2704,6 +2734,22 @@ export function OwnerFiscalInvoicesPanel() {
                         </span>
                       </div>
                     )}
+
+                    {/* HISTÓRICO COMPLETO DE ALTERAÇÕES (cancelamentos / reemissões sucessivas) */}
+                    {(() => {
+                      const historyLines = extractHistoryLines(r.notes);
+                      if (historyLines.length === 0) return null;
+                      return (
+                        <div className="mt-2 p-2.5 rounded-lg bg-muted/40 border border-dashed text-[10.5px] space-y-1">
+                          <div className="font-bold uppercase tracking-wider text-[9.5px] text-muted-foreground">
+                            Histórico de alterações
+                          </div>
+                          {historyLines.map((line, i) => (
+                            <div key={i} className="text-foreground/80 leading-snug break-words">• {line}</div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
