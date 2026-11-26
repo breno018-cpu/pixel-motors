@@ -36,6 +36,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
+import { logActivity } from '@/lib/audit';
 import { useQueryClient } from '@tanstack/react-query';
 import { useVehicles, saveVehiclesToCache, type Vehicle } from '@/hooks/useVehicles';
 import { validateChassisVin } from '@/lib/motoValidation';
@@ -206,6 +207,15 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
       }
 
       saveVehiclesToCache(insertedRows as Vehicle[]);
+      insertedRows.forEach((row: any) => {
+        void logActivity('criar', 'veiculo', row.id, {
+          origem: 'entrada_lote',
+          chassi: row.chassis,
+          modelo: `${row.brand} ${row.model}`.trim(),
+          cor: row.color,
+          loja_id: row.store_id,
+        });
+      });
 
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });

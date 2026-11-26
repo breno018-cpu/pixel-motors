@@ -3,6 +3,7 @@ import { InboundCargoBatch, InboundCargoItem, InboundDivergenceLog } from '@/typ
 import { createSampleBatch } from '@/lib/inboundSampleData';
 import { playSuccessBeep, playErrorAlarm, playWarningTone } from '@/lib/audioFeedback';
 import { supabase } from '@/integrations/supabase/client';
+import { logActivity } from '@/lib/audit';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { recognizeFromChassis } from '@/lib/chassisRecognition';
@@ -425,6 +426,12 @@ export function useInboundCargo() {
         } else if (data?.id) {
           item.stock_vehicle_id = data.id;
           successCount++;
+          void logActivity('criar', 'veiculo', data.id, {
+            origem: 'romaneio_entrada',
+            chassi: item.chassis,
+            modelo: `${brand} ${modelName}`.trim(),
+            loja_id: storeId,
+          });
         }
       } catch (err: any) {
         errors.push(`${item.chassis}: ${err?.message || 'erro desconhecido'}`);

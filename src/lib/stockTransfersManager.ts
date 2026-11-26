@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { logActivity } from '@/lib/audit';
 import { Vehicle, saveVehicleToCache, getCachedVehicles } from '@/hooks/useVehicles';
 import { STORE_DIVINOPOLIS_UUID, STORE_MONTESCLAROS_UUID } from '@/lib/storeResolution';
 
@@ -286,8 +287,15 @@ export async function addExternalStoreMotoToStock(
     throw new Error(`Falha ao gravar veículo na troca de estoque: ${insertErr.message}`);
   }
 
-  // 3. Atualiza cache local após confirmação no banco
+  // 3. Atualiza cache local após confirmação no banco e registra auditoria
   saveVehicleToCache(newVehicle);
+  void logActivity('criar', 'veiculo', newVehicle.id, {
+    origem: 'troca_estoque',
+    chassi: newVehicle.chassis,
+    modelo: `${newVehicle.brand} ${newVehicle.model}`.trim(),
+    cor: newVehicle.color,
+    loja_id: realStoreUuid,
+  });
 
   // 4. Cria o registro de troca de estoque para a Diretoria
   const newExchange: StockExchangeRecord = {

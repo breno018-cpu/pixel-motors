@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { logActivity } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStores } from '@/hooks/useStores';
 import { useQueryClient } from '@tanstack/react-query';
@@ -409,7 +410,7 @@ export function BarcodeScannerDialog({
         updated_at: new Date().toISOString(),
       });
 
-      const { error: insErr } = await supabase.from('vehicles').insert(payload);
+      const { data: insertedRow, error: insErr } = await supabase.from('vehicles').insert(payload).select('id').single();
       if (insErr) {
         toast({
           variant: 'destructive',
@@ -418,6 +419,14 @@ export function BarcodeScannerDialog({
         });
         return;
       }
+
+      void logActivity('criar', 'veiculo', insertedRow?.id || null, {
+        origem: 'bipar_chassi',
+        chassi: payload.chassis,
+        modelo: `${payload.brand} ${payload.model}`.trim(),
+        cor: payload.color,
+        loja_id: payload.store_id,
+      });
 
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
