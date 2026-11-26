@@ -376,7 +376,13 @@ export function useInboundCargo() {
       throw new Error('Nenhuma moto conferida pendente de entrada no estoque.');
     }
 
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session) {
+      throw new Error('Sessão desconectada do banco de dados. Faça login novamente antes de dar entrada no lote.');
+    }
+
     let successCount = 0;
+    const errors: string[] = [];
     const now = new Date().toISOString();
 
     for (const item of scannedItems) {
@@ -396,8 +402,8 @@ export function useInboundCargo() {
           manufacture_year: item.manufacture_year || 2026,
           color: item.primary_color + (item.secondary_color && item.secondary_color !== '-' ? ` / ${item.secondary_color}` : ''),
           chassis: item.chassis,
-          plate: '',
-          renavam: item.engine_number || '', // Armazena o motor no renavam/registro
+          plate: null,
+          renavam: item.engine_number || null, // Armazena o motor no renavam/registro
           mileage: 0,
           engine_cc: Number(item.group_cc) || pattern?.engine_cc || 125,
           fuel_type: 'gasolina',
@@ -414,13 +420,20 @@ export function useInboundCargo() {
           .select('id')
           .single();
 
-        if (!error && data?.id) {
+        if (error) {
+          errors.push(`${item.chassis}: ${error.message}`);
+        } else if (data?.id) {
           item.stock_vehicle_id = data.id;
           successCount++;
         }
-      } catch (err) {
+      } catch (err: any) {
+        errors.push(`${item.chassis}: ${err?.message || 'erro desconhecido'}`);
         console.error('Erro ao inserir veículo no estoque:', item.chassis, err);
       }
+    }
+
+    if (successCount === 0 && errors.length > 0) {
+      throw new Error(`Nenhuma moto foi gravada no banco. Primeiro erro: ${errors[0]}`);
     }
 
     // Atualiza o lote

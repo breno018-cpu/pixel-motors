@@ -262,32 +262,32 @@ export async function addExternalStoreMotoToStock(
     updated_at: nowIso,
   };
 
-  // 2. Salva no cache do estoque local
-  saveVehicleToCache(newVehicle);
+  // 2. Salva no Supabase primeiro (garante que nunca perca a moto silenciosamente)
+  const { error: insertErr } = await (supabase as any).from('vehicles').insert({
+    id: newVehicle.id,
+    store_id: realStoreUuid,
+    brand: newVehicle.brand,
+    model: newVehicle.model,
+    year: newVehicle.year,
+    manufacture_year: newVehicle.manufacture_year,
+    color: newVehicle.color,
+    chassis: newVehicle.chassis,
+    status: 'disponivel',
+    vehicle_type: 'moto',
+    purchase_price: newVehicle.purchase_price,
+    sale_price: newVehicle.sale_price,
+    mileage: newVehicle.mileage,
+    notes: newVehicle.notes,
+    created_at: nowIso,
+    updated_at: nowIso,
+  });
 
-  // 3. Tenta salvar no Supabase se disponível
-  try {
-    await (supabase as any).from('vehicles').insert({
-      id: newVehicle.id,
-      store_id: realStoreUuid,
-      brand: newVehicle.brand,
-      model: newVehicle.model,
-      year: newVehicle.year,
-      manufacture_year: newVehicle.manufacture_year,
-      color: newVehicle.color,
-      chassis: newVehicle.chassis,
-      status: 'disponivel',
-      vehicle_type: 'moto',
-      purchase_price: newVehicle.purchase_price,
-      sale_price: newVehicle.sale_price,
-      mileage: newVehicle.mileage,
-      notes: newVehicle.notes,
-      created_at: nowIso,
-      updated_at: nowIso,
-    });
-  } catch (err) {
-    console.warn('Erro ao inserir veículo no Supabase (usando local fallback):', err);
+  if (insertErr) {
+    throw new Error(`Falha ao gravar veículo na troca de estoque: ${insertErr.message}`);
   }
+
+  // 3. Atualiza cache local após confirmação no banco
+  saveVehicleToCache(newVehicle);
 
   // 4. Cria o registro de troca de estoque para a Diretoria
   const newExchange: StockExchangeRecord = {
