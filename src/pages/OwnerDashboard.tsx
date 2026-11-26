@@ -256,18 +256,36 @@ function OwnerDashboardContent() {
     let totalConsortium = 0;
     const count = filteredSales.length;
 
+    const costByChassis = new Map<string, number>();
+    vehicles.forEach((v) => {
+      const ch = String(v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const cost = Number(v.purchase_price) || 0;
+      if (ch.length >= 6 && cost > 0) costByChassis.set(ch, cost);
+    });
+
+    let realGrossProfit = 0;
+    let revenueWithCost = 0;
+
     filteredSales.forEach((s) => {
-      totalRevenue += s.valor || 0;
+      const val = s.valor || 0;
+      totalRevenue += val;
       totalFinancing += s.financiamento || 0;
       totalCashPix += (s.dinheiro || 0) + (s.pix || 0);
       totalCard += s.cartao || 0;
       totalConsortium += s.carta_credito || 0;
+
+      const ch = String(s.chassi || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const realCost = ch ? costByChassis.get(ch) : undefined;
+      if (realCost && realCost > 0 && val > 0) {
+        realGrossProfit += val - realCost;
+        revenueWithCost += val;
+      }
     });
 
     const avgTicket = count > 0 ? totalRevenue / count : 0;
-    // Margem bruta real média da operação de concessionária Shineray (~18.5% sobre faturamento)
-    const estimatedGrossProfit = totalRevenue * 0.185;
-    const grossMarginPercent = totalRevenue > 0 ? (estimatedGrossProfit / totalRevenue) * 100 : 0;
+    // Margem bruta 100% real (sem estimativas fictícias — apurada somente quando há preço de compra cadastrado)
+    const estimatedGrossProfit = realGrossProfit;
+    const grossMarginPercent = revenueWithCost > 0 ? (realGrossProfit / revenueWithCost) * 100 : 0;
 
     // Métricas do Pátio / Estoque
     const inStockVehicles = vehicles.filter((v) => v.status === 'disponivel' || (v.status as any) === 'em_estoque');
@@ -359,17 +377,28 @@ function OwnerDashboardContent() {
       .sort((a, b) => b.revenue - a.revenue);
   }, [stores, filteredSales, vehicles, executiveMetrics.totalRevenue]);
 
-  // Margem e Lucro por Modelo de Moto
+  // Desempenho real por Modelo de Moto (sem estimativa fictícia)
   const modelProfitability = useMemo(() => {
+    const costByChassis = new Map<string, number>();
+    vehicles.forEach((v) => {
+      const ch = String(v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const cost = Number(v.purchase_price) || 0;
+      if (ch.length >= 6 && cost > 0) costByChassis.set(ch, cost);
+    });
+
     const map = new Map<string, { model: string; count: number; revenue: number; marginValue: number }>();
 
     filteredSales.forEach((s) => {
       const model = s.modelo?.trim() || 'Modelo Não Informado';
       const curr = map.get(model) || { model, count: 0, revenue: 0, marginValue: 0 };
+      const val = s.valor || 0;
       curr.count += 1;
-      curr.revenue += s.valor || 0;
-      // Margem média por modelo (~18.5% sobre o preço de venda faturado)
-      curr.marginValue += (s.valor || 0) * 0.185;
+      curr.revenue += val;
+      const ch = String(s.chassi || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const realCost = ch ? costByChassis.get(ch) : undefined;
+      if (realCost && realCost > 0 && val > 0) {
+        curr.marginValue += val - realCost;
+      }
       map.set(model, curr);
     });
 
@@ -380,7 +409,7 @@ function OwnerDashboardContent() {
         avgTicket: item.count > 0 ? item.revenue / item.count : 0,
         share: executiveMetrics.totalRevenue > 0 ? (item.revenue / executiveMetrics.totalRevenue) * 100 : 0,
       }));
-  }, [filteredSales, executiveMetrics.totalRevenue]);
+  }, [filteredSales, vehicles, executiveMetrics.totalRevenue]);
 
   // Financiamento por Banco
   const bankDistribution = useMemo(() => {
@@ -878,7 +907,7 @@ function OwnerDashboardContent() {
             <Card className="rounded-2xl border border-amber-500/20 shadow-xs bg-card hover:border-amber-500/40 transition-colors">
               <CardContent className="p-4 sm:p-5 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">Lucro Bruto Estimado</span>
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">Lucro Bruto Real</span>
                   <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                     <TrendingUp className="w-4 h-4" />
                   </div>

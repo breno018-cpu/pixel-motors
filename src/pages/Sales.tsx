@@ -363,7 +363,7 @@ export default function Sales() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-    return parseBackupCsv(INITIAL_USER_BACKUP_CSV, '2026-10').rows;
+    return [];
   }, [sheetVersion]);
 
   // Consolidação de vendas reais (Planilha Mensal + Contratos Cadastrados)

@@ -91,7 +91,7 @@ export function getMonthlySheetRows(): SheetRowV9[] {
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch {}
-  return parseBackupCsv(INITIAL_USER_BACKUP_CSV, '2026-10').rows;
+  return [];
 }
 
 export function normalizeContractKey(num: string | null | undefined): string {

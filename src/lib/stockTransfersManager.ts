@@ -41,142 +41,28 @@ export interface StockExchangeRecord {
 }
 
 const STORAGE_KEY_EXCHANGES = 'dealflow_executive_stock_transfers_v2';
+const LEGACY_FAKE_EXCHANGE_IDS = new Set(['exc_001', 'exc_002', 'exc_003', 'exc_004', 'exc_005']);
 
-// Seed inicial demonstrativo para a Diretoria visualizar o histórico da rede
-export const DEFAULT_EXCHANGE_RECORDS: StockExchangeRecord[] = [
-  {
-    id: 'exc_001',
-    vehicle_id: 'veh_shi_01',
-    chassis: '95VJA1250RB001188',
-    brand: 'Shineray',
-    model: 'SHI 175 EFI',
-    color: 'Preta Fosca',
-    year: 2025,
-    direction: 'saida',
-    from_store_id: 'store-divinopolis',
-    from_store_name: 'Shineray & Multimarcas Divinópolis',
-    to_store_id: 'store-montesclaros',
-    to_store_name: 'Shineray Montes Claros',
-    is_external_store: false,
-    invoice_number: 'NF-e 004812',
-    agreed_amount: 14900,
-    sale_price: 18490,
-    status: 'concluida',
-    transfer_date: '2026-11-15',
-    driver_name: 'Carlos Mendes (Cegonha Interlojas)',
-    driver_plate: 'RVE-4A20',
-    notes: 'Transferência de lote para reforço de pronta entrega no Norte de Minas.',
-    created_at: '2026-11-15T08:30:00Z',
-  },
-  {
-    id: 'exc_002',
-    vehicle_id: 'veh_jet_02',
-    chassis: '95VJA1250RB002234',
-    brand: 'Shineray',
-    model: 'JET 125',
-    color: 'Branca Perolizada',
-    year: 2025,
-    direction: 'entrada',
-    from_store_id: 'store-montesclaros',
-    from_store_name: 'Shineray Montes Claros',
-    to_store_id: 'store-divinopolis',
-    to_store_name: 'Shineray & Multimarcas Divinópolis',
-    is_external_store: false,
-    invoice_number: 'NF-e 003921',
-    agreed_amount: 9800,
-    sale_price: 11990,
-    status: 'concluida',
-    transfer_date: '2026-11-14',
-    driver_name: 'Reboque Dedicado VIP',
-    driver_plate: 'SHN-2B88',
-    notes: 'Remessa solicitada para entrega imediata a cliente de Itaúna.',
-    created_at: '2026-11-14T10:15:00Z',
-  },
-  {
-    id: 'exc_003',
-    vehicle_id: 'veh_ext_phoenix',
-    chassis: '95VJA5000RB009841',
-    brand: 'Shineray',
-    model: 'PHOENIX 50',
-    color: 'Vermelha',
-    year: 2025,
-    direction: 'entrada',
-    from_store_id: null,
-    from_store_name: 'Shineray BH Matriz (Loja Parceira)',
-    to_store_id: 'store-divinopolis',
-    to_store_name: 'Shineray & Multimarcas Divinópolis',
-    is_external_store: true,
-    external_store_name: 'Shineray BH Matriz',
-    external_store_city: 'Belo Horizonte - MG',
-    external_store_cnpj: '18.423.901/0001-44',
-    invoice_number: 'NF-e 119402',
-    agreed_amount: 6800,
-    sale_price: 8490,
-    status: 'concluida',
-    transfer_date: '2026-11-16',
-    notes: 'Moto recebida de loja parceira externa que não utiliza nosso sistema Dealflow. Entrada validada no pátio com PDI.',
-    created_at: '2026-11-16T14:20:00Z',
-  },
-  {
-    id: 'exc_004',
-    vehicle_id: 'veh_titanium_01',
-    chassis: '95VJA2500RB004512',
-    brand: 'Shineray',
-    model: 'TITANIUM 250',
-    color: 'Cinza Nardo',
-    year: 2026,
-    direction: 'saida',
-    from_store_id: 'store-divinopolis',
-    from_store_name: 'Shineray & Multimarcas Divinópolis',
-    to_store_id: 'store-montesclaros',
-    to_store_name: 'Shineray Montes Claros',
-    is_external_store: false,
-    invoice_number: 'NF-e 004901',
-    agreed_amount: 19800,
-    sale_price: 24900,
-    status: 'em_transito',
-    transfer_date: '2026-11-17',
-    driver_name: 'Fiat Toro Frota Loja (Placa RTO-8H15)',
-    notes: 'Em trânsito via BR-135 com previsão de chegada hoje à tarde.',
-    created_at: '2026-11-17T07:45:00Z',
-  },
-  {
-    id: 'exc_005',
-    vehicle_id: 'veh_ext_shi250',
-    chassis: '95VJA2500RB007788',
-    brand: 'Shineray',
-    model: 'SHI 250 EFI',
-    color: 'Azul Racing',
-    year: 2026,
-    direction: 'entrada',
-    from_store_id: null,
-    from_store_name: 'Concessionária Moto Norte (Sem App)',
-    to_store_id: 'store-montesclaros',
-    to_store_name: 'Shineray Montes Claros',
-    is_external_store: true,
-    external_store_name: 'Concessionária Moto Norte',
-    external_store_city: 'Pirapora - MG',
-    invoice_number: 'NF-e 007823',
-    agreed_amount: 21500,
-    sale_price: 26900,
-    status: 'concluida',
-    transfer_date: '2026-11-16',
-    notes: 'Repasse entre concessionárias autorizado pela diretoria. Moto incorporada ao pátio de Montes Claros.',
-    created_at: '2026-11-16T16:00:00Z',
-  },
-];
+// Sem dados fictícios — exibe apenas trocas reais registradas pela diretoria
+export const DEFAULT_EXCHANGE_RECORDS: StockExchangeRecord[] = [];
 
 export function getStockExchangeRecords(): StockExchangeRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_EXCHANGES);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter((r: any) => r && !LEGACY_FAKE_EXCHANGE_IDS.has(String(r.id || '')));
+        if (cleaned.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEY_EXCHANGES, JSON.stringify(cleaned));
+        }
+        return cleaned;
+      }
     }
   } catch (e) {
     console.warn('Erro ao carregar registros de troca de estoque:', e);
   }
-  return DEFAULT_EXCHANGE_RECORDS;
+  return [];
 }
 
 export function saveStockExchangeRecords(records: StockExchangeRecord[]): void {

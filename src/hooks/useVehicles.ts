@@ -39,7 +39,7 @@ const LEGACY_CACHE_KEYS = ['dealflow_vehicles_cache_v1', 'df_local_table_v5_vehi
 const typedOfficialSeed = (officialVehiclesSeed as unknown as Vehicle[]) || [];
 
 export function getCachedVehicles(): Vehicle[] {
-  if (typeof window === 'undefined') return typedOfficialSeed;
+  if (typeof window === 'undefined') return [];
   try {
     let list: Vehicle[] = [];
     const raw = localStorage.getItem(VEHICLES_CACHE_KEY);
@@ -59,14 +59,6 @@ export function getCachedVehicles(): Vehicle[] {
             break;
           }
         }
-      }
-    }
-
-    // Inicialização direta com a base oficial do pátio
-    if (!list || list.length === 0) {
-      if (typedOfficialSeed.length > 0) {
-        localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(typedOfficialSeed));
-        list = [...typedOfficialSeed];
       }
     }
 
@@ -115,11 +107,11 @@ export function getCachedVehicles(): Vehicle[] {
       } catch {}
     }
 
-    return list.length > 0 ? list : typedOfficialSeed;
+    return list;
   } catch (err) {
     console.error('Erro ao ler cache local de veículos:', err);
   }
-  return typedOfficialSeed;
+  return [];
 }
 
 /**
@@ -429,15 +421,9 @@ export function useVehicles() {
         console.warn('Consulta remota de veículos falhou, usando estoque local:', err);
       }
 
-      // 3. Fallback garantido
+      // 3. Fallback apenas do cache real (sem seed fictício/estático)
       if (currentList.length > 0) {
         return currentList;
-      }
-
-      const seedFiltered = typedOfficialSeed.filter((v) => !deletedIds.has(v.id));
-      if (seedFiltered.length > 0) {
-        saveVehiclesToCache(seedFiltered);
-        return seedFiltered;
       }
 
       return [];
