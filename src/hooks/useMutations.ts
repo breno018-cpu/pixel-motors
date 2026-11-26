@@ -47,98 +47,68 @@ export function useCreateVehicle() {
 
       const cleanPlate = data.plate?.trim() ? data.plate.trim().toUpperCase() : null;
 
-      try {
-        await ensureSupabaseSession();
-        const validStoreId = toValidStoreUuid(data.store_id);
-        const insertPayload = {
-          store_id: validStoreId,
-          vehicle_type: data.vehicle_type || 'moto',
-          brand: data.brand.trim().toUpperCase(),
-          model: data.model.trim().toUpperCase(),
-          year: data.year,
-          manufacture_year: data.manufacture_year || data.year,
-          color: data.color || 'Preta',
-          chassis: cleanChassis,
-          plate: cleanPlate,
-          renavam: data.renavam || null,
-          mileage: data.mileage || 0,
-          fuel_type: data.fuel_type || 'gasolina',
-          transmission: data.transmission || 'manual',
-          purchase_price: data.purchase_price || null,
-          sale_price: data.sale_price || null,
-          status: data.status || 'disponivel',
-          notes: data.notes || null,
-          engine_cc: data.engine_cc || null,
-          warranty_months: data.warranty_months || 12,
-          revision_period_months: data.revision_period_months || 6,
-          revision_period_km: data.revision_period_km || 1000,
-        };
-
-        const { data: vehicle, error } = await supabase
-          .from('vehicles')
-          .insert(insertPayload)
-          .select()
-          .single();
-
-        if (error) {
-          throw new Error(error.message || 'Erro ao persistir no Supabase');
-        }
-
-        if (vehicle) {
-          const realVehicle = vehicle as Vehicle;
-          saveVehicleToCache(realVehicle);
-          void logActivity('criar', 'veiculo', realVehicle.id, { chassi: cleanChassis, modelo: `${data.brand} ${data.model}` });
-          return realVehicle;
-        }
-        throw new Error('Falha ao obter registro do veículo cadastrado');
-      } catch (err: any) {
-        // Apenas em caso de erro real de rede sem internet salva em contingência local
-        console.warn('[useCreateVehicle] Falha de conexão, registrando em contingência:', err);
-        const tempId = crypto.randomUUID();
-        const fallbackVehicle: Vehicle = {
-          id: tempId,
-          store_id: data.store_id || 'store-divinopolis',
-          reseller_id: null,
-          brand: data.brand,
-          model: data.model,
-          year: data.year,
-          manufacture_year: data.manufacture_year || data.year,
-          color: data.color,
-          plate: cleanPlate,
-          chassis: cleanChassis || 'A DEFINIR NA VENDA',
-          renavam: data.renavam || null,
-          mileage: data.mileage || 0,
-          fuel_type: data.fuel_type || 'gasolina',
-          transmission: data.transmission || 'manual',
-          purchase_price: data.purchase_price || null,
-          sale_price: data.sale_price || null,
-          status: data.status || 'disponivel',
-          images: null,
-          notes: data.notes || null,
-          vehicle_type: data.vehicle_type || 'moto',
-          engine_cc: data.engine_cc || null,
-          warranty_months: data.warranty_months || 12,
-          revision_period_months: data.revision_period_months || 6,
-          revision_period_km: data.revision_period_km || 1000,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          is_offline_pending: true,
-        } as any;
-        saveVehicleToCache(fallbackVehicle);
-        return fallbackVehicle;
+      const session = await ensureSupabaseSession();
+      if (!session) {
+        throw new Error('Sessão desconectada do banco de dados. Faça login novamente antes de cadastrar veículos.');
       }
+
+      const validStoreId = toValidStoreUuid(data.store_id);
+      const insertPayload = {
+        store_id: validStoreId,
+        vehicle_type: data.vehicle_type || 'moto',
+        brand: data.brand.trim().toUpperCase(),
+        model: data.model.trim().toUpperCase(),
+        year: data.year,
+        manufacture_year: data.manufacture_year || data.year,
+        color: data.color || 'Preta',
+        chassis: cleanChassis,
+        plate: cleanPlate,
+        renavam: data.renavam || null,
+        mileage: data.mileage || 0,
+        fuel_type: data.fuel_type || 'gasolina',
+        transmission: data.transmission || 'manual',
+        purchase_price: data.purchase_price || null,
+        sale_price: data.sale_price || null,
+        status: data.status || 'disponivel',
+        notes: data.notes || null,
+        engine_cc: data.engine_cc || null,
+        warranty_months: data.warranty_months || 12,
+        revision_period_months: data.revision_period_months || 6,
+        revision_period_km: data.revision_period_km || 1000,
+      };
+
+      const { data: vehicle, error } = await supabase
+        .from('vehicles')
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao persistir no Supabase');
+      }
+
+      if (!vehicle) {
+        throw new Error('Falha ao obter registro do veículo cadastrado');
+      }
+
+      const realVehicle = vehicle as Vehicle;
+      saveVehicleToCache(realVehicle);
+      void logActivity('criar', 'veiculo', realVehicle.id, { chassi: cleanChassis, modelo: `${data.brand} ${data.model}` });
+      return realVehicle;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
-      toast({ title: 'Veículo cadastrado', description: 'Veículo adicionado ao estoque disponível.' });
+      toast({ title: 'Veículo cadastrado no banco!', description: 'Veículo salvo e adicionado ao estoque disponível.' });
     },
     onError: (error: Error) => {
-      let message = 'Erro ao cadastrar veículo.';
-      if (error.message.includes('unique') || error.message.includes('duplicate')) {
+      let message = error.message || 'Erro ao cadastrar veículo no banco de dados.';
+      if (message.includes('unique') || message.includes('duplicate')) {
         message = 'Chassi já cadastrado no sistema.';
+      } else if (message.toLowerCase().includes('row-level security')) {
+        message = 'Sem permissão para cadastrar veículos com este usuário.';
       }
-      toast({ variant: 'destructive', title: 'Erro', description: message });
+      toast({ variant: 'destructive', title: 'Veículo NÃO foi salvo', description: message });
     },
   });
 }

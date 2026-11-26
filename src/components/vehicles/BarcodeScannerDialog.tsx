@@ -409,13 +409,14 @@ export function BarcodeScannerDialog({
         updated_at: new Date().toISOString(),
       });
 
-      try {
-        const { error: insErr } = await supabase.from('vehicles').insert(payload);
-        if (insErr) {
-          console.warn('Persistência remota da bipagem falhou, mantido localmente:', insErr.message);
-        }
-      } catch (e) {
-        console.warn('Erro ao inserir bipagem no Supabase:', e);
+      const { error: insErr } = await supabase.from('vehicles').insert(payload);
+      if (insErr) {
+        toast({
+          variant: 'destructive',
+          title: 'Moto NÃO foi salva no banco',
+          description: insErr.message || 'Verifique sua conexão ou faça login novamente.',
+        });
+        return;
       }
 
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });

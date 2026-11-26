@@ -177,41 +177,43 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
           fuel_type: isElectricModel ? 'eletrico' : 'gasolina',
           transmission: isElectricModel ? 'direta' : 'manual',
           engine_cc: isElectricModel ? 2000 : 125,
-          cost_price: cost > 0 ? cost : null,
           purchase_price: cost > 0 ? cost : null,
           sale_price: sale > 0 ? sale : null,
           status: 'disponivel',
           store_id: finalStoreId,
-          condition: 'novo',
           notes: isElectricModel
             ? `Entrada em lote moto elétrica (${brand}) - Nº da Moto/Motor: ${chassis}`
             : `Entrada em lote concessionária (${brand}) - NF Remessa Fábrica.`,
         };
       });
 
-      try {
-        await ensureSupabaseSession();
-        const { data: insertedRows, error } = await supabase
-          .from('vehicles')
-          .insert(inserts as any)
-          .select();
-
-        if (error) {
-          console.warn('Persistência remota do lote falhou:', error.message);
-        } else if (insertedRows && insertedRows.length > 0) {
-          saveVehiclesToCache(insertedRows as Vehicle[]);
-        }
-      } catch (e) {
-        console.warn('Erro ao inserir lote no Supabase:', e);
+      const session = await ensureSupabaseSession();
+      if (!session) {
+        throw new Error('Sessão desconectada do banco de dados. Faça login novamente antes de lançar o lote.');
       }
+
+      const { data: insertedRows, error } = await supabase
+        .from('vehicles')
+        .insert(inserts as any)
+        .select();
+
+      if (error) {
+        throw new Error(error.message || 'Falha ao salvar o lote no banco de dados.');
+      }
+
+      if (!insertedRows || insertedRows.length === 0) {
+        throw new Error('O banco de dados não confirmou a gravação das motos do lote.');
+      }
+
+      saveVehiclesToCache(insertedRows as Vehicle[]);
 
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin-global-metrics'] });
 
       toast({
-        title: 'Lote de estoque cadastrado com sucesso!',
-        description: `${inserts.length} unidades de ${brand} ${model} foram inseridas no estoque.`,
+        title: 'Lote salvo no banco com sucesso!',
+        description: `${insertedRows.length} unidades de ${brand} ${model} foram gravadas no estoque.`,
       });
 
       setChassisListRaw('');
