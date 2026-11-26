@@ -474,6 +474,7 @@ export function MonthlyCitySalesMap({
       const map = L.map(mapContainerRef.current, {
         center: [-18.45, -44.3],
         zoom: 6,
+        zoomSnap: 0.5,
         zoomControl: true,
         attributionControl: false,
       });
@@ -537,9 +538,21 @@ export function MonthlyCitySalesMap({
       const markersGroup = L.layerGroup().addTo(map);
       leafletMapRef.current = map;
       markersLayerRef.current = markersGroup;
+
+      setTimeout(() => map.invalidateSize(), 60);
+      setTimeout(() => map.invalidateSize(), 250);
+      setTimeout(() => map.invalidateSize(), 600);
     }
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (leafletMapRef.current && mapContainerRef.current && mapContainerRef.current.clientHeight > 0) {
+        leafletMapRef.current.invalidateSize();
+      }
+    });
+    resizeObserver.observe(mapContainerRef.current);
+
     return () => {
+      resizeObserver.disconnect();
       if (leafletMapRef.current) {
         leafletMapRef.current.remove();
         leafletMapRef.current = null;
@@ -549,7 +562,7 @@ export function MonthlyCitySalesMap({
     };
   }, []);
 
-  // Camada de Tiles autenticada com MAP_API_KEY
+  // Camada de Tiles de alta confiabilidade (CartoDB Voyager / Dark, suporte completo a subdomains abcd)
   useEffect(() => {
     const map = leafletMapRef.current;
     if (!map) return;
@@ -560,8 +573,8 @@ export function MonthlyCitySalesMap({
     }
 
     if (mapTileStyle === 'road_voyager') {
-      const layer = L.tileLayer(getMapTileUrl('streets'), {
-        maxZoom: 18,
+      const layer = L.tileLayer(getMapTileUrl('voyager'), {
+        maxZoom: 19,
         subdomains: 'abcd',
       });
       layer.addTo(map);
@@ -569,7 +582,7 @@ export function MonthlyCitySalesMap({
       tileLayerRef.current = layer;
     } else if (mapTileStyle === 'dark_radar') {
       const layer = L.tileLayer(getMapTileUrl('dark'), {
-        maxZoom: 18,
+        maxZoom: 19,
         subdomains: 'abcd',
       });
       layer.addTo(map);

@@ -3,6 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Proteção contra reset do Tailwind Preflight em tiles e marcadores do Leaflet */
+.leaflet-container img,
+.leaflet-tile-pane img {
+  max-width: none !important;
+  max-height: none !important;
+}
+
 @layer base {
   :root {
     --base-font-size: 16px;
