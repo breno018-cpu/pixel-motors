@@ -182,8 +182,10 @@ export default function Vehicles() {
         const raw = localStorage.getItem('df_auth_user_cache_v1') || sessionStorage.getItem('df_auth_user_cache_v1');
         if (raw) {
           const parsed = JSON.parse(raw);
-          const isGroupOwner = Array.isArray(parsed?.roles) && parsed.roles.includes('dono_loja');
-          if (!isGroupOwner && parsed?.userStore?.id) {
+          const isElevated =
+            Array.isArray(parsed?.roles) &&
+            (parsed.roles.includes('dono_loja') || parsed.roles.includes('admin') || parsed.roles.includes('gerente'));
+          if (!isElevated && parsed?.userStore?.id) {
             return parsed.userStore.id;
           }
         }
@@ -247,8 +249,10 @@ export default function Vehicles() {
   const confirm = useConfirm();
   const dealershipScope = useDealershipScope();
 
-  // Regra de ouro: cada funcionário vê PRIMEIRO o estoque da sua respectiva loja por padrão.
-  // Dono do Grupo (dono_loja) e Admin/Gerente sem loja vinculada veem TODAS as lojas por padrão.
+  const isElevatedStockViewer = isGroupOwnerRole || isAdmin || hasElevatedAccess;
+
+  // Regra de ouro: Admin/Gerente/Dono veem TODAS as lojas por padrão;
+  // vendedores veem PRIMEIRO o estoque da sua respectiva loja.
   const userManuallyChangedStoreRef = useRef(false);
   useEffect(() => {
     const fromParam = searchParams.get('store');
@@ -262,7 +266,7 @@ export default function Vehicles() {
     }
     if (userManuallyChangedStoreRef.current) return;
 
-    if (isGroupOwnerRole || !userStore?.id) {
+    if (isElevatedStockViewer || !userStore?.id) {
       if (storeFilter !== 'all') setStoreFilter('all');
       if (dealershipScope.activeScope !== 'all') dealershipScope.setActiveScope('all');
       return;
@@ -274,7 +278,7 @@ export default function Vehicles() {
     if (dealershipScope.activeScope !== userStore.id) {
       dealershipScope.setActiveScope(userStore.id);
     }
-  }, [userStore?.id, searchParams, isGroupOwnerRole]);
+  }, [userStore?.id, searchParams, isElevatedStockViewer]);
 
   const handleStoreChange = (newStoreId: string) => {
     userManuallyChangedStoreRef.current = true;

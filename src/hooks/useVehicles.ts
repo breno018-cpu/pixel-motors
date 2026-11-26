@@ -387,46 +387,43 @@ export function useVehicles() {
       // 1. Obtém o estoque imediatamente disponível filtrando excluídos
       let currentList = getCachedVehicles().filter((v) => !deletedIds.has(v.id));
 
-      // 2. Tenta sincronização remota com o Supabase (somente com sessão autenticada para evitar array vazio por RLS)
+      // 2. Sincronização remota com o Supabase (sempre tenta buscar; só ignora [] se não houver sessão JWT)
       try {
         const session = await ensureSupabaseSession();
-        if (session) {
-          const { data, error } = await (supabase as any)
-            .from('vehicles')
-            .select('*')
-            .eq('is_deleted', false)
-            .order('created_at', { ascending: false });
+        const { data, error } = await (supabase as any)
+          .from('vehicles')
+          .select('*')
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false });
 
-          if (!error && Array.isArray(data) && (data.length > 0 || currentList.length === 0)) {
-            const filteredRemote = (data as Vehicle[]).filter((v) => !deletedIds.has(v.id));
-            const remoteIdSet = new Set(filteredRemote.map((v) => v.id));
-            const remoteChassisSet = new Set(
-              filteredRemote.map((v) => (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '')).filter((ch) => ch.length >= 6)
-            );
-            const remoteModelKeySet = new Set(
-              filteredRemote.map((v) => `${v.brand}::${v.model}::${v.color}::${v.year}::${v.store_id}`.toUpperCase())
-            );
+        if (!error && Array.isArray(data) && (data.length > 0 || (Boolean(session) && currentList.length === 0))) {
+          const filteredRemote = (data as Vehicle[]).filter((v) => !deletedIds.has(v.id));
+          const remoteIdSet = new Set(filteredRemote.map((v) => v.id));
+          const remoteChassisSet = new Set(
+            filteredRemote.map((v) => (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '')).filter((ch) => ch.length >= 6)
+          );
+          const remoteModelKeySet = new Set(
+            filteredRemote.map((v) => `${v.brand}::${v.model}::${v.color}::${v.year}::${v.store_id}`.toUpperCase())
+          );
 
-            // Preserva apenas veículos registrados em contingência offline pendentes que ainda não constam na nuvem
-            const localOnly = currentList.filter((v) => {
-              if (remoteIdSet.has(v.id)) return false;
-              if (!(v as any).is_offline_pending) return false;
-              const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-              if (vCh.length >= 6 && remoteChassisSet.has(vCh)) return false;
-              // Se o veículo não tem chassi ou está com chassi provisório, verifica modelo/cor/ano/loja para evitar duplicata
-              const modelKey = `${v.brand}::${v.model}::${v.color}::${v.year}::${v.store_id}`.toUpperCase();
-              if ((!vCh || vCh.includes('DEFINIR') || vCh.includes('PENDENTE')) && remoteModelKeySet.has(modelKey)) return false;
-              return true;
-            });
+          // Preserva apenas veículos registrados em contingência offline pendentes que ainda não constam na nuvem
+          const localOnly = currentList.filter((v) => {
+            if (remoteIdSet.has(v.id)) return false;
+            if (!(v as any).is_offline_pending) return false;
+            const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (vCh.length >= 6 && remoteChassisSet.has(vCh)) return false;
+            const modelKey = `${v.brand}::${v.model}::${v.color}::${v.year}::${v.store_id}`.toUpperCase();
+            if ((!vCh || vCh.includes('DEFINIR') || vCh.includes('PENDENTE')) && remoteModelKeySet.has(modelKey)) return false;
+            return true;
+          });
 
-            const combined = [...localOnly, ...filteredRemote];
-            if (combined.length > 0) {
-              try {
-                localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(combined));
-              } catch {}
-            }
-            return combined;
+          const combined = [...localOnly, ...filteredRemote];
+          if (combined.length > 0) {
+            try {
+              localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(combined));
+            } catch {}
           }
+          return combined;
         }
       } catch (err) {
         console.warn('Consulta remota de veículos falhou, usando estoque local:', err);
@@ -445,7 +442,8 @@ export function useVehicles() {
 
       return [];
     },
-    staleTime: 30 * 1000,
+    staleTime: 5 * 1000,
+    refetchOnMount: 'always',
   });
 }
 
