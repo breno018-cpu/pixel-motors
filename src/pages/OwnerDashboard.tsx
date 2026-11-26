@@ -169,15 +169,20 @@ function OwnerDashboardContent() {
   const [selectedModelForChassis, setSelectedModelForChassis] = useState<ModelStockGroup | null>(null);
 
   // Filtragem dinâmica de vendas
+  const activeScopeKey = useMemo(
+    () => resolveStoreToKey(dealershipScope.activeScope),
+    [dealershipScope.activeScope]
+  );
+
   const filteredSales = useMemo(() => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
 
     return sales.filter((item) => {
-      // 1. Filtro de Concessionária (Global via DealershipScope)
-      if (dealershipScope.activeScope !== 'all') {
+      // 1. Filtro de Concessionária (Global via DealershipScope — normaliza UUID e slug)
+      if (activeScopeKey !== 'all') {
         const k = resolveStoreToKey(item.loja_slug || item.store_id || item.loja_cidade || item.loja_nome);
-        if (k !== dealershipScope.activeScope) return false;
+        if (k !== activeScopeKey) return false;
       }
 
       // 2. Busca por texto
@@ -214,7 +219,7 @@ function OwnerDashboardContent() {
 
       return true;
     });
-  }, [sales, dealershipScope.activeScope, searchQuery, periodPreset, startDate, endDate]);
+  }, [sales, activeScopeKey, searchQuery, periodPreset, startDate, endDate]);
 
   // Contadores e Totais Financeiros por Concessionária
   const { dealershipCounts, dealershipFinancials } = useMemo(() => {
