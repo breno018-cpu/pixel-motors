@@ -30,6 +30,7 @@ import {
   User,
   X,
   Truck,
+  Wrench,
   Zap,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -62,6 +63,12 @@ import {
 import { VehicleFormDialog } from '@/components/forms/VehicleFormDialog';
 import { BatchVehicleEntryDialog } from '@/components/forms/BatchVehicleEntryDialog';
 import { BarcodeScannerDialog } from '@/components/vehicles/BarcodeScannerDialog';
+import { VehicleUnavailabilityDialog } from '@/components/vehicles/VehicleUnavailabilityDialog';
+import {
+  isVehicleTemporarilyUnavailable,
+  parseVehicleUnavailability,
+  getUnavailabilityProgress,
+} from '@/lib/vehicleUnavailability';
 import { VehicleActionsMenu } from '@/components/actions/VehicleActionsMenu';
 import { ReservationsPanel } from '@/components/vehicles/ReservationsPanel';
 import { TransfersPanel } from '@/components/vehicles/TransfersPanel';
@@ -208,6 +215,7 @@ export default function Vehicles() {
   const [transferType, setTransferType] = useState<TransferType | undefined>(undefined);
   const [saleVehicleId, setSaleVehicleId] = useState<string | null>(null);
   const [reserveVehicleId, setReserveVehicleId] = useState<string | null>(null);
+  const [unavailabilityVehicle, setUnavailabilityVehicle] = useState<Vehicle | null>(null);
   const [scannedChassisForForm, setScannedChassisForForm] = useState<string>('');
   const [tab, setTab] = useState(() => searchParams.get('tab') || 'estoque');
 
@@ -392,6 +400,12 @@ export default function Vehicles() {
     [scopedVehicles],
   );
 
+  // Contagem de motos temporariamente indisponíveis / em montagem
+  const temporarilyUnavailableCount = useMemo(
+    () => scopedVehicles.filter(isVehicleTemporarilyUnavailable).length,
+    [scopedVehicles],
+  );
+
   // Todas as cores disponíveis para filtro rápido
   const availableColors = useMemo(() => {
     const counts = new Map<string, number>();
@@ -414,6 +428,8 @@ export default function Vehicles() {
         }
       } else if (statusFilter === 'aguardando_codigo') {
         if (!isWaitingElectricCode(vehicle)) return false;
+      } else if (statusFilter === 'indisponivel') {
+        if (!isVehicleTemporarilyUnavailable(vehicle)) return false;
       } else if (vehicle.status !== statusFilter) {
         return false;
       }
@@ -810,6 +826,15 @@ export default function Vehicles() {
         />
       )}
 
+      {/* Diálogo de Moto Temporariamente Indisponível / Checklist de Montagem */}
+      <VehicleUnavailabilityDialog
+        vehicle={unavailabilityVehicle}
+        open={Boolean(unavailabilityVehicle)}
+        onOpenChange={(open) => {
+          if (!open) setUnavailabilityVehicle(null);
+        }}
+      />
+
       <Tabs value={tab} onValueChange={handleTabChange} className="space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <TabsList className="h-10 rounded-xl border bg-card p-1 shadow-2xs w-fit">
@@ -1116,6 +1141,7 @@ export default function Vehicles() {
                   { id: 'active', label: `Estoque Ativo (${activeInventory.length})` },
                   { id: 'disponivel', label: `Disponíveis (${scopedVehicles.filter((v) => v.status === 'disponivel').length})` },
                   { id: 'reservado', label: `Reservados (${scopedVehicles.filter((v) => v.status === 'reservado').length})` },
+                  { id: 'indisponivel', label: `Indisponíveis / Montagem (${temporarilyUnavailableCount})` },
                   { id: 'aguardando_codigo', label: `Elétricas Aguardando Código (${waitingElectricCount})` },
                   { id: 'aging60', label: `Pátio > 60d (${kpis.aging60Count})` },
                   { id: 'vendido', label: `Histórico Vendidos (${scopedVehicles.filter((v) => v.status === 'vendido').length})` },
@@ -1129,12 +1155,17 @@ export default function Vehicles() {
                       statusFilter === st.id
                         ? (st.id === 'aguardando_codigo'
                             ? 'bg-emerald-600 text-white shadow-2xs font-bold'
-                            : 'bg-primary text-primary-foreground')
+                            : st.id === 'indisponivel'
+                              ? 'bg-amber-600 text-white shadow-2xs font-bold'
+                              : 'bg-primary text-primary-foreground')
                         : (st.id === 'aguardando_codigo'
                             ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 font-semibold'
-                            : 'bg-muted/40 text-muted-foreground hover:text-foreground'),
+                            : st.id === 'indisponivel'
+                              ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 font-semibold'
+                              : 'bg-muted/40 text-muted-foreground hover:text-foreground'),
                     )}
                   >
+                    {st.id === 'indisponivel' && <Wrench className="h-3 w-3 shrink-0" />}
                     {st.label}
                   </button>
                 ))}
@@ -1936,17 +1967,56 @@ function UnitList({
               className="grid min-w-[760px] gap-3 px-5 py-3.5 transition-colors hover:bg-muted/20 md:grid-cols-[minmax(200px,1.2fr)_1.2fr_120px_140px_auto] md:items-center"
             >
               <div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={cn('text-xs', statusConfig[vehicle.status].class)}
-                  >
-                    {statusConfig[vehicle.status].label}
-                  </Badge>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(() => {
+                    const unavail = parseVehicleUnavailability(vehicle.notes);
+                    if (unavail?.active && vehicle.status !== 'vendido') {
+                      const prog = getUnavailabilityProgress(unavail);
+                      return (
+                        <Badge
+                          variant="outline"
+                          title={`Motivo: ${unavail.reason}${unavail.description ? ` — ${unavail.description}` : ''}`}
+                          className="text-xs bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40 gap-1 font-semibold"
+                        >
+                          <Wrench className="w-3 h-3" />
+                          Indisponível{prog.total > 0 ? ` (${prog.done}/${prog.total})` : ''}
+                        </Badge>
+                      );
+                    }
+                    return (
+                      <Badge
+                        variant="outline"
+                        className={cn('text-xs', statusConfig[vehicle.status].class)}
+                      >
+                        {statusConfig[vehicle.status].label}
+                      </Badge>
+                    );
+                  })()}
                   <span className="font-medium text-sm text-foreground">
                     {vehicle.color || 'Cor não informada'}
                   </span>
                 </div>
+                {(() => {
+                  const unavail = parseVehicleUnavailability(vehicle.notes);
+                  if (!unavail?.active || vehicle.status === 'vendido') return null;
+                  const prog = getUnavailabilityProgress(unavail);
+                  return (
+                    <div className="mt-1.5 text-[11px] text-amber-800 dark:text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2 py-1 space-y-1 max-w-[260px]">
+                      <div className="font-semibold truncate">{unavail.reason}</div>
+                      {prog.total > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-1.5 flex-1 rounded-full bg-amber-500/20 overflow-hidden">
+                            <div
+                              className={cn('h-full rounded-full', prog.done === prog.total ? 'bg-emerald-500' : 'bg-amber-500')}
+                              style={{ width: `${prog.percent}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] font-mono font-bold shrink-0">{prog.done}/{prog.total}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <p className="mt-1 text-xs text-muted-foreground">
                   {vehicle.manufacture_year
                     ? `${vehicle.manufacture_year}/${vehicle.year}`

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Eye, Pencil, ArrowRightLeft, Tag, Trash2, UserPlus, Undo2, FileText, FileCheck, ShieldCheck } from 'lucide-react';
+import { MoreHorizontal, Eye, Pencil, ArrowRightLeft, Tag, Trash2, UserPlus, Undo2, FileText, FileCheck, ShieldCheck, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,6 +30,8 @@ import { VehicleDetailsDialog } from '@/components/dialogs/VehicleDetailsDialog'
 import { VehicleEditDialog } from '@/components/dialogs/VehicleEditDialog';
 import { CreateConsignmentDialog } from '@/components/consignments/CreateConsignmentDialog';
 import { CreateReservationDialog } from '@/components/reservations/CreateReservationDialog';
+import { VehicleUnavailabilityDialog } from '@/components/vehicles/VehicleUnavailabilityDialog';
+import { isVehicleTemporarilyUnavailable, parseVehicleUnavailability, getUnavailabilityProgress } from '@/lib/vehicleUnavailability';
 import { Vehicle } from '@/hooks/useVehicles';
 
 interface VehicleActionsMenuProps {
@@ -46,7 +48,11 @@ export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [consignmentOpen, setConsignmentOpen] = useState(false);
   const [reservationOpen, setReservationOpen] = useState(false);
+  const [unavailabilityOpen, setUnavailabilityOpen] = useState(false);
   const [selectedReseller, setSelectedReseller] = useState<typeof resellers extends (infer U)[] | undefined ? U : never | null>(null);
+  const isTempUnavailable = isVehicleTemporarilyUnavailable(vehicle);
+  const unavailMeta = isTempUnavailable ? parseVehicleUnavailability(vehicle.notes) : null;
+  const unavailProgress = getUnavailabilityProgress(unavailMeta);
   
   const updateStatus = useUpdateVehicleStatus();
   const deleteVehicle = useDeleteVehicle();
@@ -147,6 +153,15 @@ export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
           
           <DropdownMenuSeparator />
           
+          {(isAdmin || isManager || canRegisterVehicles || can('vehicles.edit')) && vehicle.status !== 'vendido' && (
+            <DropdownMenuItem onClick={() => setUnavailabilityOpen(true)} className="text-amber-700 dark:text-amber-400">
+              <Wrench className="w-4 h-4 mr-2" />
+              {isTempUnavailable
+                ? `Pendências / Montagem${unavailProgress.total > 0 ? ` (${unavailProgress.done}/${unavailProgress.total})` : ''}`
+                : 'Indisponível / Montagem'}
+            </DropdownMenuItem>
+          )}
+
           {/* Apenas disponível e reservado são manuais - vendido é automático após venda */}
           {(isAdmin || isManager || canCreateSales) && vehicle.status === 'disponivel' && (
             <DropdownMenuItem onClick={() => setReservationOpen(true)}>
@@ -195,6 +210,12 @@ export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
         open={reservationOpen}
         onOpenChange={setReservationOpen}
         initialVehicleId={vehicle.id}
+      />
+
+      <VehicleUnavailabilityDialog
+        vehicle={vehicle}
+        open={unavailabilityOpen}
+        onOpenChange={setUnavailabilityOpen}
       />
 
       {selectedReseller && (
