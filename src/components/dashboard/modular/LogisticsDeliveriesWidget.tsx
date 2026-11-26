@@ -9,9 +9,10 @@ import { useNavigate } from 'react-router-dom';
 interface LogisticsDeliveriesWidgetProps {
   sales: any[];
   baseCity?: string;
+  hideValues?: boolean;
 }
 
-export function LogisticsDeliveriesWidget({ sales, baseCity = 'Divinópolis' }: LogisticsDeliveriesWidgetProps) {
+export function LogisticsDeliveriesWidget({ sales, baseCity = 'Divinópolis', hideValues = false }: LogisticsDeliveriesWidgetProps) {
   const navigate = useNavigate();
 
   // Consolidação das saídas logísticas e cidades de destino
@@ -123,9 +124,11 @@ export function LogisticsDeliveriesWidget({ sales, baseCity = 'Divinópolis' }: 
                     <Badge variant="secondary" className="font-mono text-[10px]">
                       {dest.count} {dest.count === 1 ? 'moto' : 'motos'}
                     </Badge>
-                    <span className="text-[11px] font-bold text-muted-foreground hidden sm:inline">
-                      {formatCurrencyBRL(dest.total)}
-                    </span>
+                    {!hideValues && (
+                      <span className="text-[11px] font-bold text-muted-foreground hidden sm:inline">
+                        {formatCurrencyBRL(dest.total)}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))

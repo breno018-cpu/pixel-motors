@@ -879,6 +879,41 @@ export default function Dashboard() {
     ].filter((d) => d.value > 0);
   }, [filteredSales]);
 
+  // 2b. Composição de Meios de Pagamento por QUANTIDADE DE MOTOS (para vendedores, sem valores em R$)
+  const paymentDistributionByCount = useMemo(() => {
+    let fin = 0;
+    let pix = 0;
+    let din = 0;
+    let card = 0;
+    let carta = 0;
+
+    filteredSales.forEach((s) => {
+      if ((s.financiamento || 0) > 0) fin += 1;
+      else if ((s.pix || 0) > 0) pix += 1;
+      else if ((s.cartao || 0) > 0) card += 1;
+      else if ((s.carta_credito || 0) > 0) carta += 1;
+      else din += 1;
+    });
+
+    return [
+      { name: 'Financiamento Bancário', value: fin, color: PALETTE.primary },
+      { name: 'PIX Direto', value: pix, color: PALETTE.success },
+      { name: 'Dinheiro / À Vista', value: din, color: PALETTE.cyan },
+      { name: 'Cartão Débito/Crédito', value: card, color: PALETTE.warning },
+      { name: 'Carta de Crédito / Consórcio', value: carta, color: PALETTE.purple },
+    ].filter((d) => d.value > 0);
+  }, [filteredSales]);
+
+  const sellerUnitBreakdown = useMemo(() => {
+    let financedCount = 0;
+    let cashCount = 0;
+    filteredSales.forEach((s) => {
+      if ((s.financiamento || 0) > 0) financedCount += 1;
+      else cashCount += 1;
+    });
+    return { financedCount, cashCount };
+  }, [filteredSales]);
+
   // 3. Funil Comercial & Pipeline de Conversão 100% Autêntico
   const funnelData = useMemo(() => {
     const faturadas = metrics.vendasFaturadas;
@@ -1050,8 +1085,40 @@ export default function Dashboard() {
     }, 500);
   };
 
-  // Exportar Relatório Executivo
+  // Exportar Relatório Executivo (vendedores exportam apenas quantidades/dados operacionais, sem valores monetários)
   const handleExportDashboard = () => {
+    if (isSellerRole) {
+      const sellerData = filteredSales.map((s) => ({
+        Data: s.dateStr,
+        Concessionária: s.store_name,
+        Vendedor: s.vendedor,
+        Cliente: s.cliente,
+        Modelo: s.modelo,
+        Região: s.regiao,
+        Banco: s.banco,
+        Status: s.is_permitted ? 'Faturada' : 'Pré-Venda',
+      }));
+
+      exportToXLSX({
+        title: 'Minhas Vendas - Quantidade de Motos',
+        module: 'sales',
+        filters: { Período: periodFilter, Vendedor: profile?.full_name || 'Vendedor' },
+        columns: [
+          { key: 'Data', label: 'Data', type: 'text' },
+          { key: 'Concessionária', label: 'Concessionária', type: 'text' },
+          { key: 'Vendedor', label: 'Vendedor', type: 'text' },
+          { key: 'Cliente', label: 'Cliente', type: 'text' },
+          { key: 'Modelo', label: 'Modelo', type: 'text' },
+          { key: 'Região', label: 'Região', type: 'text' },
+          { key: 'Banco', label: 'Banco', type: 'text' },
+          { key: 'Status', label: 'Status', type: 'text' },
+        ],
+        data: sellerData,
+        userName: profile?.full_name || 'Vendedor',
+      });
+      return;
+    }
+
     const data = filteredSales.map((s) => ({
       Data: s.dateStr,
       Concessionária: s.store_name,
@@ -1290,6 +1357,137 @@ export default function Dashboard() {
       {/* ======================================================== */}
       {/* 2. RESUMO DE VENDAS E METAS                              */}
       {/* ======================================================== */}
+      {isSellerRole ? (
+        /* Visão exclusiva de Vendedor: APENAS quantidade de motos (zero valores monetários) */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Minhas Motos Vendidas + Meta em Unidades */}
+          <GlassView
+            glassEffectStyle="regular"
+            isInteractive
+            className="group relative overflow-hidden rounded-3xl p-5 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-border/50"
+          >
+            <div className="absolute top-0 right-0 w-28 h-28 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all pointer-events-none" />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                Minhas Motos Vendidas
+              </span>
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                <Bike className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl lg:text-3xl font-black font-display text-foreground tracking-tight">
+                {metrics.totalVendas} {metrics.totalVendas === 1 ? 'moto' : 'motos'}
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold mt-1">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Total no período selecionado</span>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border/40 space-y-1.5">
+              <div className="flex justify-between text-[11px] font-semibold text-muted-foreground">
+                <span>Meta ({metrics.metaMotos} Motos)</span>
+                <span className="font-bold text-foreground">{metrics.progressoMetaMotos}%</span>
+              </div>
+              <Progress value={metrics.progressoMetaMotos} className="h-1.5 bg-muted/60" />
+            </div>
+          </GlassView>
+
+          {/* Card 2: Motos Liberadas vs Pré-Venda */}
+          <GlassView
+            glassEffectStyle="regular"
+            isInteractive
+            className="group relative overflow-hidden rounded-3xl p-5 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-border/50"
+          >
+            <div className="absolute top-0 right-0 w-28 h-28 bg-primary/10 rounded-full blur-2xl group-hover:bg-primary/20 transition-all pointer-events-none" />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                Liberadas / Concluídas
+              </span>
+              <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl lg:text-3xl font-black font-display text-foreground tracking-tight">
+                {metrics.vendasFaturadas} {metrics.vendasFaturadas === 1 ? 'moto' : 'motos'}
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-semibold mt-1">
+                <Clock className="w-3.5 h-3.5" />
+                <span>{metrics.preVendasPendentes} em pré-venda (aguardando NF)</span>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>Taxa de liberação:</span>
+              <strong className="text-foreground font-black">
+                {metrics.totalVendas > 0 ? Math.round((metrics.vendasFaturadas / metrics.totalVendas) * 100) : 0}%
+              </strong>
+            </div>
+          </GlassView>
+
+          {/* Card 3: Modelo Mais Vendido (apenas unidades) */}
+          <GlassView
+            glassEffectStyle="regular"
+            isInteractive
+            className="group relative overflow-hidden rounded-3xl p-5 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-border/50"
+          >
+            <div className="absolute top-0 right-0 w-28 h-28 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all pointer-events-none" />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                Modelo Destaque
+              </span>
+              <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+                <Award className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-xl lg:text-2xl font-black font-display text-foreground tracking-tight truncate" title={topModel?.name}>
+                {topModel ? topModel.name : 'Sem vendas'}
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium mt-1">
+                <span>
+                  {topModel ? `${topModel.count} ${topModel.count === 1 ? 'moto vendida' : 'motos vendidas'}` : 'Nenhuma moto no período'}
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>Modelos diferentes:</span>
+              <strong className="text-foreground font-black">{topModelsList.length}</strong>
+            </div>
+          </GlassView>
+
+          {/* Card 4: Modalidade em Quantidade de Motos */}
+          <GlassView
+            glassEffectStyle="regular"
+            isInteractive
+            className="group relative overflow-hidden rounded-3xl p-5 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-border/50"
+          >
+            <div className="absolute top-0 right-0 w-28 h-28 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-500/20 transition-all pointer-events-none" />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                Modalidade (Unidades)
+              </span>
+              <div className="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold">
+                <Landmark className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-2xl lg:text-3xl font-black font-display text-primary tracking-tight">
+                {sellerUnitBreakdown.financedCount} {sellerUnitBreakdown.financedCount === 1 ? 'financiada' : 'financiadas'}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Contratos via banco no período
+              </div>
+            </div>
+            <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between text-[11px]">
+              <span className="text-muted-foreground">À vista / PIX / Cartão:</span>
+              <strong className="text-emerald-600 dark:text-emerald-400 font-black">
+                {sellerUnitBreakdown.cashCount} {sellerUnitBreakdown.cashCount === 1 ? 'moto' : 'motos'}
+              </strong>
+            </div>
+          </GlassView>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Faturamento Total */}
         <GlassView
@@ -1434,6 +1632,7 @@ export default function Dashboard() {
           </div>
         </GlassView>
       </div>
+      )}
 
       {/* ======================================================== */}
       {/* 3. NAVEGAÇÃO DE ABAS                                     */}
@@ -1491,7 +1690,9 @@ export default function Dashboard() {
                       Vendas por Dia
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Faturamento diário e quantidade de motos vendidas no período.
+                      {isSellerRole
+                        ? 'Quantidade de motos vendidas por dia no período.'
+                        : 'Faturamento diário e quantidade de motos vendidas no período.'}
                     </CardDescription>
                   </div>
                   <Badge variant="outline" className="font-mono text-xs font-bold">
@@ -1502,41 +1703,68 @@ export default function Dashboard() {
               <CardContent>
                 <div className="h-[280px] w-full pt-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={timelineChartData}>
-                      <defs>
-                        <linearGradient id="colorFaturamento" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={PALETTE.primary} stopOpacity={0.3} />
-                          <stop offset="95%" stopColor={PALETTE.primary} stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.6} />
-                      <XAxis dataKey="data" tick={{ fontSize: 11 }} />
-                      <YAxis
-                        tick={{ fontSize: 11 }}
-                        tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
-                      />
-                      <Tooltip
-                        formatter={(val: number) => [formatCurrencyBRL(val), 'Faturamento']}
-                        labelFormatter={(l) => `Data: ${l}`}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="faturamento"
-                        stroke={PALETTE.primary}
-                        strokeWidth={2.5}
-                        fillOpacity={1}
-                        fill="url(#colorFaturamento)"
-                        name="Faturamento Diário"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="motos"
-                        stroke={PALETTE.warning}
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        name="Veículos Vendidos"
-                      />
-                    </AreaChart>
+                    {isSellerRole ? (
+                      <AreaChart data={timelineChartData}>
+                        <defs>
+                          <linearGradient id="colorMotos" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={PALETTE.success} stopOpacity={0.35} />
+                            <stop offset="95%" stopColor={PALETTE.success} stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.6} />
+                        <XAxis dataKey="data" tick={{ fontSize: 11 }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} un`} />
+                        <Tooltip
+                          formatter={(val: number) => [`${val} ${val === 1 ? 'moto' : 'motos'}`, 'Vendas']}
+                          labelFormatter={(l) => `Data: ${l}`}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="motos"
+                          stroke={PALETTE.success}
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#colorMotos)"
+                          name="Motos Vendidas"
+                        />
+                      </AreaChart>
+                    ) : (
+                      <AreaChart data={timelineChartData}>
+                        <defs>
+                          <linearGradient id="colorFaturamento" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={PALETTE.primary} stopOpacity={0.3} />
+                            <stop offset="95%" stopColor={PALETTE.primary} stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.6} />
+                        <XAxis dataKey="data" tick={{ fontSize: 11 }} />
+                        <YAxis
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
+                        />
+                        <Tooltip
+                          formatter={(val: number) => [formatCurrencyBRL(val), 'Faturamento']}
+                          labelFormatter={(l) => `Data: ${l}`}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="faturamento"
+                          stroke={PALETTE.primary}
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#colorFaturamento)"
+                          name="Faturamento Diário"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="motos"
+                          stroke={PALETTE.warning}
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          name="Veículos Vendidos"
+                        />
+                      </AreaChart>
+                    )}
                   </ResponsiveContainer>
                 </div>
               </CardContent>
@@ -1550,7 +1778,9 @@ export default function Dashboard() {
                   Formas de Pagamento
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Pix, financiamento, dinheiro, cartão e boleto.
+                  {isSellerRole
+                    ? 'Quantidade de motos por modalidade de pagamento.'
+                    : 'Pix, financiamento, dinheiro, cartão e boleto.'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1558,7 +1788,7 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <RechartsPie>
                       <Pie
-                        data={paymentDistributionData}
+                        data={isSellerRole ? paymentDistributionByCount : paymentDistributionData}
                         cx="50%"
                         cy="50%"
                         innerRadius={50}
@@ -1566,17 +1796,23 @@ export default function Dashboard() {
                         paddingAngle={5}
                         dataKey="value"
                       >
-                        {paymentDistributionData.map((entry, index) => (
+                        {(isSellerRole ? paymentDistributionByCount : paymentDistributionData).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(v: number) => [formatCurrencyBRL(v), 'Volume']} />
+                      <Tooltip
+                        formatter={(v: number) =>
+                          isSellerRole
+                            ? [`${v} ${v === 1 ? 'moto' : 'motos'}`, 'Quantidade']
+                            : [formatCurrencyBRL(v), 'Volume']
+                        }
+                      />
                     </RechartsPie>
                   </ResponsiveContainer>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t text-[11px]">
-                  {paymentDistributionData.slice(0, 4).map((item) => (
+                  {(isSellerRole ? paymentDistributionByCount : paymentDistributionData).slice(0, 4).map((item) => (
                     <div key={item.name} className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                       <span className="truncate text-muted-foreground">{item.name}</span>
@@ -1618,10 +1854,17 @@ export default function Dashboard() {
                 <h4 className="text-xs font-bold text-foreground">Banco Líder em Financiamento</h4>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   {bankAnalytics[0] ? (
-                    <>
-                      <strong className="text-foreground">{bankAnalytics[0].banco}</strong> lidera as operações com{' '}
-                      {formatCurrencyBRL(bankAnalytics[0].volumeFinanciado)} ({bankAnalytics[0].count} contratos).
-                    </>
+                    isSellerRole ? (
+                      <>
+                        <strong className="text-foreground">{bankAnalytics[0].banco}</strong> lidera as operações com{' '}
+                        <strong>{bankAnalytics[0].count} {bankAnalytics[0].count === 1 ? 'moto' : 'motos'}</strong> no período.
+                      </>
+                    ) : (
+                      <>
+                        <strong className="text-foreground">{bankAnalytics[0].banco}</strong> lidera as operações com{' '}
+                        {formatCurrencyBRL(bankAnalytics[0].volumeFinanciado)} ({bankAnalytics[0].count} contratos).
+                      </>
+                    )
                   ) : (
                     'Sem operações de financiamento no período.'
                   )}
@@ -1715,7 +1958,9 @@ export default function Dashboard() {
                   </Badge>
                 </div>
                 <CardDescription className="text-xs">
-                  Valores financiados e quantidade de contratos por banco.
+                  {isSellerRole
+                    ? 'Quantidade de motos por banco parceiro.'
+                    : 'Valores financiados e quantidade de contratos por banco.'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2.5">
@@ -1731,19 +1976,34 @@ export default function Dashboard() {
                       <div>
                         <strong className="text-foreground text-sm">{b.banco}</strong>
                         <div className="text-[11px] text-muted-foreground">
-                          {b.count} contratos liberados
+                          {b.count} {b.count === 1 ? 'contrato liberado' : 'contratos liberados'}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-black text-sm text-foreground">
-                        {formatCurrencyBRL(b.volumeFinanciado)}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground font-semibold">
-                        {metrics.totalFinanciado > 0
-                          ? ((b.volumeFinanciado / metrics.totalFinanciado) * 100).toFixed(1)
-                          : '0.0'}% do crédito
-                      </div>
+                      {isSellerRole ? (
+                        <>
+                          <div className="font-black text-sm text-foreground">
+                            {b.count} {b.count === 1 ? 'moto' : 'motos'}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-semibold">
+                            {metrics.totalVendas > 0
+                              ? ((b.count / metrics.totalVendas) * 100).toFixed(1)
+                              : '0.0'}% das vendas
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-black text-sm text-foreground">
+                            {formatCurrencyBRL(b.volumeFinanciado)}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-semibold">
+                            {metrics.totalFinanciado > 0
+                              ? ((b.volumeFinanciado / metrics.totalFinanciado) * 100).toFixed(1)
+                              : '0.0'}% do crédito
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1810,6 +2070,7 @@ export default function Dashboard() {
               sales={filteredSales}
               baseCity={currentBaseCity}
               selectedStoreId={effectiveStore}
+              hideValues={isSellerRole}
             />
           </div>
         </TabsContent>
@@ -1821,6 +2082,7 @@ export default function Dashboard() {
           <DealershipProcessFlow
             contracts={filteredContracts}
             sales={filteredSales}
+            hideValues={isSellerRole}
           />
         </TabsContent>
 
@@ -1831,6 +2093,7 @@ export default function Dashboard() {
           <GeographicSalesRadiusMap
             sales={filteredSales}
             referenceStoreCity={currentBaseCity}
+            hideValues={isSellerRole}
             storeName={
               isMatchingStore(effectiveStore, 'store-montesclaros')
                 ? 'Concessionária Montes Claros'
@@ -1873,6 +2136,7 @@ export default function Dashboard() {
               <LogisticsDeliveriesWidget
                 sales={filteredSales}
                 baseCity={currentBaseCity}
+                hideValues={isSellerRole}
               />
             </div>
 

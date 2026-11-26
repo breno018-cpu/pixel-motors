@@ -57,11 +57,13 @@ export interface GeographicSalesRadiusMapProps {
   }>;
   referenceStoreCity?: string;
   storeName?: string;
+  hideValues?: boolean;
 }
 
 export function GeographicSalesRadiusMap({
   sales = [],
   referenceStoreCity = 'Divinópolis',
+  hideValues = false,
 }: GeographicSalesRadiusMapProps) {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [hubFilter, setHubFilter] = useState<'all' | 'montesclaros' | 'divinopolis'>('all');
@@ -532,8 +534,11 @@ export function GeographicSalesRadiusMap({
       hubMarker.bindTooltip(
         `<div style="font-size: 11px; padding: 2px 4px;">
           <strong>&#9672; ${hub.name}</strong><br/>
-          <span>Vendas locais: <strong>${hubSalesCount} un.</strong></span><br/>
-          <span>Volume: ${hubVolume.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          <span>Vendas locais: <strong>${hubSalesCount} un.</strong></span>${
+            hideValues
+              ? ''
+              : `<br/><span>Volume: ${hubVolume.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>`
+          }
         </div>`,
         { direction: 'top', offset: [0, -18] }
       );
@@ -987,7 +992,7 @@ export function GeographicSalesRadiusMap({
                     <TableHead className="text-xs">Cidade</TableHead>
                     <TableHead className="text-xs text-center">Dist.</TableHead>
                     <TableHead className="text-xs text-center">Un.</TableHead>
-                    <TableHead className="text-xs text-right">Volume</TableHead>
+                    {!hideValues && <TableHead className="text-xs text-right">Volume</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1019,13 +1024,15 @@ export function GeographicSalesRadiusMap({
                       <TableCell className="text-xs text-center font-bold font-mono py-2">
                         {city.totalVendas}
                       </TableCell>
-                      <TableCell className="text-xs text-right font-mono text-foreground py-2">
-                        {city.volumeTotal.toLocaleString('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                          maximumFractionDigits: 0,
-                        })}
-                      </TableCell>
+                      {!hideValues && (
+                        <TableCell className="text-xs text-right font-mono text-foreground py-2">
+                          {city.volumeTotal.toLocaleString('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                            maximumFractionDigits: 0,
+                          })}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

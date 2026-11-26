@@ -44,6 +44,7 @@ export interface DealershipProcessFlowProps {
     chassi?: string;
   }>;
   onOpenContract?: (id: string) => void;
+  hideValues?: boolean;
 }
 
 export interface FlowStep {
@@ -223,6 +224,7 @@ export function DealershipProcessFlow({
   contracts = [],
   sales = [],
   onOpenContract,
+  hideValues = false,
 }: DealershipProcessFlowProps) {
   const [selectedStepId, setSelectedStepId] = useState<string>('pre_venda');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -556,9 +558,11 @@ export function DealershipProcessFlow({
                         <span className="font-bold text-foreground text-xs group-hover:text-primary transition-colors truncate">
                           {cliente}
                         </span>
-                        <span className="font-bold font-mono text-primary shrink-0">
-                          {formatCurrencyBRL(valor)}
-                        </span>
+                        {!hideValues && (
+                          <span className="font-bold font-mono text-primary shrink-0">
+                            {formatCurrencyBRL(valor)}
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium">

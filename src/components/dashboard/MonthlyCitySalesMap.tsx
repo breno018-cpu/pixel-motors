@@ -72,12 +72,14 @@ export interface MonthlyCitySalesMapProps {
   }>;
   baseCity?: string;
   selectedStoreId?: string;
+  hideValues?: boolean;
 }
 
 export function MonthlyCitySalesMap({
   sales = [],
   baseCity = 'Divinópolis',
   selectedStoreId = 'all',
+  hideValues = false,
 }: MonthlyCitySalesMapProps) {
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [selectedSeller, setSelectedSeller] = useState<string>('all');
@@ -717,7 +719,7 @@ export function MonthlyCitySalesMap({
           `
           <div style="font-size: 11px; padding: 3px 5px; line-height: 1.4;">
             <strong>&#9670; ${city.cityName} (${city.uf})</strong><br/>
-            <span><strong>${city.count} un.</strong> • ${formatCurrencyBRL(city.faturamento)}</span><br/>
+            <span><strong>${city.count} un.</strong>${hideValues ? '' : ` • ${formatCurrencyBRL(city.faturamento)}`}</span><br/>
             <span>Via ${city.routeInfo.highway} • ${city.routeInfo.roadKm} km (${city.routeInfo.formattedDuration})</span>
           </div>
         `,
@@ -799,7 +801,7 @@ export function MonthlyCitySalesMap({
         `
         <div style="font-size: 11px; padding: 4px 6px; line-height: 1.45;">
           <strong style="color: ${hub.color};">&#9672; ${hub.name}</strong><br/>
-          <span>Vendas locais (${hub.city}): <strong>${localCount} un.</strong> (${formatCurrencyBRL(localRevenue)})</span><br/>
+          <span>Vendas locais (${hub.city}): <strong>${localCount} un.</strong>${hideValues ? '' : ` (${formatCurrencyBRL(localRevenue)})`}</span><br/>
           <span>Total expedido pelo polo: <strong>${totalPoloCount} un.</strong></span>
         </div>
       `,
@@ -1228,9 +1230,11 @@ export function MonthlyCitySalesMap({
                   <div className="text-xl font-bold text-primary font-mono">
                     {activeCityDetail.count} un
                   </div>
-                  <span className="text-[11px] font-mono text-emerald-600 font-semibold">
-                    {formatCurrencyBRL(activeCityDetail.faturamento)}
-                  </span>
+                  {!hideValues && (
+                    <span className="text-[11px] font-mono text-emerald-600 font-semibold">
+                      {formatCurrencyBRL(activeCityDetail.faturamento)}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1315,9 +1319,11 @@ export function MonthlyCitySalesMap({
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="font-mono font-semibold text-foreground block">
-                          {formatCurrencyBRL(saleItem.valor)}
-                        </span>
+                        {!hideValues && (
+                          <span className="font-mono font-semibold text-foreground block">
+                            {formatCurrencyBRL(saleItem.valor)}
+                          </span>
+                        )}
                         <span className="text-[9px] text-muted-foreground">
                           {saleItem.is_permitted !== false ? '▲ Faturada' : '◇ Pendente'}
                         </span>
@@ -1366,7 +1372,7 @@ export function MonthlyCitySalesMap({
                 <TableHead className="text-xs">Rodovia</TableHead>
                 <TableHead className="text-xs text-center">Distância</TableHead>
                 <TableHead className="text-xs text-center">Unid.</TableHead>
-                <TableHead className="text-xs text-right">Volume</TableHead>
+                {!hideValues && <TableHead className="text-xs text-right">Volume</TableHead>}
                 <TableHead className="text-xs text-right">Rota</TableHead>
               </TableRow>
             </TableHeader>
@@ -1407,9 +1413,11 @@ export function MonthlyCitySalesMap({
                     <TableCell className="text-center font-mono font-bold py-2">
                       {c.count}
                     </TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-emerald-600 py-2">
-                      {formatCurrencyBRL(c.faturamento)}
-                    </TableCell>
+                    {!hideValues && (
+                      <TableCell className="text-right font-mono font-semibold text-emerald-600 py-2">
+                        {formatCurrencyBRL(c.faturamento)}
+                      </TableCell>
+                    )}
                     <TableCell className="text-right py-2">
                       <a
                         href={buildGoogleMapsRouteUrl(c.hubOrigin.city, c.cityName, c.uf)}
