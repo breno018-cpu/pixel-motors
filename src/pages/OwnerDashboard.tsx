@@ -609,15 +609,15 @@ function OwnerDashboardContent() {
   };
 
   return (
-    <div className="space-y-5 w-full min-w-0 pb-16 animate-fade-in">
-      {/* 1. CABEÇALHO EXECUTIVO PADRONIZADO */}
+    <div className="space-y-4 w-full min-w-0 pb-16 animate-fade-in">
+      {/* 1. CABEÇALHO EXECUTIVO LIMPO E COMPACTO */}
       <PageHeader
         title="Cockpit da Diretoria"
-        description="Painel estratégico consolidado: fluxo financeiro, pátio em R$, apuração de comissões e gestão de NFs."
+        description="Visão executiva consolidada de caixa, estoque em R$, notas fiscais e revendedores."
         badge={
           <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 shrink-0 gap-1.5">
             <Crown className="w-3.5 h-3.5" />
-            Diretoria Shineray Motos
+            Diretoria
           </Badge>
         }
         actions={
@@ -630,7 +630,7 @@ function OwnerDashboardContent() {
               className="gap-1.5 rounded-xl h-9"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Atualizar Dados</span>
+              <span className="hidden sm:inline">Atualizar</span>
             </Button>
             <Button
               size="sm"
@@ -644,54 +644,48 @@ function OwnerDashboardContent() {
         }
       />
 
-      {/* 2. SELETOR UNIFICADO DE CONCESSIONÁRIA (GRUPO L1MA MOTORS) */}
-      <div className="p-4 rounded-2xl bg-card border shadow-xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-border/50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-              <Building2 className="w-4 h-4" />
+      {/* 2. BARRA UNIFICADA DE COMANDO (CONCESSIONÁRIAS + PERÍODO + BUSCA) */}
+      <div className="rounded-2xl bg-card border border-border/80 shadow-xs overflow-hidden">
+        {/* Linha superior: Pílulas de Concessionária + Resumo Rápido */}
+        <div className="p-3 sm:p-3.5 border-b border-border/60 bg-muted/15 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-primary shrink-0" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Unidade • Grupo L1MA Motors
+              </span>
+              <DealershipBadge />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
-                  Divisão por Concessionária
-                </h2>
-                <span className="text-[10px] font-bold text-primary/80 bg-primary/10 px-2 py-0.5 rounded-full">
-                  Grupo L1MA Motors
-                </span>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Alterne entre a holding unificada ou filtre métricas isoladas de faturamento e estoque por concessionária.
-              </p>
+
+            <div className="flex items-center gap-2 text-xs">
+              <Badge variant="secondary" className="font-mono text-[11px] font-semibold px-2.5 py-0.5 rounded-lg">
+                {filteredSales.length} {filteredSales.length === 1 ? 'venda' : 'vendas'}
+              </Badge>
+              <span className="font-mono font-black text-foreground text-xs sm:text-sm tabular-nums">
+                {formatCurrencyBRL(executiveMetrics.totalRevenue)}
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 bg-muted/40 px-3 py-1.5 rounded-xl border border-border/50">
-            <span className="text-[11px] font-medium text-muted-foreground">Filtro Ativo:</span>
-            <DealershipBadge />
-          </div>
+
+          <DealershipSegmentedBar
+            variant="pills"
+            activeScope={dealershipScope.activeScope}
+            onChange={(scope) => {
+              dealershipScope.setActiveScope(scope);
+            }}
+            counts={dealershipCounts}
+            financials={dealershipFinancials}
+            showCounts
+            showTotals
+          />
         </div>
 
-        <DealershipSegmentedBar
-          variant="pills"
-          activeScope={dealershipScope.activeScope}
-          onChange={(scope) => {
-            dealershipScope.setActiveScope(scope);
-          }}
-          counts={dealershipCounts}
-          financials={dealershipFinancials}
-          showCounts
-          showTotals
-        />
-      </div>
-
-      {/* 3. BARRA DE CONTROLE EXECUTIVO GLOBAL (PERÍODO + BUSCA) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-card border shadow-xs">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1">
-          {/* Seletor de Período Global */}
+        {/* Linha inferior: Período + Busca */}
+        <div className="px-3 sm:px-3.5 py-2.5 flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1.5 shrink-0">
-            <Calendar className="w-4 h-4 text-muted-foreground ml-1" />
+            <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
             <Select value={periodPreset} onValueChange={setPeriodPreset}>
-              <SelectTrigger className="h-8.5 text-xs w-44 rounded-xl font-medium">
+              <SelectTrigger className="h-8 text-xs w-44 rounded-lg font-medium bg-background">
                 <SelectValue placeholder="Período" />
               </SelectTrigger>
               <SelectContent>
@@ -705,31 +699,29 @@ function OwnerDashboardContent() {
             </Select>
           </div>
 
-          {/* Range Personalizado de Data */}
           {periodPreset === 'custom' && (
             <div className="flex items-center gap-1.5 shrink-0 animate-fade-in">
               <Input
                 type="date"
-                className="h-8.5 text-xs w-32 rounded-xl"
+                className="h-8 text-xs w-32 rounded-lg"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
               <span className="text-xs text-muted-foreground">até</span>
               <Input
                 type="date"
-                className="h-8.5 text-xs w-32 rounded-xl"
+                className="h-8 text-xs w-32 rounded-lg"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>
           )}
 
-          {/* Campo de Busca Rápida */}
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="h-8.5 pl-8.5 text-xs rounded-xl pr-7"
-              placeholder="Buscar por cliente, chassi, modelo ou vendedor..."
+              className="h-8 pl-8 text-xs rounded-lg pr-7 bg-background"
+              placeholder="Buscar cliente, chassi, modelo ou vendedor..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -748,91 +740,65 @@ function OwnerDashboardContent() {
               variant="ghost"
               size="sm"
               onClick={resetFilters}
-              className="h-8.5 text-xs text-muted-foreground hover:text-foreground gap-1 px-2.5 rounded-xl"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground gap-1 px-2.5 rounded-lg"
             >
               <XCircle className="w-3.5 h-3.5" />
-              Limpar Filtros
+              Limpar
             </Button>
           )}
         </div>
-
-        {/* Resumo Dinâmico dos Registros */}
-        <div className="flex items-center gap-2 text-xs shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-border/50 justify-between md:justify-end">
-          <Badge variant="secondary" className="font-mono text-[11px] font-semibold px-2.5 py-0.5 rounded-lg">
-            {filteredSales.length} {filteredSales.length === 1 ? 'venda apurada' : 'vendas apuradas'}
-          </Badge>
-          <span className="font-mono font-bold text-foreground text-xs">
-            {formatCurrencyBRL(executiveMetrics.totalRevenue)}
-          </span>
-        </div>
       </div>
 
-      {/* 4. NAVEGAÇÃO DE ABAS EXECUTIVAS REORGANIZADAS */}
-      <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-6">
-        <div className="w-full overflow-x-auto pb-1 no-scrollbar">
-          <TabsList className="bg-muted/40 p-1 rounded-2xl border border-border/80 w-full flex items-center gap-1 shadow-xs min-w-[720px]">
+      {/* 3. NAVEGAÇÃO DE ABAS EXECUTIVAS (6 ABAS OPERACIONAIS LIMPAS) */}
+      <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="space-y-5">
+        <div className="w-full overflow-x-auto pb-0.5 no-scrollbar">
+          <TabsList className="bg-muted/50 p-1 rounded-2xl border border-border/70 w-full grid grid-cols-3 sm:grid-cols-6 gap-1 h-auto">
             <TabsTrigger
               value="caixa"
-              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+              className="rounded-xl text-xs font-semibold gap-1.5 py-2.5 px-3 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border/80 transition-all"
             >
               <DollarSign className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>Caixa &amp; Margens</span>
+              <span className="truncate">Caixa &amp; Margens</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="nfs"
-              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+              className="rounded-xl text-xs font-semibold gap-1.5 py-2.5 px-3 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border/80 transition-all"
             >
-              <ReceiptText className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>Controle de NFs</span>
+              <ReceiptText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="truncate">Controle de NFs</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="patio"
-              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+              className="rounded-xl text-xs font-semibold gap-1.5 py-2.5 px-3 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border/80 transition-all"
             >
               <Bike className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>Pátio em R$</span>
+              <span className="truncate">Pátio em R$</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="revendedores"
-              className="flex-1 rounded-xl text-xs font-bold gap-1.5 py-2.5 text-blue-600 dark:text-blue-400 data-[state=active]:bg-background data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-xs data-[state=active]:border-blue-500/30 border border-transparent transition-all"
+              className="rounded-xl text-xs font-semibold gap-1.5 py-2.5 px-3 data-[state=active]:bg-background data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-blue-500/30 transition-all"
             >
-              <Store className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span>Revendedores</span>
+              <Store className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span className="truncate">Revendedores</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="troca-estoque"
-              className="flex-1 rounded-xl text-xs font-bold gap-1.5 py-2.5 text-emerald-600 dark:text-emerald-400 data-[state=active]:bg-background data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-xs data-[state=active]:border-emerald-500/30 border border-transparent transition-all"
+              className="rounded-xl text-xs font-semibold gap-1.5 py-2.5 px-3 data-[state=active]:bg-background data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-emerald-500/30 transition-all"
             >
-              <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Troca de Estoque</span>
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="vendedores"
-              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
-            >
-              <Users className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>Vendedores</span>
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="comprovantes"
-              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
-            >
-              <Paperclip className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>Comprovantes</span>
+              <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="truncate">Troca de Estoque</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="planilha"
-              className="flex-1 rounded-xl text-xs font-semibold gap-1.5 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs data-[state=active]:border-border/80 border border-transparent transition-all"
+              className="rounded-xl text-xs font-semibold gap-1.5 py-2.5 px-3 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm border border-transparent data-[state=active]:border-border/80 transition-all"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>Planilha</span>
+              <span className="truncate">Planilha</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -840,82 +806,84 @@ function OwnerDashboardContent() {
         {/* =================================================================== */}
         {/* ABA 1: CAIXA & RESULTADOS FINANCEIROS                               */}
         {/* =================================================================== */}
-        <TabsContent value="caixa" className="space-y-6 mt-0">
-          {/* 4 Cards Principais de Liquidez e Caixa Real */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Card 1: Faturamento Bruto */}
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
+        <TabsContent value="caixa" className="space-y-5 mt-0">
+          {/* 4 Cards Principais com Hierarquia Visual Executiva */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {/* Card 1: Faturamento Bruto (Destaque Principal) */}
+            <Card className="rounded-2xl border border-primary/25 shadow-xs bg-gradient-to-br from-primary/[0.06] via-card to-card overflow-hidden">
+              <CardContent className="p-4 sm:p-5 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Faturamento Bruto</span>
-                  <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-primary">Faturamento Bruto</span>
+                  <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
                     <DollarSign className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
+                <div className="text-2xl sm:text-[26px] font-black font-mono tracking-tight text-foreground tabular-nums leading-none">
                   {formatCurrencyBRL(executiveMetrics.totalRevenue)}
                 </div>
-                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-0.5">
                   <span className="font-bold text-foreground">{executiveMetrics.count} motos</span>
-                  <span>• Ticket Médio:</span>
-                  <span className="font-mono font-medium">{formatCurrencyBRL(executiveMetrics.avgTicket)}</span>
+                  <span>• Ticket</span>
+                  <span className="font-mono font-semibold text-foreground/80">{formatCurrencyBRL(executiveMetrics.avgTicket)}</span>
                 </p>
               </CardContent>
             </Card>
 
-            {/* Card 2: Entradas Imediatas (PIX / Dinheiro) */}
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
+            {/* Card 2: Caixa Imediato */}
+            <Card className="rounded-2xl border border-emerald-500/20 shadow-xs bg-card hover:border-emerald-500/40 transition-colors">
+              <CardContent className="p-4 sm:p-5 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Caixa Imediato (PIX / Dinheiro)</span>
-                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">Caixa Imediato (PIX/Din)</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                     <QrCode className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
+                <div className="text-2xl sm:text-[26px] font-black font-mono tracking-tight text-foreground tabular-nums leading-none">
                   {formatCurrencyBRL(executiveMetrics.totalCashPix)}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium pt-0.5">
                   {executiveMetrics.totalRevenue > 0
-                    ? `${((executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100).toFixed(1)}% liquidado à vista na loja`
-                    : 'Sem faturamento apurado'}
+                    ? `${((executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100).toFixed(1)}% à vista na loja`
+                    : 'Sem faturamento no período'}
                 </p>
               </CardContent>
             </Card>
 
-            {/* Card 3: Financiamentos a Receber dos Bancos */}
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
+            {/* Card 3: Financiamentos Bancários */}
+            <Card className="rounded-2xl border border-blue-500/20 shadow-xs bg-card hover:border-blue-500/40 transition-colors">
+              <CardContent className="p-4 sm:p-5 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Financiamentos Bancários</span>
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">Financiamentos</span>
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                     <Landmark className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
+                <div className="text-2xl sm:text-[26px] font-black font-mono tracking-tight text-foreground tabular-nums leading-none">
                   {formatCurrencyBRL(executiveMetrics.totalFinancing)}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Repasses bancários contratados
+                <p className="text-[11px] text-muted-foreground pt-0.5">
+                  {executiveMetrics.totalRevenue > 0
+                    ? `${((executiveMetrics.totalFinancing / executiveMetrics.totalRevenue) * 100).toFixed(1)}% via bancos parceiros`
+                    : 'Repasses bancários'}
                 </p>
               </CardContent>
             </Card>
 
             {/* Card 4: Lucro Bruto Estimado */}
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
+            <Card className="rounded-2xl border border-amber-500/20 shadow-xs bg-card hover:border-amber-500/40 transition-colors">
+              <CardContent className="p-4 sm:p-5 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Lucro Bruto Estimado</span>
-                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">Lucro Bruto Estimado</span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                     <TrendingUp className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
+                <div className="text-2xl sm:text-[26px] font-black font-mono tracking-tight text-foreground tabular-nums leading-none">
                   {formatCurrencyBRL(executiveMetrics.estimatedGrossProfit)}
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Margem média operacional:</span>
-                  <Badge variant="outline" className="font-mono font-bold text-[10px] bg-primary/5 text-primary border-primary/20">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+                  <span>Margem média</span>
+                  <Badge variant="outline" className="font-mono font-bold text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25">
                     {executiveMetrics.grossMarginPercent.toFixed(1)}%
                   </Badge>
                 </div>
@@ -923,74 +891,106 @@ function OwnerDashboardContent() {
             </Card>
           </div>
 
-          {/* COMPOSIÇÃO DOS PAGAMENTOS (MIX FINANCEIRO) */}
-          <div className="p-4 rounded-2xl bg-card border shadow-xs space-y-3">
-            <div className="flex items-center justify-between border-b border-border/50 pb-2.5">
-              <div className="flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-primary" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  Composição do Faturamento por Modalidade de Pagamento
-                </h3>
-              </div>
-              <span className="text-[11px] text-muted-foreground">
-                Total Faturado: <strong className="text-foreground font-mono">{formatCurrencyBRL(executiveMetrics.totalRevenue)}</strong>
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {/* PIX / Dinheiro */}
-              <div className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                    <QrCode className="w-3.5 h-3.5 text-emerald-600" /> PIX / Dinheiro
-                  </span>
-                  <span className="font-mono text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                    {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
-                  </span>
+          {/* COMPOSIÇÃO DOS PAGAMENTOS COM BARRA PROPORCIONAL */}
+          <Card className="rounded-2xl border shadow-xs bg-card">
+            <CardContent className="p-4 sm:p-5 space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-primary" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Mix de Pagamentos
+                  </h3>
                 </div>
-                <p className="text-sm font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.totalCashPix)}</p>
+                <span className="text-[11px] text-muted-foreground">
+                  Total: <strong className="text-foreground font-mono">{formatCurrencyBRL(executiveMetrics.totalRevenue)}</strong>
+                </span>
               </div>
 
-              {/* Financiamento */}
-              <div className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                    <Landmark className="w-3.5 h-3.5 text-blue-600" /> Financiamento
-                  </span>
-                  <span className="font-mono text-[10px] font-bold text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded">
-                    {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalFinancing / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
-                  </span>
+              {/* Barra empilhada proporcional */}
+              {executiveMetrics.totalRevenue > 0 && (
+                <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden flex">
+                  {executiveMetrics.totalCashPix > 0 && (
+                    <div
+                      className="bg-emerald-500 h-full transition-all"
+                      style={{ width: `${(executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100}%` }}
+                      title={`PIX / Dinheiro: ${formatCurrencyBRL(executiveMetrics.totalCashPix)}`}
+                    />
+                  )}
+                  {executiveMetrics.totalFinancing > 0 && (
+                    <div
+                      className="bg-blue-500 h-full transition-all"
+                      style={{ width: `${(executiveMetrics.totalFinancing / executiveMetrics.totalRevenue) * 100}%` }}
+                      title={`Financiamento: ${formatCurrencyBRL(executiveMetrics.totalFinancing)}`}
+                    />
+                  )}
+                  {executiveMetrics.totalCard > 0 && (
+                    <div
+                      className="bg-purple-500 h-full transition-all"
+                      style={{ width: `${(executiveMetrics.totalCard / executiveMetrics.totalRevenue) * 100}%` }}
+                      title={`Cartão: ${formatCurrencyBRL(executiveMetrics.totalCard)}`}
+                    />
+                  )}
+                  {executiveMetrics.totalConsortium > 0 && (
+                    <div
+                      className="bg-amber-500 h-full transition-all"
+                      style={{ width: `${(executiveMetrics.totalConsortium / executiveMetrics.totalRevenue) * 100}%` }}
+                      title={`Consórcio: ${formatCurrencyBRL(executiveMetrics.totalConsortium)}`}
+                    />
+                  )}
                 </div>
-                <p className="text-sm font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.totalFinancing)}</p>
-              </div>
+              )}
 
-              {/* Cartão de Crédito/Débito */}
-              <div className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                    <CreditCard className="w-3.5 h-3.5 text-purple-600" /> Cartão de Crédito
-                  </span>
-                  <span className="font-mono text-[10px] font-bold text-purple-600 bg-purple-500/10 px-1.5 py-0.5 rounded">
-                    {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalCard / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
-                  </span>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                <div className="p-3 rounded-xl bg-muted/25 border border-border/60 space-y-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" /> PIX / Dinheiro
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                      {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalCashPix / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold font-mono text-foreground tabular-nums">{formatCurrencyBRL(executiveMetrics.totalCashPix)}</p>
                 </div>
-                <p className="text-sm font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.totalCard)}</p>
-              </div>
 
-              {/* Consórcio / Cartas */}
-              <div className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                    <Banknote className="w-3.5 h-3.5 text-amber-600" /> Consórcio / Carta
-                  </span>
-                  <span className="font-mono text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded">
-                    {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalConsortium / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
-                  </span>
+                <div className="p-3 rounded-xl bg-muted/25 border border-border/60 space-y-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" /> Financiamento
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                      {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalFinancing / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold font-mono text-foreground tabular-nums">{formatCurrencyBRL(executiveMetrics.totalFinancing)}</p>
                 </div>
-                <p className="text-sm font-bold font-mono text-foreground">{formatCurrencyBRL(executiveMetrics.totalConsortium)}</p>
+
+                <div className="p-3 rounded-xl bg-muted/25 border border-border/60 space-y-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-purple-500 shrink-0" /> Cartão
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                      {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalCard / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold font-mono text-foreground tabular-nums">{formatCurrencyBRL(executiveMetrics.totalCard)}</p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-muted/25 border border-border/60 space-y-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" /> Consórcio
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                      {executiveMetrics.totalRevenue > 0 ? ((executiveMetrics.totalConsortium / executiveMetrics.totalRevenue) * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold font-mono text-foreground tabular-nums">{formatCurrencyBRL(executiveMetrics.totalConsortium)}</p>
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* DESEMPENHO DINÂMICO POR CONCESSIONÁRIA (GRUPO L1MA MOTORS) */}
           {dealershipScope.activeScope === 'all' ? (
@@ -999,58 +999,63 @@ function OwnerDashboardContent() {
                 <div className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-primary" />
                   <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Desempenho por Unidade Comercial
+                    Desempenho por Unidade
                   </h3>
                 </div>
                 <span className="text-[11px] text-muted-foreground">
-                  Comparativo consolidado da holding
+                  Clique em uma unidade para isolar os indicadores
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {storePerformance.map((store) => (
-                  <Card key={store.key} className="rounded-2xl border shadow-xs bg-card hover:border-primary/40 transition-all">
-                    <CardHeader className="p-4 pb-2 border-b border-border/50">
-                      <div className="flex items-center justify-between">
+                  <Card key={store.key} className="rounded-2xl border shadow-xs bg-card hover:border-primary/40 hover:shadow-sm transition-all flex flex-col">
+                    <CardHeader className="p-4 pb-2.5">
+                      <div className="flex items-center justify-between gap-2">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 truncate">
                           <Store className="w-4 h-4 text-primary shrink-0" />
                           <span className="truncate">{store.name}</span>
                         </CardTitle>
                         <Badge variant="outline" className="text-[10px] font-bold font-mono shrink-0 bg-primary/5 text-primary border-primary/20">
-                          {store.share.toFixed(1)}% do total
+                          {store.share.toFixed(1)}%
                         </Badge>
                       </div>
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-2">
+                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(2, store.share))}%` }} />
+                      </div>
                     </CardHeader>
-                    <CardContent className="p-4 space-y-3">
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-muted/30 p-2.5 rounded-xl border border-border/60">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Faturamento</span>
-                          <p className="text-sm font-black font-mono text-foreground mt-0.5">{formatCurrencyBRL(store.revenue)}</p>
+                    <CardContent className="p-4 pt-1 space-y-2.5 flex-1 flex flex-col justify-between">
+                      <div className="space-y-2.5">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-muted/25 p-2.5 rounded-xl border border-border/50">
+                            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Faturamento</span>
+                            <p className="text-sm font-black font-mono text-foreground mt-0.5 tabular-nums">{formatCurrencyBRL(store.revenue)}</p>
+                          </div>
+                          <div className="bg-muted/25 p-2.5 rounded-xl border border-border/50">
+                            <span className="text-[10px] text-muted-foreground uppercase font-semibold">Vendas</span>
+                            <p className="text-sm font-black font-mono text-foreground mt-0.5 tabular-nums">{store.count} un.</p>
+                          </div>
                         </div>
-                        <div className="bg-muted/30 p-2.5 rounded-xl border border-border/60">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold">Vendas Faturadas</span>
-                          <p className="text-sm font-black font-mono text-foreground mt-0.5">{store.count} un.</p>
+
+                        <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
+                          <span>Ticket Médio</span>
+                          <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(store.avgTicket)}</span>
                         </div>
-                      </div>
 
-                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
-                        <span>Ticket Médio:</span>
-                        <span className="font-bold font-mono text-foreground">{formatCurrencyBRL(store.avgTicket)}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>Estoque Físico em Pátio:</span>
-                        <span className="font-bold font-mono text-foreground">{store.stockCount} motos ({formatCurrencyBRL(store.stockValue)})</span>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Pátio Atual</span>
+                          <span className="font-bold font-mono text-foreground">{store.stockCount} motos • {formatCurrencyBRL(store.stockValue)}</span>
+                        </div>
                       </div>
 
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => dealershipScope.setActiveScope(store.key)}
-                        className="w-full h-7 text-[11px] font-medium text-primary hover:bg-primary/10 rounded-lg gap-1 mt-1"
+                        className="w-full h-8 text-[11px] font-semibold text-primary hover:bg-primary/10 rounded-xl gap-1 mt-1"
                       >
-                        <span>Isolar Dados desta Loja</span>
-                        <ArrowUpRight className="w-3 h-3" />
+                        <span>Isolar Unidade</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
                       </Button>
                     </CardContent>
                   </Card>
@@ -1196,45 +1201,65 @@ function OwnerDashboardContent() {
         {/* =================================================================== */}
         {/* ABA 3: PÁTIO & VALOR DO ESTOQUE EM R$                              */}
         {/* =================================================================== */}
-        <TabsContent value="patio" className="space-y-6 mt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Valor Total do Estoque</span>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
+        <TabsContent value="patio" className="space-y-5 mt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <Card className="rounded-2xl border border-primary/25 shadow-xs bg-gradient-to-br from-primary/[0.06] via-card to-card">
+              <CardContent className="p-4 sm:p-5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-primary">Capital em Pátio</span>
+                  <div className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-[26px] font-black font-mono tracking-tight text-foreground tabular-nums leading-none">
                   {formatCurrencyBRL(executiveMetrics.totalStockValue)}
                 </div>
-                <p className="text-[11px] text-muted-foreground">{executiveMetrics.totalStockCount} motos em pátio</p>
+                <p className="text-[11px] text-muted-foreground pt-0.5">{executiveMetrics.totalStockCount} veículos ativos</p>
               </CardContent>
             </Card>
 
             <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Modelos no Catálogo</span>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
+              <CardContent className="p-4 sm:p-5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">Modelos no Catálogo</span>
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    <Bike className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-[26px] font-black font-mono tracking-tight text-foreground tabular-nums leading-none">
                   {modelStockSummary.length} modelos
                 </div>
-                <p className="text-[11px] text-muted-foreground">Linhas ativas com estoque físico</p>
+                <p className="text-[11px] text-muted-foreground pt-0.5">Linhas com unidades físicas</p>
               </CardContent>
             </Card>
 
             <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Preço Médio por Moto</span>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
+              <CardContent className="p-4 sm:p-5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">Ticket Médio Pátio</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-[26px] font-black font-mono tracking-tight text-foreground tabular-nums leading-none">
                   {formatCurrencyBRL(executiveMetrics.totalStockCount > 0 ? executiveMetrics.totalStockValue / executiveMetrics.totalStockCount : 0)}
                 </div>
-                <p className="text-[11px] text-muted-foreground">Média geral do pátio</p>
+                <p className="text-[11px] text-muted-foreground pt-0.5">Valor médio por unidade</p>
               </CardContent>
             </Card>
 
             <Card className="rounded-2xl border shadow-xs bg-card">
-              <CardContent className="p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Concessionárias Ativas</span>
-                <div className="text-2xl font-black font-mono tracking-tight text-foreground tabular-nums">
-                  {stores.filter((s) => s.is_active !== false).length} unidades
+              <CardContent className="p-4 sm:p-5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">Unidades Ativas</span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <Store className="w-4 h-4" />
+                  </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Pontos de venda e pátios integrados</p>
+                <div className="text-2xl sm:text-[26px] font-black font-mono tracking-tight text-foreground tabular-nums leading-none">
+                  {stores.filter((s) => s.is_active !== false).length} lojas
+                </div>
+                <p className="text-[11px] text-muted-foreground pt-0.5">Pátios integrados no grupo</p>
               </CardContent>
             </Card>
           </div>
@@ -1384,18 +1409,19 @@ function OwnerDashboardContent() {
 
           {/* Modal de Detalhes dos Chassis do Modelo */}
           <Dialog open={!!selectedModelForChassis} onOpenChange={(open) => !open && setSelectedModelForChassis(null)}>
-            <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6 rounded-2xl">
-              <DialogHeader>
+            <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[88vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl shadow-xl border">
+              <DialogHeader className="px-5 sm:px-6 pt-5 pb-3.5 border-b shrink-0 pr-12 text-left">
                 <DialogTitle className="text-base font-bold flex items-center gap-2">
-                  <Bike className="w-5 h-5 text-primary" />
+                  <Bike className="w-5 h-5 text-primary shrink-0" />
                   Chassis em Pátio — {selectedModelForChassis?.model}
                 </DialogTitle>
                 <DialogDescription className="text-xs">
-                  Listagem física individual dos {selectedModelForChassis?.totalCount} veículos deste modelo em estoque físico.
+                  {selectedModelForChassis?.totalCount} veículos físicos deste modelo em estoque.
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="overflow-y-auto flex-1 border rounded-xl mt-2 max-h-[500px]">
+              <div className="overflow-y-auto flex-1 px-5 sm:px-6 py-4">
+                <div className="border rounded-xl overflow-hidden">
                 <Table>
                   <TableHeader className="sticky top-0 bg-muted/80 z-10 border-b">
                     <TableRow>
@@ -1428,6 +1454,7 @@ function OwnerDashboardContent() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
