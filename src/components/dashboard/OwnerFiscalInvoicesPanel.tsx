@@ -483,6 +483,7 @@ export function OwnerFiscalInvoicesPanel() {
 
       const parsed = await parseInvoiceFile(file);
 
+      if (parsed.fiscal_type) setNewType(parsed.fiscal_type);
       if (parsed.invoice_number) setNewInvoiceNumber(parsed.invoice_number);
       if (parsed.sefaz_protocol) setNewSefazProtocol(parsed.sefaz_protocol);
       if (parsed.customer_name) setNewPartyName(parsed.customer_name);
@@ -493,7 +494,7 @@ export function OwnerFiscalInvoicesPanel() {
       }
       if (parsed.vehicle_model || parsed.vehicle_chassis) {
         const extraNote = `${parsed.vehicle_brand || 'SHINERAY'} ${parsed.vehicle_model || ''}${parsed.vehicle_chassis ? ` - Chassi: ${parsed.vehicle_chassis}` : ''}`.trim();
-        setNewNotes((prev) => (prev ? `${prev} | ${extraNote}` : extraNote));
+        setNewNotes((prev) => (prev && !prev.includes(extraNote) ? `${prev} | ${extraNote}` : extraNote));
       }
 
       setParsedBannerInfo({
@@ -506,15 +507,26 @@ export function OwnerFiscalInvoicesPanel() {
 
       const filled = [
         parsed.invoice_number ? `Nº ${parsed.invoice_number}` : null,
-        parsed.sefaz_protocol ? `Protocolo SEFAZ ${parsed.sefaz_protocol}` : null,
+        parsed.issue_date ? `Data ${formatFiscalDate(parsed.issue_date)}` : null,
         parsed.customer_name ? `Parte: ${parsed.customer_name}` : null,
         parsed.total_value ? `R$ ${formatBrlNumber(parsed.total_value)}` : null,
+        parsed.sefaz_protocol ? `Protocolo ${parsed.sefaz_protocol}` : null,
+        parsed.vehicle_chassis ? `Chassi ${parsed.vehicle_chassis}` : null,
       ].filter(Boolean);
 
-      toast({
-        title: 'Leitura da NF realizada com sucesso!',
-        description: filled.length > 0 ? `${filled.join(' • ')} preenchidos automaticamente.` : 'Arquivo carregado com sucesso.',
-      });
+      if (filled.length > 0) {
+        toast({
+          title: parsed.used_ocr
+            ? 'Leitura da NF concluída (OCR)!'
+            : 'Dados extraídos do arquivo da NF!',
+          description: `${filled.join(' • ')} preenchidos automaticamente.`,
+        });
+      } else {
+        toast({
+          title: 'Arquivo anexado sem campos legíveis',
+          description: 'O PDF/arquivo foi anexado, mas não encontramos texto fiscal estruturado. Revise e preencha os campos manualmente.',
+        });
+      }
     } catch (err: any) {
       console.warn('Erro ao processar arquivo da NF:', err);
       toast({
@@ -3514,6 +3526,26 @@ export function OwnerFiscalInvoicesPanel() {
                             size: file.size,
                             type: mimeType,
                           });
+
+                          const parsed = await parseInvoiceFile(file);
+                          if (parsed.invoice_number) setReissueNewNumber(parsed.invoice_number);
+                          if (parsed.total_value !== undefined && parsed.total_value > 0) {
+                            setReissueNewValue(maskCurrency(formatBrlNumber(parsed.total_value)));
+                          }
+                          if (parsed.issue_date) setReissueNewDate(parsed.issue_date);
+                          if (parsed.sefaz_protocol) setReissueProtocol(parsed.sefaz_protocol);
+
+                          const filled = [
+                            parsed.invoice_number ? `Nº ${parsed.invoice_number}` : null,
+                            parsed.total_value ? `R$ ${formatBrlNumber(parsed.total_value)}` : null,
+                            parsed.issue_date ? `Data ${formatFiscalDate(parsed.issue_date)}` : null,
+                          ].filter(Boolean);
+                          if (filled.length > 0) {
+                            toast({
+                              title: 'Dados da nova NF lidos automaticamente!',
+                              description: `${filled.join(' • ')} preenchidos.`,
+                            });
+                          }
                         } catch (err: any) {
                           toast({ variant: 'destructive', title: 'Erro ao ler arquivo', description: err?.message });
                         } finally {
