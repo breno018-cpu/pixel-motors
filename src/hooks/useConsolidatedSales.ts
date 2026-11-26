@@ -214,13 +214,30 @@ export function useConsolidatedSales() {
         : ((c as any).external_data?.vehicle_model_custom || 'Veículo');
       const saleVal = Number(c.sale_price) || 0;
       const downPay = Number(c.down_payment) || 0;
-      const finVal =
-        Number(
-          c.financing_installments && c.financing_installment_value
-            ? c.financing_installments * c.financing_installment_value
-            : Math.max(0, saleVal - downPay)
-        ) || 0;
+      const cashVal = Number(c.down_payment_cash) || 0;
+      const pixVal = Number(c.down_payment_pix) || 0;
+      const cardVal = Number(c.down_payment_card) || 0;
+      const pmLower = String(c.payment_method || '').toLowerCase();
+      const hasExplicitFinancing =
+        Boolean(c.financing_installments && c.financing_installment_value) ||
+        Boolean(c.financing_bank && c.financing_bank.trim() && c.financing_bank.trim().toUpperCase() !== 'À VISTA') ||
+        pmLower.includes('financ');
+
+      const finVal = hasExplicitFinancing
+        ? Number(
+            c.financing_installments && c.financing_installment_value
+              ? c.financing_installments * c.financing_installment_value
+              : Math.max(0, saleVal - downPay)
+          ) || 0
+        : 0;
       const bankName = c.financing_bank || (finVal > 0 ? 'FINANCIAMENTO' : 'À VISTA');
+      const explicitPaid = cashVal + pixVal + cardVal;
+      const effectiveCash =
+        cashVal > 0
+          ? cashVal
+          : explicitPaid === 0 && finVal === 0
+          ? (downPay > 0 ? downPay : saleVal)
+          : 0;
 
       const ext = (c.external_data || {}) as any;
       const rawOp =
@@ -281,9 +298,9 @@ export function useConsolidatedSales() {
         valor: saleVal,
         financiamento: finVal,
         banco: bankName,
-        dinheiro: Number(c.down_payment_cash) || (downPay > 0 ? downPay : 0),
-        pix: Number(c.down_payment_pix) || 0,
-        cartao: Number(c.down_payment_card) || 0,
+        dinheiro: effectiveCash,
+        pix: pixVal,
+        cartao: cardVal,
         carta_credito: 0,
         boleto: 0,
         custos: 0,

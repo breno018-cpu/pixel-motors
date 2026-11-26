@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 import { INITIAL_USER_BACKUP_CSV, parseBackupCsv, SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { resolveSaleStore, getContractPrefix } from '@/lib/storeResolution';
@@ -245,7 +246,7 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
   let dbContracts: Contract[] = [];
   try {
     await ensureSupabaseSession();
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from('contracts')
       .select(`
         *,
@@ -256,6 +257,10 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
       .neq('contract_number', GLOBAL_SYNC_CONTRACT_NUMBER)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[useContracts] Erro ao consultar public.contracts:', error.message || error);
+    }
 
     if (data && Array.isArray(data)) {
       dbContracts = (data as Contract[]).filter(
@@ -409,25 +414,34 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
 }
 
 export function useContracts() {
+  const { user, isLoading: authLoading } = useAuth();
   return useQuery({
-    queryKey: ['contracts'],
+    queryKey: ['contracts', user?.id || 'anon'],
     queryFn: fetchConsolidatedContracts,
+    enabled: !authLoading,
+    refetchOnMount: 'always',
+    staleTime: 10_000,
   });
 }
 
 export function useExternalContracts() {
+  const { user, isLoading: authLoading } = useAuth();
   return useQuery({
-    queryKey: ['contracts', 'external'],
+    queryKey: ['contracts', 'external', user?.id || 'anon'],
     queryFn: async () => {
       const all = await fetchConsolidatedContracts();
       return all.filter((c) => c.sale_channel === 'externa');
     },
+    enabled: !authLoading,
+    refetchOnMount: 'always',
+    staleTime: 10_000,
   });
 }
 
 export function useContractStats() {
+  const { user, isLoading: authLoading } = useAuth();
   return useQuery({
-    queryKey: ['contract-stats'],
+    queryKey: ['contract-stats', user?.id || 'anon'],
     queryFn: async () => {
       const data = await fetchConsolidatedContracts();
       const total = data.length;
@@ -438,5 +452,8 @@ export function useContractStats() {
 
       return { total, pendente, assinado, concluido, totalValue };
     },
+    enabled: !authLoading,
+    refetchOnMount: 'always',
+    staleTime: 10_000,
   });
 }
