@@ -1985,11 +1985,11 @@ export function OwnerFiscalInvoicesPanel() {
             variant="outline"
             size="sm"
             onClick={() => setIsDraftPdfModalOpen(true)}
-            className="gap-1.5 font-semibold text-xs rounded-xl border-primary/30 text-primary hover:bg-primary/5"
-            title="Gerar espelho PDF de conferência (Sem Valor Fiscal) para teste"
+            className="gap-1.5 font-semibold text-xs rounded-xl border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+            title="Gerar espelho PDF de conferência para venda de motos elétricas (Sem Valor Fiscal)"
           >
             <FileText className="w-3.5 h-3.5" />
-            Prévia PDF (Teste)
+            Prévia Elétricas (PDF)
           </Button>
 
           <Button

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileText, RefreshCw, Download, ShieldAlert } from 'lucide-react';
+import { Zap, RefreshCw, Download, ShieldAlert } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -29,8 +29,8 @@ interface Props {
 }
 
 const ISSUER_PRESETS = {
-  moc: {
-    label: 'LIMA MOTORS SHINERAY MONTES CLAROS LTDA',
+  multimarcas: {
+    label: 'L1MA MOTORS MULTIMARCAS (Montes Claros)',
     name: 'LIMA MOTORS SHINERAY MONTES CLAROS LTDA',
     cnpj: '53.197.043/0001-75',
     ie: '0054689570019',
@@ -39,8 +39,8 @@ const ISSUER_PRESETS = {
     cep: '39400-162',
     phone: '(38) 99938-1522',
   },
-  multimarcas: {
-    label: 'L1MA MOTORS MULTIMARCAS (Montes Claros)',
+  moc: {
+    label: 'LIMA MOTORS SHINERAY MONTES CLAROS LTDA',
     name: 'LIMA MOTORS SHINERAY MONTES CLAROS LTDA',
     cnpj: '53.197.043/0001-75',
     ie: '0054689570019',
@@ -61,10 +61,58 @@ const ISSUER_PRESETS = {
   },
 };
 
+const ELECTRIC_MODEL_PRESETS = [
+  {
+    key: 'quatro_e',
+    label: 'IBIKE QUATRO E 500W (DF1)',
+    baseDesc: 'MOTO ELETRICA QUATRO E 500W / MOTO ELETRICA DF1 500W / Modelo: DF1 Motor: Eletrico Potencia: 500W BATERIA DE LITIO',
+    defaultPrice: '4.500,00',
+  },
+  {
+    key: 'foston_gt6x',
+    label: 'FOSTON GT6X (Elétrica)',
+    baseDesc: 'MOTO ELETRICA FOSTON GT6X / Motor: Eletrico BATERIA DE LITIO',
+    defaultPrice: '7.990,00',
+  },
+  {
+    key: 'ibike_goat',
+    label: 'IBIKE GOAT (E-Bike)',
+    baseDesc: 'MOTO ELETRICA IBIKE GOAT / E-BIKE Motor: Eletrico BATERIA DE LITIO',
+    defaultPrice: '3.990,00',
+  },
+  {
+    key: 'passion',
+    label: 'PASSION (Elétrica)',
+    baseDesc: 'MOTO ELETRICA PASSION / Motor: Eletrico BATERIA DE LITIO',
+    defaultPrice: '7.990,00',
+  },
+  {
+    key: 'x15_max',
+    label: 'X15 MAX (Elétrica)',
+    baseDesc: 'MOTO ELETRICA X15 MAX / Motor: Eletrico BATERIA DE LITIO',
+    defaultPrice: '6.990,00',
+  },
+  {
+    key: 'she_s',
+    label: 'SHINERAY SHE S / SE1 (Elétrica)',
+    baseDesc: 'MOTO ELETRICA SHINERAY SHE S / Motor: Eletrico 2000W BATERIA DE LITIO',
+    defaultPrice: '12.990,00',
+  },
+  {
+    key: 'custom',
+    label: 'Outro Modelo Elétrico (Personalizado)',
+    baseDesc: '',
+    defaultPrice: '',
+  },
+];
+
 export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
   const { toast } = useToast();
-  const [issuerKey, setIssuerKey] = useState<'moc' | 'multimarcas' | 'div'>('moc');
+  const [issuerKey, setIssuerKey] = useState<'multimarcas' | 'moc' | 'div'>('multimarcas');
   const [draftCode, setDraftCode] = useState(generateDraftCode);
+  const [modelPreset, setModelPreset] = useState('quatro_e');
+  const [bikeColor, setBikeColor] = useState('BRANCA');
+  const [motorNumber, setMotorNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerDocument, setCustomerDocument] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -74,8 +122,8 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
   const [customerUf, setCustomerUf] = useState('MG');
   const [customerPhone, setCustomerPhone] = useState('');
   const [paymentDescription, setPaymentDescription] = useState('Pagamento (1): À Vista - Dinheiro');
-  const [totalValueStr, setTotalValueStr] = useState('');
-  const [productDescription, setProductDescription] = useState('');
+  const [totalValueStr, setTotalValueStr] = useState('4.500,00');
+  const [customProductDesc, setCustomProductDesc] = useState('');
   const [ncm, setNcm] = useState('87116000');
   const [cfop, setCfop] = useState('5102');
   const [additionalInfo, setAdditionalInfo] = useState('MOTO ENTREGUE E PAGA.');
@@ -85,6 +133,36 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
       setDraftCode(generateDraftCode());
     }
   }, [open]);
+
+  // Ajusta CFOP automaticamente: 5102 (dentro de MG) vs 6102 (outro estado)
+  const handleUfChange = (rawUf: string) => {
+    const clean = rawUf.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2);
+    setCustomerUf(clean);
+    if (clean.length === 2) {
+      setCfop(clean === 'MG' ? '5102' : '6102');
+    }
+  };
+
+  const handleModelPresetChange = (key: string) => {
+    setModelPreset(key);
+    const preset = ELECTRIC_MODEL_PRESETS.find((p) => p.key === key);
+    if (preset?.defaultPrice) {
+      setTotalValueStr(preset.defaultPrice);
+    }
+  };
+
+  const buildElectricDescription = (): string => {
+    if (modelPreset === 'custom') {
+      return customProductDesc.trim().toUpperCase();
+    }
+    const preset = ELECTRIC_MODEL_PRESETS.find((p) => p.key === modelPreset);
+    const parts = [
+      preset?.baseDesc || 'MOTO ELETRICA',
+      bikeColor.trim() ? `COR: ${bikeColor.trim().toUpperCase()}` : '',
+      motorNumber.trim() ? `NUMERO MOTOR: ${motorNumber.trim().toUpperCase()}` : '',
+    ].filter(Boolean);
+    return parts.join(' ');
+  };
 
   const handleGenerate = () => {
     if (!customerName.trim()) {
@@ -96,8 +174,9 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
       toast({ variant: 'destructive', title: 'Informe um valor total válido' });
       return;
     }
-    if (!productDescription.trim()) {
-      toast({ variant: 'destructive', title: 'Informe a descrição do veículo/produto' });
+    const finalDescription = buildElectricDescription();
+    if (!finalDescription) {
+      toast({ variant: 'destructive', title: 'Informe a descrição da moto elétrica' });
       return;
     }
 
@@ -126,16 +205,16 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
       paymentDescription: paymentDescription.trim() || 'Pagamento (1): À Vista',
       totalValue: val,
       productCode: '001',
-      productDescription: productDescription.trim().toUpperCase(),
+      productDescription: finalDescription,
       ncm: ncm.trim() || '87116000',
-      cfop: cfop.trim() || '5102',
+      cfop: cfop.trim() || (customerUf === 'MG' ? '5102' : '6102'),
       quantity: 1,
       unitValue: val,
       additionalInfo: additionalInfo.trim(),
     });
 
     toast({
-      title: 'Prévia PDF gerada com sucesso!',
+      title: 'Prévia PDF de Moto Elétrica gerada!',
       description: `Código interno ${draftCode} (Sem Valor Fiscal — ambiente de teste).`,
     });
     setDraftCode(generateDraftCode());
@@ -146,18 +225,18 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
       <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="px-5 pt-5 pb-3 border-b bg-muted/20 shrink-0">
           <DialogTitle className="text-base font-bold flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" />
-            Gerar Prévia / Espelho PDF (Teste NF-e)
+            <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            Gerar Prévia PDF — Venda de Motos Elétricas (Teste)
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Gera um PDF estruturado com código interno novo e marca d&apos;água <strong>SEM VALOR FISCAL</strong> para validar o layout antes de integrar a emissão oficial NF-e na SEFAZ.
+            Módulo dedicado às <strong>motos elétricas</strong> (NCM 87116000 + Nº do Motor). Gera PDF com código interno novo e marca d&apos;água <strong>SEM VALOR FISCAL</strong> para validação antes de ativar a NF-e na SEFAZ.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 flex items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
             <ShieldAlert className="w-4 h-4 shrink-0" />
-            <span>Documento exclusivo para testes/conferência — não possui chave SEFAZ nem validade fiscal.</span>
+            <span>Documento exclusivo para testes/conferência de elétricas — sem chave SEFAZ nem validade fiscal.</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -168,8 +247,8 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="multimarcas">L1MA MOTORS MULTIMARCAS (Elétricas)</SelectItem>
                   <SelectItem value="moc">LIMA MOTORS SHINERAY MOC</SelectItem>
-                  <SelectItem value="multimarcas">L1MA MOTORS MULTIMARCAS</SelectItem>
                   <SelectItem value="div">SHINERAY DIVINÓPOLIS</SelectItem>
                 </SelectContent>
               </Select>
@@ -186,6 +265,60 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
 
+          {/* Dados da Moto Elétrica */}
+          <div className="rounded-xl border bg-muted/20 p-3 space-y-3">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5" />
+              Dados da Moto Elétrica
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Modelo Elétrico *</Label>
+                <Select value={modelPreset} onValueChange={handleModelPresetChange}>
+                  <SelectTrigger className="h-9 text-xs bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ELECTRIC_MODEL_PRESETS.map((p) => (
+                      <SelectItem key={p.key} value={p.key} className="text-xs">
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Cor</Label>
+                <Input value={bikeColor} onChange={(e) => setBikeColor(e.target.value)} placeholder="BRANCA" className="h-9 text-xs bg-background uppercase" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Número do Motor</Label>
+                <Input value={motorNumber} onChange={(e) => setMotorNumber(e.target.value.toUpperCase())} placeholder="Ex: FV1582026BR" className="h-9 text-xs font-mono bg-background uppercase" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Valor Total (R$) *</Label>
+                <Input value={totalValueStr} onChange={(e) => setTotalValueStr(e.target.value)} placeholder="4.500,00" className="h-9 text-xs font-mono bg-background" />
+              </div>
+            </div>
+
+            {modelPreset === 'custom' && (
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Descrição Completa Personalizada *</Label>
+                <Textarea
+                  rows={2}
+                  value={customProductDesc}
+                  onChange={(e) => setCustomProductDesc(e.target.value)}
+                  placeholder="Ex: MOTO ELETRICA ... COR: ... NUMERO MOTOR: ..."
+                  className="text-xs bg-background"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Dados do Cliente */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Nome / Razão Social do Cliente *</Label>
@@ -218,8 +351,8 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
               <Input value={customerCity} onChange={(e) => setCustomerCity(e.target.value)} placeholder="Montes Claros" className="h-9 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">UF</Label>
-              <Input value={customerUf} onChange={(e) => setCustomerUf(e.target.value.toUpperCase().slice(0, 2))} placeholder="MG" className="h-9 text-xs uppercase" />
+              <Label className="text-xs font-semibold">UF (ajusta CFOP)</Label>
+              <Input value={customerUf} onChange={(e) => handleUfChange(e.target.value)} placeholder="MG" className="h-9 text-xs uppercase" />
             </div>
           </div>
 
@@ -229,25 +362,14 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
               <Input value={paymentDescription} onChange={(e) => setPaymentDescription(e.target.value)} className="h-9 text-xs" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Valor Total (R$) *</Label>
-              <Input value={totalValueStr} onChange={(e) => setTotalValueStr(e.target.value)} placeholder="4.500,00" className="h-9 text-xs font-mono" />
+              <Label className="text-xs font-semibold">Telefone Cliente</Label>
+              <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="(38) 99999-0000" className="h-9 text-xs" />
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs font-semibold">Descrição Completa do Produto / Moto *</Label>
-            <Textarea
-              rows={3}
-              value={productDescription}
-              onChange={(e) => setProductDescription(e.target.value)}
-              placeholder="Ex: MOTO ELETRICA QUATRO E 500W - COR: BRANCA - NUMERO MOTOR: FV1582026BR"
-              className="text-xs"
-            />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">NCM/SH</Label>
+              <Label className="text-xs font-semibold">NCM/SH (Elétrica)</Label>
               <Input value={ncm} onChange={(e) => setNcm(e.target.value)} className="h-9 text-xs font-mono" />
             </div>
             <div className="space-y-1">
@@ -255,14 +377,9 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
               <Input value={cfop} onChange={(e) => setCfop(e.target.value)} className="h-9 text-xs font-mono" />
             </div>
             <div className="space-y-1 col-span-2 sm:col-span-1">
-              <Label className="text-xs font-semibold">Telefone Cliente</Label>
-              <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="(38) 99999-0000" className="h-9 text-xs" />
+              <Label className="text-xs font-semibold">Info Complementar</Label>
+              <Input value={additionalInfo} onChange={(e) => setAdditionalInfo(e.target.value)} className="h-9 text-xs" />
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs font-semibold">Informações Complementares</Label>
-            <Input value={additionalInfo} onChange={(e) => setAdditionalInfo(e.target.value)} className="h-9 text-xs" />
           </div>
         </div>
 
@@ -270,9 +387,9 @@ export function InvoiceDraftGeneratorDialog({ open, onOpenChange }: Props) {
           <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button type="button" size="sm" onClick={handleGenerate} className="gap-1.5 font-bold">
+          <Button type="button" size="sm" onClick={handleGenerate} className="gap-1.5 font-bold bg-emerald-600 hover:bg-emerald-700 text-white">
             <Download className="w-3.5 h-3.5" />
-            Baixar Prévia PDF (Sem Valor Fiscal)
+            Baixar Prévia Elétrica (PDF)
           </Button>
         </DialogFooter>
       </DialogContent>
