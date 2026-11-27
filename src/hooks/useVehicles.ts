@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
 
 export interface Vehicle {
@@ -413,6 +414,7 @@ export function removeVehicleFromCache(vehicleId: string): void {
 
 export function useVehicles() {
   const qc = useQueryClient();
+  const { user, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -433,63 +435,35 @@ export function useVehicles() {
   }, [qc]);
 
   return useQuery({
-    queryKey: ['vehicles'],
+    queryKey: ['vehicles', user?.id || 'anon'],
+    enabled: !authLoading,
     queryFn: async () => {
-      const deletedIds = getDeletedVehicleIds();
-      // 1. Obtém o estoque imediatamente disponível filtrando excluídos
-      let currentList = getCachedVehicles().filter((v) => !deletedIds.has(v.id));
+      await ensureSupabaseSession();
+      const { data, error } = await (supabase as any)
+        .from('vehicles')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
 
-      // 2. Sincronização remota com o Supabase (sempre tenta buscar; só ignora [] se não houver sessão JWT)
+      if (error) {
+        console.error('[useVehicles] Erro ao carregar estoque do Supabase:', error.message || error);
+        throw new Error(error.message || 'Erro ao carregar estoque do banco de dados');
+      }
+
+      const remoteVehicles = Array.isArray(data) ? (data as Vehicle[]) : [];
+
+      // Mantém apenas o dado real do banco no espelho local (remove qualquer lixo/cache velho)
       try {
-        const session = await ensureSupabaseSession();
-        const { data, error } = await (supabase as any)
-          .from('vehicles')
-          .select('*')
-          .eq('is_deleted', false)
-          .order('created_at', { ascending: false });
+        localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(remoteVehicles));
+        localStorage.removeItem('dealflow_vehicles_cache_v1');
+        localStorage.removeItem('df_local_table_v5_vehicles');
+      } catch {}
 
-        if (!error && Array.isArray(data) && (data.length > 0 || (Boolean(session) && currentList.length === 0))) {
-          const filteredRemote = (data as Vehicle[]).filter((v) => !deletedIds.has(v.id));
-          const remoteIdSet = new Set(filteredRemote.map((v) => v.id));
-          const remoteChassisSet = new Set(
-            filteredRemote.map((v) => (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '')).filter((ch) => ch.length >= 6)
-          );
-          const remoteModelKeySet = new Set(
-            filteredRemote.map((v) => `${v.brand}::${v.model}::${v.color}::${v.year}::${v.store_id}`.toUpperCase())
-          );
-
-          // Preserva apenas veículos registrados em contingência offline pendentes que ainda não constam na nuvem
-          const localOnly = currentList.filter((v) => {
-            if (remoteIdSet.has(v.id)) return false;
-            if (!(v as any).is_offline_pending) return false;
-            const vCh = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-            if (vCh.length >= 6 && remoteChassisSet.has(vCh)) return false;
-            const modelKey = `${v.brand}::${v.model}::${v.color}::${v.year}::${v.store_id}`.toUpperCase();
-            if ((!vCh || vCh.includes('DEFINIR') || vCh.includes('PENDENTE')) && remoteModelKeySet.has(modelKey)) return false;
-            return true;
-          });
-
-          const combined = [...localOnly, ...filteredRemote];
-          if (combined.length > 0) {
-            try {
-              localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(combined));
-            } catch {}
-          }
-          return combined;
-        }
-      } catch (err) {
-        console.warn('Consulta remota de veículos falhou, usando estoque local:', err);
-      }
-
-      // 3. Fallback apenas do cache real (sem seed fictício/estático)
-      if (currentList.length > 0) {
-        return currentList;
-      }
-
-      return [];
+      return remoteVehicles;
     },
     staleTime: 5 * 1000,
     refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -499,10 +473,7 @@ export function useVehicleStats() {
   return useQuery({
     queryKey: ['vehicle-stats', vehicles.length],
     queryFn: async () => {
-      let list = vehicles;
-      if (!list || list.length === 0) {
-        list = getCachedVehicles();
-      }
+      const list = vehicles || [];
 
       const total = list.length;
       const disponivel = list.filter((v) => v.status === 'disponivel').length;
