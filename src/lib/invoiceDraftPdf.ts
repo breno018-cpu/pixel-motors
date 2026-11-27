@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { LIMA_MOTORS_LOGO_DATA_URI } from '../assets/limaMotorsLogoBase64';
 
 export interface InvoiceDraftPayload {
   draftCode: string; // Código interno de teste (ex: PRV-2026-000001)
@@ -50,51 +51,29 @@ export function generateDraftCode(): string {
 }
 
 /**
- * Desenha o emblema vetorial LM LIMA MOTORS MULTIMARCAS no quadro do emitente.
+ * Renderiza a logomarca oficial LM LIMA MOTORS MULTIMARCAS no quadro do emitente.
  */
 function drawLimaMotorsLogo(doc: jsPDF, cx: number, topY: number): void {
-  // Escudo/badge LM
-  doc.setFillColor(185, 28, 28);
-  doc.roundedRect(cx - 8, topY, 16, 7.5, 1.2, 1.2, 'F');
-  doc.setDrawColor(20, 20, 20);
-  doc.setLineWidth(0.35);
-  doc.roundedRect(cx - 8, topY, 16, 7.5, 1.2, 1.2, 'S');
-
-  doc.setFont('helvetica', 'bolditalic');
-  doc.setFontSize(10.5);
-  doc.setTextColor(255, 255, 255);
-  doc.text('LM', cx, topY + 5.6, { align: 'center' });
-
-  // Linhas laterais + LIMA MOTORS
-  doc.setFont('helvetica', 'bolditalic');
-  doc.setFontSize(8.2);
-  doc.setTextColor(20, 20, 20);
-  doc.text('LIMA MOTORS', cx, topY + 11.2, { align: 'center' });
-
-  doc.setDrawColor(185, 28, 28);
-  doc.setLineWidth(0.35);
-  doc.line(cx - 17, topY + 10.3, cx - 12.2, topY + 10.3);
-  doc.line(cx + 12.2, topY + 10.3, cx + 17, topY + 10.3);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(4.6);
-  doc.setTextColor(120, 120, 120);
-  doc.text('M U L T I M A R C A S', cx, topY + 13.4, { align: 'center' });
+  // Proporção original da imagem oficial: 250x136 (1.838:1)
+  const logoW = 26.5;
+  const logoH = 14.4;
+  doc.addImage(LIMA_MOTORS_LOGO_DATA_URI, 'JPEG', cx - logoW / 2, topY, logoW, logoH);
 }
 
 /**
- * Gera um PDF A4 com acabamento gráfico completo (Times serifada, caixas arredondadas,
- * todas as seções fiscais estruturadas), claramente identificado com faixa e marca d'água
- * "TESTE — SEM VALOR FISCAL" (sem chave SEFAZ falsa) para validação antes de ativar a NF-e real.
+ * Gera um PDF A4 com acabamento gráfico completo (logo oficial LM Lima Motors,
+ * Times serifada, caixas arredondadas e todas as seções estruturadas), claramente
+ * identificado com faixa e marca d'água "TESTE — SEM VALOR FISCAL" (sem chave SEFAZ falsa)
+ * para validação antes de ativar o emissor NF-e homologado.
  */
 export function buildInvoiceDraftPdfDocument(data: InvoiceDraftPayload): jsPDF {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth(); // 210mm
   const pageH = doc.internal.pageSize.getHeight(); // 297mm
-  const m = 6.5;
-  const W = pageW - m * 2; // 197mm
-  const R = 0.9; // raio de canto arredondado suave
-  let y = 6;
+  const m = 4.5;
+  const W = pageW - m * 2; // 201mm
+  const R = 0.85; // raio de canto arredondado fiel ao modelo
+  let y = 4.5;
 
   const box = (
     x: number,
@@ -187,89 +166,100 @@ export function buildInvoiceDraftPdfDocument(data: InvoiceDraftPayload): jsPDF {
   // =========================================================================
   // 2. CABEÇALHO PRINCIPAL (EMITENTE | QUADRO CENTRAL | CÓDIGO INTERNO)
   // =========================================================================
-  const emitW = 79;
-  const midW = 34;
+  const emitW = 81;
+  const midW = 35;
   const rightW = W - emitW - midW;
-  const topH = 31;
+  const topH = 33.5;
 
   // Bloco Emitente
   doc.setDrawColor(25, 25, 25);
-  doc.setLineWidth(0.22);
+  doc.setLineWidth(0.24);
   doc.roundedRect(m, y, emitW, topH, R, R, 'S');
   doc.setFont('times', 'normal');
   doc.setFontSize(5.2);
   doc.setTextColor(35, 35, 35);
-  doc.text('IDENTIFICAÇÃO DO EMITENTE', m + emitW / 2, y + 2.4, { align: 'center' });
+  doc.text('IDENTIFICAÇÃO DO EMITENTE', m + emitW / 2, y + 2.3, { align: 'center' });
 
-  drawLimaMotorsLogo(doc, m + emitW / 2, y + 3.8);
+  drawLimaMotorsLogo(doc, m + emitW / 2, y + 3.2);
 
   doc.setFont('times', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8.8);
   doc.setTextColor(10, 10, 10);
-  doc.text(data.issuerName, m + emitW / 2, y + 21.2, { align: 'center', maxWidth: emitW - 3 });
+  doc.text(data.issuerName, m + emitW / 2, y + 21.4, { align: 'center', maxWidth: emitW - 2.5 });
   doc.setFont('times', 'normal');
-  doc.setFontSize(7.2);
-  doc.text(data.issuerAddress, m + emitW / 2, y + 24.6, { align: 'center', maxWidth: emitW - 3 });
-  doc.text(`${data.issuerCityUf} - CEP ${data.issuerCep}`, m + emitW / 2, y + 27.6, { align: 'center', maxWidth: emitW - 3 });
-  if (data.issuerPhone) {
-    doc.text(`Fone/Fax: ${data.issuerPhone}`, m + emitW / 2, y + 30.2, { align: 'center', maxWidth: emitW - 3 });
+  doc.setFontSize(7.6);
+  const addrParts = data.issuerAddress.split(' - ');
+  if (addrParts.length >= 3) {
+    const line1 = `${addrParts[0]} - ${addrParts[1]}`;
+    const line2 = `${addrParts.slice(2).join(' - ')} - ${data.issuerCep}`;
+    doc.text(line1, m + emitW / 2, y + 25.0, { align: 'center', maxWidth: emitW - 2.5 });
+    doc.text(line2, m + emitW / 2, y + 28.2, { align: 'center', maxWidth: emitW - 2.5 });
+  } else {
+    doc.text(data.issuerAddress, m + emitW / 2, y + 25.0, { align: 'center', maxWidth: emitW - 2.5 });
+    doc.text(`CEP ${data.issuerCep}`, m + emitW / 2, y + 28.2, { align: 'center', maxWidth: emitW - 2.5 });
   }
+  doc.text(
+    `${data.issuerCityUf} Fone/Fax: ${data.issuerPhone || ''}`.trim(),
+    m + emitW / 2,
+    y + 31.4,
+    { align: 'center', maxWidth: emitW - 2.5 }
+  );
 
   // Bloco Central
   doc.roundedRect(m + emitW, y, midW, topH, R, R, 'S');
   doc.setFont('times', 'bold');
-  doc.setFontSize(11);
-  doc.text('PRÉVIA', m + emitW + midW / 2, y + 5.5, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text('PRÉVIA', m + emitW + midW / 2, y + 5.6, { align: 'center' });
   doc.setFont('times', 'normal');
-  doc.setFontSize(6.8);
-  doc.text('Espelho de Conferência', m + emitW + midW / 2, y + 9, { align: 'center' });
-  doc.text('Sem Valor Fiscal', m + emitW + midW / 2, y + 12, { align: 'center' });
+  doc.setFontSize(7.0);
+  doc.text('Espelho de Conferência', m + emitW + midW / 2, y + 9.2, { align: 'center' });
+  doc.text('Sem Valor Fiscal', m + emitW + midW / 2, y + 12.2, { align: 'center' });
 
-  doc.setFontSize(6.5);
-  doc.text('0 - ENTRADA', m + emitW + 2.2, y + 16.5);
-  doc.text('1 - SAÍDA', m + emitW + 2.2, y + 19.8);
-  doc.roundedRect(m + emitW + midW - 8.5, y + 14.5, 6, 6.2, 0.5, 0.5, 'S');
+  doc.setFontSize(6.6);
+  doc.text('0 - ENTRADA', m + emitW + 2.2, y + 17.0);
+  doc.text('1 - SAÍDA', m + emitW + 2.2, y + 20.4);
+  doc.roundedRect(m + emitW + midW - 8.5, y + 15.0, 6.2, 6.5, 0.5, 0.5, 'S');
   doc.setFont('times', 'bold');
-  doc.setFontSize(10);
-  doc.text('1', m + emitW + midW - 5.5, y + 19, { align: 'center' });
+  doc.setFontSize(10.5);
+  doc.text('1', m + emitW + midW - 5.4, y + 19.6, { align: 'center' });
 
   doc.setFont('times', 'bold');
-  doc.setFontSize(7.6);
-  doc.text(data.draftCode, m + emitW + midW / 2, y + 24.5, { align: 'center' });
+  doc.setFontSize(8.0);
+  doc.text(data.draftCode, m + emitW + midW / 2, y + 26.2, { align: 'center' });
   doc.setFont('times', 'italic');
-  doc.setFontSize(7);
-  doc.text('Folha 1/1', m + emitW + midW / 2, y + 29, { align: 'center' });
+  doc.setFontSize(7.2);
+  doc.text('Folha 1/1', m + emitW + midW / 2, y + 31.0, { align: 'center' });
 
   // Bloco Direito (Código Interno de Teste — SEM chave SEFAZ falsa)
-  doc.roundedRect(m + emitW + midW, y, rightW, 14, R, R, 'S');
-  doc.setFillColor(245, 245, 245);
-  doc.roundedRect(m + emitW + midW + 3, y + 2.5, rightW - 6, 9, 0.8, 0.8, 'F');
+  doc.roundedRect(m + emitW + midW, y, rightW, 15.0, R, R, 'S');
+  doc.setFillColor(248, 248, 248);
+  doc.roundedRect(m + emitW + midW + 3, y + 2.5, rightW - 6, 10.0, 0.8, 0.8, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(10.5);
   doc.setTextColor(185, 28, 28);
-  doc.text('MODO TESTE — SEM VALOR FISCAL', m + emitW + midW + rightW / 2, y + 8.2, { align: 'center' });
+  doc.text('MODO TESTE — SEM VALOR FISCAL', m + emitW + midW + rightW / 2, y + 8.8, { align: 'center' });
 
-  box(m + emitW + midW, y + 14, rightW, 8, 'CÓDIGO INTERNO DE TESTE', data.draftCode, {
+  box(m + emitW + midW, y + 15.0, rightW, 8.5, 'CÓDIGO INTERNO DE TESTE', data.draftCode, {
     bold: true,
     align: 'center',
-    size: 9.5,
+    size: 10,
     font: 'courier',
   });
 
-  doc.roundedRect(m + emitW + midW, y + 22, rightW, 9, R, R, 'S');
+  doc.roundedRect(m + emitW + midW, y + 23.5, rightW, 10.0, R, R, 'S');
   doc.setFont('times', 'normal');
-  doc.setFontSize(6.6);
+  doc.setFontSize(6.8);
   doc.setTextColor(40, 40, 40);
   doc.text(
     'Documento gerado apenas para validação visual e de dados.',
     m + emitW + midW + rightW / 2,
-    y + 25.5,
+    y + 27.4,
     { align: 'center' }
   );
   doc.text(
     'Para emissão oficial, conecte o emissor NF-e homologado na SEFAZ.',
     m + emitW + midW + rightW / 2,
-    y + 29.2,
+    y + 31.4,
     { align: 'center' }
   );
 
@@ -342,7 +332,7 @@ export function buildInvoiceDraftPdfDocument(data: InvoiceDraftPayload): jsPDF {
     ['VALOR TOTAL PRODUTOS', fmtBRL(data.totalValue)],
   ];
   row1Imp.forEach(([lbl, val], idx) => {
-    box(ix, y, impW[idx], 7.4, lbl, val, { bold: true, align: 'right', size: 9.2 });
+    box(ix, y, impW[idx], 7.4, lbl, val, { bold: true, align: 'right', size: 10 });
     ix += impW[idx];
   });
   y += 7.4;
@@ -357,7 +347,7 @@ export function buildInvoiceDraftPdfDocument(data: InvoiceDraftPayload): jsPDF {
     ['VALOR TOTAL DA NOTA', fmtBRL(data.totalValue)],
   ];
   row2Imp.forEach(([lbl, val], idx) => {
-    box(ix, y, impW[idx], 7.4, lbl, val, { bold: true, align: 'right', size: 9.2 });
+    box(ix, y, impW[idx], 7.4, lbl, val, { bold: true, align: 'right', size: 10 });
     ix += impW[idx];
   });
   y += 9.8;
@@ -397,8 +387,8 @@ export function buildInvoiceDraftPdfDocument(data: InvoiceDraftPayload): jsPDF {
   y += 1.2;
 
   const prodCols = [
-    { label: 'CÓDIGO\nPRODUTO', w: 14, align: 'center' as const },
-    { label: 'DESCRIÇÃO DO PRODUTO / SERVIÇO', w: 66, align: 'left' as const },
+    { label: 'CÓDIGO\nPRODUTO', w: 14.5, align: 'center' as const },
+    { label: 'DESCRIÇÃO DO PRODUTO / SERVIÇO', w: 69.5, align: 'left' as const },
     { label: 'NCM/SH', w: 13.5, align: 'center' as const },
     { label: 'O/CST', w: 8.5, align: 'center' as const },
     { label: 'CFOP', w: 9, align: 'center' as const },
@@ -475,8 +465,9 @@ export function buildInvoiceDraftPdfDocument(data: InvoiceDraftPayload): jsPDF {
   // Linha tracejada logo abaixo da descrição do item (igual ao modelo clássico)
   const descLinesCount = Array.isArray(rowVals[1]) ? rowVals[1].length : 1;
   const dashY = y + Math.max(12, descLinesCount * 3.1 + 4);
-  doc.setLineDashPattern([1, 1], 0);
-  doc.setDrawColor(110, 110, 110);
+  doc.setLineWidth(0.25);
+  doc.setDrawColor(70, 70, 70);
+  doc.setLineDashPattern([2, 1.3], 0);
   doc.line(m, dashY, pageW - m, dashY);
   doc.setLineDashPattern([], 0);
 
