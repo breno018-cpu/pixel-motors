@@ -15,6 +15,7 @@ import Vehicles from "./pages/Vehicles";
 import CatalogControl from "./pages/CatalogControl";
 import Organization from "./pages/Organization";
 import Contracts from "./pages/Contracts";
+import CounterReceipts from "./pages/CounterReceipts";
 import Sales from "./pages/Sales";
 import ExternalSales from "./pages/ExternalSales";
 import Consignments from "./pages/Consignments";
@@ -126,6 +127,16 @@ const App = () => {
                   <ProtectedRoute allowedRoles={['admin', 'gerente']} permission="page.contracts">
                     <MainLayout>
                       <Contracts />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/counter-receipts"
+                element={
+                  <ProtectedRoute allowedRoles={['admin', 'gerente', 'dono_loja']}>
+                    <MainLayout>
+                      <CounterReceipts />
                     </MainLayout>
                   </ProtectedRoute>
                 }
