@@ -773,7 +773,7 @@ export default function Vehicles() {
         }
       />
 
-      {canManageStock && <LocalStockRecoveryBanner remoteVehicles={vehicles || []} />}
+      {canRegisterVehicles && <LocalStockRecoveryBanner remoteVehicles={vehicles || []} />}
 
       <VehicleFormDialog 
         open={formOpen} 

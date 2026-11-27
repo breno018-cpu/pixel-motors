@@ -83,7 +83,7 @@ export function LocalStockRecoveryBanner({ remoteVehicles }: Props) {
       const count = Array.isArray(inserted) ? inserted.length : payloads.length;
       clearUnsyncedLocalVehicles();
       setDismissed(true);
-      void logActivity('resgate_estoque_local', 'veiculo', null, { quantidade: count });
+      void logActivity('criar', 'veiculo', null, { origem: 'resgate_estoque_local', quantidade: count });
       await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
       await queryClient.invalidateQueries({ queryKey: ['vehicle-stats'] });
 
