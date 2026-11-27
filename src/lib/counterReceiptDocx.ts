@@ -2,6 +2,10 @@ import JSZip from 'jszip';
 
 const IDB_NAME = 'dealflow_counter_docx_templates_db';
 const IDB_STORE = 'docx_files';
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+// Cache em memória para acesso instantâneo e imune a falhas/atrasos de IndexedDB
+const memoryDocxCache = new Map<string, ArrayBuffer>();
 
 function openDocxDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -18,55 +22,102 @@ function openDocxDb(): Promise<IDBDatabase> {
 }
 
 export async function saveDocxTemplateBlob(id: string, buffer: ArrayBuffer): Promise<void> {
-  const db = await openDocxDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(IDB_STORE, 'readwrite');
-    tx.objectStore(IDB_STORE).put(buffer, id);
-    tx.oncomplete = () => {
-      db.close();
-      resolve();
-    };
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error);
-    };
-  });
+  const safeCopy = buffer.slice(0);
+  memoryDocxCache.set(id, safeCopy);
+
+  try {
+    const db = await openDocxDb();
+    const blob = new Blob([safeCopy.slice(0)], { type: DOCX_MIME });
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(blob, id);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
+  } catch (err) {
+    console.warn('[counterReceiptDocx] Falha ao persistir no IndexedDB (mantido em memória):', err);
+  }
 }
 
 export async function getDocxTemplateBlob(id: string): Promise<ArrayBuffer | null> {
-  const db = await openDocxDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(IDB_STORE, 'readonly');
-    const req = tx.objectStore(IDB_STORE).get(id);
-    req.onsuccess = () => {
-      db.close();
-      resolve((req.result as ArrayBuffer) || null);
-    };
-    req.onerror = () => {
-      db.close();
-      reject(req.error);
-    };
-  });
+  const cached = memoryDocxCache.get(id);
+  if (cached) {
+    return cached.slice(0);
+  }
+
+  try {
+    const db = await openDocxDb();
+    const stored = await new Promise<unknown>((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(id);
+      req.onsuccess = () => {
+        db.close();
+        resolve(req.result ?? null);
+      };
+      req.onerror = () => {
+        db.close();
+        reject(req.error);
+      };
+    });
+
+    if (!stored) return null;
+
+    let buf: ArrayBuffer | null = null;
+    if (stored instanceof Blob) {
+      buf = await stored.arrayBuffer();
+    } else if (stored instanceof ArrayBuffer) {
+      buf = stored;
+    } else if (ArrayBuffer.isView(stored)) {
+      buf = stored.buffer.slice(stored.byteOffset, stored.byteOffset + stored.byteLength);
+    }
+
+    if (buf) {
+      memoryDocxCache.set(id, buf.slice(0));
+      return buf.slice(0);
+    }
+    return null;
+  } catch (err) {
+    console.warn('[counterReceiptDocx] Falha ao ler do IndexedDB:', err);
+    return null;
+  }
 }
 
 export async function deleteDocxTemplateBlob(id: string): Promise<void> {
-  const db = await openDocxDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(IDB_STORE, 'readwrite');
-    tx.objectStore(IDB_STORE).delete(id);
-    tx.oncomplete = () => {
-      db.close();
-      resolve();
-    };
-    tx.onerror = () => {
-      db.close();
-      reject(tx.error);
-    };
-  });
+  memoryDocxCache.delete(id);
+  try {
+    const db = await openDocxDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(id);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    });
+  } catch {
+    // ignore
+  }
 }
 
 const TARGET_XML_REGEX = /^word\/(document|header\d+|footer\d+)\.xml$/i;
 const PLACEHOLDER_REGEX = /\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g;
+
+export interface DocxTextBlock {
+  blockKey: string;
+  xmlPath: string;
+  pIndex: number;
+  text: string;
+}
 
 /**
  * Coleta os nós <w:t> diretos de cada parágrafo <w:p> e reconstrói o texto contínuo
@@ -78,8 +129,6 @@ function getParagraphTextNodes(p: Element): Element[] {
     for (let i = 0; i < el.children.length; i++) {
       const child = el.children[i];
       const local = child.localName || child.nodeName.split(':').pop();
-      // Evita descer em parágrafos aninhados (ex: caixas de texto dentro de parágrafos),
-      // pois eles serão processados separadamente na lista global de <w:p>.
       if (local === 'p') continue;
       if (local === 't') {
         nodes.push(child);
@@ -97,17 +146,106 @@ function getAllParagraphs(xmlDoc: Document): Element[] {
   return all.filter((el) => (el.localName || el.nodeName.split(':').pop()) === 'p');
 }
 
+function getSortedTargetXmlFiles(zip: JSZip): string[] {
+  return Object.keys(zip.files)
+    .filter((name) => TARGET_XML_REGEX.test(name))
+    .sort((a, b) => {
+      if (a === 'word/document.xml') return -1;
+      if (b === 'word/document.xml') return 1;
+      return a.localeCompare(b);
+    });
+}
+
+/**
+ * Extrai todos os blocos de texto/células editáveis de um arquivo .docx,
+ * permitindo edição direta dentro do sistema preservando o layout do Word.
+ */
+export async function extractDocxTextBlocks(buffer: ArrayBuffer): Promise<DocxTextBlock[]> {
+  const zip = await JSZip.loadAsync(buffer.slice(0));
+  const parser = new DOMParser();
+  const blocks: DocxTextBlock[] = [];
+
+  for (const xmlPath of getSortedTargetXmlFiles(zip)) {
+    const xmlStr = await zip.file(xmlPath)?.async('string');
+    if (!xmlStr) continue;
+    const xmlDoc = parser.parseFromString(xmlStr, 'application/xml');
+    const paragraphs = getAllParagraphs(xmlDoc);
+
+    paragraphs.forEach((p, pIndex) => {
+      const tNodes = getParagraphTextNodes(p);
+      if (tNodes.length === 0) return;
+      const text = tNodes.map((n) => n.textContent || '').join('');
+      if (!text.trim()) return;
+      blocks.push({
+        blockKey: `${xmlPath}::${pIndex}`,
+        xmlPath,
+        pIndex,
+        text,
+      });
+    });
+  }
+
+  return blocks;
+}
+
+/**
+ * Aplica edições de blocos de texto diretamente no XML do .docx, mantendo
+ * intacta toda a formatação do Word (tabelas, fontes, tamanhos, cores, logos e bordas).
+ */
+export async function applyDocxTextBlockEdits(
+  buffer: ArrayBuffer,
+  edits: Record<string, string>
+): Promise<ArrayBuffer> {
+  const zip = await JSZip.loadAsync(buffer.slice(0));
+  const parser = new DOMParser();
+  const serializer = new XMLSerializer();
+
+  for (const xmlPath of getSortedTargetXmlFiles(zip)) {
+    const xmlStr = await zip.file(xmlPath)?.async('string');
+    if (!xmlStr) continue;
+    const xmlDoc = parser.parseFromString(xmlStr, 'application/xml');
+    const paragraphs = getAllParagraphs(xmlDoc);
+    let modified = false;
+
+    paragraphs.forEach((p, pIndex) => {
+      const key = `${xmlPath}::${pIndex}`;
+      if (!(key in edits)) return;
+      const newText = edits[key];
+      const tNodes = getParagraphTextNodes(p);
+      if (tNodes.length === 0) return;
+
+      const currentText = tNodes.map((n) => n.textContent || '').join('');
+      if (currentText === newText) return;
+
+      // Mantém a formatação do primeiro run (<w:rPr>) e limpa os demais runs do parágrafo
+      tNodes[0].textContent = newText;
+      if (newText.startsWith(' ') || newText.endsWith(' ')) {
+        tNodes[0].setAttribute('xml:space', 'preserve');
+      }
+      for (let i = 1; i < tNodes.length; i++) {
+        tNodes[i].textContent = '';
+      }
+      modified = true;
+    });
+
+    if (modified) {
+      zip.file(xmlPath, serializer.serializeToString(xmlDoc));
+    }
+  }
+
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
 /**
  * Lê um arquivo .docx e retorna todas as variáveis {{...}} encontradas no documento,
  * cabeçalhos e rodapés.
  */
 export async function inspectDocxPlaceholders(buffer: ArrayBuffer): Promise<string[]> {
-  const zip = await JSZip.loadAsync(buffer);
+  const zip = await JSZip.loadAsync(buffer.slice(0));
   const found = new Set<string>();
   const parser = new DOMParser();
 
-  const xmlFiles = Object.keys(zip.files).filter((name) => TARGET_XML_REGEX.test(name));
-  for (const name of xmlFiles) {
+  for (const name of getSortedTargetXmlFiles(zip)) {
     const xmlStr = await zip.file(name)?.async('string');
     if (!xmlStr) continue;
     const xmlDoc = parser.parseFromString(xmlStr, 'application/xml');
@@ -135,19 +273,17 @@ export async function fillDocxTemplate(
   buffer: ArrayBuffer,
   values: Record<string, string>
 ): Promise<Blob> {
-  const zip = await JSZip.loadAsync(buffer);
+  const zip = await JSZip.loadAsync(buffer.slice(0));
   const parser = new DOMParser();
   const serializer = new XMLSerializer();
 
-  // Normaliza mapa para aceitar tanto "{{chave}}" quanto "chave"
   const normalizedMap: Record<string, string> = {};
   for (const [k, v] of Object.entries(values)) {
     const cleanKey = k.replace(/^\{\{\s*|\s*\}\}$/g, '').trim();
     normalizedMap[cleanKey] = v ?? '';
   }
 
-  const xmlFiles = Object.keys(zip.files).filter((name) => TARGET_XML_REGEX.test(name));
-  for (const name of xmlFiles) {
+  for (const name of getSortedTargetXmlFiles(zip)) {
     const xmlStr = await zip.file(name)?.async('string');
     if (!xmlStr) continue;
     const xmlDoc = parser.parseFromString(xmlStr, 'application/xml');
@@ -157,16 +293,14 @@ export async function fillDocxTemplate(
       const tNodes = getParagraphTextNodes(p);
       if (tNodes.length === 0) continue;
 
-      // Mapeia posições de cada nó <w:t> no texto concatenado do parágrafo
-      let segments = tNodes.map((node) => ({
+      const segments = tNodes.map((node) => ({
         node,
         text: node.textContent || '',
       }));
 
-      let fullText = segments.map((s) => s.text).join('');
+      const fullText = segments.map((s) => s.text).join('');
       if (!fullText.includes('{{')) continue;
 
-      // Processa substituições da direita para a esquerda para manter índices estáveis
       const matches: Array<{ start: number; end: number; key: string }> = [];
       PLACEHOLDER_REGEX.lastIndex = 0;
       let m: RegExpExecArray | null;
@@ -180,7 +314,6 @@ export async function fillDocxTemplate(
         if (!(key in normalizedMap)) continue;
         const replacement = normalizedMap[key];
 
-        // Localiza quais segmentos cobrem [start, end)
         let cursor = 0;
         let firstReplaced = false;
         for (let si = 0; si < segments.length; si++) {
@@ -223,7 +356,7 @@ export async function fillDocxTemplate(
 
   return zip.generateAsync({
     type: 'blob',
-    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    mimeType: DOCX_MIME,
   });
 }
 

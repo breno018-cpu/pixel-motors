@@ -52,8 +52,11 @@ import {
   resolveCounterReceiptBody,
 } from '@/lib/counterReceiptPdf';
 import {
+  applyDocxTextBlockEdits,
   deleteDocxTemplateBlob,
+  DocxTextBlock,
   downloadDocxBlob,
+  extractDocxTextBlocks,
   fillDocxTemplate,
   getDocxTemplateBlob,
   inspectDocxPlaceholders,
@@ -153,6 +156,14 @@ export default function CounterReceipts() {
   const docxUploadInputRef = useRef<HTMLInputElement | null>(null);
   const docxReplaceInputRef = useRef<HTMLInputElement | null>(null);
   const docxPreviewContainerRef = useRef<HTMLDivElement | null>(null);
+  const editorDocxPreviewRef = useRef<HTMLDivElement | null>(null);
+  const [docxRevision, setDocxRevision] = useState(0);
+  const [docxBlocks, setDocxBlocks] = useState<DocxTextBlock[]>([]);
+  const [docxBlockEdits, setDocxBlockEdits] = useState<Record<string, string>>({});
+  const [docxBlockSearch, setDocxBlockSearch] = useState('');
+  const [focusedDocxBlockKey, setFocusedDocxBlockKey] = useState<string | null>(null);
+  const [isRenderingEditorDocx, setIsRenderingEditorDocx] = useState(false);
+  const [editorDocxMissing, setEditorDocxMissing] = useState(false);
 
   // Modelos editáveis (texto + Word .docx)
   const [templates, setTemplates] = useState<CounterReceiptTemplate[]>(() => {
@@ -396,7 +407,110 @@ export default function CounterReceipts() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [activeTab, isActiveDocx, activeTemplate, variableMap]);
+  }, [activeTab, isActiveDocx, activeTemplate, variableMap, docxRevision]);
+
+  // Carrega blocos editáveis e renderização inicial do .docx na aba Modelos
+  useEffect(() => {
+    if (activeTab !== 'modelos' || editingTemplate?.kind !== 'docx') return;
+    let cancelled = false;
+    setEditorDocxMissing(false);
+    setDocxBlockSearch('');
+    setFocusedDocxBlockKey(null);
+
+    (async () => {
+      const buffer = await getDocxTemplateBlob(editingTemplate.id);
+      if (cancelled) return;
+      if (!buffer) {
+        setDocxBlocks([]);
+        setDocxBlockEdits({});
+        setEditorDocxMissing(true);
+        return;
+      }
+      const blocks = await extractDocxTextBlocks(buffer);
+      if (cancelled) return;
+      setDocxBlocks(blocks);
+      const initialEdits: Record<string, string> = {};
+      blocks.forEach((b) => {
+        initialEdits[b.blockKey] = b.text;
+      });
+      setDocxBlockEdits(initialEdits);
+
+      const container = editorDocxPreviewRef.current;
+      if (container) {
+        setIsRenderingEditorDocx(true);
+        try {
+          container.innerHTML = '';
+          const blob = new Blob([buffer.slice(0)], {
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          });
+          await renderAsync(blob, container, undefined, {
+            inWrapper: true,
+            ignoreWidth: false,
+            ignoreHeight: false,
+            breakPages: true,
+          });
+        } finally {
+          if (!cancelled) setIsRenderingEditorDocx(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, editingTemplate?.id, editingTemplate?.kind, docxRevision]);
+
+  // Aplica edições feitas nos blocos do .docx em tempo real, salva e re-renderiza o Word ao vivo
+  const applyLiveDocxEdits = async (nextEdits: Record<string, string>) => {
+    if (!editingTemplate || editingTemplate.kind !== 'docx') return;
+    const buffer = await getDocxTemplateBlob(editingTemplate.id);
+    if (!buffer) return;
+    setIsRenderingEditorDocx(true);
+    try {
+      const updatedBuf = await applyDocxTextBlockEdits(buffer, nextEdits);
+      await saveDocxTemplateBlob(editingTemplate.id, updatedBuf);
+      const detectedVariables = await inspectDocxPlaceholders(updatedBuf);
+      setTemplates((prev) =>
+        prev.map((t) =>
+          t.id === editingTemplate.id
+            ? {
+                ...t,
+                detectedVariables,
+                docxFileSize: updatedBuf.byteLength,
+                subtitle: `Modelo Word (.docx) • ${detectedVariables.length} variável(is) detectada(s)`,
+                updatedAt: new Date().toISOString(),
+              }
+            : t
+        )
+      );
+
+      const container = editorDocxPreviewRef.current;
+      if (container) {
+        container.innerHTML = '';
+        const blob = new Blob([updatedBuf.slice(0)], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        });
+        await renderAsync(blob, container, undefined, {
+          inWrapper: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          breakPages: true,
+        });
+      }
+    } finally {
+      setIsRenderingEditorDocx(false);
+    }
+  };
+
+  const editDebounceRef = useRef<number | null>(null);
+  const handleEditDocxBlock = (blockKey: string, value: string) => {
+    const nextEdits = { ...docxBlockEdits, [blockKey]: value };
+    setDocxBlockEdits(nextEdits);
+    if (editDebounceRef.current) window.clearTimeout(editDebounceRef.current);
+    editDebounceRef.current = window.setTimeout(() => {
+      void applyLiveDocxEdits(nextEdits);
+    }, 260);
+  };
 
   const handleGenerateOutput = async () => {
     if (!customerName.trim()) {
@@ -526,13 +640,15 @@ export default function CounterReceipts() {
       setTemplates((prev) => [newTpl, ...prev]);
       setEditingTemplateId(id);
       setSelectedTemplateId(id);
+      setDocxRevision((r) => r + 1);
+      setActiveTab('modelos');
 
       toast({
         title: 'Modelo Word importado com sucesso!',
         description:
           detectedVariables.length > 0
-            ? `${detectedVariables.length} variável(is) encontrada(s) e pronta(s) para preenchimento automático.`
-            : 'Arquivo salvo com formatação original. Dica: adicione variáveis como {{cliente_nome}} no Word para preenchimento automático.',
+            ? `${detectedVariables.length} variável(is) encontrada(s). Você pode editar qualquer campo ao vivo agora.`
+            : 'Arquivo carregado com formatação original. Edite qualquer texto diretamente no painel e veja a prévia em tempo real.',
       });
     } catch (err) {
       toast({
@@ -568,9 +684,10 @@ export default function CounterReceipts() {
         detectedVariables,
         subtitle: `Modelo Word (.docx) • ${detectedVariables.length} variável(is) detectada(s)`,
       });
+      setDocxRevision((r) => r + 1);
       toast({
         title: 'Arquivo Word atualizado',
-        description: `${detectedVariables.length} variável(is) detectada(s) no novo arquivo.`,
+        description: `${detectedVariables.length} variável(is) detectada(s). Prévia ao vivo atualizada.`,
       });
     } catch (err) {
       toast({
@@ -670,10 +787,20 @@ export default function CounterReceipts() {
   const handleInsertVariable = (token: string) => {
     if (!editingTemplate) return;
     if (editingTemplate.kind === 'docx') {
+      if (focusedDocxBlockKey && focusedDocxBlockKey in docxBlockEdits) {
+        const current = docxBlockEdits[focusedDocxBlockKey] || '';
+        const nextVal = current ? `${current}${current.endsWith(' ') ? '' : ' '}${token}` : token;
+        handleEditDocxBlock(focusedDocxBlockKey, nextVal);
+        toast({
+          title: `Variável inserida: ${token}`,
+          description: 'Documento Word re-renderizado em tempo real.',
+        });
+        return;
+      }
       navigator.clipboard?.writeText(token).catch(() => {});
       toast({
         title: `Copiado: ${token}`,
-        description: 'Cole essa variável no seu arquivo Word (.docx) e reimporte para preenchimento automático.',
+        description: 'Clique em qualquer campo do editor Word abaixo para inserir direto, ou cole onde preferir.',
       });
       return;
     }
@@ -1239,7 +1366,9 @@ export default function CounterReceipts() {
                         </div>
 
                         <div className="space-y-1.5">
-                          <Label className="text-xs">Variáveis padrão (clique para copiar e colar no Word)</Label>
+                          <Label className="text-xs">
+                            Variáveis padrão (clique em um bloco de texto abaixo e depois clique na variável para inserir ao vivo)
+                          </Label>
                           <div className="flex flex-wrap gap-1.5">
                             {COUNTER_RECEIPT_VARIABLES.map((v) => (
                               <Button
@@ -1249,13 +1378,118 @@ export default function CounterReceipts() {
                                 size="sm"
                                 className="h-7 text-[11px] font-mono px-2"
                                 onClick={() => handleInsertVariable(v.token)}
-                                title={`Copiar ${v.token}`}
+                                title={`Inserir ${v.token}`}
                               >
                                 {v.token}
                               </Button>
                             ))}
                           </div>
                         </div>
+
+                        {/* Editor interno ao vivo + Renderização em tempo real do Word */}
+                        {editorDocxMissing ? (
+                          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-xs text-destructive flex flex-wrap items-center justify-between gap-2">
+                            <span>Arquivo Word não encontrado neste navegador. Clique em Substituir .docx para recarregar o arquivo.</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => docxReplaceInputRef.current?.click()}
+                              className="gap-1.5 text-xs"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              Reimportar .docx
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 pt-1">
+                            {/* Lista de blocos/células editáveis do Word */}
+                            <div className="xl:col-span-5 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <Label className="text-xs font-semibold">
+                                  Textos e Células do Word ({docxBlocks.length})
+                                </Label>
+                                {focusedDocxBlockKey && (
+                                  <Badge variant="outline" className="text-[10px]">
+                                    Editando campo
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="relative">
+                                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
+                                <Input
+                                  value={docxBlockSearch}
+                                  onChange={(e) => setDocxBlockSearch(e.target.value)}
+                                  placeholder="Filtrar texto no documento..."
+                                  className="pl-8 h-8 text-xs"
+                                />
+                              </div>
+                              <div className="space-y-2 max-h-[540px] overflow-y-auto pr-1">
+                                {docxBlocks
+                                  .filter((b) => {
+                                    const q = docxBlockSearch.trim().toLowerCase();
+                                    if (!q) return true;
+                                    const val = (docxBlockEdits[b.blockKey] ?? b.text).toLowerCase();
+                                    return val.includes(q) || b.text.toLowerCase().includes(q);
+                                  })
+                                  .map((b, idx) => {
+                                    const val = docxBlockEdits[b.blockKey] ?? b.text;
+                                    const isFocused = focusedDocxBlockKey === b.blockKey;
+                                    const isMultiline = val.length > 70;
+                                    return (
+                                      <div
+                                        key={b.blockKey}
+                                        className={`rounded-md border p-2 space-y-1 transition-colors ${
+                                          isFocused ? 'border-primary bg-primary/5' : 'border-border bg-background'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                          <span>Bloco #{idx + 1}</span>
+                                          {val.includes('{{') && (
+                                            <Badge variant="secondary" className="text-[9px] h-4 px-1.5">
+                                              Com variável
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        {isMultiline ? (
+                                          <Textarea
+                                            rows={3}
+                                            value={val}
+                                            onFocus={() => setFocusedDocxBlockKey(b.blockKey)}
+                                            onChange={(e) => handleEditDocxBlock(b.blockKey, e.target.value)}
+                                            className="text-xs leading-snug"
+                                          />
+                                        ) : (
+                                          <Input
+                                            value={val}
+                                            onFocus={() => setFocusedDocxBlockKey(b.blockKey)}
+                                            onChange={(e) => handleEditDocxBlock(b.blockKey, e.target.value)}
+                                            className="h-8 text-xs"
+                                          />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+
+                            {/* Renderização em tempo real do documento Word */}
+                            <div className="xl:col-span-7 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold">
+                                  Renderização em Tempo Real (Formato Original do Word)
+                                </Label>
+                                {isRenderingEditorDocx && (
+                                  <span className="text-[11px] text-primary animate-pulse">
+                                    Atualizando...
+                                  </span>
+                                )}
+                              </div>
+                              <div className="relative rounded-lg border bg-zinc-100 dark:bg-zinc-900 overflow-auto max-h-[580px] min-h-[420px]">
+                                <div ref={editorDocxPreviewRef} className="w-full" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <>
