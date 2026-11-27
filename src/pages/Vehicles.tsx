@@ -63,6 +63,7 @@ import {
 import { VehicleFormDialog } from '@/components/forms/VehicleFormDialog';
 import { BatchVehicleEntryDialog } from '@/components/forms/BatchVehicleEntryDialog';
 import { BarcodeScannerDialog } from '@/components/vehicles/BarcodeScannerDialog';
+import { LocalStockRecoveryBanner } from '@/components/vehicles/LocalStockRecoveryBanner';
 import { VehicleUnavailabilityDialog } from '@/components/vehicles/VehicleUnavailabilityDialog';
 import {
   isVehicleTemporarilyUnavailable,
@@ -771,6 +772,8 @@ export default function Vehicles() {
           </div>
         }
       />
+
+      {canManageStock && <LocalStockRecoveryBanner remoteVehicles={vehicles || []} />}
 
       <VehicleFormDialog 
         open={formOpen} 

@@ -2,12 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
-import { INITIAL_USER_BACKUP_CSV, parseBackupCsv, SheetRowV9 } from '@/lib/dealershipSheetParser';
+import { SheetRowV9 } from '@/lib/dealershipSheetParser';
 import { resolveSaleStore, getContractPrefix } from '@/lib/storeResolution';
 import { resolveSellerDisplayName, isValidSellerName } from '@/lib/sellerSanitizer';
 import { fetchCloudSyncState, GLOBAL_SYNC_CONTRACT_NUMBER, initCloudSalesRealtime } from '@/lib/cloudSalesSync';
 import { DEFAULT_OFFICIAL_USERS } from '@/lib/userService';
-import officialContractsSeed from '@/data/officialContractsSeed.json';
 
 export interface ContractVehicle {
   id: string;
@@ -369,11 +368,6 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
     if (bKey) seenBuyers.add(bKey);
   });
 
-  // officialContractsSeed só é utilizado se a base de dados estiver completamente vazia (0 contratos)
-  const fromSeed = (hydratedDb.length === 0 && fromSheet.length === 0)
-    ? (officialContractsSeed as unknown as Contract[]) || []
-    : [];
-
   // Aplica filtro de exclusões e cancelamentos sincronizados em nuvem + local
   const deletedIds = new Set<string>(cloudSync.deleted_ids || []);
   const cancelledIds = new Set<string>(cloudSync.cancelled_ids || []);
@@ -405,12 +399,10 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
   };
 
   // O banco é a autoridade: contratos reais só somem via is_deleted (soft delete, já filtrado na query).
-  // A lista negra legada (deleted_ids) vale apenas para linhas da planilha antiga e do seed.
   const finalDb = hydratedDb.map(applyStatusOverrides);
   const finalSheet = fromSheet.filter((c) => !isDeleted(c)).map(applyStatusOverrides);
-  const finalSeed = fromSeed.filter((c) => !isDeleted(c)).map(applyStatusOverrides);
 
-  return [...finalDb, ...finalSheet, ...finalSeed];
+  return [...finalDb, ...finalSheet];
 }
 
 export function useContracts() {

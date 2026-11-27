@@ -53,7 +53,7 @@ import { SaleManageModal } from '@/components/sales/SaleManageModal';
 import { SalesSecondCopyCenter } from '@/components/sales/SalesSecondCopyCenter';
 import { getSaleReceipts } from '@/components/sales/ReceiptAttachmentManager';
 import { CloudMonthlySpreadsheet } from '@/components/sheets/CloudMonthlySpreadsheet';
-import { INITIAL_USER_BACKUP_CSV, ONEDRIVE_DEFAULT_URL, SheetRowV9, parseBackupCsv } from '@/lib/dealershipSheetParser';
+import { ONEDRIVE_DEFAULT_URL, SheetRowV9, parseBackupCsv } from '@/lib/dealershipSheetParser';
 import { extractInstallmentInfoFromNotes } from '@/lib/contractDataResolver';
 
 const statusConfig: Record<string, { label: string; class: string; icon: typeof CheckCircle }> = {

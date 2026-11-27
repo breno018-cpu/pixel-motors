@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureSupabaseSession } from '@/lib/supabaseAuthHelper';
-import officialVehiclesSeed from '@/data/officialVehiclesSeed.json';
 
 export interface Vehicle {
   id: string;
@@ -36,7 +35,68 @@ export interface Vehicle {
 const VEHICLES_CACHE_KEY = 'dealflow_vehicles_cache_v2';
 const LEGACY_CACHE_KEYS = ['dealflow_vehicles_cache_v1', 'df_local_table_v5_vehicles'];
 
-const typedOfficialSeed = (officialVehiclesSeed as unknown as Vehicle[]) || [];
+/**
+ * Detecta veículos que ficaram presos no cache local (localStorage) por falhas antigas
+ * e não existem no Supabase remoto, permitindo resgate seguro sem redigitar.
+ */
+export function getUnsyncedLocalVehicles(remoteVehicles: Vehicle[]): Vehicle[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const remoteIds = new Set(remoteVehicles.map((v) => v.id));
+    const remoteChassis = new Set(
+      remoteVehicles
+        .map((v) => (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, ''))
+        .filter((ch) => ch.length >= 6)
+    );
+    const seen = new Set<string>();
+    const unsynced: Vehicle[] = [];
+
+    for (const key of [VEHICLES_CACHE_KEY, ...LEGACY_CACHE_KEYS]) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) continue;
+      for (const v of parsed) {
+        if (!v || typeof v !== 'object' || !v.model) continue;
+        const isLocal =
+          Boolean((v as any).is_offline_pending) ||
+          String(v.id || '').startsWith('local-') ||
+          String(v.id || '').startsWith('batch-');
+        if (!isLocal) continue;
+        if (remoteIds.has(v.id)) continue;
+        const ch = (v.chassis || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (ch.length >= 6 && remoteChassis.has(ch)) continue;
+        const dedupeKey = ch.length >= 6 ? `ch:${ch}` : `id:${v.id}`;
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        unsynced.push(v as Vehicle);
+      }
+    }
+    return unsynced;
+  } catch {
+    return [];
+  }
+}
+
+export function clearUnsyncedLocalVehicles(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    for (const key of [VEHICLES_CACHE_KEY, ...LEGACY_CACHE_KEYS]) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) continue;
+      const cleaned = parsed.filter(
+        (v: any) =>
+          v &&
+          !v.is_offline_pending &&
+          !String(v.id || '').startsWith('local-') &&
+          !String(v.id || '').startsWith('batch-')
+      );
+      localStorage.setItem(key, JSON.stringify(cleaned));
+    }
+  } catch {}
+}
 
 export function getCachedVehicles(): Vehicle[] {
   if (typeof window === 'undefined') return [];

@@ -410,17 +410,8 @@ export function CloudMonthlySpreadsheet({
         console.warn('Erro ao ler cache de planilhas v9:', e);
       }
 
-      // 3. Inicializa com as linhas da base oficial (incluindo Montes Claros e Divinópolis)
-      const seeded = convertContractsSeedToSheetRows();
-      if (seeded && seeded.length > 0) {
-        cloudSaveSheetRows(seeded);
-        return seeded;
-      }
-
-      // Fallback
-      const { rows } = parseBackupCsv(INITIAL_USER_BACKUP_CSV, '2026-10');
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
-      return rows;
+      // Sem seed estático: inicia vazio caso não haja linhas salvas na nuvem
+      return [];
     },
     staleTime: 15_000,
   });

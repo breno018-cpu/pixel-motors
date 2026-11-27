@@ -1,8 +1,4 @@
-// Camada Universal de Persistência Local + Fallback Supabase
-// Garante que todos os menus, formulários, cadastros, edições e exclusões funcionem instantaneamente
-// mesmo sem sessão JWT remota ou quando políticas RLS/tabelas do Supabase bloquearem a escrita.
-
-import officialVehiclesSeed from '@/data/officialVehiclesSeed.json';
+// Camada de persistência local auxiliar (SEM dados fictícios ou seeds estáticos)
 
 const STORAGE_PREFIX = 'df_local_table_v5_';
 
@@ -105,7 +101,7 @@ export const INITIAL_SEED: Record<string, any[]> = {
     },
   ],
 
-  vehicles: (officialVehiclesSeed as any[]) || [],
+  vehicles: [],
   contracts: [],
   sales: [],
 
