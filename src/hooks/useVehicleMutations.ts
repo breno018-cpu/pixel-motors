@@ -81,35 +81,49 @@ export function useDeleteVehicle() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // 1. Marca imediatamente como deletado e remove do cache local (<5ms)
+      const session = await ensureSupabaseSession();
+      if (!session) {
+        throw new Error('Sessão desconectada. Faça login novamente antes de excluir.');
+      }
+
+      // Busca chassi/placa atuais para liberar o índice único ao fazer soft delete
+      const { data: existing } = await (supabase as any)
+        .from('vehicles')
+        .select('id, chassis, plate')
+        .eq('id', id)
+        .maybeSingle();
+
+      const { data: u } = await supabase.auth.getUser();
+      const prefix = `DEL-${id.slice(0, 8)}-`;
+      const freedChassis =
+        existing?.chassis && !String(existing.chassis).startsWith('DEL-')
+          ? `${prefix}${existing.chassis}`
+          : existing?.chassis ?? null;
+      const freedPlate =
+        existing?.plate && !String(existing.plate).startsWith('DEL-')
+          ? `${prefix}${existing.plate}`
+          : existing?.plate ?? null;
+
+      const { error } = await (supabase as any)
+        .from('vehicles')
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          deleted_by: u.user?.id ?? null,
+          deletion_reason: 'Exclusão pelo usuário',
+          chassis: freedChassis,
+          plate: freedPlate,
+        })
+        .eq('id', id);
+
+      if (error) {
+        console.error('[useDeleteVehicle] Falha no soft delete:', error);
+        throw error;
+      }
+
       recordDeletedVehicle(id);
       removeVehicleFromCache(id);
-
-      // 2. Atualização otimista imediata no React Query cache para UI instantânea
-      queryClient.setQueryData<Vehicle[]>(['vehicles'], (old) => {
-        if (!old) return [];
-        return old.filter((v) => v.id !== id);
-      });
-
-      // 3. Executa exclusão no Supabase com tolerância a constraints
-      try {
-        await ensureSupabaseSession();
-        const { data: u } = await supabase.auth.getUser();
-        const { error } = await supabase
-          .from('vehicles')
-          .update({
-            is_deleted: true,
-            deleted_at: new Date().toISOString(),
-            deleted_by: u.user?.id ?? null,
-            deletion_reason: 'Exclusão pelo usuário',
-          } as any)
-          .eq('id', id);
-        if (error) throw error;
-        void logActivity('excluir', 'veiculo', id);
-      } catch (err: any) {
-        console.error('[useDeleteVehicle] Falha no soft delete:', err);
-        throw err;
-      }
+      void logActivity('excluir', 'veiculo', id, { chassi_liberado: existing?.chassis || null });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] });

@@ -439,18 +439,30 @@ export function useVehicles() {
     enabled: !authLoading,
     queryFn: async () => {
       await ensureSupabaseSession();
-      const { data, error } = await (supabase as any)
-        .from('vehicles')
-        .select('*')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false });
+      const PAGE_SIZE = 1000;
+      const allRows: Vehicle[] = [];
+      let from = 0;
 
-      if (error) {
-        console.error('[useVehicles] Erro ao carregar estoque do Supabase:', error.message || error);
-        throw new Error(error.message || 'Erro ao carregar estoque do banco de dados');
+      while (true) {
+        const { data, error } = await (supabase as any)
+          .from('vehicles')
+          .select('*')
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) {
+          console.error('[useVehicles] Erro ao carregar estoque do Supabase:', error.message || error);
+          throw new Error(error.message || 'Erro ao carregar estoque do banco de dados');
+        }
+
+        const chunk = Array.isArray(data) ? (data as Vehicle[]) : [];
+        allRows.push(...chunk);
+        if (chunk.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
       }
 
-      const remoteVehicles = Array.isArray(data) ? (data as Vehicle[]) : [];
+      const remoteVehicles = allRows;
 
       // Mantém apenas o dado real do banco no espelho local (remove qualquer lixo/cache velho)
       try {
