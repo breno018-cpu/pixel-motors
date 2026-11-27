@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { renderAsync } from 'docx-preview';
 import {
   FileText,
   Download,
@@ -11,6 +12,10 @@ import {
   Edit3,
   Search,
   ShieldCheck,
+  Upload,
+  FileUp,
+  Printer,
+  Sparkles,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,6 +42,7 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import {
+  buildCounterReceiptVariableMap,
   COUNTER_RECEIPT_VARIABLES,
   CounterReceiptData,
   CounterReceiptTemplate,
@@ -45,6 +51,14 @@ import {
   generateCounterReceiptPdf,
   resolveCounterReceiptBody,
 } from '@/lib/counterReceiptPdf';
+import {
+  deleteDocxTemplateBlob,
+  downloadDocxBlob,
+  fillDocxTemplate,
+  getDocxTemplateBlob,
+  inspectDocxPlaceholders,
+  saveDocxTemplateBlob,
+} from '@/lib/counterReceiptDocx';
 
 const TEMPLATES_STORAGE_KEY = 'dealflow_counter_receipt_templates_v1';
 const HISTORY_STORAGE_KEY = 'dealflow_counter_receipt_history_v1';
@@ -90,6 +104,33 @@ const STORE_PRESETS: StorePreset[] = [
   },
 ];
 
+const STANDARD_TOKEN_KEYS = new Set([
+  'numero_recibo',
+  'data_emissao',
+  'loja_nome',
+  'loja_cnpj',
+  'loja_endereco',
+  'loja_telefone',
+  'cliente_nome',
+  'cliente_documento',
+  'cliente_endereco',
+  'cliente_logradouro',
+  'cliente_bairro',
+  'cliente_cep',
+  'cliente_cidade',
+  'cliente_uf',
+  'cliente_cidade_uf',
+  'cliente_telefone',
+  'produto_descricao',
+  'produto_cor',
+  'produto_motor_chassi',
+  'quantidade',
+  'valor_unitario',
+  'valor_total',
+  'forma_pagamento',
+  'observacoes',
+]);
+
 function getNextReceiptNumber(seq: number): string {
   const year = new Date().getFullYear();
   return `REC-${year}-${String(seq).padStart(4, '0')}`;
@@ -99,11 +140,21 @@ function getTodayBr(): string {
   return new Date().toLocaleDateString('pt-BR');
 }
 
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
 export default function CounterReceipts() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'emitir' | 'modelos' | 'historico'>('emitir');
+  const docxUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const docxReplaceInputRef = useRef<HTMLInputElement | null>(null);
+  const docxPreviewContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Modelos editáveis (persistidos localmente)
+  // Modelos editáveis (texto + Word .docx)
   const [templates, setTemplates] = useState<CounterReceiptTemplate[]>(() => {
     try {
       const saved = localStorage.getItem(TEMPLATES_STORAGE_KEY);
@@ -195,6 +246,10 @@ export default function CounterReceipts() {
   const [paymentMethod, setPaymentMethod] = useState('À Vista - Dinheiro / PIX');
   const [notes, setNotes] = useState('VEÍCULO ENTREGUE E QUITADO NO ATO.');
 
+  // Campos personalizados detectados em modelos .docx (ex: {{vendedor}}, {{garantia}})
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+  const [isRenderingDocx, setIsRenderingDocx] = useState(false);
+
   // Estado do editor de modelos
   const [editingTemplateId, setEditingTemplateId] = useState<string>(templates[0]?.id || '');
   const editingTemplate = useMemo(
@@ -221,6 +276,16 @@ export default function CounterReceipts() {
     () => templates.find((t) => t.id === selectedTemplateId) || templates[0],
     [templates, selectedTemplateId]
   );
+  const isActiveDocx = activeTemplate?.kind === 'docx';
+
+  // Variáveis customizadas (além das padrões) encontradas no .docx selecionado
+  const extraDocxTokens = useMemo(() => {
+    if (!isActiveDocx || !activeTemplate?.detectedVariables) return [];
+    return activeTemplate.detectedVariables.filter((token) => {
+      const clean = token.replace(/^\{\{\s*|\s*\}\}$/g, '').trim();
+      return !STANDARD_TOKEN_KEYS.has(clean);
+    });
+  }, [isActiveDocx, activeTemplate]);
 
   const totalValue = useMemo(() => Math.max(0, (quantity || 1) * (unitValue || 0)), [quantity, unitValue]);
   const currentReceiptNumber = useMemo(() => getNextReceiptNumber(sequence), [sequence]);
@@ -280,17 +345,93 @@ export default function CounterReceipts() {
     ]
   );
 
-  const renderedPreview = useMemo(() => {
-    if (!activeTemplate) return '';
-    return resolveCounterReceiptBody(activeTemplate.body, draftDataWithoutBody);
-  }, [activeTemplate, draftDataWithoutBody]);
+  const variableMap = useMemo(
+    () => buildCounterReceiptVariableMap(draftDataWithoutBody, customFieldValues),
+    [draftDataWithoutBody, customFieldValues]
+  );
 
-  const handleGeneratePdf = () => {
+  const renderedPreview = useMemo(() => {
+    if (!activeTemplate || isActiveDocx) return '';
+    return resolveCounterReceiptBody(activeTemplate.body, draftDataWithoutBody);
+  }, [activeTemplate, isActiveDocx, draftDataWithoutBody]);
+
+  // Renderização ao vivo fiel do arquivo Word (.docx) preenchido
+  useEffect(() => {
+    if (activeTab !== 'emitir' || !isActiveDocx || !activeTemplate) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const container = docxPreviewContainerRef.current;
+      if (!container) return;
+      setIsRenderingDocx(true);
+      try {
+        const buffer = await getDocxTemplateBlob(activeTemplate.id);
+        if (!buffer || cancelled) {
+          if (container) {
+            container.innerHTML =
+              '<p style="padding:16px;color:#b91c1c;font-size:12px;">Arquivo Word não encontrado neste navegador. Reimporte o arquivo .docx na aba Modelos.</p>';
+          }
+          return;
+        }
+        const filledBlob = await fillDocxTemplate(buffer, variableMap);
+        if (cancelled) return;
+        container.innerHTML = '';
+        await renderAsync(filledBlob, container, undefined, {
+          inWrapper: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          breakPages: true,
+        });
+      } catch (err) {
+        if (!cancelled && container) {
+          container.innerHTML = `<p style="padding:16px;color:#b91c1c;font-size:12px;">Erro ao renderizar prévia do Word: ${
+            err instanceof Error ? err.message : 'arquivo inválido'
+          }</p>`;
+        }
+      } finally {
+        if (!cancelled) setIsRenderingDocx(false);
+      }
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [activeTab, isActiveDocx, activeTemplate, variableMap]);
+
+  const handleGenerateOutput = async () => {
     if (!customerName.trim()) {
       toast({
         title: 'Informe o nome do cliente',
-        description: 'Preencha ao menos o nome do cliente antes de gerar o PDF.',
+        description: 'Preencha ao menos o nome do cliente antes de gerar o documento.',
         variant: 'destructive',
+      });
+      return;
+    }
+
+    if (isActiveDocx && activeTemplate) {
+      const buffer = await getDocxTemplateBlob(activeTemplate.id);
+      if (!buffer) {
+        toast({
+          title: 'Arquivo Word não encontrado',
+          description: 'Reimporte o arquivo .docx na aba Modelos e tente novamente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const filledBlob = await fillDocxTemplate(buffer, variableMap);
+      const safeClient = customerName.replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 28);
+      downloadDocxBlob(filledBlob, `Recibo_Balcao_${currentReceiptNumber}_${safeClient}.docx`);
+
+      const finalDoc: CounterReceiptData = {
+        ...draftDataWithoutBody,
+        renderedBody: `[Modelo Word: ${activeTemplate.docxFileName || activeTemplate.name}]`,
+      };
+      setHistory((prev) => [finalDoc, ...prev]);
+      setSequence((prev) => prev + 1);
+
+      toast({
+        title: `Word ${finalDoc.receiptNumber} gerado`,
+        description: 'Arquivo .docx preenchido baixado com a formatação original preservada.',
       });
       return;
     }
@@ -310,6 +451,152 @@ export default function CounterReceipts() {
     });
   };
 
+  const handlePrintDocxPreview = () => {
+    const container = docxPreviewContainerRef.current;
+    if (!container || !container.innerHTML.trim()) {
+      toast({
+        title: 'Prévia ainda carregando',
+        description: 'Aguarde o modelo Word terminar de renderizar para imprimir/salvar em PDF.',
+      });
+      return;
+    }
+    const win = window.open('', '_blank', 'width=900,height=1100');
+    if (!win) {
+      toast({
+        title: 'Pop-up bloqueado',
+        description: 'Libere pop-ups para imprimir ou salvar o documento Word como PDF.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Recibo ${currentReceiptNumber}</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    .docx-wrapper { background: #fff !important; padding: 0 !important; }
+    .docx-wrapper > section.docx { box-shadow: none !important; margin: 0 auto !important; }
+  </style>
+</head>
+<body>${container.innerHTML}</body>
+</html>`);
+    win.document.close();
+    setTimeout(() => {
+      win.focus();
+      win.print();
+    }, 350);
+  };
+
+  // Upload de novo modelo Word (.docx)
+  const handleUploadNewDocx = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.docx')) {
+      toast({
+        title: 'Formato inválido',
+        description: 'Selecione um arquivo do Microsoft Word no formato .docx.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const detectedVariables = await inspectDocxPlaceholders(buffer);
+      const id = `docx-${Date.now()}`;
+      await saveDocxTemplateBlob(id, buffer);
+
+      const cleanName = file.name.replace(/\.docx$/i, '');
+      const newTpl: CounterReceiptTemplate = {
+        id,
+        name: cleanName,
+        subtitle: `Modelo Word (.docx) • ${detectedVariables.length} variável(is) detectada(s)`,
+        kind: 'docx',
+        body: '',
+        docxFileName: file.name,
+        docxFileSize: file.size,
+        detectedVariables,
+        updatedAt: new Date().toISOString(),
+      };
+
+      setTemplates((prev) => [newTpl, ...prev]);
+      setEditingTemplateId(id);
+      setSelectedTemplateId(id);
+
+      toast({
+        title: 'Modelo Word importado com sucesso!',
+        description:
+          detectedVariables.length > 0
+            ? `${detectedVariables.length} variável(is) encontrada(s) e pronta(s) para preenchimento automático.`
+            : 'Arquivo salvo com formatação original. Dica: adicione variáveis como {{cliente_nome}} no Word para preenchimento automático.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Erro ao importar arquivo Word',
+        description: err instanceof Error ? err.message : 'Verifique se o arquivo .docx não está corrompido.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Substituir o arquivo .docx de um modelo existente
+  const handleReplaceDocxFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !editingTemplate) return;
+    if (!file.name.toLowerCase().endsWith('.docx')) {
+      toast({
+        title: 'Formato inválido',
+        description: 'Selecione um arquivo .docx.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const detectedVariables = await inspectDocxPlaceholders(buffer);
+      await saveDocxTemplateBlob(editingTemplate.id, buffer);
+      handleUpdateEditingTemplate({
+        kind: 'docx',
+        docxFileName: file.name,
+        docxFileSize: file.size,
+        detectedVariables,
+        subtitle: `Modelo Word (.docx) • ${detectedVariables.length} variável(is) detectada(s)`,
+      });
+      toast({
+        title: 'Arquivo Word atualizado',
+        description: `${detectedVariables.length} variável(is) detectada(s) no novo arquivo.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Erro ao atualizar .docx',
+        description: err instanceof Error ? err.message : 'Arquivo inválido.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDownloadOriginalDocx = async (tpl: CounterReceiptTemplate) => {
+    const buffer = await getDocxTemplateBlob(tpl.id);
+    if (!buffer) {
+      toast({
+        title: 'Arquivo não encontrado',
+        description: 'Reimporte o .docx para poder baixá-lo novamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    downloadDocxBlob(blob, tpl.docxFileName || `${tpl.name}.docx`);
+  };
+
   // Ações de modelos
   const handleUpdateEditingTemplate = (patch: Partial<CounterReceiptTemplate>) => {
     if (!editingTemplate) return;
@@ -327,6 +614,7 @@ export default function CounterReceipts() {
       id: `tpl-${Date.now()}`,
       name: `Novo Modelo (${templates.length + 1})`,
       subtitle: 'Modelo personalizado de recibo interno de balcão',
+      kind: 'text',
       body: DEFAULT_COUNTER_TEMPLATES[1].body,
       updatedAt: new Date().toISOString(),
     };
@@ -335,10 +623,15 @@ export default function CounterReceipts() {
     toast({ title: 'Novo modelo criado', description: 'Personalize o texto e as variáveis livremente.' });
   };
 
-  const handleDuplicateTemplate = (tpl: CounterReceiptTemplate) => {
+  const handleDuplicateTemplate = async (tpl: CounterReceiptTemplate) => {
+    const newId = `${tpl.kind === 'docx' ? 'docx' : 'tpl'}-${Date.now()}`;
+    if (tpl.kind === 'docx') {
+      const buf = await getDocxTemplateBlob(tpl.id);
+      if (buf) await saveDocxTemplateBlob(newId, buf);
+    }
     const copy: CounterReceiptTemplate = {
       ...tpl,
-      id: `tpl-${Date.now()}`,
+      id: newId,
       name: `${tpl.name} (Cópia)`,
       updatedAt: new Date().toISOString(),
     };
@@ -347,7 +640,7 @@ export default function CounterReceipts() {
     toast({ title: 'Modelo duplicado' });
   };
 
-  const handleDeleteTemplate = (id: string) => {
+  const handleDeleteTemplate = async (id: string) => {
     if (templates.length <= 1) {
       toast({
         title: 'Ação bloqueada',
@@ -355,6 +648,10 @@ export default function CounterReceipts() {
         variant: 'destructive',
       });
       return;
+    }
+    const target = templates.find((t) => t.id === id);
+    if (target?.kind === 'docx') {
+      await deleteDocxTemplateBlob(id).catch(() => {});
     }
     const next = templates.filter((t) => t.id !== id);
     setTemplates(next);
@@ -372,6 +669,14 @@ export default function CounterReceipts() {
 
   const handleInsertVariable = (token: string) => {
     if (!editingTemplate) return;
+    if (editingTemplate.kind === 'docx') {
+      navigator.clipboard?.writeText(token).catch(() => {});
+      toast({
+        title: `Copiado: ${token}`,
+        description: 'Cole essa variável no seu arquivo Word (.docx) e reimporte para preenchimento automático.',
+      });
+      return;
+    }
     handleUpdateEditingTemplate({
       body: `${editingTemplate.body}${editingTemplate.body.endsWith(' ') ? '' : ' '}${token}`,
     });
@@ -391,14 +696,41 @@ export default function CounterReceipts() {
 
   return (
     <div className="space-y-6 pb-10">
+      {/* Inputs ocultos de upload .docx */}
+      <input
+        ref={docxUploadInputRef}
+        type="file"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        className="hidden"
+        onChange={handleUploadNewDocx}
+      />
+      <input
+        ref={docxReplaceInputRef}
+        type="file"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        className="hidden"
+        onChange={handleReplaceDocxFile}
+      />
+
       <PageHeader
         title="Recibo de Balcão"
-        description="Módulo administrativo exclusivo (Dono, Gerente e Admin) para modelos editáveis e emissão de comprovantes internos de balcão em PDF."
+        description="Módulo administrativo exclusivo (Dono, Gerente e Admin) com suporte a modelos prontos em Word (.docx) mantendo 100% do formato original e preenchimento automático de variáveis."
         actions={
-          <Badge variant="outline" className="gap-1.5 px-3 py-1 text-xs border-amber-500/40 text-amber-600 dark:text-amber-400">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            Acesso Restrito: Dono / Gerente / Admin
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => docxUploadInputRef.current?.click()}
+            >
+              <FileUp className="w-4 h-4" />
+              Importar Modelo Word (.docx)
+            </Button>
+            <Badge variant="outline" className="gap-1.5 px-3 py-1 text-xs border-amber-500/40 text-amber-600 dark:text-amber-400">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Acesso Restrito: Dono / Gerente / Admin
+            </Badge>
+          </div>
         }
       />
 
@@ -419,18 +751,18 @@ export default function CounterReceipts() {
         </TabsList>
 
         {/* =============================================================== */}
-        {/* ABA 1: EMITIR RECIBO + PRÉVIA AO VIVO                           */}
+        {/* ABA 1: EMITIR RECIBO + PRÉVIA AO VIVO (TEXTO OU WORD .DOCX)     */}
         {/* =============================================================== */}
         <TabsContent value="emitir" className="space-y-4">
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
             {/* Formulário */}
-            <Card className="xl:col-span-7">
+            <Card className="xl:col-span-6">
               <CardHeader className="pb-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <CardTitle className="text-base">Dados do Recibo de Balcão</CardTitle>
                     <CardDescription>
-                      Preencha os campos abaixo; o texto do modelo selecionado é atualizado automaticamente.
+                      Preencha os campos abaixo; o modelo escolhido (Texto ou Word .docx) é preenchido automaticamente.
                     </CardDescription>
                   </div>
                   <Badge variant="secondary" className="font-mono text-xs">
@@ -458,7 +790,7 @@ export default function CounterReceipts() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Modelo de Texto</Label>
+                    <Label className="text-xs">Modelo Utilizado</Label>
                     <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                       <SelectTrigger>
                         <SelectValue />
@@ -466,7 +798,7 @@ export default function CounterReceipts() {
                       <SelectContent>
                         {templates.map((t) => (
                           <SelectItem key={t.id} value={t.id}>
-                            {t.name}
+                            {t.kind === 'docx' ? `[WORD] ${t.name}` : t.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -607,82 +939,152 @@ export default function CounterReceipts() {
                   </div>
                 </div>
 
+                {/* Campos personalizados extras encontrados no .docx */}
+                {extraDocxTokens.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      3. Campos Personalizados do seu Modelo Word
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {extraDocxTokens.map((token) => (
+                        <div key={token} className="space-y-1.5">
+                          <Label className="text-xs font-mono">{token}</Label>
+                          <Input
+                            value={customFieldValues[token] || ''}
+                            onChange={(e) =>
+                              setCustomFieldValues((prev) => ({
+                                ...prev,
+                                [token]: e.target.value,
+                              }))
+                            }
+                            placeholder={`Valor para ${token}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-                  <Button onClick={handleGeneratePdf} className="gap-2">
+                  {isActiveDocx && (
+                    <Button variant="outline" onClick={handlePrintDocxPreview} className="gap-2">
+                      <Printer className="w-4 h-4" />
+                      Imprimir / Salvar PDF
+                    </Button>
+                  )}
+                  <Button onClick={handleGenerateOutput} className="gap-2">
                     <Download className="w-4 h-4" />
-                    Gerar e Baixar PDF ({currentReceiptNumber})
+                    {isActiveDocx
+                      ? `Baixar Word Preenchido (.docx)`
+                      : `Gerar e Baixar PDF (${currentReceiptNumber})`}
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
             {/* Pré-visualização ao vivo */}
-            <Card className="xl:col-span-5 flex flex-col">
+            <Card className="xl:col-span-6 flex flex-col">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Prévia do Documento</CardTitle>
-                <CardDescription>
-                  Visualização em tempo real do texto preenchido antes de exportar o PDF.
-                </CardDescription>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base">
+                      {isActiveDocx ? 'Prévia Fiel do Modelo Word (.docx)' : 'Prévia do Documento'}
+                    </CardTitle>
+                    <CardDescription>
+                      {isActiveDocx
+                        ? 'Visualização real do seu arquivo Word mantendo tabelas, logos, fontes e bordas.'
+                        : 'Visualização em tempo real do texto preenchido antes de exportar o PDF.'}
+                    </CardDescription>
+                  </div>
+                  {isActiveDocx && (
+                    <Badge className="bg-blue-600 text-white hover:bg-blue-600 text-[10px]">
+                      WORD .DOCX
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col gap-3">
-                <div className="rounded-lg border bg-white text-zinc-900 p-5 shadow-sm space-y-4 text-xs leading-relaxed">
-                  <div className="flex items-start justify-between border-b pb-3 gap-2">
-                    <div>
-                      <p className="font-bold text-sm text-zinc-900">RECIBO / COMPROVANTE DE BALCÃO</p>
-                      <p className="font-medium text-zinc-700">{storeName}</p>
-                      <p className="text-[11px] text-zinc-500">CNPJ: {storeCnpj} • {storeCityUf}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-mono font-bold text-zinc-900">{currentReceiptNumber}</p>
-                      <p className="text-[11px] text-zinc-500">{issueDate}</p>
-                    </div>
-                  </div>
-
-                  <div className="rounded bg-amber-50 border border-amber-300 px-2.5 py-1.5 text-[10px] font-semibold text-amber-800 text-center">
-                    COMPROVANTE ADMINISTRATIVO DE BALCÃO — SEM VALOR FISCAL (NÃO SUBSTITUI NF-e)
-                  </div>
-
-                  <div className="whitespace-pre-wrap text-[12px] text-zinc-800 min-h-[220px]">
-                    {renderedPreview}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6 pt-6 border-t text-center text-[10px] text-zinc-600">
-                    <div>
-                      <div className="border-t border-zinc-400 pt-1 font-medium text-zinc-800 truncate">
-                        {storeName}
+                {isActiveDocx ? (
+                  <div className="relative rounded-lg border bg-zinc-100 dark:bg-zinc-900 overflow-auto max-h-[780px] min-h-[480px]">
+                    {isRenderingDocx && (
+                      <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-[1px] flex items-center justify-center text-xs font-medium">
+                        Atualizando prévia do Word...
                       </div>
-                      <span>Emitente</span>
-                    </div>
-                    <div>
-                      <div className="border-t border-zinc-400 pt-1 font-medium text-zinc-800 truncate">
-                        {customerName || 'Cliente / Comprador'}
+                    )}
+                    <div ref={docxPreviewContainerRef} className="w-full" />
+                  </div>
+                ) : (
+                  <div className="rounded-lg border bg-white text-zinc-900 p-5 shadow-sm space-y-4 text-xs leading-relaxed">
+                    <div className="flex items-start justify-between border-b pb-3 gap-2">
+                      <div>
+                        <p className="font-bold text-sm text-zinc-900">RECIBO / COMPROVANTE DE BALCÃO</p>
+                        <p className="font-medium text-zinc-700">{storeName}</p>
+                        <p className="text-[11px] text-zinc-500">CNPJ: {storeCnpj} • {storeCityUf}</p>
                       </div>
-                      <span>Comprador</span>
+                      <div className="text-right shrink-0">
+                        <p className="font-mono font-bold text-zinc-900">{currentReceiptNumber}</p>
+                        <p className="text-[11px] text-zinc-500">{issueDate}</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded bg-amber-50 border border-amber-300 px-2.5 py-1.5 text-[10px] font-semibold text-amber-800 text-center">
+                      COMPROVANTE ADMINISTRATIVO DE BALCÃO — SEM VALOR FISCAL (NÃO SUBSTITUI NF-e)
+                    </div>
+
+                    <div className="whitespace-pre-wrap text-[12px] text-zinc-800 min-h-[220px]">
+                      {renderedPreview}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6 pt-6 border-t text-center text-[10px] text-zinc-600">
+                      <div>
+                        <div className="border-t border-zinc-400 pt-1 font-medium text-zinc-800 truncate">
+                          {storeName}
+                        </div>
+                        <span>Emitente</span>
+                      </div>
+                      <div>
+                        <div className="border-t border-zinc-400 pt-1 font-medium text-zinc-800 truncate">
+                          {customerName || 'Cliente / Comprador'}
+                        </div>
+                        <span>Comprador</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
         {/* =============================================================== */}
-        {/* ABA 2: MODELOS EDITÁVEIS (IGUAL A CONTRATOS)                    */}
+        {/* ABA 2: MODELOS EDITÁVEIS (TEXTO + IMPORTAÇÃO WORD .DOCX)        */}
         {/* =============================================================== */}
         <TabsContent value="modelos" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Lista de modelos */}
             <Card className="lg:col-span-4">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="text-base">Seus Modelos</CardTitle>
-                  <Button size="sm" onClick={handleCreateTemplate} className="gap-1.5 h-8">
-                    <Plus className="w-3.5 h-3.5" />
-                    Novo
-                  </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => docxUploadInputRef.current?.click()}
+                      className="gap-1 h-8 text-xs"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Word (.docx)
+                    </Button>
+                    <Button size="sm" onClick={handleCreateTemplate} className="gap-1 h-8 text-xs">
+                      <Plus className="w-3.5 h-3.5" />
+                      Texto
+                    </Button>
+                  </div>
                 </div>
                 <CardDescription>
-                  Crie ou personalize quantos modelos de recibo precisar.
+                  Importe arquivos prontos em Word (.docx) mantendo toda a formatação, ou crie modelos de texto.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -699,8 +1101,15 @@ export default function CounterReceipts() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{tpl.name}</p>
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-sm truncate">{tpl.name}</p>
+                            {tpl.kind === 'docx' && (
+                              <Badge className="bg-blue-600 text-white hover:bg-blue-600 text-[9px] px-1.5 py-0 h-4 shrink-0">
+                                DOCX
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground line-clamp-1">{tpl.subtitle}</p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -749,9 +1158,13 @@ export default function CounterReceipts() {
             {/* Editor do modelo selecionado */}
             <Card className="lg:col-span-8">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Editor de Modelo</CardTitle>
+                <CardTitle className="text-base">
+                  {editingTemplate?.kind === 'docx' ? 'Configuração do Modelo Word (.docx)' : 'Editor de Modelo de Texto'}
+                </CardTitle>
                 <CardDescription>
-                  Clique em qualquer variável abaixo para inseri-la no texto. As alterações são salvas automaticamente.
+                  {editingTemplate?.kind === 'docx'
+                    ? 'Seu arquivo Word é mantido intacto (fontes, tabelas, logos e margens). Use as variáveis {{...}} dentro do Word para preenchimento automático.'
+                    : 'Clique em qualquer variável abaixo para inseri-la no texto. As alterações são salvas automaticamente.'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -774,35 +1187,109 @@ export default function CounterReceipts() {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Variáveis Dinâmicas (clique para inserir)</Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {COUNTER_RECEIPT_VARIABLES.map((v) => (
-                          <Button
-                            key={v.token}
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-[11px] font-mono px-2"
-                            onClick={() => handleInsertVariable(v.token)}
-                          >
-                            {v.label}
-                          </Button>
-                        ))}
+                    {editingTemplate.kind === 'docx' ? (
+                      <div className="space-y-4">
+                        <div className="rounded-lg border bg-blue-500/5 border-blue-500/30 p-4 flex flex-wrap items-center justify-between gap-3">
+                          <div className="space-y-0.5">
+                            <p className="text-sm font-semibold flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-blue-600" />
+                              {editingTemplate.docxFileName || `${editingTemplate.name}.docx`}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Tamanho: {formatFileSize(editingTemplate.docxFileSize)} • Formatação Word preservada 100%
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 text-xs"
+                              onClick={() => handleDownloadOriginalDocx(editingTemplate)}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Baixar Original
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="gap-1.5 text-xs"
+                              onClick={() => docxReplaceInputRef.current?.click()}
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              Substituir .docx
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Variáveis detectadas neste arquivo Word</Label>
+                          {editingTemplate.detectedVariables && editingTemplate.detectedVariables.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {editingTemplate.detectedVariables.map((v) => (
+                                <Badge key={v} variant="secondary" className="font-mono text-[11px]">
+                                  {v}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground bg-muted/50 rounded-md p-3">
+                              Nenhuma variável <code>{'{{...}}'}</code> encontrada neste arquivo ainda. Para preencher campos automaticamente, abra o arquivo no Word, escreva as variáveis abaixo onde deseja que os dados apareçam (ex.: <code>{'{{cliente_nome}}'}</code>, <code>{'{{cliente_documento}}'}</code>, <code>{'{{valor_total}}'}</code>) e clique em <strong>Substituir .docx</strong>. Você também pode criar qualquer variável própria como <code>{'{{vendedor}}'}</code> que o sistema cria o campo na hora!
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Variáveis padrão (clique para copiar e colar no Word)</Label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {COUNTER_RECEIPT_VARIABLES.map((v) => (
+                              <Button
+                                key={v.token}
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-[11px] font-mono px-2"
+                                onClick={() => handleInsertVariable(v.token)}
+                                title={`Copiar ${v.token}`}
+                              >
+                                {v.token}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Variáveis Dinâmicas (clique para inserir)</Label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {COUNTER_RECEIPT_VARIABLES.map((v) => (
+                              <Button
+                                key={v.token}
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-[11px] font-mono px-2"
+                                onClick={() => handleInsertVariable(v.token)}
+                              >
+                                {v.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Corpo do Documento</Label>
-                      <Textarea
-                        rows={14}
-                        className="font-mono text-xs leading-relaxed"
-                        value={editingTemplate.body}
-                        onChange={(e) => handleUpdateEditingTemplate({ body: e.target.value })}
-                      />
-                    </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Corpo do Documento</Label>
+                          <Textarea
+                            rows={14}
+                            className="font-mono text-xs leading-relaxed"
+                            value={editingTemplate.body}
+                            onChange={(e) => handleUpdateEditingTemplate({ body: e.target.value })}
+                          />
+                        </div>
+                      </>
+                    )}
 
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
                       <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Salvo automaticamente neste navegador
@@ -835,7 +1322,7 @@ export default function CounterReceipts() {
                 <div>
                   <CardTitle className="text-base">Histórico de Recibos Emitidos</CardTitle>
                   <CardDescription>
-                    Baixe novamente a 2ª via em PDF de qualquer recibo de balcão gerado.
+                    Consulte ou baixe novamente os recibos de balcão gerados.
                   </CardDescription>
                 </div>
                 <div className="relative w-full sm:w-72">

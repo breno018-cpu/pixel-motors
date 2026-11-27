@@ -4,7 +4,11 @@ export interface CounterReceiptTemplate {
   id: string;
   name: string;
   subtitle: string;
+  kind?: 'text' | 'docx';
   body: string;
+  docxFileName?: string;
+  docxFileSize?: number;
+  detectedVariables?: string[];
   updatedAt: string;
 }
 
@@ -100,24 +104,31 @@ export function formatBRL(value: number): string {
   });
 }
 
-export function resolveCounterReceiptBody(
-  templateBody: string,
-  data: Omit<CounterReceiptData, 'renderedBody'>
-): string {
+export function buildCounterReceiptVariableMap(
+  data: Omit<CounterReceiptData, 'renderedBody'>,
+  customValues?: Record<string, string>
+): Record<string, string> {
   const fullCustomerAddress = [data.customerAddress, data.customerNeighborhood, data.customerCep ? `CEP ${data.customerCep}` : '']
     .filter(Boolean)
     .join(' - ');
   const cityUf = [data.customerCity, data.customerUf].filter(Boolean).join('/');
 
-  const map: Record<string, string> = {
+  return {
+    ...(customValues || {}),
     '{{numero_recibo}}': data.receiptNumber,
     '{{data_emissao}}': data.issueDate,
     '{{loja_nome}}': data.storeName,
     '{{loja_cnpj}}': data.storeCnpj,
     '{{loja_endereco}}': `${data.storeAddress} - ${data.storeCityUf}`,
+    '{{loja_telefone}}': data.storePhone || '—',
     '{{cliente_nome}}': data.customerName || '—',
     '{{cliente_documento}}': data.customerDocument || '—',
     '{{cliente_endereco}}': fullCustomerAddress || '—',
+    '{{cliente_logradouro}}': data.customerAddress || '—',
+    '{{cliente_bairro}}': data.customerNeighborhood || '—',
+    '{{cliente_cep}}': data.customerCep || '—',
+    '{{cliente_cidade}}': data.customerCity || '—',
+    '{{cliente_uf}}': data.customerUf || '—',
     '{{cliente_cidade_uf}}': cityUf || '—',
     '{{cliente_telefone}}': data.customerPhone || '—',
     '{{produto_descricao}}': data.productDescription || '—',
@@ -129,7 +140,13 @@ export function resolveCounterReceiptBody(
     '{{forma_pagamento}}': data.paymentMethod || '—',
     '{{observacoes}}': data.notes?.trim() || 'Sem observações adicionais.',
   };
+}
 
+export function resolveCounterReceiptBody(
+  templateBody: string,
+  data: Omit<CounterReceiptData, 'renderedBody'>
+): string {
+  const map = buildCounterReceiptVariableMap(data);
   let out = templateBody;
   for (const [token, val] of Object.entries(map)) {
     out = out.split(token).join(val);
