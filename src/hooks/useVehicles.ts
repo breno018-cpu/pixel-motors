@@ -414,7 +414,8 @@ export function removeVehicleFromCache(vehicleId: string): void {
 
 export function useVehicles() {
   const qc = useQueryClient();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, session, isLoading: authLoading } = useAuth();
+  const hasJwt = Boolean(session?.access_token);
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -435,10 +436,17 @@ export function useVehicles() {
   }, [qc]);
 
   return useQuery({
-    queryKey: ['vehicles', user?.id || 'anon'],
+    queryKey: ['vehicles', user?.id || 'anon', hasJwt ? 'jwt' : 'nojwt'],
     enabled: !authLoading,
     queryFn: async () => {
-      await ensureSupabaseSession();
+      let activeSession = session || (await ensureSupabaseSession());
+      if (!activeSession) {
+        try {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          activeSession = refreshed?.session || null;
+        } catch {}
+      }
+
       const PAGE_SIZE = 1000;
       const allRows: Vehicle[] = [];
       let from = 0;
@@ -462,14 +470,34 @@ export function useVehicles() {
         from += PAGE_SIZE;
       }
 
+      // Se o banco retornou 0 linhas mas não há sessão JWT ativa, tenta novamente após breve espera
+      // (evita mostrar "0 modelos" durante a hidratação da sessão Auth)
+      if (allRows.length === 0 && !activeSession) {
+        await new Promise((r) => setTimeout(r, 400));
+        const retrySession = await ensureSupabaseSession();
+        if (retrySession) {
+          const { data: retryData } = await (supabase as any)
+            .from('vehicles')
+            .select('*')
+            .eq('is_deleted', false)
+            .order('created_at', { ascending: false })
+            .range(0, PAGE_SIZE - 1);
+          if (Array.isArray(retryData) && retryData.length > 0) {
+            allRows.push(...(retryData as Vehicle[]));
+          }
+        }
+      }
+
       const remoteVehicles = allRows;
 
-      // Mantém apenas o dado real do banco no espelho local (remove qualquer lixo/cache velho)
-      try {
-        localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(remoteVehicles));
-        localStorage.removeItem('dealflow_vehicles_cache_v1');
-        localStorage.removeItem('df_local_table_v5_vehicles');
-      } catch {}
+      // Só sobrescreve o espelho local quando há sessão confirmada ou dados reais retornados
+      if (activeSession || remoteVehicles.length > 0) {
+        try {
+          localStorage.setItem(VEHICLES_CACHE_KEY, JSON.stringify(remoteVehicles));
+          localStorage.removeItem('dealflow_vehicles_cache_v1');
+          localStorage.removeItem('df_local_table_v5_vehicles');
+        } catch {}
+      }
 
       return remoteVehicles;
     },

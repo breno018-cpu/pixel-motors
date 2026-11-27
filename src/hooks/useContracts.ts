@@ -406,9 +406,9 @@ async function fetchConsolidatedContracts(): Promise<Contract[]> {
 }
 
 export function useContracts() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, session, isLoading: authLoading } = useAuth();
   return useQuery({
-    queryKey: ['contracts', user?.id || 'anon'],
+    queryKey: ['contracts', user?.id || 'anon', Boolean(session?.access_token) ? 'jwt' : 'nojwt'],
     queryFn: fetchConsolidatedContracts,
     enabled: !authLoading,
     refetchOnMount: 'always',
