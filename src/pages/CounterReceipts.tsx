@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { renderAsync } from 'docx-preview';
+import { DocxLivePreviewFrame } from '@/components/documents/DocxLivePreviewFrame';
 import {
   FileText,
   Download,
@@ -155,8 +155,9 @@ export default function CounterReceipts() {
   const [activeTab, setActiveTab] = useState<'emitir' | 'modelos' | 'historico'>('emitir');
   const docxUploadInputRef = useRef<HTMLInputElement | null>(null);
   const docxReplaceInputRef = useRef<HTMLInputElement | null>(null);
-  const docxPreviewContainerRef = useRef<HTMLDivElement | null>(null);
-  const editorDocxPreviewRef = useRef<HTMLDivElement | null>(null);
+  const emitPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [emitDocxBlob, setEmitDocxBlob] = useState<Blob | null>(null);
+  const [editorDocxBlob, setEditorDocxBlob] = useState<Blob | null>(null);
   const [docxRevision, setDocxRevision] = useState(0);
   const [docxBlocks, setDocxBlocks] = useState<DocxTextBlock[]>([]);
   const [docxBlockEdits, setDocxBlockEdits] = useState<Record<string, string>>({});
@@ -366,38 +367,25 @@ export default function CounterReceipts() {
     return resolveCounterReceiptBody(activeTemplate.body, draftDataWithoutBody);
   }, [activeTemplate, isActiveDocx, draftDataWithoutBody]);
 
-  // Renderização ao vivo fiel do arquivo Word (.docx) preenchido
+  // Gera o Blob .docx preenchido em tempo real para o iframe isolado da aba Emitir
   useEffect(() => {
-    if (activeTab !== 'emitir' || !isActiveDocx || !activeTemplate) return;
+    if (activeTab !== 'emitir' || !isActiveDocx || !activeTemplate) {
+      setEmitDocxBlob(null);
+      return;
+    }
     let cancelled = false;
     const timer = setTimeout(async () => {
-      const container = docxPreviewContainerRef.current;
-      if (!container) return;
       setIsRenderingDocx(true);
       try {
         const buffer = await getDocxTemplateBlob(activeTemplate.id);
         if (!buffer || cancelled) {
-          if (container) {
-            container.innerHTML =
-              '<p style="padding:16px;color:#b91c1c;font-size:12px;">Arquivo Word não encontrado neste navegador. Reimporte o arquivo .docx na aba Modelos.</p>';
-          }
+          if (!cancelled) setEmitDocxBlob(null);
           return;
         }
         const filledBlob = await fillDocxTemplate(buffer, variableMap);
-        if (cancelled) return;
-        container.innerHTML = '';
-        await renderAsync(filledBlob, container, undefined, {
-          inWrapper: true,
-          ignoreWidth: false,
-          ignoreHeight: false,
-          breakPages: true,
-        });
-      } catch (err) {
-        if (!cancelled && container) {
-          container.innerHTML = `<p style="padding:16px;color:#b91c1c;font-size:12px;">Erro ao renderizar prévia do Word: ${
-            err instanceof Error ? err.message : 'arquivo inválido'
-          }</p>`;
-        }
+        if (!cancelled) setEmitDocxBlob(filledBlob);
+      } catch {
+        if (!cancelled) setEmitDocxBlob(null);
       } finally {
         if (!cancelled) setIsRenderingDocx(false);
       }
@@ -409,9 +397,12 @@ export default function CounterReceipts() {
     };
   }, [activeTab, isActiveDocx, activeTemplate, variableMap, docxRevision]);
 
-  // Carrega blocos editáveis e renderização inicial do .docx na aba Modelos
+  // Carrega blocos editáveis e Blob do .docx na aba Modelos
   useEffect(() => {
-    if (activeTab !== 'modelos' || editingTemplate?.kind !== 'docx') return;
+    if (activeTab !== 'modelos' || editingTemplate?.kind !== 'docx') {
+      setEditorDocxBlob(null);
+      return;
+    }
     let cancelled = false;
     setEditorDocxMissing(false);
     setDocxBlockSearch('');
@@ -423,6 +414,7 @@ export default function CounterReceipts() {
       if (!buffer) {
         setDocxBlocks([]);
         setDocxBlockEdits({});
+        setEditorDocxBlob(null);
         setEditorDocxMissing(true);
         return;
       }
@@ -434,25 +426,11 @@ export default function CounterReceipts() {
         initialEdits[b.blockKey] = b.text;
       });
       setDocxBlockEdits(initialEdits);
-
-      const container = editorDocxPreviewRef.current;
-      if (container) {
-        setIsRenderingEditorDocx(true);
-        try {
-          container.innerHTML = '';
-          const blob = new Blob([buffer.slice(0)], {
-            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          });
-          await renderAsync(blob, container, undefined, {
-            inWrapper: true,
-            ignoreWidth: false,
-            ignoreHeight: false,
-            breakPages: true,
-          });
-        } finally {
-          if (!cancelled) setIsRenderingEditorDocx(false);
-        }
-      }
+      setEditorDocxBlob(
+        new Blob([buffer.slice(0)], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        })
+      );
     })();
 
     return () => {
@@ -460,7 +438,7 @@ export default function CounterReceipts() {
     };
   }, [activeTab, editingTemplate?.id, editingTemplate?.kind, docxRevision]);
 
-  // Aplica edições feitas nos blocos do .docx em tempo real, salva e re-renderiza o Word ao vivo
+  // Aplica edições feitas nos blocos do .docx em tempo real, salva e atualiza o iframe isolado
   const applyLiveDocxEdits = async (nextEdits: Record<string, string>) => {
     if (!editingTemplate || editingTemplate.kind !== 'docx') return;
     const buffer = await getDocxTemplateBlob(editingTemplate.id);
@@ -483,20 +461,11 @@ export default function CounterReceipts() {
             : t
         )
       );
-
-      const container = editorDocxPreviewRef.current;
-      if (container) {
-        container.innerHTML = '';
-        const blob = new Blob([updatedBuf.slice(0)], {
+      setEditorDocxBlob(
+        new Blob([updatedBuf.slice(0)], {
           type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        });
-        await renderAsync(blob, container, undefined, {
-          inWrapper: true,
-          ignoreWidth: false,
-          ignoreHeight: false,
-          breakPages: true,
-        });
-      }
+        })
+      );
     } finally {
       setIsRenderingEditorDocx(false);
     }
@@ -566,42 +535,16 @@ export default function CounterReceipts() {
   };
 
   const handlePrintDocxPreview = () => {
-    const container = docxPreviewContainerRef.current;
-    if (!container || !container.innerHTML.trim()) {
+    const iframe = emitPreviewIframeRef.current;
+    if (!iframe?.contentWindow || !emitDocxBlob) {
       toast({
         title: 'Prévia ainda carregando',
         description: 'Aguarde o modelo Word terminar de renderizar para imprimir/salvar em PDF.',
       });
       return;
     }
-    const win = window.open('', '_blank', 'width=900,height=1100');
-    if (!win) {
-      toast({
-        title: 'Pop-up bloqueado',
-        description: 'Libere pop-ups para imprimir ou salvar o documento Word como PDF.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    win.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Recibo ${currentReceiptNumber}</title>
-  <style>
-    @page { size: A4; margin: 0; }
-    html, body { margin: 0; padding: 0; background: #fff; }
-    .docx-wrapper { background: #fff !important; padding: 0 !important; }
-    .docx-wrapper > section.docx { box-shadow: none !important; margin: 0 auto !important; }
-  </style>
-</head>
-<body>${container.innerHTML}</body>
-</html>`);
-    win.document.close();
-    setTimeout(() => {
-      win.focus();
-      win.print();
-    }, 350);
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
   };
 
   // Upload de novo modelo Word (.docx)
@@ -1133,14 +1076,15 @@ export default function CounterReceipts() {
               </CardHeader>
               <CardContent className="flex-1 flex flex-col gap-3">
                 {isActiveDocx ? (
-                  <div className="relative rounded-lg border bg-zinc-100 dark:bg-zinc-900 overflow-auto max-h-[780px] min-h-[480px]">
-                    {isRenderingDocx && (
-                      <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-[1px] flex items-center justify-center text-xs font-medium">
-                        Atualizando prévia do Word...
-                      </div>
-                    )}
-                    <div ref={docxPreviewContainerRef} className="w-full" />
-                  </div>
+                  <DocxLivePreviewFrame
+                    blob={emitDocxBlob}
+                    loading={isRenderingDocx}
+                    emptyMessage="Arquivo Word não encontrado neste navegador. Reimporte o arquivo .docx na aba Modelos."
+                    heightClassName="h-[700px]"
+                    onIframeReady={(iframe) => {
+                      emitPreviewIframeRef.current = iframe;
+                    }}
+                  />
                 ) : (
                   <div className="rounded-lg border bg-white text-zinc-900 p-5 shadow-sm space-y-4 text-xs leading-relaxed">
                     <div className="flex items-start justify-between border-b pb-3 gap-2">
@@ -1474,19 +1418,14 @@ export default function CounterReceipts() {
 
                             {/* Renderização em tempo real do documento Word */}
                             <div className="xl:col-span-7 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-xs font-semibold">
-                                  Renderização em Tempo Real (Formato Original do Word)
-                                </Label>
-                                {isRenderingEditorDocx && (
-                                  <span className="text-[11px] text-primary animate-pulse">
-                                    Atualizando...
-                                  </span>
-                                )}
-                              </div>
-                              <div className="relative rounded-lg border bg-zinc-100 dark:bg-zinc-900 overflow-auto max-h-[580px] min-h-[420px]">
-                                <div ref={editorDocxPreviewRef} className="w-full" />
-                              </div>
+                              <Label className="text-xs font-semibold">
+                                Renderização em Tempo Real (Formato Original Isolado do Word)
+                              </Label>
+                              <DocxLivePreviewFrame
+                                blob={editorDocxBlob}
+                                loading={isRenderingEditorDocx}
+                                heightClassName="h-[580px]"
+                              />
                             </div>
                           </div>
                         )}
