@@ -1259,6 +1259,28 @@ export default function CounterReceipts() {
                       </div>
                     ) : (
                       <>
+                        <div className="rounded-lg border border-dashed border-blue-500/40 bg-blue-500/5 p-3.5 flex flex-wrap items-center justify-between gap-3">
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                              <FileUp className="w-4 h-4 text-blue-600" />
+                              Usar um arquivo pronto do Word (.docx) neste modelo
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              Anexe seu .docx pronto para manter 100% da formatação original (tabelas, logos, fontes e margens).
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-xs border-blue-500/40 text-blue-700 dark:text-blue-400 hover:bg-blue-500/10"
+                            onClick={() => docxReplaceInputRef.current?.click()}
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            Anexar Word (.docx)
+                          </Button>
+                        </div>
+
                         <div className="space-y-1.5">
                           <Label className="text-xs">Variáveis Dinâmicas (clique para inserir)</Label>
                           <div className="flex flex-wrap gap-1.5">
