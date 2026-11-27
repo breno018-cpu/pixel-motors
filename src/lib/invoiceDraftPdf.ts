@@ -307,8 +307,8 @@ export function buildInvoiceDraftPdfDocument(data: InvoiceDraftPayload): jsPDF {
   box(m + W * 0.84, y, W * 0.16, 7.4, 'DATA DA SAÍDA', data.issueDate, { align: 'center', size: 8.5 });
   y += 7.4;
 
-  box(m, y, W * 0.47, 7.4, 'MUNICÍPIO', data.customerCity, { bold: true, size: 8.8 });
-  box(m + W * 0.47, y, W * 0.04, 7.4, 'UF', data.customerUf, { bold: true, align: 'center', size: 8.8 });
+  box(m, y, W * 0.455, 7.4, 'MUNICÍPIO', data.customerCity, { bold: true, size: 8.8 });
+  box(m + W * 0.455, y, W * 0.055, 7.4, 'UF', data.customerUf, { bold: true, align: 'center', size: 8.5 });
   box(m + W * 0.51, y, W * 0.16, 7.4, 'FONE / FAX', data.customerPhone || '', { size: 8.2 });
   box(m + W * 0.67, y, W * 0.17, 7.4, 'INSCRIÇÃO ESTADUAL', '');
   box(m + W * 0.84, y, W * 0.16, 7.4, 'HORA DA SAÍDA', '');
@@ -436,9 +436,13 @@ export function buildInvoiceDraftPdfDocument(data: InvoiceDraftPayload): jsPDF {
   const footerBlockTop = pageH - 28;
   const tableBodyH = Math.max(68, footerBlockTop - y - 4);
   px = m;
+  // Define fonte ANTES de splitTextToSize para cálculo exato da largura (zero sobreposição em NCM/SH)
+  doc.setFont('times', 'normal');
+  doc.setFontSize(6.6);
+  const wrappedDesc = doc.splitTextToSize(data.productDescription, prodCols[1].w - 2.6);
   const rowVals = [
     data.productCode,
-    doc.splitTextToSize(data.productDescription, prodCols[1].w - 2.4),
+    wrappedDesc,
     data.ncm,
     '041',
     data.cfop,
