@@ -32,7 +32,11 @@ import {
   Truck,
   Wrench,
   Zap,
+  RefreshCw,
+  AlertTriangle,
+  LogIn,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -239,12 +243,21 @@ export default function Vehicles() {
     setSearchParams(next, { replace: true });
   };
 
-  const { data: vehicles, isLoading } = useVehicles();
+  const {
+    data: vehicles,
+    isLoading,
+    isFetching,
+    isError: isVehiclesError,
+    error: vehiclesError,
+    refetch: refetchVehicles,
+  } = useVehicles();
   const { inspections = [] } = useInspections();
   const { data: stores } = useStores();
   const { data: resellers } = useResellers();
   const { data: models } = useVehicleModels();
   const {
+    session,
+    signOut,
     isAdmin,
     isStoreOwner,
     roles,
@@ -254,6 +267,39 @@ export default function Vehicles() {
     canViewMargins,
     userStore,
   } = useAuth();
+  const [isReconnectingStock, setIsReconnectingStock] = useState(false);
+
+  const handleForceReloadStock = async () => {
+    setIsReconnectingStock(true);
+    try {
+      await supabase.auth.refreshSession().catch(() => null);
+      const res = await refetchVehicles();
+      const total = Array.isArray(res.data) ? res.data.length : 0;
+      toast({
+        title: total > 0 ? 'Estoque sincronizado com o banco' : 'Nenhum veículo retornado',
+        description:
+          total > 0
+            ? `${total} registros carregados diretamente do Supabase.`
+            : 'Sua sessão pode estar expirada. Clique em "Reconectar Login" para reautenticar.',
+        variant: total > 0 ? 'default' : 'destructive',
+      });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Falha ao consultar o banco',
+        description: err?.message || 'Verifique sua conexão e tente novamente.',
+      });
+    } finally {
+      setIsReconnectingStock(false);
+    }
+  };
+
+  const handleReconnectLogin = async () => {
+    try {
+      await signOut();
+    } catch {}
+    navigate('/auth');
+  };
   const isGroupOwnerRole = isStoreOwner || roles.includes('dono_loja');
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -708,6 +754,17 @@ export default function Vehicles() {
             <Button
               variant="outline"
               size="sm"
+              onClick={handleForceReloadStock}
+              disabled={isReconnectingStock || isFetching}
+              className="gap-1.5 font-medium"
+              title="Recarregar estoque direto do banco de dados"
+            >
+              <RefreshCw className={cn('h-3.5 w-3.5', (isReconnectingStock || isFetching) && 'animate-spin')} />
+              Atualizar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleExportCsv}
               disabled={filteredVehicles.length === 0}
               className="gap-1.5 font-medium"
@@ -783,6 +840,50 @@ export default function Vehicles() {
       />
 
       {canRegisterVehicles && <LocalStockRecoveryBanner remoteVehicles={vehicles || []} />}
+
+      {/* Alerta de diagnóstico e auto-recuperação caso ocorra erro de banco ou sessão desconectada */}
+      {(isVehiclesError || (!isLoading && !isFetching && (vehicles?.length || 0) === 0 && !session?.access_token)) && (
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-destructive/20 text-destructive flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-bold text-foreground">
+                {!session?.access_token
+                  ? 'Sessão desconectada do banco de dados'
+                  : 'Não foi possível carregar o estoque do banco'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {!session?.access_token
+                  ? 'Seu navegador está sem token de autenticação ativo. Clique em "Recarregar do Banco" ou faça login novamente para visualizar o estoque.'
+                  : ((vehiclesError as any)?.message || 'Falha temporária de conexão com o Supabase. Clique em "Recarregar do Banco".')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleForceReloadStock}
+              disabled={isReconnectingStock}
+              className="gap-1.5 rounded-xl text-xs font-semibold bg-background"
+            >
+              <RefreshCw className={cn('w-3.5 h-3.5', isReconnectingStock && 'animate-spin')} />
+              Recarregar do Banco
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleReconnectLogin}
+              className="gap-1.5 rounded-xl text-xs font-semibold"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Reconectar Login
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Aviso de validação do estoque de Shineray Montes Claros */}
       {(storeFilter === 'all' || isMatchingStore(storeFilter, STORE_MONTESCLAROS_UUID)) && (
