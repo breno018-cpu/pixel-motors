@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 
 export interface InvoiceDraftPayload {
   draftCode: string; // Código interno de teste (ex: PRV-2026-000001)
@@ -46,299 +46,492 @@ export function generateDraftCode(): string {
   const now = new Date();
   const yr = now.getFullYear();
   const rnd = Math.floor(100000 + Math.random() * 900000);
-  return `PRV-${yr}-${rnd}`;
+  return `TESTE-${yr}-${rnd}`;
 }
 
 /**
- * Gera um PDF A4 estruturado de "Espelho / Prévia de Faturamento (SEM VALOR FISCAL)"
- * para validação do fluxo de emissão antes da integração com a API oficial da SEFAZ.
+ * Desenha o emblema vetorial LM LIMA MOTORS MULTIMARCAS no quadro do emitente.
  */
-export function generateInvoiceDraftPdf(data: InvoiceDraftPayload): void {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 10;
-  const contentW = pageW - margin * 2;
-  let y = 10;
+function drawLimaMotorsLogo(doc: jsPDF, cx: number, topY: number): void {
+  // Escudo/badge LM
+  doc.setFillColor(185, 28, 28);
+  doc.roundedRect(cx - 8, topY, 16, 7.5, 1.2, 1.2, 'F');
+  doc.setDrawColor(20, 20, 20);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(cx - 8, topY, 16, 7.5, 1.2, 1.2, 'S');
 
-  const drawBox = (x: number, top: number, w: number, h: number, label?: string, value?: string, opts?: {
-    boldValue?: boolean;
-    alignValue?: 'left' | 'right' | 'center';
-    valueSize?: number;
-  }) => {
-    doc.setDrawColor(40, 40, 40);
-    doc.setLineWidth(0.25);
-    doc.rect(x, top, w, h);
+  doc.setFont('helvetica', 'bolditalic');
+  doc.setFontSize(10.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text('LM', cx, topY + 5.6, { align: 'center' });
+
+  // Linhas laterais + LIMA MOTORS
+  doc.setFont('helvetica', 'bolditalic');
+  doc.setFontSize(8.2);
+  doc.setTextColor(20, 20, 20);
+  doc.text('LIMA MOTORS', cx, topY + 11.2, { align: 'center' });
+
+  doc.setDrawColor(185, 28, 28);
+  doc.setLineWidth(0.35);
+  doc.line(cx - 17, topY + 10.3, cx - 12.2, topY + 10.3);
+  doc.line(cx + 12.2, topY + 10.3, cx + 17, topY + 10.3);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(4.6);
+  doc.setTextColor(120, 120, 120);
+  doc.text('M U L T I M A R C A S', cx, topY + 13.4, { align: 'center' });
+}
+
+/**
+ * Gera um PDF A4 com acabamento gráfico completo (Times serifada, caixas arredondadas,
+ * todas as seções fiscais estruturadas), claramente identificado com faixa e marca d'água
+ * "TESTE — SEM VALOR FISCAL" (sem chave SEFAZ falsa) para validação antes de ativar a NF-e real.
+ */
+export function buildInvoiceDraftPdfDocument(data: InvoiceDraftPayload): jsPDF {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth(); // 210mm
+  const pageH = doc.internal.pageSize.getHeight(); // 297mm
+  const m = 6.5;
+  const W = pageW - m * 2; // 197mm
+  const R = 0.9; // raio de canto arredondado suave
+  let y = 6;
+
+  const box = (
+    x: number,
+    top: number,
+    w: number,
+    h: number,
+    label?: string,
+    value?: string,
+    opts?: {
+      bold?: boolean;
+      align?: 'left' | 'right' | 'center';
+      size?: number;
+      font?: 'times' | 'helvetica' | 'courier';
+      valueYOffset?: number;
+    }
+  ) => {
+    doc.setDrawColor(25, 25, 25);
+    doc.setLineWidth(0.22);
+    doc.roundedRect(x, top, w, h, R, R, 'S');
     if (label) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(5.5);
-      doc.setTextColor(70, 70, 70);
-      doc.text(label.toUpperCase(), x + 1.5, top + 3);
+      doc.setFont('times', 'normal');
+      doc.setFontSize(5.2);
+      doc.setTextColor(35, 35, 35);
+      doc.text(label.toUpperCase(), x + 1.2, top + 2.3);
     }
     if (value !== undefined && value !== '') {
-      doc.setFont('helvetica', opts?.boldValue ? 'bold' : 'normal');
-      doc.setFontSize(opts?.valueSize ?? 8);
-      doc.setTextColor(15, 15, 15);
-      const align = opts?.alignValue || 'left';
-      const tx = align === 'right' ? x + w - 1.5 : align === 'center' ? x + w / 2 : x + 1.5;
-      doc.text(value, tx, top + h - 2, { align, maxWidth: w - 3 });
+      doc.setFont(opts?.font || 'times', opts?.bold ? 'bold' : 'normal');
+      doc.setFontSize(opts?.size ?? 8.5);
+      doc.setTextColor(10, 10, 10);
+      const align = opts?.align || 'left';
+      const tx = align === 'right' ? x + w - 1.4 : align === 'center' ? x + w / 2 : x + 1.4;
+      const ty = top + h - (opts?.valueYOffset ?? 1.4);
+      doc.text(value, tx, ty, { align, maxWidth: w - 2.6 });
     }
   };
 
-  // Faixa superior de aviso de homologação / sem valor fiscal
-  doc.setFillColor(254, 243, 199);
-  doc.setDrawColor(217, 119, 6);
-  doc.setLineWidth(0.35);
-  doc.rect(margin, y, contentW, 8, 'FD');
+  const sectionTitle = (title: string, top: number) => {
+    doc.setFont('times', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(15, 15, 15);
+    doc.text(title.toUpperCase(), m + 0.5, top);
+  };
+
+  // =========================================================================
+  // FAIXA SUPERIOR OBRIGATÓRIA DE IDENTIFICAÇÃO DE TESTE
+  // =========================================================================
+  doc.setFillColor(220, 38, 38);
+  doc.roundedRect(m, y, W, 6.2, 0.8, 0.8, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.setTextColor(146, 64, 14);
-  doc.text(
-    'ESPELHO / PRÉVIA DE FATURAMENTO — SEM VALOR FISCAL (AMBIENTE DE TESTE)',
-    pageW / 2,
-    y + 5.2,
-    { align: 'center' }
-  );
-  y += 10;
+  doc.setTextColor(255, 255, 255);
+  doc.text('AMBIENTE DE TESTE — DOCUMENTO DE PRÉVIA SEM VALOR FISCAL', pageW / 2, y + 4.2, { align: 'center' });
+  y += 7.4;
 
-  // 1. Canhoto de recebimento
-  const canhotoW = contentW - 36;
-  doc.setDrawColor(40, 40, 40);
-  doc.setLineWidth(0.25);
-  doc.rect(margin, y, canhotoW, 10);
-  doc.setFont('helvetica', 'normal');
+  // =========================================================================
+  // 1. CANHOTO DE RECEBIMENTO
+  // =========================================================================
+  const canhotoRightW = 36;
+  const canhotoLeftW = W - canhotoRightW;
+
+  doc.setDrawColor(25, 25, 25);
+  doc.setLineWidth(0.22);
+  doc.roundedRect(m, y, canhotoLeftW, 8.2, R, R, 'S');
+  doc.setFont('times', 'normal');
   doc.setFontSize(6.2);
-  doc.setTextColor(25, 25, 25);
-  const canhotoText = `RECEBEMOS DE ${data.issuerName} OS PRODUTOS CONSTANTES NESTE ESPELHO DE PEDIDO. EMISSÃO: ${data.issueDate} | VALOR TOTAL: R$ ${fmtBRL(data.totalValue)} | CLIENTE: ${data.customerName} - ${data.customerAddress}, ${data.customerNeighborhood}, ${data.customerCity}-${data.customerUf}`;
-  doc.text(doc.splitTextToSize(canhotoText, canhotoW - 3), margin + 1.5, y + 3.5);
-
-  drawBox(margin, y + 10, 38, 9, 'Data de Recebimento');
-  drawBox(margin + 38, y + 10, canhotoW - 38, 9, 'Identificação e Assinatura do Recebedor');
-
-  doc.rect(margin + canhotoW, y, 36, 19);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
   doc.setTextColor(15, 15, 15);
-  doc.text('PRÉVIA', margin + canhotoW + 18, y + 6, { align: 'center' });
-  doc.setFontSize(7.5);
-  doc.text(data.draftCode, margin + canhotoW + 18, y + 12, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
-  doc.text('SEM VALOR FISCAL', margin + canhotoW + 18, y + 16.5, { align: 'center' });
+  const canhotoTxt = `RECEBEMOS DE ${data.issuerName} OS PRODUTOS E/OU SERVIÇOS CONSTANTES NESTE DOCUMENTO DE TESTE. EMISSÃO: ${data.issueDate} VALOR TOTAL: R$ ${fmtBRL(data.totalValue)} DESTINATÁRIO: ${data.customerName} - ${data.customerAddress} ${data.customerNeighborhood} ${data.customerCity}-${data.customerUf}`;
+  doc.text(doc.splitTextToSize(canhotoTxt, canhotoLeftW - 3), m + 1.4, y + 2.8);
 
-  y += 21;
-  doc.setLineDashPattern([1.5, 1.5], 0);
-  doc.line(margin, y, pageW - margin, y);
-  doc.setLineDashPattern([], 0);
-  y += 2;
+  box(m, y + 8.2, 34, 7.6, 'DATA DE RECEBIMENTO');
+  box(m + 34, y + 8.2, canhotoLeftW - 34, 7.6, 'IDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR');
 
-  // 2. Cabeçalho Emitente + Quadro Central + Código Interno
-  const emitW = 78;
-  const midW = 38;
-  const rightW = contentW - emitW - midW;
-
-  doc.rect(margin, y, emitW, 28);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(5.5);
-  doc.setTextColor(70, 70, 70);
-  doc.text('IDENTIFICAÇÃO DO EMITENTE', margin + 1.5, y + 3.5);
-  doc.setFontSize(8.5);
-  doc.setTextColor(15, 15, 15);
-  doc.text(doc.splitTextToSize(data.issuerName, emitW - 4), margin + emitW / 2, y + 10, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text(data.issuerAddress, margin + emitW / 2, y + 18, { align: 'center', maxWidth: emitW - 4 });
-  doc.text(`${data.issuerCityUf} - CEP ${data.issuerCep}`, margin + emitW / 2, y + 22, { align: 'center', maxWidth: emitW - 4 });
-  if (data.issuerPhone) {
-    doc.text(`Fone: ${data.issuerPhone}`, margin + emitW / 2, y + 26, { align: 'center' });
-  }
-
-  doc.rect(margin + emitW, y, midW, 28);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('ESPELHO', margin + emitW + midW / 2, y + 7, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.text('Documento de Conferência', margin + emitW + midW / 2, y + 11.5, { align: 'center' });
-  doc.text('Sem Valor Fiscal', margin + emitW + midW / 2, y + 15, { align: 'center' });
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text('1 - SAÍDA', margin + emitW + midW / 2, y + 20.5, { align: 'center' });
-  doc.setFontSize(7);
-  doc.text('Folha 1/1', margin + emitW + midW / 2, y + 25.5, { align: 'center' });
-
-  doc.rect(margin + emitW + midW, y, rightW, 28);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(5.5);
-  doc.setTextColor(70, 70, 70);
-  doc.text('CÓDIGO INTERNO DO DOCUMENTO (TESTE)', margin + emitW + midW + 1.5, y + 4);
-  doc.setFont('courier', 'bold');
+  doc.roundedRect(m + canhotoLeftW, y, canhotoRightW, 15.8, R, R, 'S');
+  doc.setFont('times', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 15, 15);
-  doc.text(data.draftCode, margin + emitW + midW + rightW / 2, y + 13, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
+  doc.text('PRÉVIA', m + canhotoLeftW + canhotoRightW / 2, y + 5.2, { align: 'center' });
+  doc.setFontSize(7.6);
+  doc.text(data.draftCode, m + canhotoLeftW + canhotoRightW / 2, y + 10.2, { align: 'center' });
+  doc.setFontSize(6.8);
+  doc.text('SEM VALOR FISCAL', m + canhotoLeftW + canhotoRightW / 2, y + 14, { align: 'center' });
+
+  y += 17.4;
+  doc.setLineDashPattern([1.2, 1.2], 0);
+  doc.setDrawColor(70, 70, 70);
+  doc.line(m, y, pageW - m, y);
+  doc.setLineDashPattern([], 0);
+  y += 1.6;
+
+  // =========================================================================
+  // 2. CABEÇALHO PRINCIPAL (EMITENTE | QUADRO CENTRAL | CÓDIGO INTERNO)
+  // =========================================================================
+  const emitW = 79;
+  const midW = 34;
+  const rightW = W - emitW - midW;
+  const topH = 31;
+
+  // Bloco Emitente
+  doc.setDrawColor(25, 25, 25);
+  doc.setLineWidth(0.22);
+  doc.roundedRect(m, y, emitW, topH, R, R, 'S');
+  doc.setFont('times', 'normal');
+  doc.setFontSize(5.2);
+  doc.setTextColor(35, 35, 35);
+  doc.text('IDENTIFICAÇÃO DO EMITENTE', m + emitW / 2, y + 2.4, { align: 'center' });
+
+  drawLimaMotorsLogo(doc, m + emitW / 2, y + 3.8);
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(10, 10, 10);
+  doc.text(data.issuerName, m + emitW / 2, y + 21.2, { align: 'center', maxWidth: emitW - 3 });
+  doc.setFont('times', 'normal');
+  doc.setFontSize(7.2);
+  doc.text(data.issuerAddress, m + emitW / 2, y + 24.6, { align: 'center', maxWidth: emitW - 3 });
+  doc.text(`${data.issuerCityUf} - CEP ${data.issuerCep}`, m + emitW / 2, y + 27.6, { align: 'center', maxWidth: emitW - 3 });
+  if (data.issuerPhone) {
+    doc.text(`Fone/Fax: ${data.issuerPhone}`, m + emitW / 2, y + 30.2, { align: 'center', maxWidth: emitW - 3 });
+  }
+
+  // Bloco Central
+  doc.roundedRect(m + emitW, y, midW, topH, R, R, 'S');
+  doc.setFont('times', 'bold');
+  doc.setFontSize(11);
+  doc.text('PRÉVIA', m + emitW + midW / 2, y + 5.5, { align: 'center' });
+  doc.setFont('times', 'normal');
+  doc.setFontSize(6.8);
+  doc.text('Espelho de Conferência', m + emitW + midW / 2, y + 9, { align: 'center' });
+  doc.text('Sem Valor Fiscal', m + emitW + midW / 2, y + 12, { align: 'center' });
+
   doc.setFontSize(6.5);
-  doc.setTextColor(90, 90, 90);
+  doc.text('0 - ENTRADA', m + emitW + 2.2, y + 16.5);
+  doc.text('1 - SAÍDA', m + emitW + 2.2, y + 19.8);
+  doc.roundedRect(m + emitW + midW - 8.5, y + 14.5, 6, 6.2, 0.5, 0.5, 'S');
+  doc.setFont('times', 'bold');
+  doc.setFontSize(10);
+  doc.text('1', m + emitW + midW - 5.5, y + 19, { align: 'center' });
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(7.6);
+  doc.text(data.draftCode, m + emitW + midW / 2, y + 24.5, { align: 'center' });
+  doc.setFont('times', 'italic');
+  doc.setFontSize(7);
+  doc.text('Folha 1/1', m + emitW + midW / 2, y + 29, { align: 'center' });
+
+  // Bloco Direito (Código Interno de Teste — SEM chave SEFAZ falsa)
+  doc.roundedRect(m + emitW + midW, y, rightW, 14, R, R, 'S');
+  doc.setFillColor(245, 245, 245);
+  doc.roundedRect(m + emitW + midW + 3, y + 2.5, rightW - 6, 9, 0.8, 0.8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(185, 28, 28);
+  doc.text('MODO TESTE — SEM VALOR FISCAL', m + emitW + midW + rightW / 2, y + 8.2, { align: 'center' });
+
+  box(m + emitW + midW, y + 14, rightW, 8, 'CÓDIGO INTERNO DE TESTE', data.draftCode, {
+    bold: true,
+    align: 'center',
+    size: 9.5,
+    font: 'courier',
+  });
+
+  doc.roundedRect(m + emitW + midW, y + 22, rightW, 9, R, R, 'S');
+  doc.setFont('times', 'normal');
+  doc.setFontSize(6.6);
+  doc.setTextColor(40, 40, 40);
   doc.text(
-    doc.splitTextToSize(
-      'Prévia interna gerada para validação dos dados. Não substitui a NF-e autorizada pela SEFAZ.',
-      rightW - 4
-    ),
-    margin + emitW + midW + rightW / 2,
-    y + 19,
+    'Documento gerado apenas para validação visual e de dados.',
+    m + emitW + midW + rightW / 2,
+    y + 25.5,
     { align: 'center' }
   );
-  y += 28;
+  doc.text(
+    'Para emissão oficial, conecte o emissor NF-e homologado na SEFAZ.',
+    m + emitW + midW + rightW / 2,
+    y + 29.2,
+    { align: 'center' }
+  );
 
-  // Natureza da operação + Status
-  drawBox(margin, y, emitW + midW, 9, 'Natureza da Operação', data.operationNature, { boldValue: true });
-  drawBox(margin + emitW + midW, y, rightW, 9, 'Status Fiscal', 'PRÉVIA / AGUARDANDO EMISSÃO NF-E', { boldValue: true, valueSize: 7 });
-  y += 9;
+  y += topH;
 
-  // IE + CNPJ Emitente
-  drawBox(margin, y, contentW * 0.34, 9, 'Inscrição Estadual', data.issuerIe, { boldValue: true });
-  drawBox(margin + contentW * 0.34, y, contentW * 0.33, 9, 'Inscrição Estadual do Subst. Trib.', '');
-  drawBox(margin + contentW * 0.67, y, contentW * 0.33, 9, 'CNPJ do Emitente', data.issuerCnpj, { boldValue: true });
-  y += 11;
-
-  // 3. Destinatário / Cliente
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.setTextColor(30, 30, 30);
-  doc.text('DESTINATÁRIO / CLIENTE', margin, y);
-  y += 1.5;
-
-  drawBox(margin, y, contentW * 0.60, 9, 'Nome / Razão Social', data.customerName, { boldValue: true });
-  drawBox(margin + contentW * 0.60, y, contentW * 0.24, 9, 'CNPJ / CPF', data.customerDocument, { boldValue: true });
-  drawBox(margin + contentW * 0.84, y, contentW * 0.16, 9, 'Data da Emissão', data.issueDate, { boldValue: true, alignValue: 'center' });
-  y += 9;
-
-  drawBox(margin, y, contentW * 0.46, 9, 'Endereço', data.customerAddress);
-  drawBox(margin + contentW * 0.46, y, contentW * 0.24, 9, 'Bairro / Distrito', data.customerNeighborhood);
-  drawBox(margin + contentW * 0.70, y, contentW * 0.14, 9, 'CEP', data.customerCep, { alignValue: 'center' });
-  drawBox(margin + contentW * 0.84, y, contentW * 0.16, 9, 'Data da Saída', data.issueDate, { alignValue: 'center' });
-  y += 9;
-
-  drawBox(margin, y, contentW * 0.46, 9, 'Município', data.customerCity, { boldValue: true });
-  drawBox(margin + contentW * 0.46, y, contentW * 0.08, 9, 'UF', data.customerUf, { boldValue: true, alignValue: 'center' });
-  drawBox(margin + contentW * 0.54, y, contentW * 0.30, 9, 'Fone / Fax', data.customerPhone || '');
-  drawBox(margin + contentW * 0.84, y, contentW * 0.16, 9, 'Inscrição Estadual', '');
-  y += 11;
-
-  // 4. Fatura / Pagamento
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text('FATURA / PAGAMENTO', margin, y);
-  y += 1.5;
-  drawBox(margin, y, contentW, 8.5, undefined, `${data.paymentDescription} — R$ ${fmtBRL(data.totalValue)}`, { boldValue: true });
-  y += 10.5;
-
-  // 5. Resumo de Valores
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text('RESUMO DE VALORES', margin, y);
-  y += 1.5;
-  const col6 = contentW / 6;
-  drawBox(margin, y, col6, 9, 'Base Cálc. ICMS', '0,00', { alignValue: 'right' });
-  drawBox(margin + col6, y, col6, 9, 'Valor ICMS', '0,00', { alignValue: 'right' });
-  drawBox(margin + col6 * 2, y, col6, 9, 'Valor Frete', '0,00', { alignValue: 'right' });
-  drawBox(margin + col6 * 3, y, col6, 9, 'Desconto', '0,00', { alignValue: 'right' });
-  drawBox(margin + col6 * 4, y, col6, 9, 'Valor Produtos', fmtBRL(data.totalValue), { boldValue: true, alignValue: 'right' });
-  drawBox(margin + col6 * 5, y, col6, 9, 'Valor Total', fmtBRL(data.totalValue), { boldValue: true, alignValue: 'right' });
-  y += 11;
-
-  // 6. Dados dos Produtos / Serviços
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text('DADOS DOS PRODUTOS / SERVIÇOS', margin, y);
-  y += 1.5;
-
-  const cols = [
-    { label: 'CÓD.', w: 14, align: 'center' as const },
-    { label: 'DESCRIÇÃO DO PRODUTO / VEÍCULO', w: 100, align: 'left' as const },
-    { label: 'NCM/SH', w: 18, align: 'center' as const },
-    { label: 'CFOP', w: 12, align: 'center' as const },
-    { label: 'UN', w: 10, align: 'center' as const },
-    { label: 'QTD', w: 12, align: 'right' as const },
-    { label: 'V. UNIT', w: 12, align: 'right' as const },
-    { label: 'V. TOTAL', w: 12, align: 'right' as const },
-  ];
-  // Ajusta larguras para somar exatamente contentW (190mm)
-  cols[1].w = contentW - (14 + 18 + 12 + 10 + 12 + 20 + 20);
-  cols[6].w = 20;
-  cols[7].w = 20;
-
-  let cx = margin;
-  cols.forEach((col) => {
-    doc.rect(cx, y, col.w, 6.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.5);
-    doc.text(col.label, cx + col.w / 2, y + 4.2, { align: 'center' });
-    cx += col.w;
+  // Natureza da operação + Protocolo
+  box(m, y, emitW + midW, 7.2, 'NATUREZA DA OPERAÇÃO', data.operationNature, { bold: true, align: 'center', size: 9 });
+  box(m + emitW + midW, y, rightW, 7.2, 'PROTOCOLO DE AUTORIZAÇÃO DE USO', 'AMBIENTE DE TESTE (NÃO TRANSMITIDO À SEFAZ)', {
+    bold: true,
+    align: 'center',
+    size: 6.8,
   });
-  y += 6.5;
+  y += 7.2;
 
-  const prodLines = doc.splitTextToSize(data.productDescription, cols[1].w - 3);
-  const rowH = Math.max(58, prodLines.length * 4 + 8);
-  cx = margin;
+  // IE + IE Subst + CNPJ
+  box(m, y, W * 0.34, 7.2, 'INSCRIÇÃO ESTADUAL', data.issuerIe, { bold: true, align: 'center', size: 9 });
+  box(m + W * 0.34, y, W * 0.33, 7.2, 'INSCRIÇÃO ESTADUAL DO SUBST. TRIBUT.', '');
+  box(m + W * 0.67, y, W * 0.33, 7.2, 'CNPJ', data.issuerCnpj, { bold: true, align: 'center', size: 9 });
+  y += 9.5;
+
+  // =========================================================================
+  // 3. DESTINATÁRIO / REMETENTE
+  // =========================================================================
+  sectionTitle('DESTINATÁRIO / REMETENTE', y);
+  y += 1.2;
+
+  box(m, y, W * 0.61, 7.4, 'NOME / RAZÃO SOCIAL', data.customerName, { bold: true, size: 9 });
+  box(m + W * 0.61, y, W * 0.23, 7.4, 'CNPJ / CPF', data.customerDocument, { bold: true, align: 'center', size: 9 });
+  box(m + W * 0.84, y, W * 0.16, 7.4, 'DATA DA EMISSÃO', data.issueDate, { bold: true, align: 'center', size: 9 });
+  y += 7.4;
+
+  box(m, y, W * 0.47, 7.4, 'ENDEREÇO', data.customerAddress, { bold: true, size: 8.5 });
+  box(m + W * 0.47, y, W * 0.23, 7.4, 'BAIRRO / DISTRITO', data.customerNeighborhood, { bold: true, align: 'center', size: 8.5 });
+  box(m + W * 0.70, y, W * 0.14, 7.4, 'CEP', data.customerCep, { bold: true, align: 'center', size: 8.5 });
+  box(m + W * 0.84, y, W * 0.16, 7.4, 'DATA DA SAÍDA', data.issueDate, { align: 'center', size: 8.5 });
+  y += 7.4;
+
+  box(m, y, W * 0.47, 7.4, 'MUNICÍPIO', data.customerCity, { bold: true, size: 8.8 });
+  box(m + W * 0.47, y, W * 0.04, 7.4, 'UF', data.customerUf, { bold: true, align: 'center', size: 8.8 });
+  box(m + W * 0.51, y, W * 0.16, 7.4, 'FONE / FAX', data.customerPhone || '', { size: 8.2 });
+  box(m + W * 0.67, y, W * 0.17, 7.4, 'INSCRIÇÃO ESTADUAL', '');
+  box(m + W * 0.84, y, W * 0.16, 7.4, 'HORA DA SAÍDA', '');
+  y += 9.8;
+
+  // =========================================================================
+  // 4. FATURA / PAGAMENTO
+  // =========================================================================
+  sectionTitle('FATURA / PAGAMENTO', y);
+  y += 1.2;
+  box(m, y, W, 6.8, undefined, `${data.paymentDescription} - R$ ${fmtBRL(data.totalValue)}`, {
+    size: 8.2,
+    valueYOffset: 2,
+  });
+  y += 9.2;
+
+  // =========================================================================
+  // 5. CÁLCULO DO IMPOSTO (2 LINHAS COMPLETAS — 12 QUADROS)
+  // =========================================================================
+  sectionTitle('CÁLCULO DO IMPOSTO', y);
+  y += 1.2;
+
+  const impW = [W * 0.16, W * 0.16, W * 0.16, W * 0.16, W * 0.16, W * 0.20];
+  let ix = m;
+  const row1Imp: Array<[string, string]> = [
+    ['BASE DE CÁLCULO ICMS', '0,00'],
+    ['VALOR DO ICMS', '0,00'],
+    ['BASE DE CÁLC. ICMS ST', '0,00'],
+    ['VALOR DO ICMS ST', '0,00'],
+    ['VALOR DO II', '0,00'],
+    ['VALOR TOTAL PRODUTOS', fmtBRL(data.totalValue)],
+  ];
+  row1Imp.forEach(([lbl, val], idx) => {
+    box(ix, y, impW[idx], 7.4, lbl, val, { bold: true, align: 'right', size: 9.2 });
+    ix += impW[idx];
+  });
+  y += 7.4;
+
+  ix = m;
+  const row2Imp: Array<[string, string]> = [
+    ['VALOR DO FRETE', '0,00'],
+    ['VALOR DO SEGURO', '0,00'],
+    ['DESCONTO', '0,00'],
+    ['OUTRAS DESPESAS', '0,00'],
+    ['VALOR TOTAL DO IPI', '0,00'],
+    ['VALOR TOTAL DA NOTA', fmtBRL(data.totalValue)],
+  ];
+  row2Imp.forEach(([lbl, val], idx) => {
+    box(ix, y, impW[idx], 7.4, lbl, val, { bold: true, align: 'right', size: 9.2 });
+    ix += impW[idx];
+  });
+  y += 9.8;
+
+  // =========================================================================
+  // 6. TRANSPORTADOR / VOLUMES TRANSPORTADOS (3 LINHAS COMPLETAS)
+  // =========================================================================
+  sectionTitle('TRANSPORTADOR / VOLUMES TRANSPORTADOS', y);
+  y += 1.2;
+
+  box(m, y, W * 0.29, 7.2, 'NOME / RAZÃO SOCIAL', '');
+  box(m + W * 0.29, y, W * 0.15, 7.2, 'FRETE POR CONTA', '(9) Sem Frete', { bold: true, align: 'center', size: 8.5 });
+  box(m + W * 0.44, y, W * 0.15, 7.2, 'CÓDIGO ANTT', '');
+  box(m + W * 0.59, y, W * 0.15, 7.2, 'PLACA DO VEÍCULO', '');
+  box(m + W * 0.74, y, W * 0.04, 7.2, 'UF', '');
+  box(m + W * 0.78, y, W * 0.22, 7.2, 'CNPJ / CPF', '');
+  y += 7.2;
+
+  box(m, y, W * 0.44, 7.2, 'ENDEREÇO', '');
+  box(m + W * 0.44, y, W * 0.30, 7.2, 'MUNICÍPIO', '');
+  box(m + W * 0.74, y, W * 0.04, 7.2, 'UF', '');
+  box(m + W * 0.78, y, W * 0.22, 7.2, 'INSCRIÇÃO ESTADUAL', '');
+  y += 7.2;
+
+  box(m, y, W * 0.10, 7.2, 'QUANTIDADE', '');
+  box(m + W * 0.10, y, W * 0.16, 7.2, 'ESPÉCIE', '');
+  box(m + W * 0.26, y, W * 0.18, 7.2, 'MARCA', '');
+  box(m + W * 0.44, y, W * 0.17, 7.2, 'NUMERAÇÃO', '');
+  box(m + W * 0.61, y, W * 0.20, 7.2, 'PESO BRUTO', '');
+  box(m + W * 0.81, y, W * 0.19, 7.2, 'PESO LÍQUIDO', '');
+  y += 9.8;
+
+  // =========================================================================
+  // 7. DADOS DOS PRODUTOS / SERVIÇOS (TABELA COMPLETA DE 14 COLUNAS)
+  // =========================================================================
+  sectionTitle('DADOS DOS PRODUTOS / SERVIÇOS', y);
+  y += 1.2;
+
+  const prodCols = [
+    { label: 'CÓDIGO\nPRODUTO', w: 14, align: 'center' as const },
+    { label: 'DESCRIÇÃO DO PRODUTO / SERVIÇO', w: 66, align: 'left' as const },
+    { label: 'NCM/SH', w: 13.5, align: 'center' as const },
+    { label: 'O/CST', w: 8.5, align: 'center' as const },
+    { label: 'CFOP', w: 9, align: 'center' as const },
+    { label: 'UN', w: 7, align: 'center' as const },
+    { label: 'QUANT', w: 12, align: 'right' as const },
+    { label: 'VALOR\nUNIT', w: 14.5, align: 'right' as const },
+    { label: 'VALOR\nTOTAL', w: 14.5, align: 'right' as const },
+    { label: 'B.CÁLC\nICMS', w: 9.5, align: 'right' as const },
+    { label: 'VALOR\nICMS', w: 9, align: 'right' as const },
+    { label: 'ALÍQ.\nICMS', w: 6.5, align: 'right' as const },
+    { label: 'VALOR\nIPI', w: 6.5, align: 'right' as const },
+    { label: 'ALÍQ.\nIPI', w: 6.5, align: 'right' as const },
+  ];
+
+  // Cabeçalho da tabela
+  const thH = 7.2;
+  let px = m;
+  doc.setDrawColor(25, 25, 25);
+  doc.setLineWidth(0.22);
+  prodCols.forEach((col) => {
+    doc.rect(px, y, col.w, thH);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(5);
+    doc.setTextColor(25, 25, 25);
+    const lblLines = col.label.split('\n');
+    const startY = lblLines.length > 1 ? y + 2.8 : y + 4.4;
+    lblLines.forEach((line, li) => {
+      doc.text(line, px + col.w / 2, startY + li * 2.4, { align: 'center' });
+    });
+    px += col.w;
+  });
+  y += thH;
+
+  // Corpo estendido até a seção Dados Adicionais
+  const footerBlockTop = pageH - 28;
+  const tableBodyH = Math.max(68, footerBlockTop - y - 4);
+  px = m;
   const rowVals = [
     data.productCode,
-    prodLines,
+    doc.splitTextToSize(data.productDescription, prodCols[1].w - 2.4),
     data.ncm,
+    '041',
     data.cfop,
     'UN',
     data.quantity.toFixed(4).replace('.', ','),
     fmtBRL(data.unitValue),
     fmtBRL(data.totalValue),
+    '0,00',
+    '0,00',
+    '0,00',
+    '0,00',
+    '0,00',
   ];
 
-  cols.forEach((col, i) => {
-    doc.rect(cx, y, col.w, rowH);
-    doc.setFont('helvetica', i === 1 ? 'normal' : 'bold');
-    doc.setFontSize(7.2);
+  prodCols.forEach((col, i) => {
+    doc.rect(px, y, col.w, tableBodyH);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(6.6);
     doc.setTextColor(15, 15, 15);
     const val = rowVals[i];
     if (Array.isArray(val)) {
-      doc.text(val, cx + 1.5, y + 4.5);
+      doc.text(val, px + 1.2, y + 3.6);
     } else {
-      const tx = col.align === 'right' ? cx + col.w - 1.5 : col.align === 'center' ? cx + col.w / 2 : cx + 1.5;
-      doc.text(val, tx, y + 4.5, { align: col.align });
+      const tx = col.align === 'right' ? px + col.w - 1.1 : col.align === 'center' ? px + col.w / 2 : px + 1.1;
+      doc.text(val, tx, y + 3.6, { align: col.align });
     }
-    cx += col.w;
+    px += col.w;
   });
-  y += rowH + 3;
 
-  // 7. Dados Adicionais
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text('DADOS ADICIONAIS / INFORMAÇÕES COMPLEMENTARES', margin, y);
-  y += 1.5;
-  doc.rect(margin, y, contentW, 24);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.2);
-  const infoText = [
-    data.additionalInfo?.trim() || 'MOTO ENTREGUE E PAGA.',
-    'AVISO: Este documento é um espelho/prévia gerado em ambiente de teste e NÃO possui validade fiscal perante a SEFAZ.',
-  ].join('\n');
-  doc.text(doc.splitTextToSize(infoText, contentW - 4), margin + 2, y + 5);
+  // Linha tracejada logo abaixo da descrição do item (igual ao modelo clássico)
+  const descLinesCount = Array.isArray(rowVals[1]) ? rowVals[1].length : 1;
+  const dashY = y + Math.max(12, descLinesCount * 3.1 + 4);
+  doc.setLineDashPattern([1, 1], 0);
+  doc.setDrawColor(110, 110, 110);
+  doc.line(m, dashY, pageW - m, dashY);
+  doc.setLineDashPattern([], 0);
 
-  // Marca d'água diagonal "SEM VALOR FISCAL" para impossibilitar confusão com NF-e oficial
+  y += tableBodyH + 3.2;
+
+  // =========================================================================
+  // 8. DADOS ADICIONAIS (INFORMAÇÕES COMPLEMENTARES + RESERVADO AO FISCO)
+  // =========================================================================
+  sectionTitle('DADOS ADICIONAIS', y);
+  y += 1.2;
+
+  const infoW = W * 0.67;
+  const fiscoW = W - infoW;
+  const addH = 18;
+
+  doc.setDrawColor(25, 25, 25);
+  doc.setLineWidth(0.22);
+  doc.roundedRect(m, y, infoW, addH, R, R, 'S');
+  doc.setFont('times', 'bold');
+  doc.setFontSize(5.2);
+  doc.setTextColor(35, 35, 35);
+  doc.text('INFORMAÇÕES COMPLEMENTARES', m + 1.2, y + 2.4);
+  doc.setFont('times', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(15, 15, 15);
+  const compLines = [
+    `Inf. Contribuinte: ${data.additionalInfo?.trim() || 'MOTO ENTREGUE E PAGA.'}`,
+    'AMBIENTE DE TESTE — DOCUMENTO SEM VALOR FISCAL (AGUARDANDO INTEGRAÇÃO SEFAZ).',
+  ];
+  doc.text(doc.splitTextToSize(compLines.join('\n'), infoW - 3), m + 1.4, y + 5.8);
+
+  box(m + infoW, y, fiscoW, addH, 'RESERVADO AO FISCO', '');
+
+  // =========================================================================
+  // MARCA D'ÁGUA DIAGONAL GRANDE "TESTE — SEM VALOR FISCAL"
+  // =========================================================================
   doc.saveGraphicsState();
   doc.setTextColor(220, 38, 38);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(34);
   if ((doc as any).GState) {
-    doc.setGState(new (doc as any).GState({ opacity: 0.14 }));
+    doc.setGState(new (doc as any).GState({ opacity: 0.16 }));
   }
-  doc.text('SEM VALOR FISCAL', pageW / 2, 165, { align: 'center', angle: 35 });
+  doc.text('TESTE — SEM VALOR FISCAL', pageW / 2, pageH * 0.56, { align: 'center', angle: 38 });
   doc.restoreGraphicsState();
 
   // Rodapé
   const nowStr = new Date().toLocaleString('pt-BR');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Gerado em ${nowStr} • Código Interno: ${data.draftCode} • Modo Teste / Prévia`, margin, 289);
+  doc.setFont('times', 'italic');
+  doc.setFontSize(6.2);
+  doc.setTextColor(40, 40, 40);
+  doc.text(`Impresso em ${nowStr}`, m, pageH - 4.2);
+  doc.text(`Prévia v1.0 • Código Interno: ${data.draftCode} • SEM VALOR FISCAL`, pageW - m, pageH - 4.2, { align: 'right' });
 
+  return doc;
+}
+
+export function generateInvoiceDraftPdf(data: InvoiceDraftPayload): void {
+  const doc = buildInvoiceDraftPdfDocument(data);
   const safeClient = data.customerName.replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 30);
-  doc.save(`Previa_Pedido_${data.draftCode}_${safeClient || 'Cliente'}.pdf`);
+  doc.save(`Previa_Eletrica_${data.draftCode}_${safeClient || 'Cliente'}.pdf`);
 }
