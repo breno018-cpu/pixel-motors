@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { AutoVersionUpdater } from "@/components/common/AutoVersionUpdater";
+import { SystemHealthBanner } from "@/components/common/SystemHealthBanner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -262,6 +263,7 @@ const App = () => {
             </Routes>
           </ErrorBoundary>
           <AutoVersionUpdater />
+          <SystemHealthBanner />
         </BrowserRouter>
               </DealershipScopeProvider>
             </DateFilterProvider>
