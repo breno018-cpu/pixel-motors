@@ -70,6 +70,7 @@ import { parseInvoiceFile } from '@/lib/invoiceFileParser';
 import { parseFlexibleCurrency, formatBrlNumber, maskCurrency } from '@/lib/masks';
 import { saveAttachmentToIdb, getAttachmentFromIdb, safeSaveToLocalStorage, cleanLocalStorageBloat } from '@/lib/invoiceAttachmentStorage';
 import { cloudSaveInvoice } from '@/lib/cloudSalesSync';
+import { InvoiceDraftGeneratorDialog } from '@/components/dashboard/InvoiceDraftGeneratorDialog';
 import { cn } from '@/lib/utils';
 
 export interface CombinedFiscalRecord {
@@ -315,6 +316,7 @@ export function OwnerFiscalInvoicesPanel() {
 
   // Modais de Controle
   const [isNewInvoiceModalOpen, setIsNewInvoiceModalOpen] = useState(false);
+  const [isDraftPdfModalOpen, setIsDraftPdfModalOpen] = useState(false);
   const [invoiceToCancel, setInvoiceToCancel] = useState<CombinedFiscalRecord | null>(null);
   const [cancelModalMode, setCancelModalMode] = useState<'cancel' | 'reissue'>('cancel');
   const [invoiceToDelete, setInvoiceToDelete] = useState<CombinedFiscalRecord | null>(null);
@@ -1977,6 +1979,17 @@ export function OwnerFiscalInvoicesPanel() {
           >
             <Plus className="w-4 h-4" />
             Lançar NF
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDraftPdfModalOpen(true)}
+            className="gap-1.5 font-semibold text-xs rounded-xl border-primary/30 text-primary hover:bg-primary/5"
+            title="Gerar espelho PDF de conferência (Sem Valor Fiscal) para teste"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Prévia PDF (Teste)
           </Button>
 
           <Button
@@ -4128,6 +4141,10 @@ export function OwnerFiscalInvoicesPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <InvoiceDraftGeneratorDialog
+        open={isDraftPdfModalOpen}
+        onOpenChange={setIsDraftPdfModalOpen}
+      />
     </div>
   );
 }
