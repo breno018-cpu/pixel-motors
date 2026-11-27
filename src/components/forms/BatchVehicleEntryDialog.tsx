@@ -24,6 +24,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { setVehicleInBoxNotes } from '@/lib/vehicleBoxStatus';
 import {
   Select,
   SelectContent,
@@ -70,12 +72,14 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
   const [salePrice, setSalePrice] = useState('R$ 9.490,00');
   const [chassisListRaw, setChassisListRaw] = useState('');
   const [electricQtyWithoutChassis, setElectricQtyWithoutChassis] = useState<number>(0);
+  const [isInBox, setIsInBox] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
       setChassisListRaw('');
       setElectricQtyWithoutChassis(0);
+      setIsInBox(false);
     }
   }, [open]);
 
@@ -182,9 +186,12 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
           sale_price: sale > 0 ? sale : null,
           status: 'disponivel',
           store_id: finalStoreId,
-          notes: isElectricModel
-            ? `Entrada em lote moto elétrica (${brand}) - Nº da Moto/Motor: ${chassis}`
-            : `Entrada em lote concessionária (${brand}) - NF Remessa Fábrica.`,
+          notes: setVehicleInBoxNotes(
+            isElectricModel
+              ? `Entrada em lote moto elétrica (${brand}) - Nº da Moto/Motor: ${chassis}`
+              : `Entrada em lote concessionária (${brand}) - NF Remessa Fábrica.`,
+            isInBox
+          ),
         };
       });
 
@@ -468,6 +475,18 @@ export function BatchVehicleEntryDialog({ open, onOpenChange }: BatchVehicleEntr
                 ? `Total a ser cadastrado: ${effectiveChassisList.length} unidade(s). ${effectiveChassisList.some(c => c.includes('DEFINIR')) ? 'As unidades sem chassi serão identificadas para preenchimento na venda.' : ''}`
                 : `Você pode separar por linha, vírgula ou espaço. O sistema criará ${effectiveChassisList.length || 0} veículos idênticos no estoque de uma só vez.`}
             </p>
+          </div>
+
+          {/* Indicador: Motos ainda na caixa */}
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-500/30 bg-orange-500/5 px-3.5 py-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Boxes className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-foreground">Motos ainda na caixa</p>
+                <p className="text-[11px] text-muted-foreground">Marque se este lote ainda não foi montado no pátio</p>
+              </div>
+            </div>
+            <Switch checked={isInBox} onCheckedChange={setIsInBox} />
           </div>
         </div>
 

@@ -70,6 +70,7 @@ import {
   parseVehicleUnavailability,
   getUnavailabilityProgress,
 } from '@/lib/vehicleUnavailability';
+import { isVehicleInBox } from '@/lib/vehicleBoxStatus';
 import { VehicleActionsMenu } from '@/components/actions/VehicleActionsMenu';
 import { ReservationsPanel } from '@/components/vehicles/ReservationsPanel';
 import { TransfersPanel } from '@/components/vehicles/TransfersPanel';
@@ -407,6 +408,12 @@ export default function Vehicles() {
     [scopedVehicles],
   );
 
+  // Contagem de motos ainda na caixa (não vendidas)
+  const inBoxCount = useMemo(
+    () => scopedVehicles.filter((v) => v.status !== 'vendido' && isVehicleInBox(v.notes)).length,
+    [scopedVehicles],
+  );
+
   // Todas as cores disponíveis para filtro rápido
   const availableColors = useMemo(() => {
     const counts = new Map<string, number>();
@@ -431,6 +438,8 @@ export default function Vehicles() {
         if (!isWaitingElectricCode(vehicle)) return false;
       } else if (statusFilter === 'indisponivel') {
         if (!isVehicleTemporarilyUnavailable(vehicle)) return false;
+      } else if (statusFilter === 'na_caixa') {
+        if (vehicle.status === 'vendido' || !isVehicleInBox(vehicle.notes)) return false;
       } else if (vehicle.status !== statusFilter) {
         return false;
       }
@@ -774,6 +783,23 @@ export default function Vehicles() {
       />
 
       {canRegisterVehicles && <LocalStockRecoveryBanner remoteVehicles={vehicles || []} />}
+
+      {/* Aviso de validação do estoque de Shineray Montes Claros */}
+      {(storeFilter === 'all' || isMatchingStore(storeFilter, STORE_MONTESCLAROS_UUID)) && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+            <Info className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs sm:text-sm font-bold text-foreground">
+              Estoque em validação — Shineray Montes Claros
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Os chassis estão sendo conferidos em loja. Cada chassi conferido será exibido novamente aqui.
+            </p>
+          </div>
+        </div>
+      )}
 
       <VehicleFormDialog 
         open={formOpen} 
@@ -1145,6 +1171,7 @@ export default function Vehicles() {
                   { id: 'disponivel', label: `Disponíveis (${scopedVehicles.filter((v) => v.status === 'disponivel').length})` },
                   { id: 'reservado', label: `Reservados (${scopedVehicles.filter((v) => v.status === 'reservado').length})` },
                   { id: 'indisponivel', label: `Indisponíveis / Montagem (${temporarilyUnavailableCount})` },
+                  { id: 'na_caixa', label: `Na Caixa (${inBoxCount})` },
                   { id: 'aguardando_codigo', label: `Elétricas Aguardando Código (${waitingElectricCount})` },
                   { id: 'aging60', label: `Pátio > 60d (${kpis.aging60Count})` },
                   { id: 'vendido', label: `Histórico Vendidos (${scopedVehicles.filter((v) => v.status === 'vendido').length})` },
@@ -1995,6 +2022,16 @@ function UnitList({
                       </Badge>
                     );
                   })()}
+                  {vehicle.status !== 'vendido' && isVehicleInBox(vehicle.notes) && (
+                    <Badge
+                      variant="outline"
+                      title="Esta moto ainda está na caixa (não montada)"
+                      className="text-xs bg-orange-500/15 text-orange-800 dark:text-orange-300 border-orange-500/40 gap-1 font-semibold"
+                    >
+                      <Package className="w-3 h-3" />
+                      Na Caixa
+                    </Badge>
+                  )}
                   <span className="font-medium text-sm text-foreground">
                     {vehicle.color || 'Cor não informada'}
                   </span>

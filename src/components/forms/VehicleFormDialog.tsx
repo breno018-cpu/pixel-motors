@@ -33,6 +33,7 @@ import { useVehicles } from '@/hooks/useVehicles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/contexts/ConfirmationContext';
+import { setVehicleInBoxNotes } from '@/lib/vehicleBoxStatus';
 import { STANDARD_COLORS, formatPlate } from '@/lib/vehicleCatalog';
 import { maskCurrency, parseCurrency } from '@/lib/masks';
 import { 
@@ -78,6 +79,7 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
   const [purchasePrice, setPurchasePrice] = useState<string>('');
   const [salePrice, setSalePrice] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
+  const [isInBox, setIsInBox] = useState<boolean>(false);
 
   // Controle de Bloqueio por Padrão de Chassi
   const [patternLocked, setPatternLocked] = useState<boolean>(false);
@@ -412,7 +414,10 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
           purchase_price: costNum > 0 ? costNum : undefined,
           sale_price: saleNum,
           warranty_months: parseInt(warrantyMonths, 10) || 12,
-          notes: notes.trim() || `Moto Elétrica em lote (${i + 1}/${finalQuantity}) - Aguardando código na venda.`,
+          notes: setVehicleInBoxNotes(
+            notes.trim() || `Moto Elétrica em lote (${i + 1}/${finalQuantity}) - Aguardando código na venda.`,
+            isInBox
+          ) || undefined,
           status: 'disponivel',
         });
       }
@@ -440,7 +445,10 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
         purchase_price: costNum > 0 ? costNum : undefined,
         sale_price: saleNum,
         warranty_months: parseInt(warrantyMonths, 10) || 12,
-        notes: notes.trim() || (isElectric ? `Moto Elétrica - Número de Motor/Moto: ${finalChassis}` : undefined),
+        notes: setVehicleInBoxNotes(
+          notes.trim() || (isElectric ? `Moto Elétrica - Número de Motor/Moto: ${finalChassis}` : null),
+          isInBox
+        ) || undefined,
         status: 'disponivel',
       });
 
@@ -1067,6 +1075,18 @@ export function VehicleFormDialog({ open, onOpenChange, initialChassis }: Vehicl
                 <span className="font-medium">{validation.warnings.pricing}</span>
               </div>
             )}
+          </div>
+
+          {/* Indicador: Moto ainda na caixa */}
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-500/30 bg-orange-500/5 px-3.5 py-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Boxes className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-foreground">Moto ainda na caixa</p>
+                <p className="text-[11px] text-muted-foreground">Marque se a moto ainda não foi montada no pátio</p>
+              </div>
+            </div>
+            <Switch checked={isInBox} onCheckedChange={setIsInBox} />
           </div>
 
           {/* Rodapé com Ações */}

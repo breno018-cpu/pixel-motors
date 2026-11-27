@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Eye, Pencil, ArrowRightLeft, Tag, Trash2, UserPlus, Undo2, FileText, FileCheck, ShieldCheck, Wrench } from 'lucide-react';
+import { MoreHorizontal, Eye, Pencil, ArrowRightLeft, Tag, Trash2, UserPlus, Undo2, FileText, FileCheck, ShieldCheck, Wrench, Package } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { isVehicleInBox, setVehicleInBoxNotes } from '@/lib/vehicleBoxStatus';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -53,6 +57,31 @@ export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
   const isTempUnavailable = isVehicleTemporarilyUnavailable(vehicle);
   const unavailMeta = isTempUnavailable ? parseVehicleUnavailability(vehicle.notes) : null;
   const unavailProgress = getUnavailabilityProgress(unavailMeta);
+  const inBox = isVehicleInBox(vehicle.notes);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleToggleInBox = async () => {
+    const nextInBox = !inBox;
+    const nextNotes = setVehicleInBoxNotes(vehicle.notes, nextInBox);
+    const { error } = await (supabase as any)
+      .from('vehicles')
+      .update({ notes: nextNotes })
+      .eq('id', vehicle.id);
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao atualizar status da caixa',
+        description: error.message || 'Não foi possível salvar no banco de dados.',
+      });
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    toast({
+      title: nextInBox ? 'Marcada como "Ainda na Caixa"' : 'Marcada como Montada (Fora da Caixa)',
+      description: `${vehicle.brand} ${vehicle.model} atualizada no estoque.`,
+    });
+  };
   
   const updateStatus = useUpdateVehicleStatus();
   const deleteVehicle = useDeleteVehicle();
@@ -153,6 +182,13 @@ export function VehicleActionsMenu({ vehicle }: VehicleActionsMenuProps) {
           
           <DropdownMenuSeparator />
           
+          {(isAdmin || isManager || canRegisterVehicles || can('vehicles.edit')) && vehicle.status !== 'vendido' && (
+            <DropdownMenuItem onClick={handleToggleInBox} className="text-orange-700 dark:text-orange-400">
+              <Package className="w-4 h-4 mr-2" />
+              {inBox ? 'Retirar da Caixa (Montada)' : 'Marcar: Ainda na Caixa'}
+            </DropdownMenuItem>
+          )}
+
           {(isAdmin || isManager || canRegisterVehicles || can('vehicles.edit')) && vehicle.status !== 'vendido' && (
             <DropdownMenuItem onClick={() => setUnavailabilityOpen(true)} className="text-amber-700 dark:text-amber-400">
               <Wrench className="w-4 h-4 mr-2" />
